@@ -9,6 +9,7 @@ import android.graphics.RectF
 import android.view.View
 import com.example.mlbbresearch.capture.FrameHub
 import com.example.mlbbresearch.vision.FrameProcessor
+import com.example.mlbbresearch.vision.ObjectDetector
 import com.example.mlbbresearch.vision.Team
 
 // Small live picture of what the AI sees, with a box around each detected unit.
@@ -53,6 +54,15 @@ class PreviewView(ctx: Context) : View(ctx) {
             val r = RectF(ox + s.barLeft * w, oy + s.barTop * h, ox + s.barRight * w, oy + (s.y + 0.04f) * h)
             c.drawRect(r, box)
             if (s.hero) c.drawText("${(s.hp * 100).toInt()}%", r.left, r.top - 2f, text)
+        }
+        // trained detector results (cyan boxes with labels)
+        if (System.currentTimeMillis() - ObjectDetector.latestAt < 1500) {
+            box.color = Color.parseColor("#4DD0E1")
+            for (d in ObjectDetector.latest) {
+                val r = RectF(ox + d.left * w, oy + d.top * h, ox + d.right * w, oy + d.bottom * h)
+                c.drawRect(r, box)
+                c.drawText("${d.label} ${(d.score * 100).toInt()}%", r.left, r.bottom + text.textSize, text)
+            }
         }
     }
 }

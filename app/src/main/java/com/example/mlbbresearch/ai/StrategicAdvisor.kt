@@ -12,6 +12,7 @@ import com.example.mlbbresearch.game.HeroDb
 import com.example.mlbbresearch.game.Phase
 import com.example.mlbbresearch.game.Role
 import com.example.mlbbresearch.game.SpellDb
+import com.example.mlbbresearch.vision.ObjectDetector
 import org.json.JSONObject
 
 // Decides WHEN to ask Gemma and what to ask. Event-driven: Gemma is only consulted
@@ -107,7 +108,7 @@ object StrategicAdvisor {
         val hero = s.ownHero ?: "unknown hero"
         val role = HeroDb.role(s.ownHero).name.lowercase()
         val prompt = "You are the strategic brain of a Mobile Legends bot playing $hero ($role). " +
-            "Situation: ${s.summary()}. " +
+            "Situation: ${s.summary()}${ObjectDetector.summary().let { if (it.isEmpty()) "" else "; minimap $it" }}. " +
             "Reply with ONLY one JSON object, no other words: " +
             "{\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 8 words\"}"
         val reply = ask("strategy ($why)", prompt, if (Cfg.strategyWithImage) FrameHub.bitmap() else null) ?: return

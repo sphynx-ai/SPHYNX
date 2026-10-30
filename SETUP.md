@@ -107,6 +107,19 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
    moments (about a minute of play) and falls back to the rules when nothing similar was recorded.
 3. The Learn page can export your recorded play as CSV.
 
+## Optional: trained vision detector (YOLO on LiteRT)
+
+1. Add `implementation("com.google.ai.edge.litert:litert:1.4.2")` to `dependencies { }` (see build-gradle-additions.txt).
+2. Open `notebooks/train_mlbb_detector.ipynb` in Google Colab (on GitHub, tap the file, then "Open in Colab";
+   or go to colab.research.google.com > GitHub > paste this repo's URL). Pick a T4 GPU and run every cell.
+   You need a free Roboflow account and its API key. Default dataset: "Mobile Legends Minimap Dataset" by gladi
+   (Roboflow Universe, CC BY 4.0).
+3. It downloads `mlbb_detector.tflite` and `labels.txt`. In the app: Model page > Choose detector file (.tflite).
+4. The Home preview shows detections as cyan boxes, and Gemma's strategy prompt gets the counts
+   (for example "1 turtle_icon, 4 hero_icon").
+
+The app works without it; the colour-based detector stays on either way.
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |
