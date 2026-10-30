@@ -564,6 +564,11 @@ class MainActivity : Activity() {
                         else "Gemma not loaded: the Player still works with the fast rules only."
         }
 
+        title("ASSIST MODE")
+        switch("Assist: I move, the AI only presses skills and combos in fights", Cfg.assistMode) { Cfg.assistMode = it }
+        text("The AI never touches the joystick in this mode. Note: Android cancels the finger that is on the screen when " +
+            "an app taps, so your joystick may need a re-press after the AI casts.", 12f, color = "#9AA0A6")
+
         title("YOUR HERO")
         text("The app finds the hero you really play: from its skill icons (learned once per hero), from the pick " +
             "(the AI's own standard pick, or Gemma reading the hero select / loading screen), then from the name below.", 12f, color = "#9AA0A6")
@@ -689,7 +694,21 @@ class MainActivity : Activity() {
         }
 
         title("JUNGLE, TURTLE & LORD")
-        switch("See jungle monsters, turtle and lord (orange / yellow HP bars)", Cfg.detectMonsters) { Cfg.detectMonsters = it }
+        switch("Neutral monster detector (jungle monsters, turtle, lord)", Cfg.detectMonsters) { Cfg.detectMonsters = it }
+        val monInfo = text("", 13f)
+        upd { monInfo.text = "Monster HP bar: ${com.example.mlbbresearch.vision.MonsterDetector.learnedText}. " +
+            "It learns the real colour by itself at the first jungle camp." }
+        btn("Learn the monster bar colour now (stand next to a jungle monster)") {
+            val self = GameStateTracker.state.self
+            val snap = FrameHub.snapshot(-1L, null)
+            when {
+                self == null || snap == null -> toast("Needs a live match frame: start the Player or Learn from me in a match")
+                com.example.mlbbresearch.vision.MonsterDetector.tryLearn(snap.pixels, snap.width, snap.height, self, force = true) ->
+                    toast("Learned: ${com.example.mlbbresearch.vision.MonsterDetector.learnedText}")
+                else -> toast("No monster bar found next to your hero")
+            }
+        }
+        btn("Forget the learned monster colour") { com.example.mlbbresearch.vision.MonsterDetector.forget(); toast("Back to the default colours") }
         switch("Help the team take turtle and lord", Cfg.takeObjectives) { Cfg.takeObjectives = it }
         field("Retribution on turtle / lord below HP (%)", Cfg.retriBossPct.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.retriBossPct = v.coerceIn(1, 60) }
@@ -715,6 +734,16 @@ class MainActivity : Activity() {
         upd { dirBtn.text = "Push towards enemy base: ${Cfg.pushDir}  (tap to change)" }
         switch("Battle spell is defensive (use it at very low HP)", Cfg.spellIsDefensive) { Cfg.spellIsDefensive = it }
         switch("Smooth joystick (keeps the finger down and turns gradually)", Cfg.smoothJoystick) { Cfg.smoothJoystick = it }
+        switch("Natural movement (human turning speed, small thumb variation)", Cfg.naturalMove) { Cfg.naturalMove = it }
+        switch("Walk around walls (minimap paths, and step aside when stuck)", Cfg.wallAvoid) { Cfg.wallAvoid = it }
+        val moveInfo = text("", 13f)
+        upd {
+            val gs = GameStateTracker.state
+            moveInfo.text = "Wall map: ${if (com.example.mlbbresearch.vision.WallMap.ready) "ready" else "building (needs a few seconds in a match)"}\n" +
+                "K/D/A seen this match: ${GameStateTracker.kills} / ${GameStateTracker.deaths} / ${GameStateTracker.assists}" +
+                "  (jungle camps killed: ${com.example.mlbbresearch.game.JungleNav.campsKilled})\n" +
+                "Monsters on screen: ${gs.monsters.size}"
+        }
 
         title("SKILLS & ITEMS")
         switch("Upgrade skills (taps the golden + when it shows)", Cfg.autoUpgradeSkills) { Cfg.autoUpgradeSkills = it }

@@ -75,6 +75,36 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
   - Routes from base: EXP walks up, then right. Gold walks right, then up. Mid uses the push direction.
     Roam follows the team. Jungle farms monsters.
 
+## Detectors, movement, aiming and assist (Player page)
+
+- **Neutral monster detector**: jungle monsters, turtle and lord are found by their HP bars on screen.
+  - It starts with orange / yellow bars. At the first jungle camp where it finds no monster, it learns the real bar
+    colour: a colour seen 3 times next to your hero.
+  - "Learn the monster bar colour now" does it in one tap while you stand next to a monster.
+  - **Kill confirmation**: a camp counts as killed when monsters were seen and then none are left for 1.5 s. It does not
+    wait for the minimap icon, which your own icon covers. If no monster is ever seen, it attacks for 12 s and moves on.
+- **K/D/A detector**: it watches the kill / death / assist numbers (top right) and counts +1 whenever one changes.
+  It does not read the digits. A hero kill is confirmed by the kill number going up. The learning AI gets +2 for a
+  confirmed kill and +1 for an assist, and a death counts as dying. Calibrate "K/D/A" on the Setup page; Auto-detect
+  sets it too.
+- **Wall detector**: walls are the dark shapes on the minimap. They are mapped on a 40 x 40 grid, and paths to camps,
+  towers and home go around them (A*). On screen: if the hero is walking but the camera stops moving, it is stuck,
+  so it steps around at an angle.
+- **Natural movement**: the finger stays on the joystick, turns at a human speed (no snapping), with a small
+  variation in how far it pushes and in timing.
+- **Skill aiming**: it aims where a moving enemy will be (enemy speed x skill travel time). It drags less far for
+  close targets and quick-casts when on top of the target.
+- **Assist mode**: you move. The AI only presses skills and combos when you are in a fight. Android cancels the
+  finger on the screen when an app taps, so you may need to re-press the joystick after a cast.
+- **MOBA rules**:
+  - Retreat towards your own tower.
+  - Never fight under the enemy tower.
+  - Don't wander alone deep in the enemy half.
+  - Last-hit minions.
+  - Push only with your minions in front.
+  - Defend your towers.
+  - Recall and Regen when safe.
+
 ## Kills, towers and gold (Player page)
 
 What the Player does, in order:

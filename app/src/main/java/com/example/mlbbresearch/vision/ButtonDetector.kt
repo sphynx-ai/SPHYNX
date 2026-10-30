@@ -121,6 +121,9 @@ object ButtonDetector {
         found["quickBuy"] = (1f - 0.283f * hx) to 0.155f
         found["activeItem"] = (1f - 0.155f * hx) to 0.31f
         found["joystick"] = (0.439f * hx) to 0.783f
+        found["kdaK"] = (1f - 0.484f * hx) to 0.042f
+        found["kdaD"] = (1f - 0.407f * hx) to 0.042f
+        found["kdaA"] = (1f - 0.331f * hx) to 0.042f
         found["mapTL"] = (0.089f * hx) to 0f
         found["mapBR"] = (0.422f * hx) to 0.322f
         if (!ScreenReader.quickBuyShowing(px, w, h)) notes.add("quick-buy item not showing right now (position is MLBB's default)")

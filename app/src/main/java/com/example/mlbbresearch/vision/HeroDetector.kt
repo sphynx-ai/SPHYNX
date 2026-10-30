@@ -43,7 +43,7 @@ object HeroDetector {
         if (r >= 170 && g <= 95 && b <= 95 && r - max(g, b) >= 95) return RED
         if (b >= 165 && r <= 110 && g <= 205 && b - r >= 85) return BLUE
         if (g >= 160 && r <= 145 && b <= 125 && g - max(r, b) >= 55) return GREEN
-        if (neutralOn && r >= 200 && g in 110..215 && b <= 90 && r - g >= 25 && g - b >= 60) return NEUTRAL
+        if (neutralOn && MonsterDetector.matches(r, g, b)) return NEUTRAL
         return NONE
     }
 

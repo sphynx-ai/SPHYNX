@@ -36,6 +36,11 @@ object ActionExecutor {
     private var lastUpgradeTap = 0L
     private var joyDirX = 0f
     private var joyDirY = 0f
+    private var walkSince = 0L
+    private var detourUntil = 0L
+    private var detourSign = 1f
+    private var pushRadius = 0.9f
+    private val rnd = java.util.Random()
     @Volatile private var generation = 0
     private val AIMED = setOf("s1", "s2", "ult")
     private const val SKILL_AIM_R = 0.045f     // how far a skill button is dragged to aim (fraction of width)
@@ -73,26 +78,25 @@ object ActionExecutor {
         if (System.currentTimeMillis() < QuickBuySwap.busyUntil) return   // the item swap owns the screen
 
         val acts = ArrayList<Act>()
-        if (d.moveX != 0f || d.moveY != 0f) {
+        val assist = Cfg.assistMode
+        if (assist) {
+            // you move: never touch the joystick
+        } else if (d.moveX != 0f || d.moveY != 0f) {
             acts.add(joystick(d.moveX, d.moveY))
         } else if (Cfg.smoothJoystick) {
             joyDirX = 0f; joyDirY = 0f
             if (AccessibilityController.instance?.joystickHeld() == true) acts.add(Act.JoyRelease)
         }
-        val self = GameStateTracker.state.self
-        for (c in d.casts) {
+        val gs = GameStateTracker.state
+        val self = gs.self
+        // assist mode: only skills / combo steps in fights (your own taps keep the rest)
+        val casts = if (!assist) d.casts else if (d.intent == Intent.ENGAGE || d.intent == Intent.OBJECTIVE)
+            d.casts.filter { it in AIMED || it == "attack" || it == "spell" && gs.spell in com.example.mlbbresearch.game.SpellDb.offensive }
+            else emptyList()
+        for (c in casts) {
             val (x, y) = Layout.get(c)
             val me = if (Cfg.aimSkills && c in AIMED && d.targetX >= 0f) self else null
-            if (me != null) {
-                // drag the skill button towards the target, like aiming by hand
-                val aspect = AccessibilityController.screenAspect()
-                val dx = (d.targetX - me.x) * aspect
-                val dy = d.targetY - me.y
-                val l = kotlin.math.hypot(dx, dy)
-                if (l > 0.02f) {
-                    acts.add(Act.Drag(x, y, x + dx / l * SKILL_AIM_R, y + dy / l * SKILL_AIM_R * aspect, 110))
-                } else acts.add(Act.Tap(x, y))
-            } else acts.add(Act.Tap(x, y))
+            if (me != null) acts.add(aimedCast(c, x, y, me.x, me.y, d, gs)) else acts.add(Act.Tap(x, y))
             if (c != "attack") CooldownTracker.markCast(c)
         }
         perform(acts)
@@ -108,20 +112,71 @@ object ActionExecutor {
         }
     }
 
-    // Direction (-1..1) -> joystick touch. Smooth mode turns gradually and keeps the finger down.
-    private fun joystick(mx: Float, my: Float): Act {
+    // Drag a skill button to aim, like a player: at where a moving enemy WILL be (its speed
+    // times the skill's travel time), and drag less far for close targets (range skills).
+    private fun aimedCast(c: String, bx: Float, by: Float, sx: Float, sy: Float, d: TacticalDecision, gs: GameState): Act {
+        val aspect = AccessibilityController.screenAspect()
+        var tx = d.targetX
+        var ty = d.targetY
+        val dist0 = kotlin.math.hypot((tx - sx) * aspect, ty - sy)
+        val track = if (d.targetId >= 0) gs.enemies.firstOrNull { it.id == d.targetId } else null
+        if (track != null) {
+            val lead = (0.15f + dist0 * 0.7f).coerceAtMost(0.5f)       // seconds until the skill lands
+            tx += track.vx * lead
+            ty += track.vy * lead
+        }
+        val dx = (tx - sx) * aspect
+        val dy = ty - sy
+        val l = kotlin.math.hypot(dx, dy)
+        if (l < 0.05f) return Act.Tap(bx, by)                           // on top of it: quick cast auto-aims
+        val reach = SKILL_AIM_R * (0.55f + 0.45f * (l / 0.45f).coerceAtMost(1f))
+        return Act.Drag(bx, by, bx + dx / l * reach, by + dy / l * reach * aspect, 90L + rnd.nextInt(40))
+    }
+
+    // Direction (-1..1) -> joystick touch. Natural mode: the finger stays down, the hero turns
+    // at a human rate (no snapping), the push varies a little, and when the camera stops
+    // moving while walking (a wall) it steps around it.
+    private fun joystick(mx0: Float, my0: Float): Act {
         val (jx, jy) = Layout.get("joystick")
         val r = Layout.JOYSTICK_RADIUS
         val aspect = AccessibilityController.screenAspect()
-        if (!Cfg.smoothJoystick) return Act.Drag(jx, jy, jx + mx * r, jy + my * r * aspect, 300)
-        // blend with the last direction so the hero turns instead of snapping (no zig-zag)
-        var nx = joyDirX * 0.35f + mx * 0.65f
-        var ny = joyDirY * 0.35f + my * 0.65f
-        val l = kotlin.math.hypot(nx, ny)
-        if (l < 0.2f) { nx = mx; ny = my } else { nx /= l; ny /= l }
+        if (!Cfg.smoothJoystick) return Act.Drag(jx, jy, jx + mx0 * r, jy + my0 * r * aspect, 300)
+        val now = System.currentTimeMillis()
+        var mx = mx0
+        var my = my0
+        if (joyDirX == 0f && joyDirY == 0f) walkSince = now
+        // stuck on a wall: walking for a while but the camera has not moved for 0.7 s
+        if (Cfg.wallAvoid && now - walkSince > 900 && now - GameStateTracker.lastMotionAt > 700 && now > detourUntil + 400) {
+            detourUntil = now + 650
+            detourSign = -detourSign
+        }
+        if (now < detourUntil) {
+            val a = Math.toRadians(75.0 * detourSign)
+            val rx = (mx * Math.cos(a) - my * Math.sin(a)).toFloat()
+            val ry = (mx * Math.sin(a) + my * Math.cos(a)).toFloat()
+            mx = rx; my = ry
+        }
+        var nx: Float
+        var ny: Float
+        if (Cfg.naturalMove && (joyDirX != 0f || joyDirY != 0f)) {
+            // turn at most ~50 degrees per step, plus a tiny wobble like a thumb
+            val cur = kotlin.math.atan2(joyDirY, joyDirX)
+            var want = kotlin.math.atan2(my, mx)
+            var delta = want - cur
+            while (delta > Math.PI) delta -= (2 * Math.PI).toFloat()
+            while (delta < -Math.PI) delta += (2 * Math.PI).toFloat()
+            val maxTurn = 0.87f
+            want = cur + delta.coerceIn(-maxTurn, maxTurn) + (rnd.nextFloat() - 0.5f) * 0.06f
+            nx = kotlin.math.cos(want); ny = kotlin.math.sin(want)
+            pushRadius = (pushRadius * 0.8f + (0.82f + rnd.nextFloat() * 0.13f) * 0.2f)
+        } else {
+            val l = kotlin.math.hypot(mx, my).coerceAtLeast(1e-4f)
+            nx = mx / l; ny = my / l
+            pushRadius = 0.9f
+        }
         joyDirX = nx; joyDirY = ny
-        // push to 90% of the radius: full speed without sliding off the joystick
-        return Act.Joy(jx, jy, jx + nx * r * 0.9f, jy + ny * r * 0.9f * aspect, 150)
+        val ms = if (Cfg.naturalMove) 140L + rnd.nextInt(35) else 150L
+        return Act.Joy(jx, jy, jx + nx * r * pushRadius, jy + ny * r * pushRadius * aspect, ms)
     }
 
     // Lift the joystick finger (AI paused or stopped)

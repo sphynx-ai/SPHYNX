@@ -21,6 +21,8 @@ import com.example.mlbbresearch.learning.FightOption
 import com.example.mlbbresearch.learning.ImitationPolicy
 import com.example.mlbbresearch.learning.PerformanceEvaluator
 import com.example.mlbbresearch.vision.FrameProcessor
+import com.example.mlbbresearch.vision.MonsterDetector
+import com.example.mlbbresearch.game.JungleNav
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -55,6 +57,7 @@ object AiRuntime {
     // standard match: hero / spell / emblem chosen once per hero-select screen
     @Volatile private var stdSelectAt = 0L
     @Volatile private var stdSelectTries = 0
+    private var lastLearnTry = 0L
     // stages that were on when the floating icon paused the AI
     private var paused: List<String> = emptyList()
 
@@ -71,6 +74,7 @@ object AiRuntime {
         when (stage) {
             "player" -> {
                 playerOn = true
+                FrameProcessor.trackMotion = true
                 if (Cfg.playLikeMe) ImitationPolicy.ensureLoaded(GameStateTracker.ownHero())
             }
             "draft" -> drafterOn = true
@@ -97,7 +101,7 @@ object AiRuntime {
 
     fun stop(stage: String) {
         when (stage) {
-            "player" -> { playerOn = false; ActionExecutor.release() }
+            "player" -> { playerOn = false; FrameProcessor.trackMotion = false; ActionExecutor.release() }
             "draft" -> drafterOn = false
             "build" -> builderOn = false
             "learn" -> { learnOn = false; FrameProcessor.trackPlayer = false }
@@ -115,6 +119,7 @@ object AiRuntime {
         learnOn = false
         paused = emptyList()
         FrameProcessor.trackPlayer = false
+        FrameProcessor.trackMotion = false
         stopLoops()
         ActionExecutor.cancelAll()
         GemmaEngine.cancel()
@@ -225,6 +230,13 @@ object AiRuntime {
                     ActionExecutor.execute(TacticalDecision.IDLE)
                 }
                 if (learnOn && !playerOn && inGame) DemoRecorder.record(s)
+                // at a jungle camp but no monster found: learn the monsters' HP bar colour
+                if (inGame && Cfg.detectMonsters && JungleNav.atCamp && s.monsters.isEmpty() && s.self != null &&
+                    System.currentTimeMillis() - lastLearnTry > 2500
+                ) {
+                    lastLearnTry = System.currentTimeMillis()
+                    FrameHub.snapshot(-1L, null)?.let { MonsterDetector.tryLearn(it.pixels, it.width, it.height, s.self) }
+                }
                 if (builderOn && inGame) {
                     if (Cfg.qbOn) QuickBuySwap.watch(s)
                     if (Cfg.autonomous && drafterOn && !(playerOn && Cfg.playerQuickBuy)) ActionExecutor.maybeQuickBuy(s, blind = true)
