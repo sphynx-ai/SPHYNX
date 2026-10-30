@@ -70,7 +70,8 @@ object ComboRunner {
                 if (!ok) continue
                 casts.add(if (st.slot == "a") "attack" else st.slot)
                 used.add(st.slot)
-                nextAt = now + st.waitMs
+                // fast mode: shorter pauses between combo steps (as fast as the game takes them)
+                nextAt = now + if (Cfg.fastMode) (st.waitMs * 0.6f).toLong() else st.waitMs
                 break
             }
             status = "combo ${idx}/${steps.size}: ${ComboBook.format(steps)}"

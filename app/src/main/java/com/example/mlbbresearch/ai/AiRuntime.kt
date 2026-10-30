@@ -250,7 +250,14 @@ object AiRuntime {
                 lastError = t.message ?: t.toString()
                 Diag.error("Tactical loop", t)
             }
-            delay(200)
+            // Fast mode: decide again as soon as vision has a new frame (up to ~25 per second),
+            // instead of every 200 ms. Balanced mode keeps 5 per second (less battery).
+            if (Cfg.fastMode) {
+                val seenTs = GameStateTracker.state.ts
+                val start = System.currentTimeMillis()
+                delay(40)
+                while (GameStateTracker.state.ts == seenTs && System.currentTimeMillis() - start < 150) delay(5)
+            } else delay(200)
         }
     }
 

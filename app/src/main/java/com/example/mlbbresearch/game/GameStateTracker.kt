@@ -221,7 +221,9 @@ object GameStateTracker {
             enemyBase = if (onMap) null else v.minimap.enemyBase,
             allyWaves = if (onMap) emptyList() else v.minimap.allyWaves,
             allyTowers = if (onMap) emptyList() else v.minimap.allyTowers,
-            enemyWaves = if (onMap) emptyList() else v.minimap.enemyWaves
+            enemyWaves = if (onMap) emptyList() else v.minimap.enemyWaves,
+            bushes = v.bushes,
+            inBush = v.inBush
         )
         state = s
         CooldownTracker.observe(v)

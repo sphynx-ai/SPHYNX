@@ -24,6 +24,8 @@ class VisionResult(
     val spellIcon: FloatArray?,        // fingerprint of the battle spell button
     val monsters: List<Seen>,          // jungle creeps (hero = false) and turtle / lord (hero = true)
     val kda: IntArray,                 // kills, deaths, assists gained on this frame (0 or 1 each)
+    val bushes: List<Bush>,            // bushes on screen (tall grass: hide / ambush)
+    val inBush: Boolean,               // you are standing in a bush (hidden from enemies)
     val processMs: Long
 ) {
     val aspect: Float get() = if (frameH == 0) 1.78f else frameW.toFloat() / frameH
@@ -43,12 +45,15 @@ object FrameProcessor {
         floatArrayOf(0.62f, 0.52f, 1.00f, 1.00f),   // skill buttons
         floatArrayOf(0.00f, 0.58f, 0.32f, 1.00f),   // joystick
         floatArrayOf(0.00f, 0.38f, 0.10f, 0.62f),   // shop / quick-buy column
+        floatArrayOf(0.90f, 0.14f, 1.00f, 0.55f),   // right column (shop, signals, chat)
+        floatArrayOf(0.45f, 0.82f, 0.66f, 1.00f),   // recall / regen / battle spell row and labels
         MinimapAnalyzer.rect
     )
 
     private val enemyTracker = EnemyDetector()
     private var lastId = 0L
     private var frameNo = 0L
+    private var lastBush: BushDetector.Result? = null
     private var buffer: IntArray? = null
 
     @Volatile var latest: VisionResult? = null
@@ -98,6 +103,11 @@ object FrameProcessor {
         val mini = MinimapAnalyzer.analyze(px, w, h)
         if (self != null && hint == ScreenHint.NONE && frameNo % 25 == 3L) WallMap.update(px, w, h)
 
+        // bushes every 3rd frame (they do not move; the camera does, slowly)
+        val bush = if (self != null && (frameNo % 3 == 0L || lastBush == null)) {
+            BushDetector.detect(px, w, h, hud + ScreenMasks.overlay, self).also { lastBush = it }
+        } else if (self != null) lastBush!! else BushDetector.Result(emptyList(), false)
+
         val result = VisionResult(
             ts = t0, frameW = w, frameH = h,
             self = self,
@@ -115,6 +125,8 @@ object FrameProcessor {
             spellIcon = if (self != null && frameNo % 12 == 6L) IconMemory.print(px, w, h, "spell", 0.016f) else null,
             monsters = seen.filter { it.team == Team.NEUTRAL },
             kda = if (self != null) KdaReader.read(px, w, h) else IntArray(3),
+            bushes = bush.bushes,
+            inBush = bush.inBush,
             processMs = System.currentTimeMillis() - t0
         )
         latest = result

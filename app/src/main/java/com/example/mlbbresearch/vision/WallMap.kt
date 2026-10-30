@@ -163,6 +163,25 @@ object WallMap {
         return path to cost[goal]
     }
 
+    // Is there a THIN wall (at most 3 cells, about 7% of the map) straight ahead towards `to`,
+    // with open ground right behind it? Then a dash, a mobility skill or Flicker can jump it
+    // instead of walking all the way around.
+    fun thinWallAhead(from: Pair<Float, Float>, dirX: Float, dirY: Float, maxDist: Float = 0.15f): Boolean {
+        if (!ready) return false
+        val w = wall
+        var inWall = 0
+        var hit = false
+        var d = 0.5f / G
+        while (d <= maxDist) {
+            val x = ((from.first + dirX * d) * G).toInt(); val y = ((from.second + dirY * d) * G).toInt()
+            if (x !in 0 until G || y !in 0 until G) return false
+            if (w[y * G + x]) { hit = true; inWall++; if (inWall > 6) return false }   // 6 half-cell steps = 3 cells
+            else if (hit) return true            // open ground behind a thin wall
+            d += 0.5f / G
+        }
+        return false
+    }
+
     // nearest free cell to a target that sits on a wall (e.g. a camp drawn on rocks)
     private fun free(w: BooleanArray, c: Pair<Int, Int>): Pair<Int, Int>? {
         for (r in 0..3) for (dy in -r..r) for (dx in -r..r) {

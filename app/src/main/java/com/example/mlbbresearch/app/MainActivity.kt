@@ -737,13 +737,17 @@ class MainActivity : Activity() {
         switch("Smooth joystick (keeps the finger down and turns gradually)", Cfg.smoothJoystick) { Cfg.smoothJoystick = it }
         switch("Natural movement (human turning speed, small thumb variation)", Cfg.naturalMove) { Cfg.naturalMove = it }
         switch("Walk around walls (minimap paths, and step aside when stuck)", Cfg.wallAvoid) { Cfg.wallAvoid = it }
+        switch("Jump thin walls with the dash skill (Flicker only to escape or chase)", Cfg.wallHop) { Cfg.wallHop = it }
+        switch("Use bushes: hide when hurt, ambush enemies walking in", Cfg.useBushes) { Cfg.useBushes = it }
+        switch("Fastest mode (30 fps capture, decide on every frame, quick combos; more battery)", Cfg.fastMode) { Cfg.fastMode = it }
         val moveInfo = text("", 13f)
         upd {
             val gs = GameStateTracker.state
             moveInfo.text = "Wall map: ${if (com.example.mlbbresearch.vision.WallMap.ready) "ready" else "building (needs a few seconds in a match)"}\n" +
                 "K/D/A seen this match: ${GameStateTracker.kills} / ${GameStateTracker.deaths} / ${GameStateTracker.assists}" +
                 "  (jungle camps killed: ${com.example.mlbbresearch.game.JungleNav.campsKilled})\n" +
-                "Monsters on screen: ${gs.monsters.size}"
+                "Monsters on screen: ${gs.monsters.size}   Bushes on screen: ${gs.bushes.size}" + (if (gs.inBush) "   (you are in a bush)" else "") +
+                "\nVision: ${"%.0f".format(FrameProcessor.processedFps)} frames/s"
         }
 
         title("SKILLS & ITEMS")

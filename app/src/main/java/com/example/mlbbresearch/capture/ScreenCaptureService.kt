@@ -36,7 +36,8 @@ class ScreenCaptureService : Service() {
         const val ACTION_EMERGENCY = "com.example.mlbbresearch.EMERGENCY_STOP"
         const val CHANNEL = "capture"
         private const val NOTIF_ID = 7
-        private const val MIN_FRAME_GAP_MS = 66L   // about 15 fps max
+        // fast mode about 30 fps, balanced about 15 fps
+        private val minFrameGapMs: Long get() = if (com.example.mlbbresearch.core.Cfg.fastMode) 33L else 66L
 
         @Volatile var running = false
             private set
@@ -145,7 +146,7 @@ class ScreenCaptureService : Service() {
         val img = try { r.acquireLatestImage() } catch (e: Exception) { null } ?: return
         try {
             val now = System.currentTimeMillis()
-            if (now - lastFrame < MIN_FRAME_GAP_MS) return
+            if (now - lastFrame < minFrameGapMs) return
             lastFrame = now
             val plane = img.planes[0]
             val stridePx = plane.rowStride / plane.pixelStride

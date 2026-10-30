@@ -69,6 +69,7 @@ class AccessibilityController : AccessibilityService() {
     }
 
     // All actions go out as ONE gesture, so moving and casting happen at the same time
+    @Synchronized
     fun dispatch(acts: List<Act>, showTouches: Boolean) {
         val w = resources.displayMetrics.widthPixels.toFloat()
         val h = resources.displayMetrics.heightPixels.toFloat()
@@ -134,7 +135,7 @@ class AccessibilityController : AccessibilityService() {
             if (n >= GestureDescription.getMaxStrokeCount()) break
             val p = Path()
             val dur: Long = when (a) {
-                is Act.Tap -> { p.moveTo(a.x * w, a.y * h); p.lineTo(a.x * w + 1, a.y * h); 60L }
+                is Act.Tap -> { p.moveTo(a.x * w, a.y * h); p.lineTo(a.x * w + 1, a.y * h); if (Cfg.fastMode) 35L else 60L }
                 is Act.Drag -> { p.moveTo(a.x1 * w, a.y1 * h); p.lineTo(a.x2 * w, a.y2 * h); a.ms }
                 else -> continue
             }
