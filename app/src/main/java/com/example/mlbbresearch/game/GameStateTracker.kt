@@ -30,10 +30,10 @@ object GameStateTracker {
     @Volatile var enemyTeam: List<String> = emptyList()
     @Volatile var draftedHero: String? = null      // locked in during the draft
     @Volatile var guessedHero: String? = null      // recognised in game by Gemma
-    @Volatile var iconHero: String? = null         // recognised from the skill icons (IconMemory)
+    @Volatile var iconHero: String? = null         // recognised from its minimap portrait + model (IconMemory)
     @Volatile var gemmaSpell: String? = null       // battle spell read by Gemma this match
     @Volatile var iconSpell: String? = null        // battle spell recognised from its icon
-    @Volatile var lastHeroIcons: List<FloatArray>? = null
+    @Volatile var lastHeroSig: List<FloatArray>? = null
         private set
     @Volatile var lastSpellIcon: FloatArray? = null
         private set
@@ -67,7 +67,7 @@ object GameStateTracker {
     fun ownHero(): String? = iconHero ?: draftedHero ?: HeroDb.match(Cfg.myHero) ?: guessedHero
 
     fun ownHeroSource(): String = when {
-        iconHero != null -> "recognised from the skill icons"
+        iconHero != null -> "recognised from its portrait and model"
         draftedHero != null -> "picked this match"
         HeroDb.match(Cfg.myHero) != null -> "typed by you"
         guessedHero != null -> "recognised by Gemma"
@@ -91,7 +91,7 @@ object GameStateTracker {
 
     // "This is my hero / spell now": label what the icons look like right now
     fun teachHero(name: String): Boolean {
-        val sig = lastHeroIcons ?: return false
+        val sig = lastHeroSig ?: return false
         IconMemory.learnHero(name, sig)
         iconHero = name
         return true
@@ -105,18 +105,19 @@ object GameStateTracker {
     }
 
     private fun recognise(v: VisionResult) {
-        v.heroIcons?.let { sig ->
-            lastHeroIcons = sig
+        // only on the normal map (the big map hides your minimap icon)
+        if (state.phase != Phase.MAP) v.heroSig?.let { sig ->
+            lastHeroSig = sig
             val m = IconMemory.matchHero(sig)
             if (m != null && m.second < IconMemory.HERO_MATCH) {
-                if (iconHero != m.first) Diag.info("Recognised your hero from the skill icons: ${m.first}")
+                if (iconHero != m.first) Diag.info("Recognised your hero from its portrait and model: ${m.first}")
                 iconHero = m.first
             }
             // learn the icons of a hero seen picked / read THIS match (never against the icons;
             // never from the typed name, which may be from an older match)
             val teacher = draftedHero ?: guessedHero
             if (teacher != null && (iconHero == null || iconHero == teacher) && IconMemory.learnHero(teacher, sig)) {
-                Diag.info("Learned the skill icons of $teacher")
+                Diag.info("Learned how $teacher looks")
             }
         }
         v.spellIcon?.let { p ->

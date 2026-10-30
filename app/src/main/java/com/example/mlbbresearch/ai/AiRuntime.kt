@@ -265,7 +265,7 @@ object AiRuntime {
         stdSelectTries++
         val hero = HeroDb.match(Cfg.myHero)
         ActionExecutor.standardSelect(hero)
-        // the AI picked it, so this match's hero is known (and its skill icons get learned)
+        // the AI picked it, so this match's hero is known (and its look gets learned)
         if (!Cfg.dryRun && Cfg.stdPickHero && hero != null) GameStateTracker.draftedHero = hero
     }
 
@@ -273,7 +273,7 @@ object AiRuntime {
     private suspend fun strategyLoop() {
         while (anyOn()) {
             try {
-                // keep the online meta of the hero you play fresh (Gemini, in the background)
+                // keep the online meta of the hero you play fresh (Groq, in the background)
                 MetaAdvisor.autoUpdate(GameStateTracker.ownHero())
                 StrategicAdvisor.tick(GameStateTracker.state, playerOn, drafterOn, builderOn)
             } catch (e: kotlinx.coroutines.CancellationException) {

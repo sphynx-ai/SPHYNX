@@ -4,7 +4,7 @@ import com.example.mlbbresearch.core.Cfg
 import org.json.JSONArray
 import org.json.JSONObject
 
-// What the online meta update (Gemini + web search) found, saved on the phone so the
+// What the online meta update (Groq + web search) found, saved on the phone so the
 // Player, Builder and Drafter can use it offline.
 class HeroMeta(
     val hero: String,

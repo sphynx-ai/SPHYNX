@@ -20,7 +20,7 @@ class VisionResult(
     val skillBrightness: Map<String, Float>,
     val hint: ScreenHint,            // which MLBB screen the colours say this is
     val hud: HudInfo,                // upgrade "+", quick-buy icon, camera motion
-    val heroIcons: List<FloatArray>?,  // fingerprints of Skill 1, Skill 2, Ultimate (about once a second)
+    val heroSig: List<FloatArray>?,    // your hero's look: minimap portrait + in-game model colours (about once a second)
     val spellIcon: FloatArray?,        // fingerprint of the battle spell button
     val monsters: List<Seen>,          // jungle creeps (hero = false) and turtle / lord (hero = true)
     val kda: IntArray,                 // kills, deaths, assists gained on this frame (0 or 1 each)
@@ -73,8 +73,10 @@ object FrameProcessor {
 
         frameNo++
         HeroDetector.neutralOn = Cfg.detectMonsters
+        // a kill / first blood banner is up: ignore that area (its red lines are not enemies)
+        val banner = ScreenReader.announcement(px, w, h)
         val seen = withoutAttachedBars(HeroDetector.scan(
-            px, w, h, hud + ScreenMasks.overlay,
+            px, w, h, hud + ScreenMasks.overlay + (if (banner) listOf(ScreenReader.bannerRect) else emptyList()),
             Cfg.heroBarMinWidthPct / 100f, Cfg.bodyBelowBarPct / 100f
         ))
         // you: the green hero bar closest to the centre of the screen
@@ -93,6 +95,7 @@ object FrameProcessor {
 
         // walls from the minimap, every couple of seconds while the normal minimap shows
         val hint = ScreenReader.classify(px, w, h)
+        val mini = MinimapAnalyzer.analyze(px, w, h)
         if (self != null && hint == ScreenHint.NONE && frameNo % 25 == 3L) WallMap.update(px, w, h)
 
         val result = VisionResult(
@@ -103,12 +106,12 @@ object FrameProcessor {
             enemyMinions = seen.filter { it.team == Team.ENEMY && !it.hero },
             allyMinions = seen.filter { it.team == Team.ALLY && !it.hero },
             all = seen,
-            minimap = MinimapAnalyzer.analyze(px, w, h),
+            minimap = mini,
             saturation = HeroDetector.saturation(px, w, h),
             skillBrightness = brightness,
             hint = hint,
             hud = if (self != null || trackPlayer) ScreenReader.hud(px, w, h, trackPlayer || trackMotion) else HudInfo.NONE,
-            heroIcons = if (self != null && frameNo % 12 == 0L) heroIcons(px, w, h) else null,
+            heroSig = if (self != null && frameNo % 12 == 0L) heroSig(px, w, h, self, mini) else null,
             spellIcon = if (self != null && frameNo % 12 == 6L) IconMemory.print(px, w, h, "spell", 0.016f) else null,
             monsters = seen.filter { it.team == Team.NEUTRAL },
             kda = if (self != null) KdaReader.read(px, w, h) else IntArray(3),
@@ -138,9 +141,10 @@ object FrameProcessor {
         }
     }
 
-    private fun heroIcons(px: IntArray, w: Int, h: Int): List<FloatArray>? {
-        val out = listOf("s1", "s2", "ult").mapNotNull { IconMemory.print(px, w, h, it, 0.024f) }
-        return if (out.size == 3) out else null
+    private fun heroSig(px: IntArray, w: Int, h: Int, self: Seen, mini: MinimapInfo): List<FloatArray>? {
+        val icon = mini.selfIcon ?: return null
+        val portrait = IconMemory.portrait(px, w, h, icon) ?: return null
+        return listOf(portrait, IconMemory.model(px, w, h, self))
     }
 
     fun reset() {

@@ -571,7 +571,7 @@ class MainActivity : Activity() {
             "an app taps, so your joystick may need a re-press after the AI casts.", 12f, color = "#9AA0A6")
 
         title("YOUR HERO")
-        text("The app finds the hero you really play: from its skill icons (learned once per hero), from the pick " +
+        text("The app finds the hero you really play: from its portrait on the minimap and its in-game model (learned once per hero), from the pick " +
             "(the AI's own standard pick, or Gemma reading the hero select / loading screen), then from the name below.", 12f, color = "#9AA0A6")
         val heroBox = field("Hero name (used for the standard pick; leave empty to detect)", Cfg.myHero, false) { Cfg.myHero = it }
         val heroInfo = text("", 13f)
@@ -583,11 +583,11 @@ class MainActivity : Activity() {
                 "Learned aggression adjust: ${"%+.2f".format(Cfg.learnedBias(h ?: "unknown"))}\n" +
                 "Heroes whose icons are learned: ${IconMemory.heroCount()}"
         }
-        btn("This is my hero now (learn its skill icons from the game)") {
+        btn("This is my hero now (learn its portrait and model from the game)") {
             val h = HeroDb.match(heroBox.text.toString())
             when {
                 h == null -> toast("Type the hero's name first")
-                GameStateTracker.teachHero(h) -> toast("Learned $h's skill icons")
+                GameStateTracker.teachHero(h) -> toast("Learned how $h looks")
                 else -> toast("No game frame yet: start the Player or Learn from me during a match, then try again")
             }
         }
@@ -941,26 +941,26 @@ class MainActivity : Activity() {
     }
 
     // =====================================================================
-    //  META: online meta through the Gemini API
+    //  META: online meta through the Groq API
     // =====================================================================
 
     private fun metaPage() {
-        text("Online meta: Gemini searches the web (patch notes, hero adjustments, tier lists, guides) and returns the " +
+        text("Online meta: Groq (model groq/compound) searches the web (patch notes, hero adjustments, tier lists, guides) and returns the " +
             "current build, emblem, battle spell, lane, combo, dash skill, laning / jungle / rotation tips and draft picks. " +
             "They are saved on the phone: the Player, Builder and Drafter use them offline. Your own settings still win.", 13f)
-        title("GEMINI API")
-        text("Get a free API key at aistudio.google.com/apikey (Google account). It is stored on this phone only.", 12f, color = "#9AA0A6")
-        btn("Open Google AI Studio (API key page)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey"))) }
-        val keyBox = field("API key", Cfg.geminiKey, false) { Cfg.geminiKey = it.trim() }
+        title("GROQ API")
+        text("Get a free API key at console.groq.com/keys. It is stored on this phone only.", 12f, color = "#9AA0A6")
+        btn("Open the Groq console (API key page)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) }
+        val keyBox = field("API key", Cfg.groqKey, false) { Cfg.groqKey = it.trim() }
         keyBox.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-        field("Model (change it when Google releases a newer one)", Cfg.geminiModel, false) { if (it.isNotBlank()) Cfg.geminiModel = it.trim() }
+        field("Model (groq/compound searches the web; change it if Groq renames it)", Cfg.groqModel, false) { if (it.isNotBlank()) Cfg.groqModel = it.trim() }
         switch("Use the online meta in the app", Cfg.useOnlineMeta) { Cfg.useOnlineMeta = it }
-        switch("Auto-update the hero I play when its meta is old", Cfg.geminiAuto) { Cfg.geminiAuto = it }
+        switch("Auto-update the hero I play when its meta is old", Cfg.onlineAuto) { Cfg.onlineAuto = it }
         field("Old after (days)", Cfg.metaMaxAgeDays.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.metaMaxAgeDays = v.coerceIn(1, 60) } }
-        switch("Use it for drafting (ranked bans & picks)", Cfg.geminiDraft) { Cfg.geminiDraft = it }
+        switch("Use it for drafting (ranked bans & picks)", Cfg.onlineDraft) { Cfg.onlineDraft = it }
         val st = text("", 13f)
         upd {
-            st.text = "Gemini: " + (if (Cfg.geminiKey.isBlank()) "no key yet" else "key set, ${com.example.mlbbresearch.ai.GeminiClient.calls} answers this session") +
+            st.text = "Groq: " + (if (Cfg.groqKey.isBlank()) "no key yet" else "key set, ${com.example.mlbbresearch.ai.GroqClient.calls} answers this session") +
                 (if (com.example.mlbbresearch.ai.MetaAdvisor.busy.isNotEmpty()) "\nWorking: ${com.example.mlbbresearch.ai.MetaAdvisor.busy}..." else "") +
                 (if (com.example.mlbbresearch.ai.MetaAdvisor.lastMessage.isNotEmpty()) "\nLast: ${com.example.mlbbresearch.ai.MetaAdvisor.lastMessage}" else "")
         }
@@ -968,8 +968,8 @@ class MainActivity : Activity() {
         title("UPDATE")
         btn("Update the patch meta (tier list, bans, picks)") {
             leaveHooks.forEach { it() }
-            if (Cfg.geminiKey.isBlank()) toast("Enter your API key first") else {
-                toast("Asking Gemini (can take 10-30 s)...")
+            if (Cfg.groqKey.isBlank()) toast("Enter your API key first") else {
+                toast("Asking Groq (can take 10-30 s)...")
                 com.example.mlbbresearch.ai.MetaAdvisor.updateGeneral { msg -> runOnUiThread { toast(msg) } }
             }
         }
@@ -978,10 +978,10 @@ class MainActivity : Activity() {
             leaveHooks.forEach { it() }
             val h = HeroDb.match(heroBox.text.toString()) ?: GameStateTracker.ownHero() ?: HeroDb.match(Cfg.myHero)
             when {
-                Cfg.geminiKey.isBlank() -> toast("Enter your API key first")
+                Cfg.groqKey.isBlank() -> toast("Enter your API key first")
                 h == null -> toast("Type a hero name")
                 else -> {
-                    toast("Asking Gemini about $h (can take 10-30 s)...")
+                    toast("Asking Groq about $h (can take 10-30 s)...")
                     com.example.mlbbresearch.ai.MetaAdvisor.updateHero(h) { msg -> runOnUiThread { toast(msg) } }
                 }
             }
@@ -1218,6 +1218,36 @@ class MainActivity : Activity() {
         btn("Calibrate in-game buttons on the game") { calibrateLater(0) }
         btn("Calibrate shop buttons on the game") { calibrateLater(1) }
         btn("Calibrate hero-select buttons on the game") { calibrateLater(2) }
+
+        title("MINIMAP ICON CALIBRATION")
+        text("If the AI misreads the minimap (your icon, towers, camps, walls), teach it the colours: choose the icon " +
+            "type, tap 'Pick it on the game', switch to MLBB, then tap that icon on the minimap within 5 seconds. " +
+            "Up to 4 samples per type. Also set the minimap corners (in-game buttons calibration). " +
+            "With 'Show what the AI sees' on, your icon, camps and enemy towers (with range) are drawn on the minimap.", 12f, color = "#9AA0A6")
+        val kinds = com.example.mlbbresearch.vision.MinimapColors.Kind.values()
+        var kindIdx = 0
+        val kindBtn = btn("") { kindIdx = (kindIdx + 1) % kinds.size }
+        val kindInfo = text("", 13f)
+        upd {
+            val k = kinds[kindIdx]
+            kindBtn.text = "Icon type: ${k.label}  (tap to change)"
+            val ss = com.example.mlbbresearch.vision.MinimapColors.samples(k)
+            kindInfo.text = "Samples: " + (if (ss.isEmpty()) "none (built-in colours only)" else ss.joinToString("  ") { "${it[0]},${it[1]},${it[2]}" })
+        }
+        btn("Pick it on the game (switch to MLBB, 5 s)") {
+            val o = AccessibilityController.instance?.overlay
+            if (o == null) { toast("Turn on the accessibility service first"); return@btn }
+            if (!ScreenCaptureService.running) { toast("Start screen capture first (Home page)"); return@btn }
+            val k = kinds[kindIdx]
+            toast("Switch to MLBB now, then tap: ${k.label}")
+            ui.postDelayed({
+                o.pickColor(k.label) { rgb ->
+                    if (rgb == null) toast("No screen frame: try again")
+                    else { com.example.mlbbresearch.vision.MinimapColors.add(k, rgb); toast("Saved ${k.label}: ${rgb[0]},${rgb[1]},${rgb[2]}") }
+                }
+            }, 5000)
+        }
+        btn("Clear the samples of this icon type") { com.example.mlbbresearch.vision.MinimapColors.clear(kinds[kindIdx]); toast("Cleared") }
 
         title("PRESETS (one per phone or MLBB button layout)")
         val active = text("", 13f)

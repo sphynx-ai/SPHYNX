@@ -175,12 +175,12 @@ object StrategicAdvisor {
             picks = ((need?.let { MetaStore.general()?.picks?.get(it) } ?: emptyList()) +
                 (HeroDb.fallbackPicks[need] ?: emptyList())).distinct().filter { it !in taken }
         }
-        // online meta (Gemini): asked again whenever the line-ups change; its picks go first
+        // online meta (Groq): asked again whenever the line-ups change; its picks go first
         val online = onlineDraft
         if (online != null) {
             picks = (online.pick + picks).distinct().filter { it !in taken }
         }
-        if (d.screen == Phase.DRAFT && Cfg.geminiDraft && GeminiClient.ready) {
+        if (d.screen == Phase.DRAFT && Cfg.onlineDraft && GroqClient.ready) {
             val key = "${d.stage}|${GameStateTracker.myTeam.sorted()}|${GameStateTracker.enemyTeam.sorted()}"
             if (key != onlineDraftKey) {
                 onlineDraftKey = key

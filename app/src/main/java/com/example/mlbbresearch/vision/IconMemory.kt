@@ -8,11 +8,14 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-// Recognises your hero and battle spell from the button icons, with no AI model.
-// Every hero has its own skill icons (Skill 1, Skill 2, Ultimate) and every battle spell
-// its own icon. The first time the app knows your hero (picked by the AI, read by Gemma,
-// or you tapped "This is my hero"), it remembers a small colour fingerprint of those
-// icons. From then on it recognises that hero (or spell) by itself in a fraction of a ms.
+// Recognises your hero and battle spell, with no AI model.
+//  - Hero: by its PORTRAIT (inside your green-ringed minimap icon) and its in-game MODEL
+//    (the colours of the character under your HP bar). Skins change both a little, so up to
+//    4 looks are kept per hero.
+//  - Battle spell: by its button icon.
+// The first time the app knows your hero (picked by the AI, read by Gemma, or you tapped
+// "This is my hero"), it remembers a small colour fingerprint. From then on it recognises
+// that hero by itself.
 object IconMemory {
 
     private const val GRID = 6
@@ -51,15 +54,71 @@ object IconMemory {
 
     fun distance(a: FloatArray, b: FloatArray): Float {
         var s = 0f
-        for (i in 0 until min(a.size, b.size)) s += abs(a[i] - b[i])
-        return s / SIZE
+        val n = min(a.size, b.size)
+        for (i in 0 until n) s += abs(a[i] - b[i])
+        return s / max(1, n)
     }
 
-    // Hero signature = the three skill icons. Two of three must agree (one may be dimmed / covered).
+    // Portrait inside your minimap icon: icon = centre x, y, radius as fractions of the width
+    fun portrait(px: IntArray, w: Int, h: Int, icon: FloatArray): FloatArray? {
+        val cx = icon[0] * w
+        val cy = icon[1] * w
+        val half = icon[2] * w * 0.6f            // inside the ring
+        if (half < 3f || cx - half < 0 || cy - half < 0 || cx + half >= w || cy + half >= h) return null
+        // coarse 4x4 grid, each cell the average of a 4x4 patch: the portrait is only ~11 px
+        // across in the capture, so this keeps a 1 px offset from changing the fingerprint much
+        val g = 4
+        val out = FloatArray(g * g * 3)
+        var total = 0f
+        val cell = 2 * half / g
+        for (gy in 0 until g) for (gx in 0 until g) {
+            var r = 0f; var gg = 0f; var b = 0f; var n = 0
+            for (sy in 0 until 4) for (sx in 0 until 4) {
+                val x = (cx - half + (gx + (sx + 0.5f) / 4f) * cell).toInt()
+                val y = (cy - half + (gy + (sy + 0.5f) / 4f) * cell).toInt()
+                val p = px[y * w + x]
+                r += (p shr 16) and 0xff; gg += (p shr 8) and 0xff; b += p and 0xff; n++
+            }
+            val i = (gy * g + gx) * 3
+            out[i] = r / n; out[i + 1] = gg / n; out[i + 2] = b / n
+            total += out[i] + out[i + 1] + out[i + 2]
+        }
+        val mean = max(1f, total / out.size)
+        for (i in out.indices) out[i] /= mean
+        return out
+    }
+
+    const val HIST = 64
+
+    // Colours of your hero's model: 4x4x4 colour histogram of the area under your HP bar
+    fun model(px: IntArray, w: Int, h: Int, self: Seen): FloatArray {
+        val out = FloatArray(HIST)
+        val x0 = ((self.x - 0.03f) * w).toInt().coerceAtLeast(0)
+        val x1 = ((self.x + 0.03f) * w).toInt().coerceAtMost(w - 1)
+        val y0 = ((self.barBottom + 0.03f) * h).toInt().coerceAtLeast(0)
+        val y1 = ((self.barBottom + 0.17f) * h).toInt().coerceAtMost(h - 1)
+        var n = 0
+        var y = y0
+        while (y <= y1) {
+            var x = x0
+            while (x <= x1) {
+                val p = px[y * w + x]
+                val i = (((p shr 16) and 0xff) / 64) * 16 + (((p shr 8) and 0xff) / 64) * 4 + ((p and 0xff) / 64)
+                out[i]++; n++
+                x += 1
+            }
+            y += 1
+        }
+        if (n > 0) for (i in out.indices) out[i] /= n
+        return out
+    }
+
+    // Hero signature = [portrait, model]. The portrait counts most; the model breaks ties.
     fun heroDistance(a: List<FloatArray>, b: List<FloatArray>): Float {
-        if (a.size != 3 || b.size != 3) return Float.MAX_VALUE
-        val d = (0 until 3).map { distance(a[it], b[it]) }.sorted()
-        return d[1]
+        if (a.size != 2 || b.size != 2 || a[1].size != HIST || b[1].size != HIST) return Float.MAX_VALUE
+        var hist = 0f
+        for (i in 0 until HIST) hist += abs(a[1][i] - b[1][i])
+        return 0.75f * distance(a[0], b[0]) + 0.25f * hist / 2f
     }
 
     // ---------------- memory ----------------
@@ -69,11 +128,11 @@ object IconMemory {
     private var heroes: MutableList<Entry>? = null
     private var spells: MutableList<Entry>? = null
 
-    const val HERO_MATCH = 0.16f
+    const val HERO_MATCH = 0.24f     // same hero measured <= 0.14, a different hero 0.39
     const val SPELL_MATCH = 0.14f
 
     @Synchronized
-    private fun heroList(): MutableList<Entry> = heroes ?: load("iconmem_hero").also { heroes = it }
+    private fun heroList(): MutableList<Entry> = heroes ?: load("iconmem_hero2").also { heroes = it }
 
     @Synchronized
     private fun spellList(): MutableList<Entry> = spells ?: load("iconmem_spell").also { spells = it }
@@ -118,7 +177,7 @@ object IconMemory {
     // Remember a hero's icons (up to 4 looks per hero: skins can change them a little)
     @Synchronized
     fun learnHero(name: String, sig: List<FloatArray>): Boolean {
-        if (sig.size != 3) return false
+        if (sig.size != 2) return false
         val list = heroList()
         val same = list.filter { it.name == name }
         if (same.any { heroDistance(sig, it.prints) < HERO_MATCH * 0.5f }) return false
@@ -127,7 +186,7 @@ object IconMemory {
         list.removeAll { it.name != name && heroDistance(sig, it.prints) < HERO_MATCH * 0.5f }
         list.add(Entry(name, sig))
         while (list.size > 400) list.removeAt(0)
-        save("iconmem_hero", list)
+        save("iconmem_hero2", list)
         return true
     }
 
@@ -151,7 +210,7 @@ object IconMemory {
     @Synchronized
     fun forget() {
         heroes = ArrayList(); spells = ArrayList()
-        Cfg.setRaw("iconmem_hero", null)
+        Cfg.setRaw("iconmem_hero2", null)
         Cfg.setRaw("iconmem_spell", null)
     }
 }

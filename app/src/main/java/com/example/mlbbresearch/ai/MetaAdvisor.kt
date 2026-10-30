@@ -10,7 +10,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// Online meta through Gemini with Google Search: the latest patch, hero adjustments, builds,
+// Online meta through Groq (groq/compound searches the web): the latest patch, hero adjustments, builds,
 // emblems, combos, laning / jungle / rotation tips and draft picks, from current web sources.
 // Results are saved (MetaStore) and used offline by the Player, Builder and Drafter.
 object MetaAdvisor {
@@ -41,8 +41,8 @@ object MetaAdvisor {
                     "\"laning\":[\"3 short early-game laning / farming tips\"],\"jungle\":[\"3 short jungle clear route tips\"]," +
                     "\"rotation\":[\"3 short rotation and objective timing tips (turtle, lord, towers)\"]," +
                     "\"counters\":[\"heroes strong against $hero\"],\"recent_changes\":\"its buffs / nerfs in recent patches, one sentence\"}"
-                val (text, sources) = GeminiClient.ask(prompt)
-                val o = GeminiClient.json(text) ?: throw IllegalStateException("answer was not JSON: ${text.take(100)}")
+                val (text, sources) = GroqClient.ask(prompt)
+                val o = GroqClient.json(text) ?: throw IllegalStateException("answer was not JSON: ${text.take(100)}")
                 MetaStore.saveHero(hero, o, sources)
                 val m = MetaStore.hero(hero)
                 Diag.info("Online meta for $hero updated (${m?.patch})")
@@ -60,7 +60,7 @@ object MetaAdvisor {
 
     // Called by the runtime: refresh the hero you are playing when its meta is old (Auto update)
     fun autoUpdate(hero: String?) {
-        if (hero == null || !Cfg.geminiAuto || !GeminiClient.ready || busy.isNotEmpty()) return
+        if (hero == null || !Cfg.onlineAuto || !GroqClient.ready || busy.isNotEmpty()) return
         val m = MetaStore.hero(hero)
         if (m != null && MetaStore.ageDays(m.updatedAt) < Cfg.metaMaxAgeDays) return
         if (System.currentTimeMillis() - (tried[hero] ?: 0L) < 15 * 60_000L) return
@@ -80,8 +80,8 @@ object MetaAdvisor {
                     "{\"patch\":\"current patch version and date\",\"bans\":[\"8 most banned / strongest heroes\"]," +
                     "\"picks\":{\"tank\":[\"5 heroes\"],\"fighter\":[\"5\"],\"assassin\":[\"5\"],\"mage\":[\"5\"],\"marksman\":[\"5\"],\"support\":[\"5\"]}," +
                     "\"notes\":\"the main changes of this patch and what they mean for the meta, max 3 sentences\"}"
-                val (text, sources) = GeminiClient.ask(prompt)
-                val o = GeminiClient.json(text) ?: throw IllegalStateException("answer was not JSON: ${text.take(100)}")
+                val (text, sources) = GroqClient.ask(prompt)
+                val o = GroqClient.json(text) ?: throw IllegalStateException("answer was not JSON: ${text.take(100)}")
                 MetaStore.saveGeneral(o, sources)
                 val g = MetaStore.general()
                 "Meta updated: ${g?.patch ?: "?"}, ${g?.bans?.size ?: 0} top bans"
@@ -102,7 +102,7 @@ object MetaAdvisor {
 
     // Ranked: bans and picks for my team from the current meta. Called from the Drafter.
     suspend fun draft(stage: String, myTeam: List<String>, enemyTeam: List<String>, solo: Boolean): Draft? {
-        if (!GeminiClient.ready || !Cfg.geminiDraft) return null
+        if (!GroqClient.ready || !Cfg.onlineDraft) return null
         val missing = Role.values().filter { r -> r != Role.UNKNOWN && myTeam.none { HeroDb.role(it) == r } }
             .joinToString { it.name.lowercase() }
         val prompt = "You are a Mobile Legends: Bang Bang ranked drafting expert. Today is ${today()}. Search the web for the " +
@@ -113,12 +113,12 @@ object MetaAdvisor {
             "countering the enemy and filling my team\"],\"reason\":\"one short sentence\"}"
         return try {
             busy = "draft"
-            val (text, _) = GeminiClient.ask(prompt)
-            val o = GeminiClient.json(text) ?: return null
+            val (text, _) = GroqClient.ask(prompt)
+            val o = GroqClient.json(text) ?: return null
             fun heroes(k: String) = o.optJSONArray(k)?.let { a -> (0 until a.length()).mapNotNull { HeroDb.match(a.optString(it)) } } ?: emptyList()
             Draft(heroes("ban"), heroes("pick"), o.optString("reason", ""))
         } catch (e: Exception) {
-            Diag.error("Gemini draft failed", e)
+            Diag.error("Online draft failed", e)
             null
         } finally {
             busy = ""
