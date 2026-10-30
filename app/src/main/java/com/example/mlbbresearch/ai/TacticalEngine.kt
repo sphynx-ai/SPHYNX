@@ -3,13 +3,17 @@ package com.example.mlbbresearch.ai
 import com.example.mlbbresearch.core.Cfg
 import com.example.mlbbresearch.game.CooldownTracker
 import com.example.mlbbresearch.game.GameState
+import com.example.mlbbresearch.game.GameStateTracker
+import com.example.mlbbresearch.game.Lane
+import com.example.mlbbresearch.game.LaneLogic
 import com.example.mlbbresearch.game.HeroProfile
 import com.example.mlbbresearch.game.Phase
 import com.example.mlbbresearch.game.UltRule
+import com.example.mlbbresearch.vision.Seen
 import com.example.mlbbresearch.vision.Track
 import kotlin.math.hypot
 
-enum class Intent { IDLE, LANE_CLEAR, ENGAGE, RETREAT, RECALL, PUSH, GROUP }
+enum class Intent { IDLE, LANE_CLEAR, ENGAGE, RETREAT, RECALL, PUSH, GROUP, IMITATE, OBJECTIVE, JUNGLE }
 
 // What the fast engine wants to do right now. Movement is a direction on screen.
 class TacticalDecision(
@@ -68,7 +72,7 @@ object TacticalEngine {
             val casts = ArrayList<String>()
             p.escapeSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
             if (p.ult == UltRule.DEFENSIVE && hp < 0.35f && CooldownTracker.ready("ult", p)) casts.add("ult")
-            if (Cfg.spellIsDefensive && hp < 0.2f && CooldownTracker.ready("spell", p)) casts.add("spell")
+            if (Cfg.spellIsDefensive && s.spell != "Retribution" && hp < 0.2f && CooldownTracker.ready("spell", p)) casts.add("spell")
             recallUntil = 0L
             return hold(now, TacticalDecision(Intent.RETREAT, mx, my, casts, -1f, -1f, "-", -1f, -1,
                 when {
@@ -79,6 +83,11 @@ object TacticalEngine {
         }
 
         // ---- 2. recall when low and safe ----
+        if (recallUntil in 1..now) {
+            // recall finished: back in base, the lane route starts again
+            recallUntil = 0L
+            GameStateTracker.markSpawn()
+        }
         if (now < recallUntil) {
             if (threat.isEmpty()) {
                 return TacticalDecision(Intent.RECALL, 0f, 0f, emptyList(), -1f, -1f, "-", -1f, -1, "recalling")
@@ -112,7 +121,37 @@ object TacticalEngine {
             }
         }
 
-        // ---- 4. clear the minion wave ----
+        // ---- 4. turtle / lord: help the team take it (or take it as the jungler) ----
+        val boss = s.boss
+        if (Cfg.takeObjectives && boss != null && threat.isEmpty()) {
+            val alliesThere = s.allies.count { s.dist(it.x, it.y, boss.x, boss.y) < 0.5f }
+            if (alliesThere >= 1 || s.lane == Lane.JUNGLE || s.lane == Lane.ROAM || boss.hp < 0.5f) {
+                val name = LaneLogic.objectiveName(s.matchSec)
+                return hold(now, hitMonster(s, p, boss, Cfg.retriBossPct, Intent.OBJECTIVE,
+                    "$name HP ${(boss.hp * 100).toInt()}%" + if (alliesThere > 0) ", with $alliesThere allies" else ""))
+            }
+        }
+
+        // ---- 5. jungler: farm the jungle monsters ----
+        if (s.lane == Lane.JUNGLE && threat.isEmpty()) {
+            val creep = s.creeps.minByOrNull { s.distToSelf(it.x, it.y) }
+            if (creep != null) {
+                return hold(now, hitMonster(s, p, creep, Cfg.retriCreepPct, Intent.JUNGLE,
+                    "jungle monster HP ${(creep.hp * 100).toInt()}%"))
+            }
+        }
+
+        // ---- 6. roamer: stay with the team ----
+        if (s.lane == Lane.ROAM && s.allies.isNotEmpty()) {
+            val ax = s.allies.map { it.x }.average().toFloat()
+            val ay = s.allies.map { it.y }.average().toFloat()
+            if (s.distToSelf(ax, ay) > 0.2f) {
+                val (mx, my) = toward(s, ax, ay)
+                return hold(now, TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roaming with allies"))
+            }
+        }
+
+        // ---- 7. clear the minion wave ----
         if (minions.isNotEmpty() && plan.plan != "group") {
             val mx0 = minions.map { it.x }.average().toFloat()
             val my0 = minions.map { it.y }.average().toFloat()
@@ -128,16 +167,50 @@ object TacticalEngine {
                 "${minions.size} minions"))
         }
 
-        // ---- 5. follow Gemma's plan ----
+        // ---- 8. follow Gemma's plan, else walk your lane ----
         if (plan.plan == "group" && s.allies.isNotEmpty()) {
             val ax = s.allies.map { it.x }.average().toFloat()
             val ay = s.allies.map { it.y }.average().toFloat()
             val (mx, my) = toward(s, ax, ay)
             return hold(now, TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "grouping with allies"))
         }
-        val (px, py) = pushVector()
+        val (px, py, where) = laneVector(s)
         return hold(now, TacticalDecision(Intent.PUSH, px, py, emptyList(), -1f, -1f, "-", -1f, -1,
-            "moving ${Cfg.pushDir} (${plan.plan})"))
+            "${s.lane.label}: $where (${plan.plan})"))
+    }
+
+    // Attack a jungle monster / turtle / lord; Retribution (if you have it) to finish it
+    private fun hitMonster(s: GameState, p: HeroProfile, m: Seen, retriPct: Int, intent: Intent, why: String): TacticalDecision {
+        val d = s.distToSelf(m.x, m.y)
+        val casts = ArrayList<String>()
+        if (d <= p.attackRange * 1.4f) casts.add("attack")
+        if (d <= p.attackRange * 1.8f) {
+            p.waveClearSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
+            if (m.hero) for (sk in p.combo) if (sk != "ult" && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
+        }
+        if (s.spell == "Retribution" && m.hp * 100 <= retriPct && d <= 0.45f && CooldownTracker.ready("spell", p)) casts.add("spell")
+        val (mx, my) = if (d > p.attackRange) toward(s, m.x, m.y) else (0f to 0f)
+        return TacticalDecision(intent, mx, my, casts, m.x, m.y, if (m.hero) "objective" else "monster", m.hp, -1, why)
+    }
+
+    // Lane route from base: EXP = up then right, Gold = right then up, Mid = your push direction.
+    // Jungle and roam head to the middle of the map, or to the team when it is in sight.
+    private fun laneVector(s: GameState): Triple<Float, Float, String> {
+        val travelling = s.sinceSpawnMs < Cfg.laneTravelSec * 1000L
+        fun t(v: Pair<Float, Float>, what: String) = Triple(v.first, v.second, what)
+        return when (s.lane) {
+            Lane.EXP -> if (travelling) t(0f to -1f, "going up to the lane") else t(1f to 0f, "pushing right")
+            Lane.GOLD -> if (travelling) t(1f to 0f, "going right to the lane") else t(0f to -1f, "pushing up")
+            Lane.MID -> t(pushVector(), "pushing ${Cfg.pushDir}")
+            Lane.JUNGLE, Lane.ROAM -> {
+                if (s.allies.isNotEmpty() && !travelling) {
+                    val ax = s.allies.map { it.x }.average().toFloat()
+                    val ay = s.allies.map { it.y }.average().toFloat()
+                    val (mx, my) = toward(s, ax, ay)
+                    t(mx to my, "joining the team")
+                } else t(norm(1f, -1f), if (s.lane == Lane.JUNGLE) "heading into the jungle" else "heading to mid")
+            }
+        }
     }
 
     private fun useUlt(p: HeroProfile, s: GameState, t: Track, d: Float, hp: Float, enemies: Int, allies: Int): Boolean {

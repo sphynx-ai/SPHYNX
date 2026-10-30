@@ -2,6 +2,7 @@ package com.example.mlbbresearch.ai
 
 import com.example.mlbbresearch.game.HeroDb
 import com.example.mlbbresearch.game.Phase
+import com.example.mlbbresearch.game.SpellDb
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -32,7 +33,7 @@ class DraftAdvice(
     val reason: String
 )
 
-class ScreenRead(val items: Int, val gold: Int, val hero: String?)
+class ScreenRead(val items: Int, val gold: Int, val hero: String?, val spell: String?)
 
 // Reads Gemma's replies. Gemma is asked for JSON but small models sometimes add
 // extra words, so this finds the {...} part and is forgiving about the rest.
@@ -63,7 +64,10 @@ object DecisionParser {
         "draft", "ban", "pick", "hero select", "selection" -> Phase.DRAFT
         "loading" -> Phase.LOADING
         "lobby", "menu", "home" -> Phase.LOBBY
-        "game", "in game", "ingame", "battle", "shop" -> Phase.IN_GAME
+        "game", "in game", "ingame", "battle" -> Phase.IN_GAME
+        "shop", "equipment" -> Phase.SHOP
+        "map", "minimap", "big map" -> Phase.MAP
+        "scoreboard", "score" -> Phase.SCOREBOARD
         "result", "results", "victory", "defeat", "end" -> Phase.RESULT
         else -> Phase.UNKNOWN
     }
@@ -115,6 +119,7 @@ object DecisionParser {
             val v = o.opt(k) ?: return -1
             return v.toString().replace(",", "").trim().toIntOrNull() ?: -1
         }
-        return ScreenRead(num("items").coerceIn(-1, 6), num("gold"), HeroDb.match(o.optString("hero", "")))
+        return ScreenRead(num("items").coerceIn(-1, 6), num("gold"), HeroDb.match(o.optString("hero", "")),
+            SpellDb.match(o.optString("spell", "")))
     }
 }

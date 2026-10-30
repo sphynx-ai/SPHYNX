@@ -54,24 +54,111 @@ class AccessibilityController : AccessibilityService() {
         return super.onUnbind(intent)
     }
 
+    // ---- joystick held between gestures ----
+    // The finger stays on the joystick (a "continued" stroke) and is only moved, so the hero
+    // walks smoothly instead of stopping each time a new touch starts.
+    private var joyStroke: GestureDescription.StrokeDescription? = null
+    private var joyX = 0f
+    private var joyY = 0f
+    private var nudgeRight = false
+
+    // strokes need a non-zero length: move half a pixel, alternating sides so it never drifts
+    private fun nudge(x: Float): Float {
+        nudgeRight = !nudgeRight
+        return if (nudgeRight) x + 0.5f else x - 0.5f
+    }
+
     // All actions go out as ONE gesture, so moving and casting happen at the same time
     fun dispatch(acts: List<Act>, showTouches: Boolean) {
         val w = resources.displayMetrics.widthPixels.toFloat()
         val h = resources.displayMetrics.heightPixels.toFloat()
         val g = GestureDescription.Builder()
         var n = 0
+        var joyAct: Act.Joy? = null
+        var release = false
+        for (a in acts) {
+            when (a) {
+                is Act.Joy -> joyAct = a
+                is Act.JoyRelease -> release = true
+                else -> {}
+            }
+        }
+        // 1) the joystick finger: start, move, keep holding, or lift
+        val held = joyStroke
+        var newJoy: GestureDescription.StrokeDescription? = null
+        try {
+            if (joyAct != null) {
+                val ty = joyAct.y * h
+                // strokes need a non-zero length, so an unchanged target is nudged
+                val tx = if (held != null && joyAct.x * w == joyX && ty == joyY) nudge(joyX) else joyAct.x * w
+                val p = Path()
+                if (held == null) {
+                    p.moveTo(joyAct.cx * w, joyAct.cy * h)
+                    p.lineTo(tx, ty)
+                    newJoy = GestureDescription.StrokeDescription(p, 0, joyAct.ms, true)
+                } else {
+                    // a continuation must start exactly where the last stroke ended
+                    p.moveTo(joyX, joyY)
+                    p.lineTo(tx, ty)
+                    newJoy = held.continueStroke(p, 0, joyAct.ms, true)
+                }
+                g.addStroke(newJoy)
+                n++
+                joyX = tx
+                joyY = ty
+                if (showTouches) overlay?.showTouch(Act.Drag(joyAct.cx, joyAct.cy, joyAct.x, joyAct.y, joyAct.ms))
+            } else if (held != null) {
+                val p = Path()
+                p.moveTo(joyX, joyY)
+                val ex = nudge(joyX)
+                p.lineTo(ex, joyY)
+                if (release) {
+                    g.addStroke(held.continueStroke(p, 0, 40, false))
+                } else {
+                    // another touch is going out: keep the finger where it is
+                    newJoy = held.continueStroke(p, 0, 60, true)
+                    g.addStroke(newJoy)
+                    joyX = ex
+                }
+                n++
+            }
+        } catch (e: Exception) {
+            // the system refused the continuation (old gesture already gone): start fresh next time
+            Diag.error("Joystick stroke", e)
+            newJoy = null
+        }
+        joyStroke = newJoy
+
+        // 2) taps and one-off drags
         for (a in acts) {
             if (n >= GestureDescription.getMaxStrokeCount()) break
             val p = Path()
             val dur: Long = when (a) {
                 is Act.Tap -> { p.moveTo(a.x * w, a.y * h); p.lineTo(a.x * w + 1, a.y * h); 60L }
                 is Act.Drag -> { p.moveTo(a.x1 * w, a.y1 * h); p.lineTo(a.x2 * w, a.y2 * h); a.ms }
+                else -> continue
             }
             g.addStroke(GestureDescription.StrokeDescription(p, 0, dur))
             n++
             if (showTouches) overlay?.showTouch(a)
         }
-        if (n > 0) dispatchGesture(g.build(), null, null)
+        if (n == 0) return
+        val mine = newJoy
+        val ok = dispatchGesture(g.build(), object : GestureResultCallback() {
+            override fun onCancelled(gestureDescription: GestureDescription?) {
+                // interrupted (e.g. the user touched the screen): the finger is lifted
+                if (mine != null && joyStroke === mine) joyStroke = null
+            }
+        }, null)
+        if (!ok && joyStroke === mine) joyStroke = null
+    }
+
+    fun joystickHeld() = joyStroke != null
+
+    // Lifts the joystick finger at once (emergency stop, AI off)
+    fun releaseJoystick() {
+        if (joyStroke != null) dispatch(listOf(Act.JoyRelease), false)
+        joyStroke = null
     }
 
     // Slow fallback when screen capture is not running (max about 1 per second)

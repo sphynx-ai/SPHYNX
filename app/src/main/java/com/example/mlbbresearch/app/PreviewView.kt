@@ -48,6 +48,7 @@ class PreviewView(ctx: Context) : View(ctx) {
                 Team.SELF -> Color.WHITE
                 Team.ALLY -> Color.parseColor("#64B5F6")
                 Team.ENEMY -> if (s.hero) Color.parseColor("#FFD600") else Color.parseColor("#FF8A65")
+                Team.NEUTRAL -> Color.parseColor("#CE93D8")
             }
             val r = RectF(ox + s.barLeft * w, oy + s.barTop * h, ox + s.barRight * w, oy + (s.y + 0.04f) * h)
             c.drawRect(r, box)

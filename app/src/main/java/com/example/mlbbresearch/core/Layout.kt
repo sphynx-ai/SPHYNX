@@ -1,33 +1,48 @@
 package com.example.mlbbresearch.core
 
+import org.json.JSONObject
+import java.util.Locale
+
 // Screen positions of MLBB's buttons, as fractions of the screen (landscape).
-// CALIBRATE them on the Setup page: turn on "Show markers" and adjust until each
-// marker sits on the real button.
+// CALIBRATE them on the Setup page: drag the markers on the game ("Calibrate on the game"),
+// let the app find them ("Auto-detect"), or type the numbers. Whole layouts can be saved
+// as named presets (one per phone / per custom MLBB button layout).
 object Layout {
 
-    class Control(val key: String, val label: String, val x: Float, val y: Float)
+    // group: "game" = in-match HUD, "shop" = equipment screen, "select" = hero select / draft
+    class Control(val key: String, val label: String, val x: Float, val y: Float, val group: String = "game")
 
+    // Defaults measured on a 20:9 phone with MLBB's standard button layout
     val defaults: List<Control> = listOf(
-        Control("joystick", "Joystick centre", 0.14f, 0.72f),
-        Control("attack", "Basic attack", 0.86f, 0.74f),
-        Control("s1", "Skill 1", 0.76f, 0.80f),
-        Control("s2", "Skill 2", 0.80f, 0.62f),
-        Control("ult", "Ultimate", 0.90f, 0.56f),
-        Control("spell", "Battle spell", 0.68f, 0.86f),
-        Control("recall", "Recall", 0.47f, 0.90f),
-        Control("regen", "Regen", 0.53f, 0.90f),
-        Control("quickBuy", "Quick-buy item (left side)", 0.06f, 0.55f),
-        Control("shopOpen", "Shop button", 0.06f, 0.45f),
-        Control("shopClose", "Shop close", 0.96f, 0.07f),
-        Control("shopBuy", "Shop: Buy", 0.80f, 0.88f),
-        Control("shopSell", "Shop: Sell", 0.80f, 0.80f),
-        Control("shopLastSlot", "Shop: last owned slot", 0.90f, 0.50f),
-        Control("activeItem", "Active item button", 0.92f, 0.42f),
-        Control("itemImmortality", "Shop list: Immortality", 0.50f, 0.30f),
-        Control("itemWinterCrown", "Shop list: Winter Crown", 0.50f, 0.42f),
-        Control("itemRoseGold", "Shop list: Rose Gold Meteor", 0.50f, 0.54f),
-        Control("itemFeather", "Shop list: Feather of Heaven", 0.50f, 0.66f),
-        Control("lockIn", "Draft: confirm / lock-in", 0.50f, 0.88f)
+        Control("joystick", "Joystick centre", 0.20f, 0.78f),
+        Control("attack", "Basic attack", 0.83f, 0.84f),
+        Control("s1", "Skill 1", 0.715f, 0.85f),
+        Control("s2", "Skill 2", 0.77f, 0.655f),
+        Control("ult", "Ultimate", 0.85f, 0.54f),
+        Control("s1Up", "Skill 1 upgrade (+)", 0.675f, 0.76f),
+        Control("s2Up", "Skill 2 upgrade (+)", 0.73f, 0.57f),
+        Control("ultUp", "Ultimate upgrade (+)", 0.81f, 0.45f),
+        Control("spell", "Battle spell", 0.634f, 0.89f),
+        Control("recall", "Recall", 0.51f, 0.89f),
+        Control("regen", "Regen", 0.57f, 0.89f),
+        Control("quickBuy", "Quick-buy item (top right)", 0.873f, 0.155f),
+        Control("activeItem", "Active item button", 0.93f, 0.31f),
+        Control("shopOpen", "Shop button", 0.18f, 0.29f),
+        Control("shopClose", "Shop close (X)", 0.86f, 0.105f, "shop"),
+        Control("shopBuy", "Shop: Purchase", 0.815f, 0.89f, "shop"),
+        Control("shopSell", "Shop: Sell", 0.815f, 0.80f, "shop"),
+        Control("shopLastSlot", "Shop: last owned slot", 0.47f, 0.89f, "shop"),
+        Control("itemImmortality", "Shop list: Immortality", 0.50f, 0.30f, "shop"),
+        Control("itemWinterCrown", "Shop list: Winter Crown", 0.50f, 0.42f, "shop"),
+        Control("itemRoseGold", "Shop list: Rose Gold Meteor", 0.50f, 0.54f, "shop"),
+        Control("itemFeather", "Shop list: Feather of Heaven", 0.50f, 0.66f, "shop"),
+        Control("lockIn", "Hero select: Confirm / lock-in", 0.87f, 0.95f, "select"),
+        Control("stdHero", "Standard: your hero's portrait", 0.835f, 0.18f, "select"),
+        Control("stdSpellBtn", "Standard: battle spell button", 0.15f, 0.20f, "select"),
+        Control("stdSpellPick", "Standard: your battle spell in the list", 0.50f, 0.50f, "select"),
+        Control("stdEmblemBtn", "Standard: emblem button", 0.22f, 0.92f, "select"),
+        Control("stdEmblemPick", "Standard: your emblem set in the list", 0.50f, 0.50f, "select"),
+        Control("stdClose", "Standard: close the spell / emblem list", 0.95f, 0.07f, "select")
     )
 
     private val byKey = defaults.associateBy { it.key }
@@ -45,10 +60,12 @@ object Layout {
         return d.x to d.y
     }
 
+    fun isCalibrated(key: String) = Cfg.raw("cal_$key") != null
+
     // value as "x,y" in percent
     fun text(key: String): String {
         val (x, y) = get(key)
-        return "%.1f,%.1f".format(x * 100f, y * 100f)
+        return "%.1f,%.1f".format(Locale.US, x * 100f, y * 100f)
     }
 
     fun set(key: String, percentText: String): Boolean {
@@ -58,5 +75,42 @@ object Layout {
         return true
     }
 
+    // x, y as fractions (used by drag calibration and auto-detect)
+    fun setPoint(key: String, x: Float, y: Float) =
+        Cfg.setRaw("cal_$key", "%.2f,%.2f".format(Locale.US, x.coerceIn(0f, 1f) * 100f, y.coerceIn(0f, 1f) * 100f))
+
     fun reset(key: String) = Cfg.setRaw("cal_$key", null)
+
+    // ---------------- presets ----------------
+
+    fun presetNames(): List<String> =
+        (Cfg.raw("preset_names") ?: "").split("\n").filter { it.isNotBlank() }
+
+    fun savePreset(name: String): Boolean {
+        val n = name.trim().replace("\n", " ")
+        if (n.isEmpty()) return false
+        val o = JSONObject()
+        for (c in defaults) o.put(c.key, text(c.key))
+        Cfg.setRaw("preset_$n", o.toString())
+        if (n !in presetNames()) Cfg.setRaw("preset_names", (presetNames() + n).joinToString("\n"))
+        Cfg.activePreset = n
+        return true
+    }
+
+    fun loadPreset(name: String): Boolean {
+        val json = Cfg.raw("preset_$name") ?: return false
+        val o = try { JSONObject(json) } catch (e: Exception) { return false }
+        for (c in defaults) {
+            val v = o.optString(c.key, "")
+            if (v.isNotEmpty()) set(c.key, v) else reset(c.key)
+        }
+        Cfg.activePreset = name
+        return true
+    }
+
+    fun deletePreset(name: String) {
+        Cfg.setRaw("preset_$name", null)
+        Cfg.setRaw("preset_names", presetNames().filter { it != name }.joinToString("\n"))
+        if (Cfg.activePreset == name) Cfg.activePreset = ""
+    }
 }
