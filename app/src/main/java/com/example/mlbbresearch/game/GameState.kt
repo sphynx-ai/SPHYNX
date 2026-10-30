@@ -1,10 +1,20 @@
 package com.example.mlbbresearch.game
 
+import com.example.mlbbresearch.vision.HudInfo
 import com.example.mlbbresearch.vision.Seen
 import com.example.mlbbresearch.vision.Track
 import kotlin.math.hypot
 
-enum class Phase { UNKNOWN, LOBBY, DRAFT, LOADING, IN_GAME, DEAD, RESULT }
+// DRAFT = hero select (standard) or ban & pick (ranked).
+// SHOP / SCOREBOARD / MAP = in a match, with the equipment screen, the Tab scoreboard or the big map open.
+enum class Phase(val label: String) {
+    UNKNOWN("unknown"), LOBBY("lobby"), DRAFT("hero select / draft"), LOADING("loading"), IN_GAME("in game"),
+    DEAD("dead (respawning)"), SHOP("equipment shop open"), SCOREBOARD("scoreboard open"), MAP("big map open"),
+    RESULT("result");
+
+    // anything that happens during a match
+    val inMatch: Boolean get() = this == IN_GAME || this == DEAD || this == SHOP || this == SCOREBOARD || this == MAP
+}
 
 // One snapshot of the match, built 10-15 times a second from vision + what Gemma learned.
 class GameState(
@@ -23,8 +33,17 @@ class GameState(
     val enemyTeam: List<String>,
     val items: Int,                    // -1 unknown (read by the Builder)
     val gold: Int,                     // -1 unknown
-    val itemsGoldAgeMs: Long
+    val itemsGoldAgeMs: Long,
+    val hud: HudInfo = HudInfo.NONE,
+    val monsters: List<Seen> = emptyList(),   // jungle creeps (hero = false), turtle / lord (hero = true)
+    val spell: String? = null,                // your battle spell, if known
+    val lane: Lane = Lane.MID,
+    val matchSec: Int = -1,                   // seconds since the match started, -1 unknown
+    val sinceSpawnMs: Long = Long.MAX_VALUE   // since you last (re)spawned in base
 ) {
+    val creeps: List<Seen> get() = monsters.filter { !it.hero }
+    val boss: Seen? get() = monsters.filter { it.hero }.minByOrNull { distToSelf(it.x, it.y) }
+
     // distance in screen-height units, so ranges look the same on any phone
     fun dist(ax: Float, ay: Float, bx: Float, by: Float): Float = hypot((ax - bx) * aspect, ay - by)
 
@@ -39,7 +58,7 @@ class GameState(
 
     fun summary(): String {
         val sb = StringBuilder()
-        sb.append("phase=").append(phase.name.lowercase())
+        sb.append("phase=").append(phase.label)
         if (selfHp >= 0) sb.append(", my HP ").append((selfHp * 100).toInt()).append("%")
         sb.append(", enemy heroes on screen ").append(enemies.size)
         if (enemies.isNotEmpty()) {
@@ -48,6 +67,11 @@ class GameState(
         sb.append(", allies near ").append(allies.size)
         sb.append(", enemy minions ").append(enemyMinions.size)
         sb.append(", enemies on minimap ").append(minimapEnemies)
+        sb.append(", lane ").append(lane.label)
+        if (spell != null) sb.append(", spell ").append(spell)
+        if (monsters.isNotEmpty()) sb.append(", monsters ").append(monsters.size)
+        boss?.let { sb.append(", ").append(LaneLogic.objectiveName(matchSec)).append(" HP ").append((it.hp * 100).toInt()).append("%") }
+        if (matchSec >= 0) sb.append(", match time ").append(matchSec / 60).append(":").append("%02d".format(matchSec % 60))
         if (items >= 0) sb.append(", items ").append(items)
         if (gold >= 0) sb.append(", gold ").append(gold)
         return sb.toString()

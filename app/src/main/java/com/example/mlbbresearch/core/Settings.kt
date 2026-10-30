@@ -41,6 +41,47 @@ object Cfg {
     var spellIsDefensive: Boolean get() = b("spell_def", true); set(v) = put("spell_def", v)
     var readCooldownsFromScreen: Boolean get() = b("cd_vision", false); set(v) = put("cd_vision", v)
 
+    var autoUpgradeSkills: Boolean get() = b("auto_upgrade", true); set(v) = put("auto_upgrade", v)
+    // ult first, then the others in this order (comma separated: ult,s1,s2)
+    var upgradeOrder: String get() = s("upgrade_order", "ult,s1,s2"); set(v) = put("upgrade_order", v)
+    var playerQuickBuy: Boolean get() = b("player_qb", true); set(v) = put("player_qb", v)
+    var smoothJoystick: Boolean get() = b("smooth_joy", true); set(v) = put("smooth_joy", v)
+
+    // ---- hero, spell, lane, combos, objectives ----
+    // battle spell: "auto" = recognise it, or a spell name you chose
+    var mySpell: String get() = s("my_spell", "auto"); set(v) = put("my_spell", v)
+    // lane: auto | exp | gold | mid | roam | jungle
+    var lane: String get() = s("lane", "auto"); set(v) = put("lane", v)
+    var retriMeansJungle: Boolean get() = b("retri_jungle", true); set(v) = put("retri_jungle", v)
+    var laneTravelSec: Int get() = i("lane_travel", 12); set(v) = put("lane_travel", v)
+    var useCombos: Boolean get() = b("combos", true); set(v) = put("combos", v)
+    var aimSkills: Boolean get() = b("aim_skills", true); set(v) = put("aim_skills", v)
+    var comboUrl: String get() = s("combo_url", "https://mobile-legends.fandom.com/wiki/{hero}"); set(v) = put("combo_url", v)
+    fun heroCombo(hero: String): String? = prefs.getString("combo_" + hero.lowercase(), null)
+    fun setHeroCombo(hero: String, v: String?) {
+        if (v == null) prefs.edit().remove("combo_" + hero.lowercase()).apply() else put("combo_" + hero.lowercase(), v)
+    }
+    var detectMonsters: Boolean get() = b("monsters", true); set(v) = put("monsters", v)
+    var takeObjectives: Boolean get() = b("objectives", true); set(v) = put("objectives", v)
+    // Retribution on a monster when its HP is below this (%), turtle / lord and small creeps
+    var retriBossPct: Int get() = i("retri_boss", 12); set(v) = put("retri_boss", v)
+    var retriCreepPct: Int get() = i("retri_creep", 35); set(v) = put("retri_creep", v)
+
+    // ---- match type: "standard" (pick hero, spell, emblem) or "ranked" (ban & pick) ----
+    var matchMode: String get() = s("match_mode", "standard"); set(v) = put("match_mode", v)
+    val ranked: Boolean get() = matchMode == "ranked"
+    var stdPickHero: Boolean get() = b("std_hero", true); set(v) = put("std_hero", v)
+    var stdChangeSpell: Boolean get() = b("std_spell", false); set(v) = put("std_spell", v)
+    var stdChangeEmblem: Boolean get() = b("std_emblem", false); set(v) = put("std_emblem", v)
+
+    // ---- learn from me (imitation) ----
+    var learnFromMe: Boolean get() = b("learn_me", false); set(v) = put("learn_me", v)
+    var playLikeMe: Boolean get() = b("play_like_me", false); set(v) = put("play_like_me", v)
+    var imitationMinDemos: Int get() = i("imit_min", 300); set(v) = put("imit_min", v)
+
+    // ---- calibration ----
+    var activePreset: String get() = s("active_preset", ""); set(v) = put("active_preset", v)
+
     // ---- vision tuning (percent of frame width / height) ----
     var heroBarMinWidthPct: Float get() = f("hero_bar_w", 4.5f); set(v) = put("hero_bar_w", v)
     var bodyBelowBarPct: Float get() = f("body_below", 7f); set(v) = put("body_below", v)
