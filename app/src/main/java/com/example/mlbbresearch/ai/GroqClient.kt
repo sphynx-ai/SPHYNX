@@ -22,18 +22,62 @@ object GroqClient {
 
     val ready: Boolean get() = Cfg.groqKey.isNotBlank()
 
-    // Returns the model's text, and the web pages it used (when the model reports them)
+    // Groq's OpenAI-compatible endpoint (a test can point it at a local stand-in)
+    @Volatile var baseUrl = "https://api.groq.com/openai/v1"
+
+    // set after each answer: did it come with a web search?
+    @Volatile var lastSearched = false
+        private set
+
+    // Returns the model's text, and the web pages it used (when the model reports them).
+    // gpt-oss models sometimes write output Groq cannot parse (mostly while using the search
+    // tool): Groq then answers 400 with the raw output in "failed_generation". In that case the
+    // JSON is taken from the raw output; if there is none it retries once, then asks once more
+    // WITHOUT web search (the answer then comes from the model's own knowledge).
     suspend fun ask(prompt: String): Pair<String, List<String>> = withContext(Dispatchers.IO) {
         val key = Cfg.groqKey.trim()
         if (key.isEmpty()) throw IllegalStateException("No Groq API key (Meta page)")
         val model = Cfg.groqModel.trim().ifEmpty { Cfg.DEFAULT_GROQ_MODEL }
+        val canSearch = model.startsWith("openai/gpt-oss")
+        val attempts = if (canSearch) listOf(true, true, false) else listOf(false)
+        var last: Exception? = null
+        for (search in attempts) {
+            try {
+                val (code, text) = post(key, model, prompt, search)
+                if (code in 200..299) {
+                    calls++
+                    lastError = ""
+                    lastSearched = search
+                    return@withContext parse(text)
+                }
+                val err = try { JSONObject(text).getJSONObject("error") } catch (e: Exception) { null }
+                val msg = err?.optString("message") ?: text.take(200)
+                lastError = "Groq $code: $msg"
+                // the model did answer, Groq just could not parse it: use the raw output if it holds our JSON
+                val raw = err?.optString("failed_generation", "") ?: ""
+                if (raw.isNotBlank() && json(raw) != null) {
+                    calls++
+                    lastSearched = search
+                    return@withContext raw to emptyList<String>()
+                }
+                // wrong key / no access / too many requests: retrying will not help
+                if (code == 401 || code == 403 || code == 404 || code == 429) throw IllegalStateException(lastError)
+                last = IllegalStateException(lastError)
+            } catch (e: java.io.IOException) {
+                last = e
+            }
+        }
+        throw last ?: IllegalStateException("Groq did not answer")
+    }
+
+    private fun post(key: String, model: String, prompt: String, search: Boolean): Pair<Int, String> {
         val body = JSONObject()
             .put("model", model)
             .put("temperature", 0.2)
             .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
         // the gpt-oss models can search the web through Groq's built-in browser search tool
-        if (model.startsWith("openai/gpt-oss")) body.put("tools", JSONArray().put(JSONObject().put("type", "browser_search")))
-        val c = URL("https://api.groq.com/openai/v1/chat/completions").openConnection() as HttpURLConnection
+        if (search) body.put("tools", JSONArray().put(JSONObject().put("type", "browser_search")))
+        val c = URL("$baseUrl/chat/completions").openConnection() as HttpURLConnection
         try {
             c.requestMethod = "POST"
             c.connectTimeout = 20_000
@@ -44,14 +88,7 @@ object GroqClient {
             c.outputStream.use { it.write(body.toString().toByteArray()) }
             val code = c.responseCode
             val text = (if (code in 200..299) c.inputStream else c.errorStream)?.use { String(it.readBytes()) } ?: ""
-            if (code !in 200..299) {
-                val msg = try { JSONObject(text).getJSONObject("error").optString("message") } catch (e: Exception) { text.take(200) }
-                lastError = "Groq $code: $msg"
-                throw IllegalStateException(lastError)
-            }
-            calls++
-            lastError = ""
-            parse(text)
+            return code to text
         } finally {
             c.disconnect()
         }

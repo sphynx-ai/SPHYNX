@@ -43,7 +43,7 @@ object MetaAdvisor {
                     "\"counters\":[\"heroes strong against $hero\"],\"recent_changes\":\"its buffs / nerfs in recent patches, one sentence\"}"
                 val (text, sources) = GroqClient.ask(prompt)
                 val o = GroqClient.json(text) ?: throw IllegalStateException("answer was not JSON: ${text.take(100)}")
-                MetaStore.saveHero(hero, o, sources)
+                MetaStore.saveHero(hero, o, if (GroqClient.lastSearched) sources else listOf("model knowledge, no web search"))
                 val m = MetaStore.hero(hero)
                 Diag.info("Online meta for $hero updated (${m?.patch})")
                 "Updated $hero (${m?.patch ?: "?"}): ${m?.build?.size ?: 0} items, combo ${m?.combo ?: "-"}"
@@ -82,7 +82,7 @@ object MetaAdvisor {
                     "\"notes\":\"the main changes of this patch and what they mean for the meta, max 3 sentences\"}"
                 val (text, sources) = GroqClient.ask(prompt)
                 val o = GroqClient.json(text) ?: throw IllegalStateException("answer was not JSON: ${text.take(100)}")
-                MetaStore.saveGeneral(o, sources)
+                MetaStore.saveGeneral(o, if (GroqClient.lastSearched) sources else listOf("model knowledge, no web search"))
                 val g = MetaStore.general()
                 "Meta updated: ${g?.patch ?: "?"}, ${g?.bans?.size ?: 0} top bans"
             } catch (e: Exception) {
