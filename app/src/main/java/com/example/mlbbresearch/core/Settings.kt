@@ -50,6 +50,10 @@ object Cfg {
     var regenHpPct: Int get() = i("regen_hp", 60); set(v) = put("regen_hp", v)
     var jungleRoute: Boolean get() = b("jungle_route", true); set(v) = put("jungle_route", v)
     var playerQuickBuy: Boolean get() = b("player_qb", true); set(v) = put("player_qb", v)
+    var naturalMove: Boolean get() = b("natural_move", true); set(v) = put("natural_move", v)
+    var wallAvoid: Boolean get() = b("wall_avoid", true); set(v) = put("wall_avoid", v)
+    // assist: YOU move, the AI only presses skills / combos in fights
+    var assistMode: Boolean get() = b("assist", false); set(v) = put("assist", v)
     var smoothJoystick: Boolean get() = b("smooth_joy", true); set(v) = put("smooth_joy", v)
 
     // ---- hero, spell, lane, combos, objectives ----

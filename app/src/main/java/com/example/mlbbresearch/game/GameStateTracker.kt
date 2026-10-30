@@ -41,6 +41,23 @@ object GameStateTracker {
         private set
     @Volatile var spawnAt = 0L
         private set
+
+    // K / D / A seen this match (counted from the moment the app started watching)
+    @Volatile var kills = 0
+        private set
+    @Volatile var deaths = 0
+        private set
+    @Volatile var assists = 0
+        private set
+    @Volatile var lastKillAt = 0L
+        private set
+    @Volatile var lastDeathAt = 0L
+        private set
+    @Volatile var lastAssistAt = 0L
+        private set
+    // last frame on which the camera moved (no movement while walking = stuck on a wall)
+    @Volatile var lastMotionAt = 0L
+        private set
     @Volatile private var items = -1
     @Volatile private var gold = -1
     @Volatile private var itemsGoldAt = 0L
@@ -134,6 +151,10 @@ object GameStateTracker {
             spawnAt = now
         }
         recognise(v)
+        if (v.kda[0] > 0) { kills++; lastKillAt = now; Diag.info("Kill (K/D/A)") }
+        if (v.kda[1] > 0) { deaths++; lastDeathAt = now }
+        if (v.kda[2] > 0) { assists++; lastAssistAt = now }
+        if (v.hud.motionX != 0f || v.hud.motionY != 0f) lastMotionAt = now
         if (v.self != null) {
             lastSelfSeen = now
             lastInGame = now
@@ -220,6 +241,9 @@ object GameStateTracker {
         gemmaSpell = null
         iconSpell = null
         matchStartAt = 0L
+        kills = 0; deaths = 0; assists = 0
+        com.example.mlbbresearch.vision.KdaReader.reset()
+        com.example.mlbbresearch.vision.WallMap.reset()
         items = -1
         gold = -1
         itemsGoldAt = 0L

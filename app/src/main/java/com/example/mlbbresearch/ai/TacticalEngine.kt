@@ -92,7 +92,7 @@ object TacticalEngine {
         if (hp in 0f..retreatHp && threat.isNotEmpty() || outnumbered || losingDuel || brainRetreat ||
             plan.plan == "retreat" && threat.isNotEmpty() && rules
         ) {
-            val (mx, my) = away(s, threat)
+            val (mx, my) = retreatDir(s, threat)
             val casts = ArrayList<String>()
             p.escapeSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
             if (p.ult == UltRule.DEFENSIVE && hp < 0.35f && CooldownTracker.ready("ult", p)) casts.add("ult")
@@ -253,8 +253,7 @@ object TacticalEngine {
         // ---- 7c. defend your tower when enemies are at it ----
         if (s.lane != Lane.JUNGLE) {
             TowerLogic.towerToDefend(s)?.let { t ->
-                val me = s.minimapSelf!!
-                val (mx, my) = norm(t.first - me.first, t.second - me.second)
+                val (mx, my) = mapDir(s.minimapSelf!!, t)
                 return hold(now, TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "defending our tower"))
             }
         }
@@ -262,6 +261,17 @@ object TacticalEngine {
         // ---- 7d. laners: grab a nearby jungle camp between waves (gold + EXP) ----
         if (Cfg.lanersTakeCamps && s.lane != Lane.JUNGLE && s.lane != Lane.ROAM && threat.isEmpty()) {
             JungleNav.direction(s, 0.15f)?.let { return hold(now, jungleStep(s, p, it)) }
+        }
+
+        // ---- 7e. MOBA rule: do not wander alone deep in the enemy half (ganks) ----
+        val me = s.minimapSelf
+        if (me != null && s.lane != Lane.JUNGLE && threat.isEmpty() && s.allies.isEmpty() && s.allyMinions.isEmpty() &&
+            me.second < me.first - 0.25f && me.second > 0.15f && me.first < 0.85f
+        ) {
+            val home = s.allyTowers.minByOrNull { kotlin.math.hypot(it.first - me.first, it.second - me.second) } ?: (0.1f to 0.9f)
+            val (mx, my) = mapDir(me, home)
+            return hold(now, TacticalDecision(Intent.PUSH, mx, my, emptyList(), -1f, -1f, "-", -1f, -1,
+                "alone deep in the enemy half: falling back"))
         }
 
         // ---- 8. follow Gemma's plan, else walk your lane ----
@@ -349,14 +359,29 @@ object TacticalEngine {
             else -> null
         }
         if (corner != null) {
-            val (mx, my) = norm(corner.first - me.first, corner.second - me.second)
+            val (mx, my) = mapDir(me, corner)
             return Triple(mx, my, "walking to the ${s.lane.label}")
         }
         val dist = kotlin.math.hypot(target.x - me.first, target.y - me.second)
         val what = if (target.bonus) "bonus tower" else if (s.towers.isEmpty()) "enemy base" else "next enemy tower"
         if (dist < TowerLogic.range() + 0.03f) return Triple(0f, 0f, "waiting for our minions at the $what")
-        val (mx, my) = norm(target.x - me.first, target.y - me.second)
+        val (mx, my) = mapDir(me, target.x to target.y)
         return Triple(mx, my, "pushing to the $what")
+    }
+
+    // walk on the minimap from `me` to `to`, around walls when the wall map knows the way
+    private fun mapDir(me: Pair<Float, Float>, to: Pair<Float, Float>): Pair<Float, Float> =
+        com.example.mlbbresearch.vision.WallMap.direction(me, to) ?: norm(to.first - me.first, to.second - me.second)
+
+    // MOBA rule: run home towards your own tower (it shoots the chasers), not just "away",
+    // unless that way leads through the enemies
+    private fun retreatDir(s: GameState, from: List<Track>): Pair<Float, Float> {
+        val (ax, ay) = away(s, from)
+        val me = s.minimapSelf ?: return ax to ay
+        val home = s.allyTowers.minByOrNull { kotlin.math.hypot(it.first - me.first, it.second - me.second) } ?: (0.1f to 0.9f)
+        val (tx, ty) = mapDir(me, home)
+        if (tx * ax + ty * ay < -0.2f) return ax to ay
+        return norm(ax * 0.5f + tx * 0.5f, ay * 0.5f + ty * 0.5f)
     }
 
     // How each brain option is played. null = nothing special, carry on with the normal steps.

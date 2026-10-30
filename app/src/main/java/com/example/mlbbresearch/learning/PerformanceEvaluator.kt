@@ -41,16 +41,19 @@ object PerformanceEvaluator {
             val p = it.next()
             if (now - p.at < 3000) continue
             it.remove()
-            val died = s.phase == Phase.DEAD
+            val died = s.phase == Phase.DEAD || GameStateTracker.lastDeathAt in p.at..now
             val hpNow = if (s.selfHp >= 0f) s.selfHp else p.selfHp
             var reward = (hpNow - p.selfHp) * 1.0f
             if (died) reward -= 2f
             if (p.targetId >= 0) {
                 val t = s.enemies.firstOrNull { e -> e.id == p.targetId }
                 reward += if (t != null) (p.targetHp - t.hp) * 1.5f
-                          else if (p.targetHp in 0f..0.3f) 1f       // vanished while low: probably a kill
+                          else if (p.targetHp in 0f..0.3f) 0.4f     // gone while low (not confirmed)
                           else 0f
             }
+            // confirmed by the K/D/A numbers
+            if (GameStateTracker.lastKillAt in p.at..now) reward += 1.5f
+            if (GameStateTracker.lastAssistAt in p.at..now) reward += 0.7f
             reward = reward.coerceIn(-3f, 3f)
             ExperienceRecorder.setReward(p.id, reward)
             evaluated++

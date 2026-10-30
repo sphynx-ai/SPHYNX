@@ -3,6 +3,7 @@ package com.example.mlbbresearch.learning
 import com.example.mlbbresearch.core.Cfg
 import com.example.mlbbresearch.core.Diag
 import com.example.mlbbresearch.game.GameState
+import com.example.mlbbresearch.game.GameStateTracker
 import com.example.mlbbresearch.game.Phase
 import org.json.JSONArray
 import org.json.JSONObject
@@ -160,12 +161,12 @@ object Brain {
     fun evaluateDue(s: GameState) {
         if (pending.isEmpty()) return
         val now = s.ts
-        val died = s.phase == Phase.DEAD
         val it = pending.iterator()
         var changed = false
         while (it.hasNext()) {
             val p = it.next()
             for (e in s.enemies) p.lowest[e.id]?.let { if (e.hp < it) p.lowest[e.id] = e.hp }
+            val died = s.phase == Phase.DEAD || GameStateTracker.lastDeathAt in p.at..now
             if (now - p.at < EVAL_MS && !died) continue
             it.remove()
             val r = reward(p, s, died)
@@ -185,10 +186,14 @@ object Brain {
             val low = p.lowest[id] ?: hp0
             r += when {
                 t != null -> (hp0 - t.hp) * 1.5f
-                low < 0.3f -> (hp0 - low) * 1.5f + 1.5f   // vanished after being brought low: a kill
+                low < 0.3f -> (hp0 - low) * 1.5f + 0.5f   // gone after being brought low (kill not confirmed)
                 else -> 0f                                // walked out of sight
             }
         }
+        // the K/D/A numbers confirm what really happened during the fight
+        val w = p.at..s.ts
+        if (GameStateTracker.lastKillAt in w) r += 2f
+        if (GameStateTracker.lastAssistAt in w) r += 1f
         val hpNow = if (died) 0f else if (s.selfHp >= 0f) s.selfHp else p.selfHp
         r += (hpNow - p.selfHp) * 1.2f
         if (died) r -= 2.5f

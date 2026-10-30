@@ -23,6 +23,7 @@ class VisionResult(
     val heroIcons: List<FloatArray>?,  // fingerprints of Skill 1, Skill 2, Ultimate (about once a second)
     val spellIcon: FloatArray?,        // fingerprint of the battle spell button
     val monsters: List<Seen>,          // jungle creeps (hero = false) and turtle / lord (hero = true)
+    val kda: IntArray,                 // kills, deaths, assists gained on this frame (0 or 1 each)
     val processMs: Long
 ) {
     val aspect: Float get() = if (frameH == 0) 1.78f else frameW.toFloat() / frameH
@@ -54,6 +55,8 @@ object FrameProcessor {
         private set
     // "Learn from me" needs the camera motion and every button's brightness
     @Volatile var trackPlayer = false
+    // the Player needs the camera motion too (to notice it is stuck on a wall)
+    @Volatile var trackMotion = false
     @Volatile var processedFps = 0f
     private var fpsCount = 0
     private var fpsStart = 0L
@@ -88,6 +91,10 @@ object FrameProcessor {
             }
         }
 
+        // walls from the minimap, every couple of seconds while the normal minimap shows
+        val hint = ScreenReader.classify(px, w, h)
+        if (self != null && hint == ScreenHint.NONE && frameNo % 25 == 3L) WallMap.update(px, w, h)
+
         val result = VisionResult(
             ts = t0, frameW = w, frameH = h,
             self = self,
@@ -99,11 +106,12 @@ object FrameProcessor {
             minimap = MinimapAnalyzer.analyze(px, w, h),
             saturation = HeroDetector.saturation(px, w, h),
             skillBrightness = brightness,
-            hint = ScreenReader.classify(px, w, h),
-            hud = if (self != null || trackPlayer) ScreenReader.hud(px, w, h, trackPlayer) else HudInfo.NONE,
+            hint = hint,
+            hud = if (self != null || trackPlayer) ScreenReader.hud(px, w, h, trackPlayer || trackMotion) else HudInfo.NONE,
             heroIcons = if (self != null && frameNo % 12 == 0L) heroIcons(px, w, h) else null,
             spellIcon = if (self != null && frameNo % 12 == 6L) IconMemory.print(px, w, h, "spell", 0.016f) else null,
             monsters = seen.filter { it.team == Team.NEUTRAL },
+            kda = if (self != null) KdaReader.read(px, w, h) else IntArray(3),
             processMs = System.currentTimeMillis() - t0
         )
         latest = result

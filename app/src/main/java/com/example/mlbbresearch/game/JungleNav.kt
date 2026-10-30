@@ -1,22 +1,21 @@
 package com.example.mlbbresearch.game
 
 import com.example.mlbbresearch.vision.Camp
+import com.example.mlbbresearch.vision.WallMap
 import kotlin.math.hypot
 
 // Jungle route from the minimap: walks to your nearest jungle camp that is still up
 // (buffs first in the opening), farms it (the tactical engine takes over once the monsters
 // are on screen), then moves on. A camp you reached and saw no monster at for a few seconds
-// is skipped for a minute. If your icon stops moving (stuck on a wall) it steps sideways.
+// is skipped for a minute. Paths go around the walls seen on the minimap.
 object JungleNav {
 
     private var target: Camp? = null
     private var arrivedAt = 0L
     private val skipped = HashMap<Pair<Int, Int>, Long>()   // camp grid cell -> skip until
-    private var lastPos: Pair<Float, Float>? = null
-    private var lastPosAt = 0L
-    private var lastMoveAt = 0L
-    private var sidestepUntil = 0L
-    private var sidestepSign = 1f
+    private var sawMonsterAt = 0L
+    @Volatile var campsKilled = 0
+        private set
     private var lastSelf: Pair<Float, Float>? = null
     private var lastSelfAt = 0L
 
@@ -32,7 +31,7 @@ object JungleNav {
     fun reset() {
         target = null
         skipped.clear()
-        lastPos = null
+        sawMonsterAt = 0L
         status = "-"
     }
 
@@ -49,51 +48,52 @@ object JungleNav {
 
         skipped.entries.removeAll { it.value < now }
         val camps = s.camps.filter { (skipped[cell(it)] ?: 0L) < now && hypot(it.x - me.first, it.y - me.second) <= maxDist }
-        if (camps.isEmpty() && maxDist < 9f) return null
-        if (camps.isEmpty()) {
+        // the target camp's icon is hidden under YOUR icon when you stand on it: it is not gone
+        val hidden = target?.takeIf { t ->
+            hypot(t.x - me.first, t.y - me.second) < 0.09f && camps.none { hypot(it.x - t.x, it.y - t.y) < 0.05f }
+        }
+        if (camps.isEmpty() && hidden == null && maxDist < 9f) return null
+        if (camps.isEmpty() && hidden == null) {
             target = null
             status = "no jungle camp up: heading to the river"
             return toward(me, 0.45f, 0.55f, "to the river (no camp up)")
         }
-        // keep the current target while it is still shown; else pick the nearest
-        // (buffs first during the first 90 seconds)
-        val keep = target?.let { t -> camps.minByOrNull { hypot(it.x - t.x, it.y - t.y) }?.takeIf { hypot(it.x - t.x, it.y - t.y) < 0.05f } }
+        // keep the current target while it is still shown (or hidden under you); else pick the
+        // nearest (buffs first during the first 90 seconds)
+        val keep = hidden ?: target?.let { t -> camps.minByOrNull { hypot(it.x - t.x, it.y - t.y) }?.takeIf { hypot(it.x - t.x, it.y - t.y) < 0.05f } }
         val opening = s.matchSec in 0..90
         val t = keep ?: camps.minByOrNull { hypot(it.x - me.first, it.y - me.second) - if (opening && it.buff) 0.3f else 0f }!!
-        if (t !== keep) { target = t; arrivedAt = 0L }
+        if (t !== keep && t !== target) { target = t; arrivedAt = 0L; sawMonsterAt = 0L }
 
         val d = hypot(t.x - me.first, t.y - me.second)
-        if (d < 0.06f) {
-            // at the camp: attack until its icon leaves the minimap (= killed). If it is
-            // still shown after 25 s something is wrong (wrong spot, icon is a timer): move on.
+        if (d < 0.07f) {
+            // At the camp. The kill is confirmed by the MONSTER DETECTOR: monsters were seen on
+            // screen and now none are left for 1.5 s. (The minimap icon is not used: your own
+            // icon covers it.) If no monster was ever seen here, attack for 12 s and move on.
             if (arrivedAt == 0L) arrivedAt = now
-            if (now - arrivedAt > 25_000) {
-                skipped[cell(t)] = now + 60_000
+            if (s.creeps.isNotEmpty() || s.boss != null) sawMonsterAt = now
+            val killed = sawMonsterAt > 0 && now - sawMonsterAt > 1500
+            val giveUp = if (sawMonsterAt > 0) now - arrivedAt > 40_000 else now - arrivedAt > 12_000
+            if (killed || giveUp) {
+                skipped[cell(t)] = now + if (t.buff) 120_000 else 70_000     // respawn time
                 target = null
-                status = "could not finish this camp, next one"
+                arrivedAt = 0L
+                sawMonsterAt = 0L
+                if (killed) campsKilled++
+                status = if (killed) "camp killed, next one" else "no monster found here, next camp"
                 return null
             }
             atCamp = true
-            status = "killing a ${if (t.buff) "buff" else "camp"} (${(now - arrivedAt) / 1000}s)"
+            status = "killing a ${if (t.buff) "buff" else "camp"} (${(now - arrivedAt) / 1000}s" +
+                (if (sawMonsterAt > 0) ", monsters seen)" else ", looking for the monsters)")
             return Triple(0f, 0f, "killing the camp")
         }
 
-        // stuck on a wall: icon has not moved for 2.5 s while walking -> step sideways
-        val lp = lastPos
-        if (lp == null || hypot(me.first - lp.first, me.second - lp.second) > 0.012f) {
-            lastPos = me; lastPosAt = now; lastMoveAt = now
-        } else if (now - lastMoveAt > 2500 && now > sidestepUntil) {
-            sidestepUntil = now + 1200
-            sidestepSign = -sidestepSign
-            lastMoveAt = now
-        }
-        val (dx, dy) = norm(t.x - me.first, t.y - me.second)
-        if (now < sidestepUntil) {
-            status = "stuck, stepping around"
-            val (sx, sy) = norm(dx - dy * sidestepSign * 1.5f, dy + dx * sidestepSign * 1.5f)
-            return Triple(sx, sy, "going around a wall")
-        }
-        status = "walking to a ${if (t.buff) "buff" else "camp"} (${(d * 100).toInt()}% of the map away)"
+        // walk around walls (path from the minimap wall map), straight if there is none yet
+        val path = WallMap.direction(me, t.x to t.y)
+        val (dx, dy) = path ?: norm(t.x - me.first, t.y - me.second)
+        status = "walking to a ${if (t.buff) "buff" else "camp"} (${(d * 100).toInt()}% of the map away" +
+            (if (path != null) ", around walls)" else ")")
         return Triple(dx, dy, "to a jungle ${if (t.buff) "buff" else "camp"}")
     }
 
