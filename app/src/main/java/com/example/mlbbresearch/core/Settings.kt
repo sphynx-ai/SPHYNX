@@ -50,6 +50,9 @@ object Cfg {
     var regenHpPct: Int get() = i("regen_hp", 60); set(v) = put("regen_hp", v)
     var jungleRoute: Boolean get() = b("jungle_route", true); set(v) = put("jungle_route", v)
     var playerQuickBuy: Boolean get() = b("player_qb", true); set(v) = put("player_qb", v)
+    var wallHop: Boolean get() = b("wall_hop", true); set(v) = put("wall_hop", v)     // dash / Flicker over thin walls
+    var useBushes: Boolean get() = b("bushes", true); set(v) = put("bushes", v)      // hide and ambush in bushes
+    var fastMode: Boolean get() = b("fast_mode", true); set(v) = put("fast_mode", v)  // fastest decisions and combos
     var naturalMove: Boolean get() = b("natural_move", true); set(v) = put("natural_move", v)
     var wallAvoid: Boolean get() = b("wall_avoid", true); set(v) = put("wall_avoid", v)
     // assist: YOU move, the AI only presses skills / combos in fights

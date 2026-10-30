@@ -82,7 +82,7 @@ object ActionExecutor {
         if (assist) {
             // you move: never touch the joystick
         } else if (d.moveX != 0f || d.moveY != 0f) {
-            acts.add(joystick(d.moveX, d.moveY))
+            joystick(d.moveX, d.moveY)?.let { acts.add(it) }
         } else if (Cfg.smoothJoystick) {
             joyDirX = 0f; joyDirY = 0f
             if (AccessibilityController.instance?.joystickHeld() == true) acts.add(Act.JoyRelease)
@@ -136,7 +136,11 @@ object ActionExecutor {
     // Direction (-1..1) -> joystick touch. Natural mode: the finger stays down, the hero turns
     // at a human rate (no snapping), the push varies a little, and when the camera stops
     // moving while walking (a wall) it steps around it.
-    private fun joystick(mx0: Float, my0: Float): Act {
+    private var sentDirX = 0f
+    private var sentDirY = 0f
+    private var sentAt = 0L
+
+    private fun joystick(mx0: Float, my0: Float): Act? {
         val (jx, jy) = Layout.get("joystick")
         val r = Layout.JOYSTICK_RADIUS
         val aspect = AccessibilityController.screenAspect()
@@ -177,7 +181,12 @@ object ActionExecutor {
             pushRadius = 0.9f
         }
         joyDirX = nx; joyDirY = ny
-        val ms = if (Cfg.naturalMove) 140L + rnd.nextInt(35) else 150L
+        // the finger is already down: only move it when the direction really changed (> ~6
+        // degrees) or every 0.5 s, so taps and skills are not held up by joystick strokes
+        val held = AccessibilityController.instance?.joystickHeld() == true
+        if (held && nx * sentDirX + ny * sentDirY > 0.995f && now - sentAt < 500 && now >= detourUntil) return null
+        sentDirX = nx; sentDirY = ny; sentAt = now
+        val ms = if (Cfg.fastMode) 45L + rnd.nextInt(15) else if (Cfg.naturalMove) 140L + rnd.nextInt(35) else 150L
         return Act.Joy(jx, jy, jx + nx * r * pushRadius, jy + ny * r * pushRadius * aspect, ms)
     }
 
@@ -287,10 +296,11 @@ object ActionExecutor {
         }
     }
 
+    // Fast mode sends the touches straight from the AI's thread (no wait for the UI thread)
     fun perform(acts: List<Act>) {
         if (acts.isEmpty()) return
         val svc = AccessibilityController.instance ?: return
-        main.post {
+        val send = {
             try {
                 svc.dispatch(acts, Cfg.showTouches)
                 actionsDone += acts.size
@@ -298,6 +308,7 @@ object ActionExecutor {
                 Diag.error("Touch failed", e)
             }
         }
+        if (Cfg.fastMode) send() else main.post { send() }
     }
 
     // Emergency stop: drop every queued touch

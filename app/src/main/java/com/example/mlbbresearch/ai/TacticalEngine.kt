@@ -17,7 +17,7 @@ import com.example.mlbbresearch.vision.Seen
 import com.example.mlbbresearch.vision.Track
 import kotlin.math.hypot
 
-enum class Intent { IDLE, LANE_CLEAR, ENGAGE, RETREAT, RECALL, REGEN, PUSH, GROUP, IMITATE, OBJECTIVE, JUNGLE }
+enum class Intent { IDLE, LANE_CLEAR, ENGAGE, RETREAT, RECALL, REGEN, PUSH, GROUP, IMITATE, OBJECTIVE, JUNGLE, AMBUSH }
 
 // What the fast engine wants to do right now. Movement is a direction on screen.
 class TacticalDecision(
@@ -50,6 +50,7 @@ object TacticalEngine {
     private var heldSince = 0L
     private var recallUntil = 0L
     private var regenUntil = 0L
+    private var ambushSince = 0L
 
     fun reset() {
         held = Intent.IDLE
@@ -61,13 +62,43 @@ object TacticalEngine {
 
     // option: what the learning brain chose for this fight (null / RULES = the normal rules)
     fun decide(s: GameState, p: HeroProfile, plan: StrategyPlan, learnedBias: Float, option: FightOption? = null): TacticalDecision {
-        val d = decideRaw(s, p, plan, learnedBias, option)
-        if (d.intent == Intent.RETREAT || d.intent == Intent.RECALL || d.intent == Intent.IDLE) return d
-        // never walk into enemy tower range without your minions there
-        val (gx, gy, changed) = TowerLogic.guard(s, d.moveX, d.moveY)
-        if (!changed) return d
-        return TacticalDecision(d.intent, gx, gy, d.casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId,
-            d.reason + " (keeping out of enemy tower range)")
+        pendingHop = false
+        var d = decideRaw(s, p, plan, learnedBias, option)
+        if (d.intent != Intent.RETREAT && d.intent != Intent.RECALL && d.intent != Intent.IDLE) {
+            // never walk into enemy tower range without your minions there
+            val (gx, gy, changed) = TowerLogic.guard(s, d.moveX, d.moveY)
+            if (changed) d = TacticalDecision(d.intent, gx, gy, d.casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId,
+                d.reason + " (keeping out of enemy tower range)")
+        }
+        return wallHop(s, p, d)
+    }
+
+    // ---- passing walls with a dash, a mobility skill or Flicker ----
+    private var pendingHop = false       // the path planner found a thin wall worth jumping
+    private var movingSince = 0L
+
+    private fun wallHop(s: GameState, p: HeroProfile, d: TacticalDecision): TacticalDecision {
+        val now = s.ts
+        val moving = d.moveX != 0f || d.moveY != 0f
+        if (!moving) { movingSince = 0L; return d }
+        if (movingSince == 0L) movingSince = now
+        if (!Cfg.wallHop) return d
+        // stuck against a wall: walking for 1 s but the camera has not moved for 0.6 s
+        val stuck = now - movingSince > 1000 && now - GameStateTracker.lastMotionAt > 600
+        if (!pendingHop && !stuck) return d
+        val dash = if (Cfg.useDash) HeroDb.dashSlot(s.ownHero)?.takeIf { CooldownTracker.ready(it, p) } else null
+        // Flicker has a long cooldown: only to escape or to catch someone
+        val flicker = if (s.spell == "Flicker" && CooldownTracker.ready("spell", p) &&
+            (d.intent == Intent.RETREAT || d.intent == Intent.ENGAGE)) "spell" else null
+        val slot = dash ?: flicker ?: return d
+        if (slot in d.casts) return d
+        val self = s.self ?: return d
+        // aim the jump the way we walk (a chase keeps its target)
+        val tx = if (d.targetX >= 0f && d.intent == Intent.ENGAGE) d.targetX else self.x + d.moveX / s.aspect * 0.3f
+        val ty = if (d.targetX >= 0f && d.intent == Intent.ENGAGE) d.targetY else self.y + d.moveY * 0.3f
+        movingSince = now
+        return TacticalDecision(d.intent, d.moveX, d.moveY, d.casts + slot, tx, ty, d.targetLabel, d.targetHp, d.targetId,
+            d.reason + " | jumping the wall (${if (slot == "spell") "Flicker" else slot})")
     }
 
     private fun decideRaw(s: GameState, p: HeroProfile, plan: StrategyPlan, learnedBias: Float, option: FightOption?): TacticalDecision {
@@ -92,7 +123,19 @@ object TacticalEngine {
         if (hp in 0f..retreatHp && threat.isNotEmpty() || outnumbered || losingDuel || brainRetreat ||
             plan.plan == "retreat" && threat.isNotEmpty() && rules
         ) {
-            val (mx, my) = retreatDir(s, threat)
+            var (mx, my) = retreatDir(s, threat)
+            // hurt and chased: a bush on the way out hides you (enemies lose sight of you)
+            if (Cfg.useBushes && hp < 0.4f) {
+                if (s.inBush && s.enemiesWithin(0.3f).isEmpty()) {
+                    val casts = if (s.enemiesWithin(0.6f).isEmpty() && Cfg.useRegen && CooldownTracker.ready("regen", p)) listOf("regen") else emptyList()
+                    return hold(now, TacticalDecision(Intent.RETREAT, 0f, 0f, casts, -1f, -1f, "-", -1f, -1, "hiding in a bush"), force = true)
+                }
+                val b = s.bushes.filter { s.distToSelf(it.x, it.y) < 0.35f }.firstOrNull { bu ->
+                    val (bx, by) = toward(s, bu.x, bu.y)
+                    bx * mx + by * my > 0.3f
+                }
+                if (b != null) { val t = toward(s, b.x, b.y); mx = t.first; my = t.second }
+            }
             val casts = ArrayList<String>()
             p.escapeSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
             if (p.ult == UltRule.DEFENSIVE && hp < 0.35f && CooldownTracker.ready("ult", p)) casts.add("ult")
@@ -164,6 +207,27 @@ object TacticalEngine {
             return hold(now, TacticalDecision(Intent.ENGAGE, mx, my, casts, low.x, low.y, "enemy #${low.id}", low.hp, low.id,
                 "finishing enemy at ${(low.hp * 100).toInt()}% HP"), force = true)
         }
+
+        // ---- 2d. ambush from a bush: wait hidden until the enemy walks into reach (6 s at most) ----
+        if (Cfg.useBushes && hp > 0.55f && (s.lane == Lane.ROAM || s.lane == Lane.JUNGLE || alliesNear > 0)) {
+            val e = safeTargets.minByOrNull { s.distToSelf(it.x, it.y) }
+            val de = e?.let { s.distToSelf(it.x, it.y) } ?: 9f
+            if (e != null && de > p.engageRange * 1.1f && de < 0.9f && (ambushSince == 0L || now - ambushSince < 6000)) {
+                if (ambushSince == 0L) ambushSince = now
+                if (s.inBush) {
+                    return hold(now, TacticalDecision(Intent.AMBUSH, 0f, 0f, emptyList(), e.x, e.y, "enemy #${e.id}", e.hp, e.id,
+                        "hidden in a bush, waiting for enemy #${e.id}"))
+                }
+                val b = s.bushes.filter { s.distToSelf(it.x, it.y) < 0.25f && s.dist(it.x, it.y, e.x, e.y) < de }
+                    .minByOrNull { s.distToSelf(it.x, it.y) }
+                if (b != null) {
+                    val (mx, my) = toward(s, b.x, b.y)
+                    return hold(now, TacticalDecision(Intent.AMBUSH, mx, my, emptyList(), e.x, e.y, "enemy #${e.id}", e.hp, e.id,
+                        "moving into a bush to ambush enemy #${e.id}"))
+                }
+            }
+        }
+        if (safeTargets.isEmpty()) ambushSince = 0L
 
         // ---- 3. engage an enemy hero (the brain's choice first; never one under their tower) ----
         val target = pickTarget(s, if (option == null) threat.filter { it in safeTargets } else safeTargets, plan)
@@ -385,8 +449,19 @@ object TacticalEngine {
     }
 
     // walk on the minimap from `me` to `to`, around walls when the wall map knows the way
-    private fun mapDir(me: Pair<Float, Float>, to: Pair<Float, Float>): Pair<Float, Float> =
-        com.example.mlbbresearch.vision.WallMap.direction(me, to) ?: norm(to.first - me.first, to.second - me.second)
+    // A thin wall straight ahead with a long way round: go straight and jump it (see wallHop).
+    private fun mapDir(me: Pair<Float, Float>, to: Pair<Float, Float>): Pair<Float, Float> {
+        val straight = norm(to.first - me.first, to.second - me.second)
+        val sd = kotlin.math.hypot(to.first - me.first, to.second - me.second)
+        val wm = com.example.mlbbresearch.vision.WallMap
+        if (Cfg.wallHop && wm.thinWallAhead(me, straight.first, straight.second, minOf(0.15f, sd)) &&
+            wm.distance(me, to) > sd * 1.35f + 0.04f
+        ) {
+            pendingHop = true
+            return straight
+        }
+        return wm.direction(me, to) ?: straight
+    }
 
     // MOBA rule: run home towards your own tower (it shoots the chasers), not just "away",
     // unless that way leads through the enemies
@@ -496,7 +571,7 @@ object TacticalEngine {
     // Keeps an intent for at least 0.6 s so the hero does not jitter between choices
     private fun hold(now: Long, d: TacticalDecision, force: Boolean = false): TacticalDecision {
         if (d.intent != held) {
-            if (!force && now - heldSince < 600 && held != Intent.IDLE && held != Intent.PUSH) {
+            if (!force && now - heldSince < (if (Cfg.fastMode) 300 else 600) && held != Intent.IDLE && held != Intent.PUSH) {
                 // keep moving the old way, but still allow attacks/skills
                 return TacticalDecision(held, d.moveX, d.moveY, d.casts, d.targetX, d.targetY, d.targetLabel,
                     d.targetHp, d.targetId, d.reason)

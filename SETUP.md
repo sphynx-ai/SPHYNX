@@ -161,6 +161,27 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
   - Defend your towers.
   - Recall and Regen when safe.
 
+## Wall jumps, bushes and speed (Player page)
+
+- **Jumping walls**: when a thin wall (up to 3 minimap cells) blocks the straight way and walking around is much
+  longer, the hero walks straight at it and uses its dash / mobility skill to go over it. It also does this when it
+  gets stuck against a wall. Flicker is used for this only while escaping or chasing, because of its long cooldown.
+- **Bushes**: tall grass is found on screen by its texture (thin blades) and colour, and the app knows when you
+  stand in one.
+  - **Hiding**: hurt (below 40% HP) and chased, the hero runs into a bush on the way out and waits there hidden,
+    using Regen if nobody is close.
+  - **Ambush**: as roamer or jungler, or with an ally near, it hides in a bush between you and an approaching enemy
+    and attacks when the enemy walks into reach (it waits 6 s at most).
+- **Fastest mode** (on by default):
+  - Screen capture up to 30 fps.
+  - A new decision on every new frame (up to ~25 per second instead of 5).
+  - Combo pauses 40% shorter.
+  - 35 ms taps, sent straight from the AI's thread.
+  - The joystick only gets a new touch when the direction changes.
+  - Intents switch after 0.3 s instead of 0.6 s.
+
+  Turn it off to save battery.
+
 ## Kills, towers and gold (Player page)
 
 What the Player does, in order:

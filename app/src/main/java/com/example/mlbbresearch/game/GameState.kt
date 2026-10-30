@@ -1,5 +1,6 @@
 package com.example.mlbbresearch.game
 
+import com.example.mlbbresearch.vision.Bush
 import com.example.mlbbresearch.vision.Camp
 import com.example.mlbbresearch.vision.HudInfo
 import com.example.mlbbresearch.vision.MapTower
@@ -48,7 +49,9 @@ class GameState(
     val enemyBase: Pair<Float, Float>? = null,
     val allyWaves: List<Pair<Float, Float>> = emptyList(),
     val allyTowers: List<Pair<Float, Float>> = emptyList(),
-    val enemyWaves: List<Pair<Float, Float>> = emptyList()
+    val enemyWaves: List<Pair<Float, Float>> = emptyList(),
+    val bushes: List<Bush> = emptyList(),
+    val inBush: Boolean = false
 ) {
     val creeps: List<Seen> get() = monsters.filter { !it.hero }
     val boss: Seen? get() = monsters.filter { it.hero }.minByOrNull { distToSelf(it.x, it.y) }
