@@ -7,13 +7,14 @@ import com.example.mlbbresearch.game.GameStateTracker
 import com.example.mlbbresearch.game.Lane
 import com.example.mlbbresearch.game.LaneLogic
 import com.example.mlbbresearch.game.HeroProfile
+import com.example.mlbbresearch.game.JungleNav
 import com.example.mlbbresearch.game.Phase
 import com.example.mlbbresearch.game.UltRule
 import com.example.mlbbresearch.vision.Seen
 import com.example.mlbbresearch.vision.Track
 import kotlin.math.hypot
 
-enum class Intent { IDLE, LANE_CLEAR, ENGAGE, RETREAT, RECALL, PUSH, GROUP, IMITATE, OBJECTIVE, JUNGLE }
+enum class Intent { IDLE, LANE_CLEAR, ENGAGE, RETREAT, RECALL, REGEN, PUSH, GROUP, IMITATE, OBJECTIVE, JUNGLE }
 
 // What the fast engine wants to do right now. Movement is a direction on screen.
 class TacticalDecision(
@@ -45,11 +46,14 @@ object TacticalEngine {
     private var held: Intent = Intent.IDLE
     private var heldSince = 0L
     private var recallUntil = 0L
+    private var regenUntil = 0L
 
     fun reset() {
         held = Intent.IDLE
         heldSince = 0L
         recallUntil = 0L
+        regenUntil = 0L
+        JungleNav.reset()
     }
 
     fun decide(s: GameState, p: HeroProfile, plan: StrategyPlan, learnedBias: Float): TacticalDecision {
@@ -94,9 +98,27 @@ object TacticalEngine {
             }
             recallUntil = 0L
         }
-        if (hp in 0f..0.35f && s.enemiesWithin(0.9f).isEmpty()) {
+        val safe = s.enemiesWithin(0.9f).isEmpty()
+        if (Cfg.useRecall && hp in 0f..Cfg.recallHpPct / 100f && safe) {
+            // Recall channels ~6 s: stand still; an enemy showing up cancels it (step 1 / above)
+            regenUntil = 0L
             recallUntil = now + 8000
             return TacticalDecision(Intent.RECALL, 0f, 0f, listOf("recall"), -1f, -1f, "-", -1f, -1, "low HP, safe to recall")
+        }
+
+        // ---- 2b. Regen: heal over a few seconds when hurt but not low enough to go home ----
+        if (now < regenUntil) {
+            if (safe && hp < 0.98f) {
+                return TacticalDecision(Intent.REGEN, 0f, 0f, emptyList(), -1f, -1f, "-", -1f, -1, "regenerating")
+            }
+            regenUntil = 0L
+        }
+        if (Cfg.useRegen && hp in 0f..Cfg.regenHpPct / 100f && safe && s.minionsWithin(0.5f).isEmpty() &&
+            CooldownTracker.ready("regen", p)
+        ) {
+            regenUntil = now + 5000
+            return TacticalDecision(Intent.REGEN, 0f, 0f, listOf("regen"), -1f, -1f, "-", -1f, -1,
+                "HP ${(hp * 100).toInt()}%, using Regen")
         }
 
         // ---- 3. engage an enemy hero ----
@@ -148,6 +170,15 @@ object TacticalEngine {
             if (s.distToSelf(ax, ay) > 0.2f) {
                 val (mx, my) = toward(s, ax, ay)
                 return hold(now, TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roaming with allies"))
+            }
+        }
+
+        // ---- 6b. jungler: walk the jungle path to the next camp (from the minimap), not the lanes ----
+        if (s.lane == Lane.JUNGLE && Cfg.jungleRoute && threat.isEmpty()) {
+            val nav = JungleNav.direction(s)
+            if (nav != null) {
+                return hold(now, TacticalDecision(Intent.JUNGLE, nav.first, nav.second, emptyList(), -1f, -1f, "-", -1f, -1,
+                    "jungle path: ${nav.third}"))
             }
         }
 

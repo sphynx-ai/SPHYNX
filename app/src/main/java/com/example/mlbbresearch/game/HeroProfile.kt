@@ -114,7 +114,7 @@ object HeroDb {
         val name = hero ?: "Unknown"
         val role = role(hero)
         val dmg = damage(hero)
-        val cds = mapOf("s1" to 6f, "s2" to 8f, "ult" to 35f, "spell" to 100f, "recall" to 0f)
+        val cds = mapOf("s1" to 6f, "s2" to 8f, "ult" to 35f, "spell" to 100f, "recall" to 0f, "regen" to 40f)
         val base = when (role) {
             Role.TANK -> HeroProfile(name, role, dmg, 0.16f, 0.45f, 0.22f, listOf("s1", "s2", "ult"), "s1", null, UltRule.TEAMFIGHT, cds)
             Role.FIGHTER -> HeroProfile(name, role, dmg, 0.16f, 0.42f, 0.28f, listOf("s1", "s2", "ult"), "s2", null, UltRule.ENGAGE, cds)

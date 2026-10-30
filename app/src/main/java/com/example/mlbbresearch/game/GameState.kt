@@ -1,5 +1,6 @@
 package com.example.mlbbresearch.game
 
+import com.example.mlbbresearch.vision.Camp
 import com.example.mlbbresearch.vision.HudInfo
 import com.example.mlbbresearch.vision.Seen
 import com.example.mlbbresearch.vision.Track
@@ -39,7 +40,9 @@ class GameState(
     val spell: String? = null,                // your battle spell, if known
     val lane: Lane = Lane.MID,
     val matchSec: Int = -1,                   // seconds since the match started, -1 unknown
-    val sinceSpawnMs: Long = Long.MAX_VALUE   // since you last (re)spawned in base
+    val sinceSpawnMs: Long = Long.MAX_VALUE,  // since you last (re)spawned in base
+    val minimapSelf: Pair<Float, Float>? = null,   // your icon on the minimap (0..1 inside the map)
+    val camps: List<Camp> = emptyList()            // your side's jungle camps still up
 ) {
     val creeps: List<Seen> get() = monsters.filter { !it.hero }
     val boss: Seen? get() = monsters.filter { it.hero }.minByOrNull { distToSelf(it.x, it.y) }

@@ -545,6 +545,21 @@ class OverlayManager(private val ctx: Context) {
                 }
             }
 
+            // where the AI thinks you are on the minimap, and the jungle camps it can walk to
+            val gs = com.example.mlbbresearch.game.GameStateTracker.state
+            if (Cfg.showDetections && AiRuntime.anyOn() && now - gs.ts < 1000) {
+                val (ml, mt) = Layout.get("mapTL")
+                val (mr, mb) = Layout.get("mapBR")
+                fun mx(f: Float) = (ml + f * (mr - ml)) * w
+                fun my(f: Float) = (mt + f * (mb - mt)) * h
+                boxPaint.color = Color.parseColor("#CE93D8")
+                for (cp in gs.camps) c.drawCircle(mx(cp.x), my(cp.y), if (cp.buff) 7f * density else 4f * density, boxPaint)
+                gs.minimapSelf?.let {
+                    boxPaint.color = Color.WHITE
+                    c.drawCircle(mx(it.first), my(it.second), 9f * density, boxPaint)
+                }
+            }
+
             // calibration markers
             if (markersOn) {
                 boxPaint.color = Color.parseColor("#FFD600")

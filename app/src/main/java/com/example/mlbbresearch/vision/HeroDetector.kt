@@ -134,9 +134,18 @@ object HeroDetector {
             var x = bl.maxX + 1
             val limit = min(w - 1, bl.maxX + bw * 6)
             val firstLum = if (x < w) lum(px[cy * w + x]) else 0
+            fun emptyAt(xx: Int): Boolean {
+                val p = px[cy * w + xx]
+                return isEmptyBar(p) && abs(lum(p) - firstLum) <= 30 && framed(px, w, h, bl, xx)
+            }
             while (x <= limit) {
-                val p = px[cy * w + x]
-                if (!isEmptyBar(p) || abs(lum(p) - firstLum) > 30 || !framed(px, w, h, bl, x)) break
+                if (!emptyAt(x)) {
+                    // the bar has thin black tick marks every few hundred HP: step over them
+                    val skip = (1..3).firstOrNull { x + it <= limit && emptyAt(x + it) } ?: break
+                    empty += skip
+                    x += skip
+                    continue
+                }
                 empty++
                 x++
             }

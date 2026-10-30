@@ -97,6 +97,8 @@ object ActionExecutor {
         }
         perform(acts)
 
+        if ("regen" in d.casts) note("Regen")
+        if ("recall" in d.casts) note("Recall")
         val key = d.intent.name + d.casts.filter { it != "attack" }.joinToString()
         val now = System.currentTimeMillis()
         if (key != lastLogged || now - lastLoggedAt > 3000) {

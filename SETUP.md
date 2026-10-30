@@ -75,6 +75,22 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
   - Routes from base: EXP walks up, then right. Gold walks right, then up. Mid uses the push direction.
     Roam follows the team. Jungle farms monsters.
 
+## Regen, Recall and the jungle path (Player page)
+
+- **Regen**: used when your HP is below the set level (default 60%) and no enemy hero or minion is close. The hero
+  stands still for 5 s while it heals.
+- **Recall**: used below the recall level (default 35%) when no enemy is near. The hero stands still while it channels.
+  If an enemy comes close, Regen and Recall are cancelled.
+- **Jungle path**: when you jungle (or Retribution makes you jungle), the hero walks from camp to camp using the
+  minimap. It does not walk a lane.
+  - It finds your icon on the minimap by its green ring, and finds your side's camps by their icons (magenta buffs,
+    small green / cyan camps).
+  - It goes to buffs first in the opening, then to the nearest camp still up.
+  - It skips a camp that turns out to be empty, and steps sideways if it gets stuck on a wall.
+  - Calibrate "Minimap: top-left / bottom-right corner of the map" on the Setup page. Auto-detect sets them too.
+- Second bars under a hero's HP bar (passive, energy, mana) are no longer mistaken for units, and the HP reading
+  skips the tick marks on the bar.
+
 ## Combos (Player page)
 
 - In a fight the Player presses the hero's combo in order, with short pauses. It does not press every ready skill at
