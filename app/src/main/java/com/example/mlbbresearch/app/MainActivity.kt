@@ -945,7 +945,7 @@ class MainActivity : Activity() {
     // =====================================================================
 
     private fun metaPage() {
-        text("Online meta: Groq (model groq/compound) searches the web (patch notes, hero adjustments, tier lists, guides) and returns the " +
+        text("Online meta: Groq (model openai/gpt-oss-120b with browser search) searches the web (patch notes, hero adjustments, tier lists, guides) and returns the " +
             "current build, emblem, battle spell, lane, combo, dash skill, laning / jungle / rotation tips and draft picks. " +
             "They are saved on the phone: the Player, Builder and Drafter use them offline. Your own settings still win.", 13f)
         title("GROQ API")
@@ -953,7 +953,7 @@ class MainActivity : Activity() {
         btn("Open the Groq console (API key page)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) }
         val keyBox = field("API key", Cfg.groqKey, false) { Cfg.groqKey = it.trim() }
         keyBox.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-        field("Model (groq/compound searches the web; change it if Groq renames it)", Cfg.groqModel, false) { if (it.isNotBlank()) Cfg.groqModel = it.trim() }
+        field("Model (openai/gpt-oss-120b or -20b search the web; change it if Groq retires it)", Cfg.groqModel, false) { if (it.isNotBlank()) Cfg.groqModel = it.trim() }
         switch("Use the online meta in the app", Cfg.useOnlineMeta) { Cfg.useOnlineMeta = it }
         switch("Auto-update the hero I play when its meta is old", Cfg.onlineAuto) { Cfg.onlineAuto = it }
         field("Old after (days)", Cfg.metaMaxAgeDays.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.metaMaxAgeDays = v.coerceIn(1, 60) } }
