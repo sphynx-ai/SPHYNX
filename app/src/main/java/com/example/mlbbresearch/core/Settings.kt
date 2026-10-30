@@ -44,6 +44,11 @@ object Cfg {
     var autoUpgradeSkills: Boolean get() = b("auto_upgrade", true); set(v) = put("auto_upgrade", v)
     // ult first, then the others in this order (comma separated: ult,s1,s2)
     var upgradeOrder: String get() = s("upgrade_order", "ult,s1,s2"); set(v) = put("upgrade_order", v)
+    var useRecall: Boolean get() = b("use_recall", true); set(v) = put("use_recall", v)
+    var recallHpPct: Int get() = i("recall_hp", 35); set(v) = put("recall_hp", v)
+    var useRegen: Boolean get() = b("use_regen", true); set(v) = put("use_regen", v)
+    var regenHpPct: Int get() = i("regen_hp", 60); set(v) = put("regen_hp", v)
+    var jungleRoute: Boolean get() = b("jungle_route", true); set(v) = put("jungle_route", v)
     var playerQuickBuy: Boolean get() = b("player_qb", true); set(v) = put("player_qb", v)
     var smoothJoystick: Boolean get() = b("smooth_joy", true); set(v) = put("smooth_joy", v)
 

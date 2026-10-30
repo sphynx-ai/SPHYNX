@@ -192,7 +192,9 @@ object GameStateTracker {
             spell = spell(),
             lane = lane().first,
             matchSec = if (matchStartAt == 0L) -1 else ((now - matchStartAt) / 1000).toInt(),
-            sinceSpawnMs = if (spawnAt == 0L) Long.MAX_VALUE else now - spawnAt
+            sinceSpawnMs = if (spawnAt == 0L) Long.MAX_VALUE else now - spawnAt,
+            minimapSelf = if (onMap) null else v.minimap.self,
+            camps = if (onMap) emptyList() else v.minimap.camps
         )
         state = s
         CooldownTracker.observe(v)

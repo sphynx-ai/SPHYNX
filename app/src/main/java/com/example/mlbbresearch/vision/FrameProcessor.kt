@@ -70,10 +70,10 @@ object FrameProcessor {
 
         frameNo++
         HeroDetector.neutralOn = Cfg.detectMonsters
-        val seen = HeroDetector.scan(
+        val seen = withoutAttachedBars(HeroDetector.scan(
             px, w, h, hud + ScreenMasks.overlay,
             Cfg.heroBarMinWidthPct / 100f, Cfg.bodyBelowBarPct / 100f
-        )
+        ))
         // you: the green hero bar closest to the centre of the screen
         val self = seen.filter { it.team == Team.SELF }
             .minByOrNull { (it.x - 0.5f) * (it.x - 0.5f) + (it.y - 0.5f) * (it.y - 0.5f) }
@@ -115,6 +115,19 @@ object FrameProcessor {
             fpsStart = t0
         }
         return result
+    }
+
+    // Many heroes have a second bar right under their HP bar (passive, energy, mana, e.g. Thamuz's
+    // red passive bar). It is part of that hero, not a unit: drop any bar that starts inside a
+    // hero bar's width and sits just below it.
+    private fun withoutAttachedBars(all: List<Seen>): List<Seen> {
+        val heroes = all.filter { it.hero || it.team == Team.SELF }
+        return all.filter { b ->
+            heroes.none { a ->
+                a !== b && b.barTop >= a.barBottom - 0.002f && b.barTop - a.barBottom <= 0.03f &&
+                    b.barLeft >= a.barLeft - 0.01f && b.barLeft <= a.barRight
+            }
+        }
     }
 
     private fun heroIcons(px: IntArray, w: Int, h: Int): List<FloatArray>? {

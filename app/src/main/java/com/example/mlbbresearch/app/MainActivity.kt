@@ -613,6 +613,13 @@ class MainActivity : Activity() {
             "roam" to "Roam (stay with the team)", "jungle" to "Jungle"
         ), Cfg.lane) { Cfg.lane = it }
         switch("Retribution equipped = always jungle", Cfg.retriMeansJungle) { Cfg.retriMeansJungle = it }
+        switch("Jungler walks the jungle path (camp to camp, from the minimap)", Cfg.jungleRoute) { Cfg.jungleRoute = it }
+        val jungleInfo = text("", 13f)
+        upd {
+            val st = GameStateTracker.state
+            jungleInfo.text = "Minimap: you ${if (st.minimapSelf != null) "found" else "not found"}, " +
+                "${st.camps.size} of your camps up (${st.camps.count { it.buff }} buffs)\nJungle path: ${com.example.mlbbresearch.game.JungleNav.status}"
+        }
         val laneInfo = text("", 13f)
         upd {
             val (lane, why) = GameStateTracker.lane()
@@ -715,6 +722,14 @@ class MainActivity : Activity() {
             if (parts.isNotEmpty()) Cfg.upgradeOrder = parts.joinToString(",")
         }
         switch("Buy items (taps the quick-buy item top right when it shows)", Cfg.playerQuickBuy) { Cfg.playerQuickBuy = it }
+
+        title("REGEN & RECALL")
+        switch("Use Regen when hurt and no enemy is near", Cfg.useRegen) { Cfg.useRegen = it }
+        field("Regen below HP (%)", Cfg.regenHpPct.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.regenHpPct = v.coerceIn(10, 95) } }
+        switch("Recall to base when low and no enemy is near", Cfg.useRecall) { Cfg.useRecall = it }
+        field("Recall below HP (%)", Cfg.recallHpPct.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.recallHpPct = v.coerceIn(5, 80) } }
+        text("The hero stands still while Regen / Recall channel; an enemy coming close cancels them. " +
+            "Calibrate the Regen and Recall buttons on the Setup page.", 12f, color = "#9AA0A6")
         text("Calibrate 'Skill upgrade (+)' and 'Quick-buy item' on the Setup page. Buying waits until no enemy is close.", 12f, color = "#9AA0A6")
 
         title("LEARN FROM ME")

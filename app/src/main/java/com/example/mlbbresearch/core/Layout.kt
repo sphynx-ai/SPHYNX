@@ -27,6 +27,8 @@ object Layout {
         Control("regen", "Regen", 0.57f, 0.89f),
         Control("quickBuy", "Quick-buy item (top right)", 0.873f, 0.155f),
         Control("activeItem", "Active item button", 0.93f, 0.31f),
+        Control("mapTL", "Minimap: top-left corner of the map", 0.04f, 0.0f),
+        Control("mapBR", "Minimap: bottom-right corner of the map", 0.19f, 0.322f),
         Control("shopOpen", "Shop button", 0.18f, 0.29f),
         Control("shopClose", "Shop close (X)", 0.86f, 0.105f, "shop"),
         Control("shopBuy", "Shop: Purchase", 0.815f, 0.89f, "shop"),
