@@ -1,6 +1,8 @@
 package com.example.mlbbresearch.game
 
 import com.example.mlbbresearch.core.Cfg
+import com.example.mlbbresearch.core.Diag
+import com.example.mlbbresearch.vision.IconMemory
 import com.example.mlbbresearch.vision.ScreenHint
 import com.example.mlbbresearch.vision.VisionResult
 
@@ -27,21 +29,88 @@ object GameStateTracker {
     @Volatile var myTeam: List<String> = emptyList()
     @Volatile var enemyTeam: List<String> = emptyList()
     @Volatile var draftedHero: String? = null      // locked in during the draft
-    @Volatile var guessedHero: String? = null      // recognised in game
+    @Volatile var guessedHero: String? = null      // recognised in game by Gemma
+    @Volatile var iconHero: String? = null         // recognised from the skill icons (IconMemory)
+    @Volatile var gemmaSpell: String? = null       // battle spell read by Gemma this match
+    @Volatile var iconSpell: String? = null        // battle spell recognised from its icon
+    @Volatile var lastHeroIcons: List<FloatArray>? = null
+        private set
+    @Volatile var lastSpellIcon: FloatArray? = null
+        private set
+    @Volatile var matchStartAt = 0L
+        private set
+    @Volatile var spawnAt = 0L
+        private set
     @Volatile private var items = -1
     @Volatile private var gold = -1
     @Volatile private var itemsGoldAt = 0L
 
-    fun ownHero(): String? {
-        val manual = HeroDb.match(Cfg.myHero)
-        return manual ?: draftedHero ?: guessedHero
-    }
+    // What you are really playing comes first: the icons on screen, then the hero picked this
+    // match, then the name you typed, then Gemma's in-game guess.
+    fun ownHero(): String? = iconHero ?: draftedHero ?: HeroDb.match(Cfg.myHero) ?: guessedHero
 
     fun ownHeroSource(): String = when {
-        HeroDb.match(Cfg.myHero) != null -> "set by you"
-        draftedHero != null -> "from the draft"
+        iconHero != null -> "recognised from the skill icons"
+        draftedHero != null -> "picked this match"
+        HeroDb.match(Cfg.myHero) != null -> "typed by you"
         guessedHero != null -> "recognised by Gemma"
         else -> "unknown"
+    }
+
+    // Your battle spell: chosen by you, else read by Gemma, else recognised from the icon
+    fun spell(): String? = SpellDb.match(Cfg.mySpell) ?: gemmaSpell ?: iconSpell
+
+    fun spellSource(): String = when {
+        SpellDb.match(Cfg.mySpell) != null -> "chosen by you"
+        gemmaSpell != null -> "read by Gemma"
+        iconSpell != null -> "recognised from the icon"
+        else -> "unknown"
+    }
+
+    fun lane(): Pair<Lane, String> = LaneLogic.effective(ownHero(), spell())
+
+    // you are back in base (respawn, recall): the lane route starts again
+    fun markSpawn() { spawnAt = System.currentTimeMillis() }
+
+    // "This is my hero / spell now": label what the icons look like right now
+    fun teachHero(name: String): Boolean {
+        val sig = lastHeroIcons ?: return false
+        IconMemory.learnHero(name, sig)
+        iconHero = name
+        return true
+    }
+
+    fun teachSpell(name: String): Boolean {
+        val p = lastSpellIcon ?: return false
+        IconMemory.learnSpell(name, p)
+        iconSpell = name
+        return true
+    }
+
+    private fun recognise(v: VisionResult) {
+        v.heroIcons?.let { sig ->
+            lastHeroIcons = sig
+            val m = IconMemory.matchHero(sig)
+            if (m != null && m.second < IconMemory.HERO_MATCH) {
+                if (iconHero != m.first) Diag.info("Recognised your hero from the skill icons: ${m.first}")
+                iconHero = m.first
+            }
+            // learn the icons of a hero seen picked / read THIS match (never against the icons;
+            // never from the typed name, which may be from an older match)
+            val teacher = draftedHero ?: guessedHero
+            if (teacher != null && (iconHero == null || iconHero == teacher) && IconMemory.learnHero(teacher, sig)) {
+                Diag.info("Learned the skill icons of $teacher")
+            }
+        }
+        v.spellIcon?.let { p ->
+            lastSpellIcon = p
+            val m = IconMemory.matchSpell(p)
+            if (m != null && m.second < IconMemory.SPELL_MATCH) iconSpell = m.first
+            val teacher = gemmaSpell
+            if (teacher != null && (iconSpell == null || iconSpell == teacher) && IconMemory.learnSpell(teacher, p)) {
+                Diag.info("Learned the $teacher icon")
+            }
+        }
     }
 
     fun reportScreen(p: Phase) {
@@ -57,6 +126,14 @@ object GameStateTracker {
 
     fun update(v: VisionResult): GameState {
         val now = v.ts
+        val wasInMatch = now - lastInGame < 120_000
+        val before = state.phase
+        if (v.self != null && !wasInMatch) {
+            // first look at your hero after hero select / loading: the match clock starts
+            matchStartAt = now
+            spawnAt = now
+        }
+        recognise(v)
         if (v.self != null) {
             lastSelfSeen = now
             lastInGame = now
@@ -86,17 +163,22 @@ object GameStateTracker {
             lastInGame = 0L
         }
         if (phase != state.phase) phaseSince = now
+        if (phase == Phase.IN_GAME && before == Phase.DEAD) spawnAt = now
         if (phase == Phase.DEAD) lastInGame = now
+
+        // big map open: its portraits and icons are not units on the field
+        val onMap = phase == Phase.MAP
+        fun field(x: Float, y: Float) = !onMap || !(x < 0.45f && y < 0.85f)
 
         val s = GameState(
             ts = now,
             phase = phase,
             self = v.self,
             selfHp = v.self?.hp ?: -1f,
-            allies = v.allies,
-            enemies = v.enemyHeroes,
-            enemyMinions = v.enemyMinions,
-            allyMinions = v.allyMinions,
+            allies = v.allies.filter { field(it.x, it.y) },
+            enemies = v.enemyHeroes.filter { field(it.x, it.y) },
+            enemyMinions = v.enemyMinions.filter { field(it.x, it.y) },
+            allyMinions = v.allyMinions.filter { field(it.x, it.y) },
             minimapEnemies = v.minimap.enemies,
             aspect = v.aspect,
             ownHero = ownHero(),
@@ -105,7 +187,12 @@ object GameStateTracker {
             items = items,
             gold = gold,
             itemsGoldAgeMs = if (itemsGoldAt == 0L) Long.MAX_VALUE else now - itemsGoldAt,
-            hud = v.hud
+            hud = v.hud,
+            monsters = v.monsters.filter { field(it.x, it.y) },
+            spell = spell(),
+            lane = lane().first,
+            matchSec = if (matchStartAt == 0L) -1 else ((now - matchStartAt) / 1000).toInt(),
+            sinceSpawnMs = if (spawnAt == 0L) Long.MAX_VALUE else now - spawnAt
         )
         state = s
         CooldownTracker.observe(v)
@@ -122,6 +209,10 @@ object GameStateTracker {
         enemyTeam = emptyList()
         draftedHero = null
         guessedHero = null
+        iconHero = null
+        gemmaSpell = null
+        iconSpell = null
+        matchStartAt = 0L
         items = -1
         gold = -1
         itemsGoldAt = 0L

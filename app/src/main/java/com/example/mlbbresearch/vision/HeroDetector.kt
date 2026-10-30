@@ -4,12 +4,13 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-enum class Team { SELF, ALLY, ENEMY }
+// NEUTRAL = jungle monsters, turtle and lord (orange / yellow HP bars)
+enum class Team { SELF, ALLY, ENEMY, NEUTRAL }
 
 // One unit found on screen. All positions are fractions of the frame (0..1).
 data class Seen(
     val team: Team,
-    val hero: Boolean,       // false = minion / creep
+    val hero: Boolean,       // false = minion / creep; for NEUTRAL: true = turtle / lord (very wide bar)
     val x: Float,            // body position (below the HP bar)
     val y: Float,
     val hp: Float,           // 0..1 read from how full the bar is
@@ -19,7 +20,7 @@ data class Seen(
     val barBottom: Float
 )
 
-// Finds HP bars by colour: green = you, blue = allies, red = enemies.
+// Finds HP bars by colour: green = you, blue = allies, red = enemies, orange/yellow = monsters.
 // Hero bars are wider than minion bars. No AI needed, so it runs at full frame rate.
 // Tuning lives in Cfg (hero bar width) and the constants below.
 object HeroDetector {
@@ -28,6 +29,10 @@ object HeroDetector {
     private const val RED = 1
     private const val BLUE = 2
     private const val GREEN = 3
+    private const val NEUTRAL = 4
+
+    // off = monsters are not looked for (set by Cfg.detectMonsters)
+    @Volatile var neutralOn = true
 
     private class Blob(val cls: Int, var minX: Int, var maxX: Int, val minY: Int, var maxY: Int, var count: Int)
 
@@ -38,6 +43,7 @@ object HeroDetector {
         if (r >= 170 && g <= 95 && b <= 95 && r - max(g, b) >= 95) return RED
         if (b >= 165 && r <= 110 && g <= 205 && b - r >= 85) return BLUE
         if (g >= 160 && r <= 145 && b <= 125 && g - max(r, b) >= 55) return GREEN
+        if (neutralOn && r >= 200 && g in 110..215 && b <= 90 && r - g >= 25 && g - b >= 60) return NEUTRAL
         return NONE
     }
 
@@ -136,8 +142,9 @@ object HeroDetector {
             }
             val total = bw + empty
             val hp = (bw.toFloat() / total).coerceIn(0f, 1f)
-            val hero = total >= heroMinW
-            val team = when (bl.cls) { GREEN -> Team.SELF; BLUE -> Team.ALLY; else -> Team.ENEMY }
+            val team = when (bl.cls) { GREEN -> Team.SELF; BLUE -> Team.ALLY; NEUTRAL -> Team.NEUTRAL; else -> Team.ENEMY }
+            // monsters: a bar about twice a hero's width belongs to the turtle or the lord
+            val hero = if (team == Team.NEUTRAL) total >= heroMinW * 2f else total >= heroMinW
             if (team == Team.SELF && !hero) continue
             val left = bl.minX.toFloat() / w
             val right = (bl.minX + total).toFloat() / w

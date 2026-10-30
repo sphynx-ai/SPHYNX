@@ -47,6 +47,26 @@ object Cfg {
     var playerQuickBuy: Boolean get() = b("player_qb", true); set(v) = put("player_qb", v)
     var smoothJoystick: Boolean get() = b("smooth_joy", true); set(v) = put("smooth_joy", v)
 
+    // ---- hero, spell, lane, combos, objectives ----
+    // battle spell: "auto" = recognise it, or a spell name you chose
+    var mySpell: String get() = s("my_spell", "auto"); set(v) = put("my_spell", v)
+    // lane: auto | exp | gold | mid | roam | jungle
+    var lane: String get() = s("lane", "auto"); set(v) = put("lane", v)
+    var retriMeansJungle: Boolean get() = b("retri_jungle", true); set(v) = put("retri_jungle", v)
+    var laneTravelSec: Int get() = i("lane_travel", 12); set(v) = put("lane_travel", v)
+    var useCombos: Boolean get() = b("combos", true); set(v) = put("combos", v)
+    var aimSkills: Boolean get() = b("aim_skills", true); set(v) = put("aim_skills", v)
+    var comboUrl: String get() = s("combo_url", "https://mobile-legends.fandom.com/wiki/{hero}"); set(v) = put("combo_url", v)
+    fun heroCombo(hero: String): String? = prefs.getString("combo_" + hero.lowercase(), null)
+    fun setHeroCombo(hero: String, v: String?) {
+        if (v == null) prefs.edit().remove("combo_" + hero.lowercase()).apply() else put("combo_" + hero.lowercase(), v)
+    }
+    var detectMonsters: Boolean get() = b("monsters", true); set(v) = put("monsters", v)
+    var takeObjectives: Boolean get() = b("objectives", true); set(v) = put("objectives", v)
+    // Retribution on a monster when its HP is below this (%), turtle / lord and small creeps
+    var retriBossPct: Int get() = i("retri_boss", 12); set(v) = put("retri_boss", v)
+    var retriCreepPct: Int get() = i("retri_creep", 35); set(v) = put("retri_creep", v)
+
     // ---- match type: "standard" (pick hero, spell, emblem) or "ranked" (ban & pick) ----
     var matchMode: String get() = s("match_mode", "standard"); set(v) = put("match_mode", v)
     val ranked: Boolean get() = matchMode == "ranked"

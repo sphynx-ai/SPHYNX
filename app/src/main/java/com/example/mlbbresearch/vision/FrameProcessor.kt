@@ -20,6 +20,9 @@ class VisionResult(
     val skillBrightness: Map<String, Float>,
     val hint: ScreenHint,            // which MLBB screen the colours say this is
     val hud: HudInfo,                // upgrade "+", quick-buy icon, camera motion
+    val heroIcons: List<FloatArray>?,  // fingerprints of Skill 1, Skill 2, Ultimate (about once a second)
+    val spellIcon: FloatArray?,        // fingerprint of the battle spell button
+    val monsters: List<Seen>,          // jungle creeps (hero = false) and turtle / lord (hero = true)
     val processMs: Long
 ) {
     val aspect: Float get() = if (frameH == 0) 1.78f else frameW.toFloat() / frameH
@@ -44,6 +47,7 @@ object FrameProcessor {
 
     private val enemyTracker = EnemyDetector()
     private var lastId = 0L
+    private var frameNo = 0L
     private var buffer: IntArray? = null
 
     @Volatile var latest: VisionResult? = null
@@ -64,6 +68,8 @@ object FrameProcessor {
         val h = snap.height
         val px = snap.pixels
 
+        frameNo++
+        HeroDetector.neutralOn = Cfg.detectMonsters
         val seen = HeroDetector.scan(
             px, w, h, hud + ScreenMasks.overlay,
             Cfg.heroBarMinWidthPct / 100f, Cfg.bodyBelowBarPct / 100f
@@ -95,6 +101,9 @@ object FrameProcessor {
             skillBrightness = brightness,
             hint = ScreenReader.classify(px, w, h),
             hud = if (self != null || trackPlayer) ScreenReader.hud(px, w, h, trackPlayer) else HudInfo.NONE,
+            heroIcons = if (self != null && frameNo % 12 == 0L) heroIcons(px, w, h) else null,
+            spellIcon = if (self != null && frameNo % 12 == 6L) IconMemory.print(px, w, h, "spell", 0.016f) else null,
+            monsters = seen.filter { it.team == Team.NEUTRAL },
             processMs = System.currentTimeMillis() - t0
         )
         latest = result
@@ -106,6 +115,11 @@ object FrameProcessor {
             fpsStart = t0
         }
         return result
+    }
+
+    private fun heroIcons(px: IntArray, w: Int, h: Int): List<FloatArray>? {
+        val out = listOf("s1", "s2", "ult").mapNotNull { IconMemory.print(px, w, h, it, 0.024f) }
+        return if (out.size == 3) out else null
     }
 
     fun reset() {

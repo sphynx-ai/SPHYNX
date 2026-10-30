@@ -11,6 +11,7 @@ import com.example.mlbbresearch.game.GameStateTracker
 import com.example.mlbbresearch.game.HeroDb
 import com.example.mlbbresearch.game.Phase
 import com.example.mlbbresearch.game.Role
+import com.example.mlbbresearch.game.SpellDb
 import org.json.JSONObject
 
 // Decides WHEN to ask Gemma and what to ask. Event-driven: Gemma is only consulted
@@ -33,6 +34,7 @@ object StrategicAdvisor {
     private var lastStrategy = 0L
     private var lastDraft = 0L
     private var lastBuildRead = 0L
+    private var lastIdentify = 0L
     private var lastEnemyCount = 0
     private var lastHpBand = 2
     private var buildAdviceKey = ""
@@ -60,6 +62,13 @@ object StrategicAdvisor {
             runDraft(builderOn)
             return
         }
+        // 1b. Which hero / battle spell did I pick? (hero select and loading screens)
+        val pickPhase = s.phase == Phase.DRAFT || s.phase == Phase.LOADING
+        if ((playerOn || builderOn) && pickPhase && GameStateTracker.draftedHero == null && now - lastIdentify >= 6000) {
+            lastIdentify = now
+            runIdentify(s.phase)
+            return
+        }
         // 2. Builder: primary + counter build text (once per hero / enemy line-up)
         if (builderOn) {
             val hero = GameStateTracker.ownHero()
@@ -71,8 +80,9 @@ object StrategicAdvisor {
             }
         }
         // 3. Builder / hero ID: read items, gold and your hero from the screen
-        val needHero = GameStateTracker.ownHero() == null && (playerOn || builderOn)
-        if (inGame && (builderOn || needHero) && now - lastBuildRead >= Cfg.buildEverySec * 1000L) {
+        val needHero = (GameStateTracker.ownHero() == null || GameStateTracker.spell() == null) && (playerOn || builderOn)
+        val every = if (builderOn) Cfg.buildEverySec * 1000L else 15_000L
+        if (inGame && (builderOn || needHero) && now - lastBuildRead >= every) {
             lastBuildRead = now
             runScreenRead()
             return
@@ -182,6 +192,25 @@ object StrategicAdvisor {
         }
     }
 
+    // Hero select: the picked hero's name is written at the top; loading: my card is the one
+    // with my player name. Also the battle spell. Works in standard and ranked matches.
+    private suspend fun runIdentify(phase: Phase) {
+        if (!GemmaEngine.visionOk) return
+        val img = FrameHub.bitmap() ?: return
+        val where = if (phase == Phase.DRAFT) "This is the hero select screen. The hero I selected has its name written in big letters at the top."
+                    else "This is the loading screen. My card is the first one on the top row, the one with my player name."
+        val prompt = "Mobile Legends: Bang Bang screenshot. $where " +
+            "Reply with ONLY one JSON object, no other words: {\"hero\":\"my hero's name or unknown\",\"spell\":\"my battle spell name or unknown\"}"
+        val reply = ask("which hero did I pick", prompt, img) ?: return
+        val hero = HeroDb.match(Regex("\"hero\"\\s*:\\s*\"([^\"]*)\"").find(reply)?.groupValues?.get(1))
+        val spell = SpellDb.match(Regex("\"spell\"\\s*:\\s*\"([^\"]*)\"").find(reply)?.groupValues?.get(1))
+        if (hero != null) {
+            GameStateTracker.draftedHero = hero
+            Diag.info("Gemma read your picked hero: $hero")
+        }
+        if (spell != null) GameStateTracker.gemmaSpell = spell
+    }
+
     private suspend fun runBuildAdvice(hero: String) {
         val role = HeroDb.role(hero)
         val enemies = GameStateTracker.enemyTeam
@@ -208,10 +237,15 @@ object StrategicAdvisor {
         val img = FrameHub.bitmap() ?: return
         val prompt = "Mobile Legends in-game screenshot. Reply with ONLY one JSON object, no other words: " +
             "{\"hero\":\"name of the hero I control (green health bar near the centre) or unknown\"," +
+            "\"spell\":\"the battle spell name written under the spell button (bottom middle, e.g. Retribution, Flicker)\"," +
             "\"items\":\"number of items I own 0-6, or -1\",\"gold\":\"my gold number, or -1\"}"
         val reply = ask("read items/gold", prompt, img) ?: return
         val r = DecisionParser.screenRead(reply) ?: return
         GameStateTracker.reportItemsGold(r.items, r.gold)
+        if (r.spell != null && GameStateTracker.gemmaSpell == null) {
+            GameStateTracker.gemmaSpell = r.spell
+            Diag.info("Gemma read your battle spell: ${r.spell}")
+        }
         if (r.hero != null && GameStateTracker.ownHero() == null) {
             GameStateTracker.guessedHero = r.hero
             Diag.info("Gemma recognised your hero: ${r.hero}")

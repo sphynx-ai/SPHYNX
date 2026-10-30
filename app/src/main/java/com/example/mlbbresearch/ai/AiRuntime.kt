@@ -148,6 +148,7 @@ object AiRuntime {
         visionJob?.cancel(); tacticJob?.cancel(); strategyJob?.cancel()
         visionJob = null; tacticJob = null; strategyJob = null
         TacticalEngine.reset()
+        ComboRunner.reset()
         StrategicAdvisor.reset()
     }
 
@@ -200,6 +201,8 @@ object AiRuntime {
                     val plan = StrategicAdvisor.plan
                     val bias = Cfg.learnedBias(hero ?: "unknown")
                     var d = TacticalEngine.decide(s, profile, plan, bias)
+                    // fights: play the hero's combo in order instead of pressing everything at once
+                    d = ComboRunner.apply(d, s, profile)
                     // "Play like me": copy your moves, but the survival rules still come first
                     if (Cfg.playLikeMe) {
                         ImitationPolicy.ensureLoaded(hero)
@@ -238,7 +241,10 @@ object AiRuntime {
         if (stdSelectTries >= 2 || stdSelectAt != 0L && now - stdSelectAt < 20_000) return
         stdSelectAt = now
         stdSelectTries++
-        ActionExecutor.standardSelect(HeroDb.match(Cfg.myHero))
+        val hero = HeroDb.match(Cfg.myHero)
+        ActionExecutor.standardSelect(hero)
+        // the AI picked it, so this match's hero is known (and its skill icons get learned)
+        if (!Cfg.dryRun && Cfg.stdPickHero && hero != null) GameStateTracker.draftedHero = hero
     }
 
     // ---------- slow: Gemma, event-driven ----------
@@ -279,13 +285,16 @@ object AiRuntime {
         sb.append("Match: ").append(if (Cfg.ranked) "ranked" else "standard")
         sb.append(" | Phase: ").append(s.phase.label)
         if (s.selfHp >= 0) sb.append(" | my HP ").append((s.selfHp * 100).toInt()).append('%')
-        sb.append("\nHero: ").append(GameStateTracker.ownHero() ?: "unknown")
+        sb.append("\nHero: ").append(GameStateTracker.ownHero() ?: "unknown").append(" (").append(GameStateTracker.ownHeroSource()).append(")")
         sb.append(" | enemies ").append(s.enemies.size).append(" | minions ").append(s.enemyMinions.size)
         if (playerOn) {
             sb.append("\n\nDecision: ").append(ActionExecutor.lastDecision)
             sb.append("\nTarget: ").append(ActionExecutor.lastTarget)
             val p = StrategicAdvisor.plan
             sb.append("\nPlan: ").append(p.plan).append(" (").append("%.1f".format(p.aggression)).append(")")
+            sb.append("\nLane: ").append(s.lane.label).append(" | spell: ").append(s.spell ?: "?")
+            if (Cfg.useCombos) sb.append("\nCombo: ").append(ComboRunner.status)
+            s.boss?.let { sb.append("\nObjective in sight: HP ").append((it.hp * 100).toInt()).append('%') }
         }
         if (playerOn && s.hud.upgradeReady.isNotEmpty()) sb.append("\nCan upgrade: ").append(s.hud.upgradeReady.joinToString())
         if (playerOn && Cfg.playLikeMe) sb.append("\nLike me: ").append(ImitationPolicy.status)

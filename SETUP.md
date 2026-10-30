@@ -57,6 +57,44 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
 - **Phases** recognised from the screen colours: hero select / draft, loading, in game, dead, equipment shop,
   scoreboard, big map. The Player pauses while the shop or the scoreboard is open.
 
+## Your hero, battle spell and lane (Player page)
+
+- **Hero**: the app checks these in order:
+  1. The skill icons on screen. Each hero is learned once.
+  2. The hero picked this match: the AI's own standard pick, or Gemma reading the hero-select / loading screen.
+  3. The name you typed.
+  4. Gemma's guess during the match.
+
+  When the hero is known from a pick, its skill icons are remembered, so after one match the hero is recognised
+  without Gemma. You can also teach it: type the name and tap **This is my hero now** while the Player or
+  Learn from me is running in a match.
+- **Battle spell**: choose it, or leave it on "detect". Gemma reads the name under the spell button, and the icon is
+  remembered for next time. **This is my spell now** teaches the icon by hand.
+- **Lane** (only one switch on): Auto, EXP, Gold, Mid, Roam or Jungle. **Retribution equipped = jungle**.
+  - Auto picks by role: marksman = gold, mage = mid, fighter = EXP, tank/support = roam, assassin = jungle.
+  - Routes from base: EXP walks up, then right. Gold walks right, then up. Mid uses the push direction.
+    Roam follows the team. Jungle farms monsters.
+
+## Combos (Player page)
+
+- In a fight the Player presses the hero's combo in order, with short pauses. It does not press every ready skill at
+  once. Skills are aimed at the target by dragging the skill button.
+- Write a combo as `s1 > s2 > a > ult` (a = basic attack). `s2(500)` waits 500 ms after that step.
+- Which combo is used: yours, then a built-in starting combo (35 heroes, check them against the patch), then a
+  default for the hero's role.
+- **Get my hero's combo online** downloads a guide page and copies the combo written in it. The page comes from the
+  address template (default: the hero's fandom wiki page) or an address you paste. If the page only describes the
+  skills, Gemma works a combo out of them. You can also paste guide text. This is the only time the app uses the
+  internet.
+
+## Jungle, turtle and lord
+
+- Monsters are seen by their orange / yellow HP bars. A bar about twice a hero's width is the turtle or the lord.
+  It is called the turtle before 8:00 and the lord after, counted from when your hero first appears.
+- The Player helps take the turtle or lord when an ally is on it, when you jungle or roam, or when it is below half HP,
+  and only if no enemy hero is near.
+- With Retribution it finishes monsters below the set HP (default: 12% for turtle/lord, 35% for jungle monsters).
+
 ## Learn from me
 
 1. Turn on **Learn from me** (Home or Player page) and play a few matches yourself. The app never touches the screen
