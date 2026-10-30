@@ -78,9 +78,10 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
 ## Online meta with Groq (Meta page)
 
 - Get a free API key at console.groq.com/keys and paste it on the Meta page. It is stored only on the phone.
-- The default model, `groq/compound`, searches the web by itself. It looks for the latest patch notes, hero
-  adjustments, tier lists and guides. Plain models such as `llama-3.3-70b-versatile` answer from memory only.
-  Change the model name if Groq renames it.
+- The default model, `openai/gpt-oss-120b`, searches the web with Groq's built-in browser search tool. It looks
+  for the latest patch notes, hero adjustments, tier lists and guides. `openai/gpt-oss-20b` also searches (faster,
+  less accurate). Other models answer from memory only. Change the model name on the Meta page if Groq retires it.
+  A phone that still has `groq/compound` saved moves to the new default by itself.
 - **Update the patch meta**: patch, top bans, top picks per role.
 - **Update this hero**: build, emblem, battle spell, lane, combo, dash skill, laning / jungle / rotation tips, counters
   and recent buffs / nerfs, with the sources it searched.

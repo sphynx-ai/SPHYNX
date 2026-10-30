@@ -85,8 +85,13 @@ object Cfg {
 
     // ---- online meta (Groq API) ----
     var groqKey: String get() = s("groq_key", ""); set(v) = put("groq_key", v)
-    // groq/compound searches the web; plain models (e.g. llama-3.3-70b-versatile) answer from memory only
-    var groqModel: String get() = s("groq_model", "groq/compound"); set(v) = put("groq_model", v)
+    // openai/gpt-oss-120b (default) and -20b search the web with Groq's browser search tool;
+    // other models answer from memory only. An old saved "groq/compound" moves to the new default.
+    var groqModel: String
+        get() = s("groq_model", DEFAULT_GROQ_MODEL).let { if (it.trim() in OLD_GROQ_MODELS) DEFAULT_GROQ_MODEL else it }
+        set(v) = put("groq_model", v)
+    const val DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
+    private val OLD_GROQ_MODELS = setOf("groq/compound", "groq/compound-mini", "compound-beta", "compound-beta-mini", "")
     var useOnlineMeta: Boolean get() = b("online_meta", true); set(v) = put("online_meta", v)
     var onlineAuto: Boolean get() = b("online_auto", true); set(v) = put("online_auto", v)
     var onlineDraft: Boolean get() = b("online_draft", true); set(v) = put("online_draft", v)

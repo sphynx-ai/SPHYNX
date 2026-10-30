@@ -10,7 +10,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// Online meta through Groq (groq/compound searches the web): the latest patch, hero adjustments, builds,
+// Online meta through Groq (openai/gpt-oss-120b with browser search): the latest patch, hero adjustments, builds,
 // emblems, combos, laning / jungle / rotation tips and draft picks, from current web sources.
 // Results are saved (MetaStore) and used offline by the Player, Builder and Drafter.
 object MetaAdvisor {

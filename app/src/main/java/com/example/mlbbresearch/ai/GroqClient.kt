@@ -8,8 +8,9 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-// Groq API (online, OpenAI-style chat completions). The default model, groq/compound, searches
-// the web by itself, so answers come from current sources (patch notes, meta sites, guides).
+// Groq API (online, OpenAI-style chat completions). The default model, openai/gpt-oss-120b,
+// gets Groq's built-in browser search tool, so answers come from current sources (patch notes,
+// meta sites, guides).
 // Needs your own API key from https://console.groq.com/keys. Only used by the online meta
 // features; the Player keeps playing offline, using what was downloaded.
 object GroqClient {
@@ -25,11 +26,13 @@ object GroqClient {
     suspend fun ask(prompt: String): Pair<String, List<String>> = withContext(Dispatchers.IO) {
         val key = Cfg.groqKey.trim()
         if (key.isEmpty()) throw IllegalStateException("No Groq API key (Meta page)")
-        val model = Cfg.groqModel.trim().ifEmpty { "groq/compound" }
+        val model = Cfg.groqModel.trim().ifEmpty { Cfg.DEFAULT_GROQ_MODEL }
         val body = JSONObject()
             .put("model", model)
             .put("temperature", 0.2)
             .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
+        // the gpt-oss models can search the web through Groq's built-in browser search tool
+        if (model.startsWith("openai/gpt-oss")) body.put("tools", JSONArray().put(JSONObject().put("type", "browser_search")))
         val c = URL("https://api.groq.com/openai/v1/chat/completions").openConnection() as HttpURLConnection
         try {
             c.requestMethod = "POST"
@@ -64,7 +67,8 @@ object GroqClient {
         val sources = ArrayList<String>()
         val tools = msg.optJSONArray("executed_tools") ?: JSONArray()
         for (i in 0 until tools.length()) {
-            val results = tools.optJSONObject(i)?.optJSONObject("search_results")?.optJSONArray("results") ?: continue
+            val results = tools.optJSONObject(i)?.optJSONObject("search_results")?.optJSONArray("results")
+                ?: tools.optJSONObject(i)?.optJSONArray("search_results") ?: continue
             for (j in 0 until results.length()) {
                 val r = results.optJSONObject(j) ?: continue
                 sources.add(r.optString("title", "").ifEmpty { r.optString("url", "") })
