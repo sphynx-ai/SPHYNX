@@ -14,7 +14,9 @@ import com.example.mlbbresearch.game.CooldownTracker
 import com.example.mlbbresearch.game.GameStateTracker
 import com.example.mlbbresearch.game.HeroDb
 import com.example.mlbbresearch.game.Phase
+import com.example.mlbbresearch.learning.DemoRecorder
 import com.example.mlbbresearch.learning.ExperienceRecorder
+import com.example.mlbbresearch.learning.ImitationPolicy
 import com.example.mlbbresearch.learning.PerformanceEvaluator
 import com.example.mlbbresearch.vision.FrameProcessor
 import kotlinx.coroutines.CoroutineScope
@@ -39,6 +41,8 @@ object AiRuntime {
         private set
     @Volatile var builderOn = false
         private set
+    @Volatile var learnOn = false        // "Learn from me": watches you play, never touches
+        private set
     @Volatile var lastError = ""
         private set
 
@@ -46,17 +50,35 @@ object AiRuntime {
     private var tacticJob: Job? = null
     private var strategyJob: Job? = null
 
-    fun anyOn() = playerOn || drafterOn || builderOn
+    // standard match: hero / spell / emblem chosen once per hero-select screen
+    @Volatile private var stdSelectAt = 0L
+    @Volatile private var stdSelectTries = 0
+    // stages that were on when the floating icon paused the AI
+    private var paused: List<String> = emptyList()
+
+    init {
+        GameStateTracker.onNewMatch = { stdSelectAt = 0L; stdSelectTries = 0 }
+    }
+
+    fun anyOn() = playerOn || drafterOn || builderOn || learnOn
 
     // Returns an error message, or null when started
     fun start(stage: String): String? {
         val svc = AccessibilityController.instance ?: return "Turn on the accessibility service first (Setup page)"
-        val needsGemma = stage == "draft" || stage == "build"
-        if (needsGemma && !GemmaEngine.ready) return "Load the Gemma model first (Model page)"
+        if (needsGemma(stage) && !GemmaEngine.ready) return "Load the Gemma model first (Model page)"
         when (stage) {
-            "player" -> playerOn = true
+            "player" -> {
+                playerOn = true
+                if (Cfg.playLikeMe) ImitationPolicy.ensureLoaded(GameStateTracker.ownHero())
+            }
             "draft" -> drafterOn = true
             "build" -> builderOn = true
+            "learn" -> {
+                learnOn = true
+                DemoRecorder.resetSession()
+                DemoRecorder.refreshTotal()
+                FrameProcessor.trackPlayer = true
+            }
             else -> return "unknown stage"
         }
         lastError = ""
@@ -67,11 +89,16 @@ object AiRuntime {
         return null
     }
 
+    // Ranked drafting reads the ban & pick screen with Gemma; standard hero select only taps
+    // calibrated positions, so it works without the model.
+    fun needsGemma(stage: String) = stage == "build" || stage == "draft" && Cfg.ranked
+
     fun stop(stage: String) {
         when (stage) {
-            "player" -> playerOn = false
+            "player" -> { playerOn = false; ActionExecutor.release() }
             "draft" -> drafterOn = false
             "build" -> builderOn = false
+            "learn" -> { learnOn = false; FrameProcessor.trackPlayer = false }
         }
         ActionExecutor.note("$stage stopped")
         if (!anyOn()) stopLoops()
@@ -83,6 +110,9 @@ object AiRuntime {
         playerOn = false
         drafterOn = false
         builderOn = false
+        learnOn = false
+        paused = emptyList()
+        FrameProcessor.trackPlayer = false
         stopLoops()
         ActionExecutor.cancelAll()
         GemmaEngine.cancel()
@@ -95,6 +125,23 @@ object AiRuntime {
                 }
             }
         }
+    }
+
+    // Floating icon's on/off button: pause everything that runs, or resume it (Player by default)
+    fun toggleFromOverlay(): String {
+        if (anyOn()) {
+            paused = listOfNotNull(
+                if (playerOn) "player" else null, if (drafterOn) "draft" else null,
+                if (builderOn) "build" else null, if (learnOn) "learn" else null
+            )
+            for (st in paused) stop(st)
+            ActionExecutor.cancelAll()
+            return "AI paused"
+        }
+        val list = paused.ifEmpty { listOf("player") }
+        val errors = list.mapNotNull { start(it) }
+        paused = emptyList()
+        return if (errors.isEmpty()) "AI on: " + list.joinToString(" + ") else errors.first()
     }
 
     private fun stopLoops() {
@@ -125,6 +172,7 @@ object AiRuntime {
                 val v = FrameProcessor.processNext()
                 if (v != null) {
                     GameStateTracker.update(v)
+                    if (learnOn) DemoRecorder.observe(v)
                     kotlinx.coroutines.yield()
                 } else {
                     delay(15)
@@ -144,21 +192,32 @@ object AiRuntime {
             try {
                 val s = GameStateTracker.state
                 val stale = System.currentTimeMillis() - s.ts > 1500
-                if (playerOn && !stale && s.phase == Phase.IN_GAME) {
+                // the hero still plays with the big map open; shop / scoreboard pause it
+                val inGame = !stale && (s.phase == Phase.IN_GAME || s.phase == Phase.MAP)
+                if (playerOn && inGame) {
                     val hero = s.ownHero
                     val profile = HeroDb.profile(hero)
                     val plan = StrategicAdvisor.plan
                     val bias = Cfg.learnedBias(hero ?: "unknown")
-                    val d = TacticalEngine.decide(s, profile, plan, bias)
+                    var d = TacticalEngine.decide(s, profile, plan, bias)
+                    // "Play like me": copy your moves, but the survival rules still come first
+                    if (Cfg.playLikeMe) {
+                        ImitationPolicy.ensureLoaded(hero)
+                        if (d.intent != Intent.RETREAT && d.intent != Intent.RECALL) ImitationPolicy.decide(s)?.let { d = it }
+                    }
                     ActionExecutor.execute(d)
                     ExperienceRecorder.record(s, d, plan.plan, plan.aggression + bias)
+                    ActionExecutor.maybeUpgrade(s)
+                    if (Cfg.playerQuickBuy) ActionExecutor.maybeQuickBuy(s)
                 } else if (playerOn) {
                     ActionExecutor.execute(TacticalDecision.IDLE)
                 }
-                if (builderOn && !stale && s.phase == Phase.IN_GAME) {
+                if (learnOn && !playerOn && inGame) DemoRecorder.record(s)
+                if (builderOn && inGame) {
                     if (Cfg.qbOn) QuickBuySwap.watch(s)
-                    if (Cfg.autonomous && drafterOn) ActionExecutor.maybeQuickBuy(s)
+                    if (Cfg.autonomous && drafterOn && !(playerOn && Cfg.playerQuickBuy)) ActionExecutor.maybeQuickBuy(s, blind = true)
                 }
+                if (drafterOn && !Cfg.ranked && Cfg.autonomous && !stale) standardSelect(s)
                 PerformanceEvaluator.evaluateDue()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -168,6 +227,18 @@ object AiRuntime {
             }
             delay(200)
         }
+    }
+
+    // Standard match: no bans, so just pick the hero (and optionally spell / emblem) and confirm,
+    // once the hero-select screen has been up for 2.5 s. One retry if it is still there 20 s later.
+    private fun standardSelect(s: com.example.mlbbresearch.game.GameState) {
+        if (s.phase != Phase.DRAFT) return
+        val now = System.currentTimeMillis()
+        if (now - GameStateTracker.phaseSince < 2500) return
+        if (stdSelectTries >= 2 || stdSelectAt != 0L && now - stdSelectAt < 20_000) return
+        stdSelectAt = now
+        stdSelectTries++
+        ActionExecutor.standardSelect(HeroDb.match(Cfg.myHero))
     }
 
     // ---------- slow: Gemma, event-driven ----------
@@ -190,9 +261,10 @@ object AiRuntime {
     fun statusLine(): String = when {
         !anyOn() -> "Stopped"
         else -> "Running: " + listOfNotNull(
-            if (playerOn) "Player" else null,
-            if (drafterOn) "Drafter" else null,
-            if (builderOn) "Builder" else null
+            if (playerOn) (if (Cfg.playLikeMe) "Player (like me)" else "Player") else null,
+            if (drafterOn) (if (Cfg.ranked) "Drafter (ranked)" else "Drafter (standard)") else null,
+            if (builderOn) "Builder" else null,
+            if (learnOn) "Learning from you" else null
         ).joinToString(" + ") + if (Cfg.autonomous && drafterOn && builderOn) " (autonomous${if (Cfg.dryRun) ", dry run" else ""})" else ""
     }
 
@@ -204,7 +276,8 @@ object AiRuntime {
         if (StrategicAdvisor.busyWith.isNotEmpty()) sb.append(" (thinking: ").append(StrategicAdvisor.busyWith).append(")")
         sb.append('\n')
         sb.append("Capture: ").append(FrameHub.source).append(", ").append("%.0f".format(FrameProcessor.processedFps)).append(" fps\n")
-        sb.append("Phase: ").append(s.phase.name.lowercase())
+        sb.append("Match: ").append(if (Cfg.ranked) "ranked" else "standard")
+        sb.append(" | Phase: ").append(s.phase.label)
         if (s.selfHp >= 0) sb.append(" | my HP ").append((s.selfHp * 100).toInt()).append('%')
         sb.append("\nHero: ").append(GameStateTracker.ownHero() ?: "unknown")
         sb.append(" | enemies ").append(s.enemies.size).append(" | minions ").append(s.enemyMinions.size)
@@ -213,6 +286,13 @@ object AiRuntime {
             sb.append("\nTarget: ").append(ActionExecutor.lastTarget)
             val p = StrategicAdvisor.plan
             sb.append("\nPlan: ").append(p.plan).append(" (").append("%.1f".format(p.aggression)).append(")")
+        }
+        if (playerOn && s.hud.upgradeReady.isNotEmpty()) sb.append("\nCan upgrade: ").append(s.hud.upgradeReady.joinToString())
+        if (playerOn && Cfg.playLikeMe) sb.append("\nLike me: ").append(ImitationPolicy.status)
+        if (learnOn) {
+            sb.append("\n\nLEARNING FROM YOU").append(if (playerOn) " (paused: Player is on)" else "")
+            sb.append("\nYou: ").append(DemoRecorder.lastAction)
+            sb.append("\nSaved: ").append(DemoRecorder.recorded).append(" this session, ").append(DemoRecorder.total).append(" total")
         }
         if (drafterOn && StrategicAdvisor.draftText.isNotEmpty()) sb.append("\n\nDRAFT\n").append(StrategicAdvisor.draftText)
         if (builderOn) {

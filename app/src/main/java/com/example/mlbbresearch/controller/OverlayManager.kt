@@ -19,11 +19,15 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import com.example.mlbbresearch.ai.AiRuntime
+import com.example.mlbbresearch.capture.FrameHub
 import com.example.mlbbresearch.core.Cfg
 import com.example.mlbbresearch.core.Diag
 import com.example.mlbbresearch.core.Layout
+import com.example.mlbbresearch.vision.ButtonDetector
 import com.example.mlbbresearch.vision.FrameProcessor
+import com.example.mlbbresearch.vision.ScreenReader
 import com.example.mlbbresearch.vision.ScreenMasks
 import com.example.mlbbresearch.vision.Team
 import kotlin.math.abs
@@ -46,6 +50,9 @@ class OverlayManager(private val ctx: Context) {
     private var panel: LinearLayout? = null
     private var panelText: TextView? = null
     private var panelLp: WindowManager.LayoutParams? = null
+    private var power: TextView? = null
+    private var panelPower: TextView? = null
+    private var calib: FrameLayout? = null
 
     @Volatile var markersOn = false
 
@@ -75,10 +82,11 @@ class OverlayManager(private val ctx: Context) {
 
     fun hide() {
         ui.removeCallbacks(refresher)
+        stopCalibration()
         for (v in listOf<View?>(icon, panel, pointer)) {
             if (v != null) try { wm.removeView(v) } catch (e: Exception) { }
         }
-        icon = null; panel = null; pointer = null; badge = null; panelText = null
+        icon = null; panel = null; pointer = null; badge = null; panelText = null; power = null; panelPower = null
         ScreenMasks.overlay = emptyList()
     }
 
@@ -89,6 +97,8 @@ class OverlayManager(private val ctx: Context) {
         when (a) {
             is Act.Tap -> pv.addTouch(a.x * w, a.y * h, a.x * w, a.y * h, false)
             is Act.Drag -> pv.addTouch(a.x1 * w, a.y1 * h, a.x2 * w, a.y2 * h, true)
+            is Act.Joy -> pv.addTouch(a.cx * w, a.cy * h, a.x * w, a.y * h, true)
+            Act.JoyRelease -> {}
         }
     }
 
@@ -155,6 +165,15 @@ class OverlayManager(private val ctx: Context) {
             setOnClickListener { AiRuntime.emergencyStop("floating X") }
         }
         ic.addView(close, FrameLayout.LayoutParams(dp(24), dp(24), Gravity.TOP or Gravity.END))
+        // power button: AI on / off without opening the app
+        val pw = TextView(ctx).apply {
+            text = "⏻"
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            textSize = 12f
+            setOnClickListener { toggleAi() }
+        }
+        ic.addView(pw, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.BOTTOM or Gravity.END))
         val ilp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, flagsTouch, PixelFormat.TRANSLUCENT
@@ -194,6 +213,13 @@ class OverlayManager(private val ctx: Context) {
             background = GradientDrawable().apply { setColor(Color.parseColor("#C62828")); cornerRadius = dp(8).toFloat() }
             setOnClickListener { AiRuntime.emergencyStop("status window") }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        val ppw = TextView(ctx).apply {
+            setTextColor(Color.WHITE); textSize = 13f; setTypeface(null, Typeface.BOLD)
+            gravity = Gravity.CENTER
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+            setOnClickListener { toggleAi() }
+        }
+        bottom.addView(ppw, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(6) })
         val handle = TextView(ctx).apply {
             text = "◢"; textSize = 22f; setTextColor(Color.parseColor("#9AA0A6"))
             setPadding(dp(16), 0, 0, 0)
@@ -219,7 +245,7 @@ class OverlayManager(private val ctx: Context) {
 
         addOverlay(pn, plp)
         addOverlay(ic, ilp)
-        icon = ic; iconLp = ilp; badge = b
+        icon = ic; iconLp = ilp; badge = b; power = pw; panelPower = ppw
         panel = pn; panelLp = plp; panelText = body
         refresh()
     }
@@ -270,6 +296,12 @@ class OverlayManager(private val ctx: Context) {
             it.text = when { running && Cfg.dryRun && Cfg.autonomous -> "DRY"; running -> "ON"; err -> "ERR"; else -> "OFF" }
             it.background = circle(Color.parseColor(if (running) "#2E7D32" else if (err) "#C62828" else "#616161"))
         }
+        val on = running
+        power?.background = circle(Color.parseColor(if (on) "#43A047" else "#455A64")).apply { setStroke(dp(1), Color.WHITE) }
+        panelPower?.text = if (on) "⏻ AI OFF" else "⏻ AI ON"
+        panelPower?.background = GradientDrawable().apply {
+            setColor(Color.parseColor(if (on) "#455A64" else "#2E7D32")); cornerRadius = dp(8).toFloat()
+        }
         if (panel?.visibility == View.VISIBLE) panelText?.text = AiRuntime.panelText()
         pointer?.invalidate()
         // tell vision where our own windows are, so it ignores them
@@ -284,6 +316,185 @@ class OverlayManager(private val ctx: Context) {
             rects.add(floatArrayOf(visibleLp.x / sw, visibleLp.y / sh, (visibleLp.x + vw) / sw, (visibleLp.y + vh) / sh))
         }
         ScreenMasks.overlay = rects
+    }
+
+    private fun toggleAi() {
+        val msg = AiRuntime.toggleFromOverlay()
+        Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
+        refresh()
+    }
+
+    // ---------------- calibration on the game ----------------
+    // A full-screen layer over MLBB: drag each yellow marker onto its button, or tap
+    // Auto-detect to let the app find them. Save writes them; Cancel throws them away.
+
+    private val groups = listOf("game" to "In-game buttons", "shop" to "Shop screen", "select" to "Hero select")
+
+    fun startCalibration(groupIndex: Int = 0) {
+        stopCalibration()
+        if (icon == null) show()
+        val gi = groupIndex.coerceIn(0, groups.size - 1)
+        val (group, groupLabel) = groups[gi]
+        val controls = Layout.defaults.filter { it.group == group }
+        val pos = LinkedHashMap<String, FloatArray>()
+        for (c in controls) { val (x, y) = Layout.get(c.key); pos[c.key] = floatArrayOf(x, y) }
+
+        val root = FrameLayout(ctx)
+        val view = CalibView(ctx, controls, pos)
+        root.addView(view, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        val bar = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(6), dp(4), dp(6), dp(4))
+            background = GradientDrawable().apply { setColor(Color.parseColor("#E615171C")); cornerRadius = dp(10).toFloat() }
+        }
+        val info = TextView(ctx).apply {
+            text = "$groupLabel: drag markers"
+            setTextColor(Color.WHITE); textSize = 12f
+            setPadding(dp(6), 0, dp(8), 0)
+        }
+        bar.addView(info)
+        fun barBtn(t: String, color: String, onClick: () -> Unit) = bar.addView(TextView(ctx).apply {
+            text = t
+            setTextColor(Color.WHITE); textSize = 13f; setTypeface(null, Typeface.BOLD)
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+            background = GradientDrawable().apply { setColor(Color.parseColor(color)); cornerRadius = dp(8).toFloat() }
+            setOnClickListener { onClick() }
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(6) })
+        barBtn("Auto-detect", "#1565C0") { autoDetect(root, view, pos, info) }
+        barBtn("Next screen", "#455A64") {
+            for ((k, p) in pos) Layout.setPoint(k, p[0], p[1])
+            startCalibration((gi + 1) % groups.size)
+        }
+        barBtn("Save", "#2E7D32") {
+            for ((k, p) in pos) Layout.setPoint(k, p[0], p[1])
+            Toast.makeText(ctx, "Button positions saved", Toast.LENGTH_SHORT).show()
+            stopCalibration()
+        }
+        barBtn("Cancel", "#C62828") { stopCalibration() }
+        root.addView(bar, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = dp(4) })
+
+        val lp = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        )
+        try {
+            addOverlay(root, lp)
+            calib = root
+        } catch (e: Exception) {
+            Diag.error("Calibration layer failed", e)
+            Toast.makeText(ctx, "Could not show the calibration layer: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun stopCalibration() {
+        val c = calib ?: return
+        try { wm.removeView(c) } catch (e: Exception) { }
+        calib = null
+    }
+
+    val calibrating: Boolean get() = calib != null
+
+    // Hide our layer, wait for a clean frame of the game, find the buttons, show the result
+    private fun autoDetect(root: View, view: CalibView, pos: MutableMap<String, FloatArray>, info: TextView) {
+        root.visibility = View.INVISIBLE
+        val wasMarkers = markersOn
+        markersOn = false
+        pointer?.invalidate()
+        val hiddenAt = System.currentTimeMillis()
+        info.text = "Looking..."
+        fun finish(msg: String) {
+            markersOn = wasMarkers
+            root.visibility = View.VISIBLE
+            info.text = msg.lineSequence().first()
+            view.invalidate()
+            Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show()
+        }
+        val poll = object : Runnable {
+            var tries = 0
+            override fun run() {
+                tries++
+                if (FrameHub.lastFrameAt < hiddenAt + 350) {
+                    if (tries == 3) AccessibilityController.instance?.grabScreenshot()
+                    if (tries > 30) { finish("No screen frame: start screen capture first (Home page)"); return }
+                    ui.postDelayed(this, 150)
+                    return
+                }
+                val snap = FrameHub.snapshot(-1L, null)
+                if (snap == null) { finish("No screen frame yet"); return }
+                Thread {
+                    val r = try {
+                        val hint = ScreenReader.classify(snap.pixels, snap.width, snap.height)
+                        ButtonDetector.detect(snap.pixels, snap.width, snap.height, hint)
+                    } catch (e: Exception) {
+                        Diag.error("Auto-detect failed", e); null
+                    }
+                    ui.post {
+                        if (r == null) { finish("Auto-detect failed (see Logs)"); return@post }
+                        var n = 0
+                        for ((k, p) in r.found) if (pos.containsKey(k)) { pos[k] = floatArrayOf(p.first, p.second); n++ }
+                        Diag.info("Auto-detect: " + r.report.replace("\n", " | "))
+                        finish(if (n == 0 && r.found.isNotEmpty()) "Found buttons of another screen. Use 'Next screen'.\n" + r.report
+                               else "Moved $n markers. Check them, then Save.\n" + r.report)
+                    }
+                }.start()
+            }
+        }
+        ui.postDelayed(poll, 300)
+    }
+
+    private inner class CalibView(c: Context, val controls: List<Layout.Control>, val pos: MutableMap<String, FloatArray>) : View(c) {
+        private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 4f; color = Color.parseColor("#FFD600") }
+        private val active = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 6f; color = Color.WHITE }
+        private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FFD600") }
+        private val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE; textSize = 12f * density; setShadowLayer(4f, 0f, 0f, Color.BLACK)
+        }
+        private val shade = Paint().apply { color = Color.parseColor("#33000000") }
+        private var dragging: String? = null
+        private var offX = 0f
+        private var offY = 0f
+
+        override fun onDraw(c: Canvas) {
+            val w = width.toFloat()
+            val h = height.toFloat()
+            c.drawRect(0f, 0f, w, h, shade)
+            for (ctl in controls) {
+                val p = pos[ctl.key] ?: continue
+                val x = p[0] * w
+                val y = p[1] * h
+                c.drawCircle(x, y, 18f * density, if (ctl.key == dragging) active else ring)
+                c.drawCircle(x, y, 3f * density, dot)
+                c.drawText(ctl.label, x + 21f * density, y - 6f * density, label)
+            }
+        }
+
+        override fun onTouchEvent(e: MotionEvent): Boolean {
+            val w = width.toFloat().coerceAtLeast(1f)
+            val h = height.toFloat().coerceAtLeast(1f)
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    var best: String? = null
+                    var bestD = 48f * density
+                    for ((k, p) in pos) {
+                        val d = kotlin.math.hypot(p[0] * w - e.x, p[1] * h - e.y)
+                        if (d < bestD) { bestD = d; best = k }
+                    }
+                    dragging = best
+                    best?.let { val p = pos[it]!!; offX = p[0] * w - e.x; offY = p[1] * h - e.y }
+                }
+                MotionEvent.ACTION_MOVE -> dragging?.let {
+                    pos[it] = floatArrayOf(((e.x + offX) / w).coerceIn(0f, 1f), ((e.y + offY) / h).coerceIn(0f, 1f))
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> dragging = null
+            }
+            invalidate()
+            return true
+        }
     }
 
     // ---------------- drawing layer ----------------

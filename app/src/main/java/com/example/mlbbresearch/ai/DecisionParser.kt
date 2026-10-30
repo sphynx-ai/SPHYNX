@@ -63,7 +63,10 @@ object DecisionParser {
         "draft", "ban", "pick", "hero select", "selection" -> Phase.DRAFT
         "loading" -> Phase.LOADING
         "lobby", "menu", "home" -> Phase.LOBBY
-        "game", "in game", "ingame", "battle", "shop" -> Phase.IN_GAME
+        "game", "in game", "ingame", "battle" -> Phase.IN_GAME
+        "shop", "equipment" -> Phase.SHOP
+        "map", "minimap", "big map" -> Phase.MAP
+        "scoreboard", "score" -> Phase.SCOREBOARD
         "result", "results", "victory", "defeat", "end" -> Phase.RESULT
         else -> Phase.UNKNOWN
     }

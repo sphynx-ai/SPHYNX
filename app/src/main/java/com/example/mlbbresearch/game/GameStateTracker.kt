@@ -1,6 +1,7 @@
 package com.example.mlbbresearch.game
 
 import com.example.mlbbresearch.core.Cfg
+import com.example.mlbbresearch.vision.ScreenHint
 import com.example.mlbbresearch.vision.VisionResult
 
 // Turns raw vision into a GameState and remembers what Gemma learned
@@ -12,6 +13,13 @@ object GameStateTracker {
 
     private var lastSelfSeen = 0L
     private var lastInGame = 0L
+    private var lastSelectSeen = 0L
+    private var hintRun = 0
+    private var lastHint = ScreenHint.NONE
+
+    // when the current phase began (for the Phase display and the standard hero select)
+    @Volatile var phaseSince = 0L
+        private set
 
     // ---- facts reported by Gemma (StrategicAdvisor) ----
     @Volatile private var gemmaScreen: Phase = Phase.UNKNOWN
@@ -53,13 +61,31 @@ object GameStateTracker {
             lastSelfSeen = now
             lastInGame = now
         }
+        // a screen hint must be seen on 2 frames in a row, so one odd frame cannot flip the phase
+        hintRun = if (v.hint == lastHint) hintRun + 1 else 1
+        lastHint = v.hint
+        val hint = if (hintRun >= 2) v.hint else ScreenHint.NONE
+        val inMatch = now - lastInGame < 120_000
         val phase = when {
+            hint == ScreenHint.MAP && inMatch -> Phase.MAP
             v.self != null -> Phase.IN_GAME
-            now - lastSelfSeen < 3000 -> Phase.IN_GAME          // briefly hidden (shop, effects)
-            now - lastInGame < 120_000 && v.saturation < 0.12f -> Phase.DEAD
+            hint == ScreenHint.SHOP && inMatch -> Phase.SHOP
+            hint == ScreenHint.SCOREBOARD && inMatch -> Phase.SCOREBOARD
+            now - lastSelfSeen < 3000 -> Phase.IN_GAME          // briefly hidden (effects)
+            inMatch && v.saturation < 0.12f -> Phase.DEAD
+            hint == ScreenHint.HERO_SELECT -> Phase.DRAFT
+            hint == ScreenHint.LOADING -> Phase.LOADING
             now - gemmaScreenAt < 25_000 -> gemmaScreen
             else -> Phase.UNKNOWN
         }
+        if (phase == Phase.SHOP || phase == Phase.SCOREBOARD || phase == Phase.MAP) lastInGame = now
+        if (phase == Phase.DRAFT) {
+            // first hero-select screen in 5 minutes = a new match: forget the old one
+            if (now - lastSelectSeen > 300_000) newMatch()
+            lastSelectSeen = now
+            lastInGame = 0L
+        }
+        if (phase != state.phase) phaseSince = now
         if (phase == Phase.DEAD) lastInGame = now
 
         val s = GameState(
@@ -78,15 +104,20 @@ object GameStateTracker {
             enemyTeam = enemyTeam,
             items = items,
             gold = gold,
-            itemsGoldAgeMs = if (itemsGoldAt == 0L) Long.MAX_VALUE else now - itemsGoldAt
+            itemsGoldAgeMs = if (itemsGoldAt == 0L) Long.MAX_VALUE else now - itemsGoldAt,
+            hud = v.hud
         )
         state = s
         CooldownTracker.observe(v)
         return s
     }
 
+    // set by the drafter so it can reset its once-per-match steps
+    @Volatile var onNewMatch: (() -> Unit)? = null
+
     // New match: forget the previous one
     fun newMatch() {
+        onNewMatch?.invoke()
         myTeam = emptyList()
         enemyTeam = emptyList()
         draftedHero = null

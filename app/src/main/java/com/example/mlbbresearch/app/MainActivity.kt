@@ -51,6 +51,8 @@ import com.example.mlbbresearch.game.GameStateTracker
 import com.example.mlbbresearch.game.HeroDb
 import com.example.mlbbresearch.game.Role
 import com.example.mlbbresearch.learning.DatasetManager
+import com.example.mlbbresearch.learning.DemoRecorder
+import com.example.mlbbresearch.learning.ImitationPolicy
 import com.example.mlbbresearch.learning.ExperienceRecorder
 import com.example.mlbbresearch.learning.PerformanceEvaluator
 import com.example.mlbbresearch.models.ModelManager
@@ -367,7 +369,7 @@ class MainActivity : Activity() {
             openAccessibility()
             return
         }
-        if ((stage == "draft" || stage == "build") && !GemmaEngine.ready) {
+        if (AiRuntime.needsGemma(stage) && !GemmaEngine.ready) {
             toast("Load the Gemma model first")
             show("model")
             return
@@ -411,6 +413,27 @@ class MainActivity : Activity() {
         return sw
     }
 
+    // Two switches where exactly one is on (e.g. Standard / Ranked)
+    private fun exclusivePair(a: String, b: String, aOn: Boolean, onChange: (Boolean) -> Unit) {
+        var syncing = false
+        lateinit var swA: Switch
+        lateinit var swB: Switch
+        swA = switch(a, aOn) { on ->
+            if (!syncing) {
+                syncing = true
+                if (on) { onChange(true); swB.isChecked = false } else swA.isChecked = true
+                syncing = false
+            }
+        }
+        swB = switch(b, !aOn) { on ->
+            if (!syncing) {
+                syncing = true
+                if (on) { onChange(false); swA.isChecked = false } else swB.isChecked = true
+                syncing = false
+            }
+        }
+    }
+
     // =====================================================================
     //  HOME: dashboard
     // =====================================================================
@@ -439,8 +462,14 @@ class MainActivity : Activity() {
         stageSwitch("Player (plays the hero)", "player") { AiRuntime.playerOn }
         stageSwitch("Drafter (ban & pick)", "draft") { AiRuntime.drafterOn }
         stageSwitch("Builder (items)", "build") { AiRuntime.builderOn }
+        stageSwitch("Learn from me (watches you play, no touches)", "learn") { AiRuntime.learnOn }
         switch("Autonomous: Drafter + Builder act on their own", Cfg.autonomous) { Cfg.autonomous = it }
         switch("Dry run: only show where it would tap", Cfg.dryRun) { Cfg.dryRun = it }
+        val mode = text("", 13f, color = "#9AA0A6")
+        upd {
+            mode.text = "Match type: ${if (Cfg.ranked) "Ranked (ban & pick)" else "Standard (hero, spell, emblem)"} - change it on the Draft page.\n" +
+                "Tip: the ⏻ button on the floating icon turns the AI on and off from inside the game."
+        }
 
         title("WHAT THE AI SEES")
         val preview = PreviewView(this)
@@ -457,7 +486,9 @@ class MainActivity : Activity() {
             detected.text = buildString {
                 append("My hero: ").append(hero ?: "unknown")
                 if (s.selfHp >= 0) append("  (HP ").append((s.selfHp * 100).toInt()).append("%)")
-                append("\nPhase: ").append(s.phase.name.lowercase())
+                append("\nPhase: ").append(s.phase.label)
+                if (s.hud.upgradeReady.isNotEmpty()) append("   (can upgrade ").append(s.hud.upgradeReady.joinToString()).append(")")
+                if (s.hud.quickBuyVisible) append("   (quick-buy item showing)")
                 append("\nEnemy heroes: ")
                 append(if (s.enemies.isEmpty()) "none visible" else s.enemies.joinToString { "#${it.id} ${(it.hp * 100).toInt()}%" })
                 append("\nEnemy minions: ").append(s.enemyMinions.size).append("   Allies: ").append(s.allies.size)
@@ -522,6 +553,41 @@ class MainActivity : Activity() {
         }
         upd { dirBtn.text = "Push towards enemy base: ${Cfg.pushDir}  (tap to change)" }
         switch("Battle spell is defensive (use it at very low HP)", Cfg.spellIsDefensive) { Cfg.spellIsDefensive = it }
+        switch("Smooth joystick (keeps the finger down and turns gradually)", Cfg.smoothJoystick) { Cfg.smoothJoystick = it }
+
+        title("SKILLS & ITEMS")
+        switch("Upgrade skills (taps the golden + when it shows)", Cfg.autoUpgradeSkills) { Cfg.autoUpgradeSkills = it }
+        field("Upgrade order when several + show (ult,s1,s2)", Cfg.upgradeOrder, false) { v ->
+            val parts = v.split(",").map { it.trim().lowercase() }.filter { it in setOf("s1", "s2", "ult") }.distinct()
+            if (parts.isNotEmpty()) Cfg.upgradeOrder = parts.joinToString(",")
+        }
+        switch("Buy items (taps the quick-buy item top right when it shows)", Cfg.playerQuickBuy) { Cfg.playerQuickBuy = it }
+        text("Calibrate 'Skill upgrade (+)' and 'Quick-buy item' on the Setup page. Buying waits until no enemy is close.", 12f, color = "#9AA0A6")
+
+        title("LEARN FROM ME")
+        text("1) Turn on 'Learn from me' and play a few matches yourself: the app saves what you saw and what you did " +
+            "(joystick, skills, spell, recall). 2) Turn on 'Play like me': the Player copies what you did in the most similar " +
+            "moments. Retreating at low HP and recalling stay with the safety rules.", 13f)
+        stageSwitch("Learn from me (record my play)", "learn") { AiRuntime.learnOn }
+        switch("Play like me (Player copies my recorded play)", Cfg.playLikeMe) { on ->
+            Cfg.playLikeMe = on
+            if (on) ImitationPolicy.ensureLoaded(GameStateTracker.ownHero())
+        }
+        field("Start copying after this many recorded moments (5 per second of play)", Cfg.imitationMinDemos.toString(), true) {
+            it.toIntOrNull()?.let { v -> Cfg.imitationMinDemos = v.coerceIn(50, 100_000) }
+        }
+        val learnInfo = text("", 13f)
+        DemoRecorder.refreshTotal()
+        upd {
+            learnInfo.text = "Recorded moments: ${DemoRecorder.total} (${DemoRecorder.recorded} this session)\n" +
+                "Last seen from you: ${DemoRecorder.lastAction}\nPlay like me: ${ImitationPolicy.status}" +
+                (if (Cfg.playLikeMe && ImitationPolicy.size > 0) ", similarity now ${(ImitationPolicy.lastMatch * 100).toInt()}%" else "")
+        }
+        btn("Delete my recorded play") {
+            AlertDialog.Builder(this).setTitle("Delete all recorded play?")
+                .setPositiveButton("Delete") { _, _ -> DemoRecorder.clear { runOnUiThread { toast("Deleted") } } }
+                .setNegativeButton("Cancel", null).show()
+        }
         switch("Read skill cooldowns from the screen", Cfg.readCooldownsFromScreen) { Cfg.readCooldownsFromScreen = it }
         field("Ask Gemma for a new plan every (seconds)", Cfg.strategyEverySec.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.strategyEverySec = v.coerceIn(3, 120) }
@@ -548,7 +614,28 @@ class MainActivity : Activity() {
 
     private fun draftPage() {
         stageSwitch("Drafter running", "draft") { AiRuntime.drafterOn }
-        title("MODE (only one can be on)")
+        title("MATCH TYPE (only one can be on)")
+        exclusivePair("Standard match (pick hero, battle spell, emblem)", "Ranked match (ban & pick)", !Cfg.ranked) { std ->
+            Cfg.matchMode = if (std) "standard" else "ranked"
+            if (!std && AiRuntime.drafterOn && !GemmaEngine.ready) toast("Ranked drafting needs the Gemma model (Model page)")
+        }
+        val phase = text("", 13f, color = "#9AA0A6")
+        upd { phase.text = "Screen now: ${GameStateTracker.state.phase.label}" }
+
+        title("STANDARD MATCH")
+        text("No bans: when the hero-select screen shows, the AI taps your hero, optionally changes the battle spell and " +
+            "emblem, then taps Confirm. Works without Gemma. Needs Drafter + Autonomous on. Calibrate the 'Hero select' " +
+            "markers on the Setup page (put your hero first in MLBB's list or in favourites so its spot never changes).", 13f)
+        field("Your hero (also used by the Player)", Cfg.myHero, false) { Cfg.myHero = it }
+        switch("Tap my hero", Cfg.stdPickHero) { Cfg.stdPickHero = it }
+        switch("Change battle spell", Cfg.stdChangeSpell) { Cfg.stdChangeSpell = it }
+        switch("Change emblem set", Cfg.stdChangeEmblem) { Cfg.stdChangeEmblem = it }
+        btn("Test the standard select now (follows Dry run)") {
+            if (AccessibilityController.instance == null) toast("Turn on the accessibility service first")
+            else ActionExecutor.standardSelect(HeroDb.match(Cfg.myHero))
+        }
+
+        title("RANKED: TEAM OR SOLO (only one can be on)")
         var syncing = false
         lateinit var swTeam: Switch
         lateinit var swSolo: Switch
@@ -573,8 +660,8 @@ class MainActivity : Activity() {
         val c = card()
         val t = cardText(c)
         upd { t.text = StrategicAdvisor.draftText.ifEmpty { "(waiting for a draft screen)" } }
-        title("AUTONOMOUS DRAFT")
-        text("With Drafter + Builder + Autonomous on, the AI taps the recommended hero when it is your turn and then taps lock-in. " +
+        title("AUTONOMOUS RANKED DRAFT")
+        text("Ranked only. With Drafter + Builder + Autonomous on, the AI taps the recommended hero when it is your turn and then taps lock-in. " +
             "Keep Dry run on until the yellow marker lands on the right portrait. Calibrate 'Draft: confirm / lock-in' on the Setup page.", 13f)
         val err = text("", 12f, color = "#EF9A9A")
         upd { err.text = StrategicAdvisor.lastError }
@@ -666,6 +753,7 @@ class MainActivity : Activity() {
     // =====================================================================
 
     private fun learnPage() {
+        DemoRecorder.refreshTotal()
         text("Every decision is saved with the situation, and scored 3 seconds later (did you lose HP, did the target lose HP, " +
             "did you die). Fights that go badly make the AI more careful with that hero; good ones make it bolder.", 13f)
         val c = card()
@@ -674,10 +762,14 @@ class MainActivity : Activity() {
             val hero = GameStateTracker.ownHero() ?: "unknown"
             t.text = "Examples saved: ${ExperienceRecorder.count}\nScored this session: ${PerformanceEvaluator.evaluated}\n" +
                 "Fight score: ${"%+.2f".format(PerformanceEvaluator.engageScore)}   Retreat score: ${"%+.2f".format(PerformanceEvaluator.retreatScore)}\n" +
-                "Aggression adjust for $hero: ${"%+.2f".format(Cfg.learnedBias(hero))}"
+                "Aggression adjust for $hero: ${"%+.2f".format(Cfg.learnedBias(hero))}\n" +
+                "Your recorded play (Learn from me): ${DemoRecorder.total} moments - see the Player page"
         }
         btn("Export to Downloads (CSV)") {
             DatasetManager.export(this) { msg -> runOnUiThread { toast(msg) } }
+        }
+        btn("Export my recorded play (CSV)") {
+            DatasetManager.exportDemos(this) { msg -> runOnUiThread { toast(msg) } }
         }
         btn("Delete all learning data") {
             AlertDialog.Builder(this).setTitle("Delete all learning data?")
@@ -747,7 +839,49 @@ class MainActivity : Activity() {
         text("On POCO/Xiaomi also allow: Settings > Apps > MLBB Research > Other permissions > 'Display pop-up windows while running in the background', and turn off 'Manage app if unused'.", 12f, color = "#9AA0A6")
 
         title("CALIBRATE BUTTON POSITIONS")
-        text("Values are x,y in % of the screen (landscape). Turn on the markers, open MLBB, and adjust until each yellow circle sits on its button.", 12f, color = "#9AA0A6")
+        text("Easiest: open MLBB in a match, then come back and tap a calibrate button. After 5 seconds yellow markers " +
+            "appear over the game: drag each one onto its button, or tap Auto-detect to let the app find them, then Save. " +
+            "'Next screen' moves on to the shop and hero-select markers.", 12f, color = "#9AA0A6")
+        fun calibrateLater(group: Int) {
+            val o = AccessibilityController.instance?.overlay
+            if (o == null) { toast("Turn on the accessibility service first"); return }
+            if (!ScreenCaptureService.running) toast("Tip: start screen capture first so Auto-detect can see the game")
+            toast("Switch to MLBB now: calibration starts in 5 seconds")
+            ui.postDelayed({ o.startCalibration(group) }, 5000)
+        }
+        btn("Calibrate in-game buttons on the game") { calibrateLater(0) }
+        btn("Calibrate shop buttons on the game") { calibrateLater(1) }
+        btn("Calibrate hero-select buttons on the game") { calibrateLater(2) }
+
+        title("PRESETS (one per phone or MLBB button layout)")
+        val active = text("", 13f)
+        upd { active.text = "Active preset: " + Cfg.activePreset.ifEmpty { "none (current positions)" } }
+        val nameBox = EditText(this).apply { hint = "Preset name"; setTextColor(Color.WHITE); setHintTextColor(Color.GRAY) }
+        content.addView(nameBox)
+        btn("Save current positions as a preset") {
+            if (Layout.savePreset(nameBox.text.toString())) { toast("Preset saved"); show("setup") } else toast("Type a name first")
+        }
+        for (name in Layout.presetNames()) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            row.addView(TextView(this).apply { text = name; setTextColor(Color.WHITE); textSize = 14f },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(Button(this).apply {
+                text = "Load"; isAllCaps = false
+                setOnClickListener { if (Layout.loadPreset(name)) { toast("Loaded $name"); show("setup") } }
+            })
+            row.addView(Button(this).apply {
+                text = "Delete"; isAllCaps = false
+                setOnClickListener {
+                    AlertDialog.Builder(this@MainActivity).setTitle("Delete preset $name?")
+                        .setPositiveButton("Delete") { _, _ -> Layout.deletePreset(name); show("setup") }
+                        .setNegativeButton("Cancel", null).show()
+                }
+            })
+            content.addView(row)
+        }
+
+        title("TYPE POSITIONS BY HAND")
+        text("Values are x,y in % of the screen (landscape). 'Show markers' draws them on the game without blocking it.", 12f, color = "#9AA0A6")
         switch("Show markers on the game", AccessibilityController.instance?.overlay?.markersOn == true) { on ->
             val o = AccessibilityController.instance?.overlay
             if (o == null) toast("Turn on the accessibility service first") else {
@@ -755,7 +889,12 @@ class MainActivity : Activity() {
                 if (on) o.show()
             }
         }
+        var group = ""
         for (ctl in Layout.defaults) {
+            if (ctl.group != group) {
+                group = ctl.group
+                text(when (group) { "shop" -> "Shop screen"; "select" -> "Hero select"; else -> "In game" }, 13f, true)
+            }
             field(ctl.label, Layout.text(ctl.key), false) { v -> if (v != Layout.text(ctl.key)) Layout.set(ctl.key, v) }
         }
         btn("Reset all positions to defaults") {

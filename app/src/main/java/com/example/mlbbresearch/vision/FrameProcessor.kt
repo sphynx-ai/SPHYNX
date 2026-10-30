@@ -18,6 +18,8 @@ class VisionResult(
     val minimap: MinimapInfo,
     val saturation: Float,
     val skillBrightness: Map<String, Float>,
+    val hint: ScreenHint,            // which MLBB screen the colours say this is
+    val hud: HudInfo,                // upgrade "+", quick-buy icon, camera motion
     val processMs: Long
 ) {
     val aspect: Float get() = if (frameH == 0) 1.78f else frameW.toFloat() / frameH
@@ -46,6 +48,8 @@ object FrameProcessor {
 
     @Volatile var latest: VisionResult? = null
         private set
+    // "Learn from me" needs the camera motion and every button's brightness
+    @Volatile var trackPlayer = false
     @Volatile var processedFps = 0f
     private var fpsCount = 0
     private var fpsStart = 0L
@@ -71,8 +75,8 @@ object FrameProcessor {
         val tracks = enemyTracker.update(seen.filter { it.team == Team.ENEMY && it.hero }, t0, aspect)
 
         val brightness = HashMap<String, Float>()
-        if (Cfg.readCooldownsFromScreen) {
-            for (k in listOf("s1", "s2", "ult")) {
+        if (Cfg.readCooldownsFromScreen || trackPlayer) {
+            for (k in listOf("s1", "s2", "ult", "spell", "recall", "regen")) {
                 val (fx, fy) = Layout.get(k)
                 brightness[k] = HeroDetector.brightness(px, w, h, fx, fy, 0.012f)
             }
@@ -89,6 +93,8 @@ object FrameProcessor {
             minimap = MinimapAnalyzer.analyze(px, w, h),
             saturation = HeroDetector.saturation(px, w, h),
             skillBrightness = brightness,
+            hint = ScreenReader.classify(px, w, h),
+            hud = if (self != null || trackPlayer) ScreenReader.hud(px, w, h, trackPlayer) else HudInfo.NONE,
             processMs = System.currentTimeMillis() - t0
         )
         latest = result

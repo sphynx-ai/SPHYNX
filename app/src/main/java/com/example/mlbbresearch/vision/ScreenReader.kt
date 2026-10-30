@@ -1,0 +1,231 @@
+package com.example.mlbbresearch.vision
+
+import com.example.mlbbresearch.core.Layout
+import kotlin.math.abs
+import kotlin.math.hypot
+import kotlin.math.max
+import kotlin.math.min
+
+// Which MLBB screen is showing, read from colours only (no Gemma needed).
+// Measured on the hero-select, loading, shop, scoreboard and big-map screens.
+enum class ScreenHint { NONE, HERO_SELECT, LOADING, SHOP, SCOREBOARD, MAP }
+
+// Small HUD facts read every frame
+class HudInfo(
+    val upgradeReady: Set<String>,      // "s1", "s2", "ult" whose golden "+" is showing
+    val quickBuyVisible: Boolean,       // the recommended item icon (top right) is showing
+    val motionX: Float,                 // where the camera (= your hero) moved since the last frame, -1..1
+    val motionY: Float
+) {
+    companion object {
+        val NONE = HudInfo(emptySet(), false, 0f, 0f)
+    }
+}
+
+object ScreenReader {
+
+    // ---------------- colours ----------------
+
+    private fun r(p: Int) = (p shr 16) and 0xff
+    private fun g(p: Int) = (p shr 8) and 0xff
+    private fun b(p: Int) = p and 0xff
+    fun lum(p: Int) = (r(p) * 3 + g(p) * 6 + b(p)) / 10
+
+    fun sat(p: Int): Float {
+        val mx = max(r(p), max(g(p), b(p)))
+        val mn = min(r(p), min(g(p), b(p)))
+        return if (mx < 20) 0f else (mx - mn).toFloat() / mx
+    }
+
+    // golden "+" / quick-buy ring / Confirm button
+    fun isGold(p: Int) = r(p) >= 150 && g(p) >= 120 && b(p) <= 140 && r(p) - b(p) >= 70 && g(p) - b(p) >= 45 && r(p) + 10 >= g(p)
+
+    private fun isWhite(p: Int) = lum(p) >= 215 && sat(p) < 0.22f
+
+    // loading-screen bars: bright where loaded, darker where not, but always clearly blue / red
+    private fun isBlueBar(p: Int) = b(p) >= 90 && b(p) - r(p) >= 50 && b(p) >= g(p)
+    private fun isRedBar(p: Int) = r(p) >= 100 && r(p) - g(p) >= 60 && r(p) - b(p) >= 25
+
+    // dark red ring around an enemy portrait (big map)
+    private fun isPortraitRed(p: Int) = r(p) >= 100 && r(p) - g(p) >= 60 && r(p) - b(p) >= 60
+
+    // fraction of sampled pixels in [l, t, r, b] (screen fractions) that match
+    fun fraction(px: IntArray, w: Int, h: Int, l: Float, t: Float, rr: Float, bb: Float, step: Int = 3, test: (Int) -> Boolean): Float {
+        val x0 = (l * w).toInt().coerceIn(0, w - 1)
+        val x1 = (rr * w).toInt().coerceIn(0, w - 1)
+        val y0 = (t * h).toInt().coerceIn(0, h - 1)
+        val y1 = (bb * h).toInt().coerceIn(0, h - 1)
+        var n = 0
+        var hit = 0
+        var y = y0
+        while (y <= y1) {
+            var x = x0
+            while (x <= x1) {
+                if (test(px[y * w + x])) hit++
+                n++
+                x += step
+            }
+            y += step
+        }
+        return if (n == 0) 0f else hit.toFloat() / n
+    }
+
+    // average r, g, b of a region
+    private fun avg(px: IntArray, w: Int, h: Int, l: Float, t: Float, rr: Float, bb: Float): IntArray {
+        val x0 = (l * w).toInt().coerceIn(0, w - 1)
+        val x1 = (rr * w).toInt().coerceIn(0, w - 1)
+        val y0 = (t * h).toInt().coerceIn(0, h - 1)
+        val y1 = (bb * h).toInt().coerceIn(0, h - 1)
+        var sr = 0L; var sg = 0L; var sb = 0L; var n = 0
+        var y = y0
+        while (y <= y1) {
+            var x = x0
+            while (x <= x1) {
+                val p = px[y * w + x]
+                sr += r(p); sg += g(p); sb += b(p); n++
+                x += 4
+            }
+            y += 4
+        }
+        if (n == 0) return intArrayOf(0, 0, 0)
+        return intArrayOf((sr / n).toInt(), (sg / n).toInt(), (sb / n).toInt())
+    }
+
+    // ---------------- which screen ----------------
+
+    fun classify(px: IntArray, w: Int, h: Int): ScreenHint {
+        // hero select / draft: the big golden Confirm button (bottom right by default)
+        val (cx, cy) = Layout.get("lockIn")
+        val confirm = fraction(px, w, h, cx - 0.05f, cy - 0.02f, cx + 0.05f, cy + 0.02f, 2) { isGold(it) }
+        if (confirm > 0.45f) return ScreenHint.HERO_SELECT
+
+        // loading: a row of blue progress bars (my team) and a row of red ones (enemies)
+        val blue = fraction(px, w, h, 0.07f, 0.38f, 0.58f, 0.40f, 2) { isBlueBar(it) }
+        val red = fraction(px, w, h, 0.40f, 0.92f, 0.90f, 0.94f, 2) { isRedBar(it) }
+        if (blue > 0.35f && red > 0.35f) return ScreenHint.LOADING
+
+        // scoreboard: the "VS" header is blue on the left and red on the right
+        val left = avg(px, w, h, 0.15f, 0.15f, 0.35f, 0.20f)
+        val right = avg(px, w, h, 0.62f, 0.15f, 0.85f, 0.20f)
+        if (left[2] - left[0] >= 30 && right[0] - right[2] >= 20) return ScreenHint.SCOREBOARD
+
+        // shop: a big dark panel over the middle of the screen
+        val dark = fraction(px, w, h, 0.12f, 0.15f, 0.88f, 0.80f, 6) { lum(it) < 80 }
+        if (dark > 0.62f) return ScreenHint.SHOP
+
+        // big map: a column of 5 enemy portraits with dark red rings right of the map
+        var rings = 0
+        val rx = 0.021f
+        val ry = rx * w / h
+        for (cy in floatArrayOf(0.144f, 0.26f, 0.378f, 0.494f, 0.605f)) {
+            val pts = listOf(0.4085f + rx to cy, 0.4085f - rx to cy, 0.4085f to cy + ry, 0.4085f to cy - ry)
+            val hits = pts.count { (x, y) ->
+                val xi = (x * w).toInt().coerceIn(0, w - 1)
+                val yi = (y * h).toInt().coerceIn(0, h - 1)
+                isPortraitRed(px[yi * w + xi])
+            }
+            if (hits >= 2) rings++
+        }
+        if (rings >= 3) return ScreenHint.MAP
+        return ScreenHint.NONE
+    }
+
+    // ---------------- HUD ----------------
+
+    private var prevGrid: IntArray? = null
+    private var prevGw = 0
+    private var prevGh = 0
+
+    fun hud(px: IntArray, w: Int, h: Int, withMovement: Boolean): HudInfo {
+        val ups = HashSet<String>()
+        val rad = 0.011f
+        for ((slot, key) in listOf("s1" to "s1Up", "s2" to "s2Up", "ult" to "ultUp")) {
+            val (x, y) = Layout.get(key)
+            val ry = rad * w / h
+            if (fraction(px, w, h, x - rad, y - ry, x + rad, y + ry, 1) { isGold(it) } > 0.35f) ups.add(slot)
+        }
+        val qb = quickBuyShowing(px, w, h)
+
+        var mx = 0f; var my = 0f
+        if (withMovement) {
+            val m = motion(px, w, h)
+            mx = m.first; my = m.second
+        } else {
+            prevGrid = null
+        }
+        return HudInfo(ups, qb, mx, my)
+    }
+
+    // The recommended item: a golden-rimmed icon with its white price written just below it
+    fun quickBuyShowing(px: IntArray, w: Int, h: Int): Boolean {
+        val (qx, qy) = Layout.get("quickBuy")
+        val hx = h.toFloat() / w
+        val price = fraction(px, w, h, qx - 0.03f * hx, qy + 0.035f, qx + 0.03f * hx, qy + 0.07f, 1) { isWhite(it) }
+        if (price < 0.10f) return false
+        return ring(px, w, h, qx, qy, 0.045f * hx) { isGold(it) || isWhite(it) } > 0.12f
+    }
+
+    // fraction of a thin ring (radius as fraction of width) that matches
+    private fun ring(px: IntArray, w: Int, h: Int, fx: Float, fy: Float, radius: Float, test: (Int) -> Boolean): Float {
+        val cx = fx * w
+        val cy = fy * h
+        val rpx = radius * w
+        var n = 0
+        var hit = 0
+        for (i in 0 until 48) {
+            val a = i * Math.PI * 2 / 48
+            for (k in floatArrayOf(0.85f, 1f, 1.12f)) {
+                val x = (cx + Math.cos(a) * rpx * k).toInt()
+                val y = (cy + Math.sin(a) * rpx * k).toInt()
+                if (x !in 0 until w || y !in 0 until h) continue
+                n++
+                if (test(px[y * w + x])) hit++
+            }
+        }
+        return if (n == 0) 0f else hit.toFloat() / n
+    }
+
+    // Camera follows your hero, so the whole field shifting left means you walked right.
+    // Coarse block matching on a small grey grid, HUD corners left out.
+    private fun motion(px: IntArray, w: Int, h: Int): Pair<Float, Float> {
+        val gw = 96
+        val gh = max(8, gw * h / w)
+        val grid = IntArray(gw * gh)
+        for (gy in 0 until gh) {
+            val y = gy * h / gh
+            for (gx in 0 until gw) grid[gy * gw + gx] = lum(px[y * w + gx * w / gw])
+        }
+        val prev = prevGrid
+        val pw = prevGw
+        val ph = prevGh
+        prevGrid = grid; prevGw = gw; prevGh = gh
+        if (prev == null || pw != gw || ph != gh) return 0f to 0f
+
+        val s = 4
+        // middle of the field: away from minimap, skill buttons, joystick and scoreboard
+        val ax0 = (gw * 0.30f).toInt(); val ax1 = (gw * 0.62f).toInt()
+        val ay0 = max(s, (gh * 0.15f).toInt()); val ay1 = min(gh - s, (gh * 0.55f).toInt())
+        var best = Long.MAX_VALUE
+        var bx = 0; var by = 0
+        var zero = Long.MAX_VALUE
+        for (dy in -s..s) for (dx in -s..s) {
+            var cost = 0L
+            var y = ay0
+            while (y < ay1) {
+                var x = ax0
+                while (x < ax1) {
+                    cost += abs(grid[y * gw + x] - prev[(y + dy) * gw + (x + dx)])
+                    x++
+                }
+                y++
+            }
+            if (dx == 0 && dy == 0) zero = cost
+            if (cost < best) { best = cost; bx = dx; by = dy }
+        }
+        // ignore tiny or unclear shifts (standing still, effects flashing)
+        if (bx == 0 && by == 0 || best > zero * 0.85) return 0f to 0f
+        // content now at (x) came from (x + dx): the field moved by -dx, so the hero moved +dx
+        val l = hypot(bx.toFloat(), by.toFloat())
+        return (bx / l) to (by / l)
+    }
+}
