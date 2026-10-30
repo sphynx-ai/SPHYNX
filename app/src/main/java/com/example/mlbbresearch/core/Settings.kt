@@ -83,6 +83,14 @@ object Cfg {
     var stdChangeSpell: Boolean get() = b("std_spell", false); set(v) = put("std_spell", v)
     var stdChangeEmblem: Boolean get() = b("std_emblem", false); set(v) = put("std_emblem", v)
 
+    // ---- online meta (Gemini API) ----
+    var geminiKey: String get() = s("gemini_key", ""); set(v) = put("gemini_key", v)
+    var geminiModel: String get() = s("gemini_model", "gemini-2.5-flash"); set(v) = put("gemini_model", v)
+    var useOnlineMeta: Boolean get() = b("online_meta", true); set(v) = put("online_meta", v)
+    var geminiAuto: Boolean get() = b("gemini_auto", true); set(v) = put("gemini_auto", v)
+    var geminiDraft: Boolean get() = b("gemini_draft", true); set(v) = put("gemini_draft", v)
+    var metaMaxAgeDays: Int get() = i("meta_age", 7); set(v) = put("meta_age", v)
+
     // ---- kills, towers, farming ----
     var executeHpPct: Int get() = i("exec_hp", 20); set(v) = put("exec_hp", v)       // chase enemies below this
     var towerGuard: Boolean get() = b("tower_guard", true); set(v) = put("tower_guard", v)

@@ -273,6 +273,8 @@ object AiRuntime {
     private suspend fun strategyLoop() {
         while (anyOn()) {
             try {
+                // keep the online meta of the hero you play fresh (Gemini, in the background)
+                MetaAdvisor.autoUpdate(GameStateTracker.ownHero())
                 StrategicAdvisor.tick(GameStateTracker.state, playerOn, drafterOn, builderOn)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e

@@ -63,6 +63,7 @@ object ComboBook {
     fun text(hero: String?): Pair<String, String> {
         if (hero != null) {
             Cfg.heroCombo(hero)?.let { if (parse(it).isNotEmpty()) return it to "yours" }
+            MetaStore.hero(hero)?.combo?.let { return it to "online meta" }
             builtIn[hero]?.let { return it to "built-in" }
         }
         return (roleDefault[HeroDb.role(hero)] ?: "s1 > s2 > ult") to "role default"

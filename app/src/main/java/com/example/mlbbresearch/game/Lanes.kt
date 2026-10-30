@@ -43,6 +43,7 @@ object LaneLogic {
         val chosen = Lane.of(Cfg.lane)
         if (spell == "Retribution" && (chosen == null || Cfg.retriMeansJungle)) return Lane.JUNGLE to "Retribution equipped"
         if (chosen != null) return chosen to "your choice"
+        MetaStore.hero(hero)?.lane?.let { return it to "auto, from the online meta" }
         val lane = when (HeroDb.role(hero)) {
             Role.MARKSMAN -> Lane.GOLD
             Role.MAGE -> Lane.MID
