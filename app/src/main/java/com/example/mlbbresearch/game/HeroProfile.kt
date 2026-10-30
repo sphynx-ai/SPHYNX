@@ -79,6 +79,35 @@ object HeroDb {
         return if (bestD <= allowed) best else null
     }
 
+    // The skill that dashes / leaps / blinks, used to chase and to escape. Common picks below
+    // (check them); others use a role default; you can set it per hero on the Player page.
+    private val dashTable = mapOf(
+        "Thamuz" to "s2", "Saber" to "s2", "Gusion" to "s2", "Lancelot" to "s1", "Alucard" to "s1",
+        "Chou" to "s2", "Zilong" to "s2", "Hayabusa" to "s2", "Fanny" to "s1", "Ling" to "s1",
+        "Karina" to "ult", "Natalia" to "s1", "Balmond" to "s1", "Freya" to "s1", "Tigreal" to "s2",
+        "Akai" to "s1", "Brody" to "s2", "Granger" to "s2", "Lesley" to "s1", "Clint" to "s2",
+        "Miya" to "ult", "Benedetta" to "s2", "Paquito" to "s1", "Aldous" to "ult", "Martis" to "s2",
+        "Ruby" to "s2", "Yu Zhong" to "s2", "Khufra" to "s1", "Franco" to "none", "Layla" to "none",
+        "Eudora" to "none", "Nana" to "none", "Vexana" to "none", "Badang" to "none", "Sun" to "none",
+        "Masha" to "s2", "Kagura" to "s2", "Harley" to "s2", "Wanwan" to "s1", "Beatrix" to "none"
+    )
+
+    fun dashSlot(hero: String?): String? {
+        val chosen = if (hero == null) "auto" else Cfg.heroDash(hero)
+        val slot = if (chosen != "auto") chosen else dashTable[hero] ?: when (role(hero)) {
+            Role.FIGHTER -> "s1"
+            Role.ASSASSIN, Role.TANK -> "s2"
+            else -> "none"
+        }
+        return if (slot == "none") null else slot
+    }
+
+    fun dashSource(hero: String?): String = when {
+        hero != null && Cfg.heroDash(hero) != "auto" -> "your choice"
+        dashTable.containsKey(hero) -> "built-in"
+        else -> "role default"
+    }
+
     fun role(name: String?): Role = name?.let { roles[it] } ?: Role.UNKNOWN
 
     fun damage(name: String?): Damage {

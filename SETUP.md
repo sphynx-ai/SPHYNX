@@ -75,6 +75,34 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
   - Routes from base: EXP walks up, then right. Gold walks right, then up. Mid uses the push direction.
     Roam follows the team. Jungle farms monsters.
 
+## Kills, towers and gold (Player page)
+
+What the Player does, in order:
+
+1. **Survive**: at low HP it retreats. It uses its dash skill aimed away from the enemy.
+2. **Finish low enemies**: it chases enemy heroes below 20% HP (you can change this). It dashes to close the gap and
+   uses its skills and ultimate. It never chases an enemy standing under their own tower.
+3. **Fights**: the learning brain decides how to fight (see Smart fights). It dashes to chase when it goes in.
+4. **Turtle / lord** (see below).
+5. **Jungle camps**: it walks to the camps shown on the minimap (purple = buff camp, green dot = small creeps). At a
+   camp it keeps attacking until the camp's icon disappears from the minimap, so the camp is really killed.
+   Retribution finishes it.
+6. **Minions**: it hits the lowest-HP minion first so minions actually die.
+7. **Push the tower**: only when your minions are inside the enemy tower's range and no enemy hero is seen.
+8. **Defend**: it goes to one of your towers (blue) when enemy minions are at it and it is close.
+9. **Laners grab camps**: between waves, laners take a jungle camp right next to them.
+10. **Walk the lane**: it walks to the next enemy tower of its lane, along the edge for EXP and gold lanes.
+    Yellow towers with a red cap (bonus gold) come first, then the enemy base, which wins the game.
+    It waits at the edge of the tower's range for your minions.
+
+**Tower range**: it never walks into enemy tower range without your minions there. If it is inside, it walks out.
+
+**Reading towers from the minimap**: red tower = enemy. Yellow with a red cap = enemy tower with bonus gold.
+Blue, or yellow with a blue cap = yours. The big red icon = the enemy base. The range is set as a % of the minimap
+width (default 8%). It is drawn on the minimap when "Show what the AI sees" is on, so you can check it.
+
+**Dash skill per hero**: built-in for about 40 heroes, otherwise a default for the role. Change it on the Player page.
+
 ## Regen, Recall and the jungle path (Player page)
 
 - **Regen**: used when your HP is below the set level (default 60%) and no enemy hero or minion is close. The hero

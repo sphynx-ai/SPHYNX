@@ -194,7 +194,12 @@ object GameStateTracker {
             matchSec = if (matchStartAt == 0L) -1 else ((now - matchStartAt) / 1000).toInt(),
             sinceSpawnMs = if (spawnAt == 0L) Long.MAX_VALUE else now - spawnAt,
             minimapSelf = if (onMap) null else v.minimap.self,
-            camps = if (onMap) emptyList() else v.minimap.camps
+            camps = if (onMap) emptyList() else v.minimap.camps,
+            towers = if (onMap) emptyList() else v.minimap.towers,
+            enemyBase = if (onMap) null else v.minimap.enemyBase,
+            allyWaves = if (onMap) emptyList() else v.minimap.allyWaves,
+            allyTowers = if (onMap) emptyList() else v.minimap.allyTowers,
+            enemyWaves = if (onMap) emptyList() else v.minimap.enemyWaves
         )
         state = s
         CooldownTracker.observe(v)

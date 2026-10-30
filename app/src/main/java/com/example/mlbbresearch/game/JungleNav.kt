@@ -23,6 +23,12 @@ object JungleNav {
     @Volatile var status = "-"
         private set
 
+    // true while standing at a camp whose icon is still on the minimap: keep attacking
+    @Volatile var atCamp = false
+        private set
+    val atCampMs: Long get() = if (atCamp && arrivedAt > 0) System.currentTimeMillis() - arrivedAt else 0L
+    val atBuff: Boolean get() = atCamp && target?.buff == true
+
     fun reset() {
         target = null
         skipped.clear()
@@ -33,14 +39,17 @@ object JungleNav {
     private fun cell(c: Camp) = (c.x * 12).toInt() to (c.y * 12).toInt()
 
     // direction to walk (-1..1) and why, or null when the minimap gives nothing to go on
-    fun direction(s: GameState): Triple<Float, Float, String>? {
+    // maxDist: only camps this close (laners grabbing a camp between waves); jungler: any
+    fun direction(s: GameState, maxDist: Float = 9f): Triple<Float, Float, String>? {
         val now = s.ts
+        atCamp = false
         // your icon may blink out for a moment (e.g. low HP shrinks the green ring)
         val me = s.minimapSelf?.also { lastSelf = it; lastSelfAt = now }
             ?: lastSelf?.takeIf { now - lastSelfAt < 3000 } ?: run { status = "your minimap icon is not visible"; return null }
 
         skipped.entries.removeAll { it.value < now }
-        val camps = s.camps.filter { (skipped[cell(it)] ?: 0L) < now }
+        val camps = s.camps.filter { (skipped[cell(it)] ?: 0L) < now && hypot(it.x - me.first, it.y - me.second) <= maxDist }
+        if (camps.isEmpty() && maxDist < 9f) return null
         if (camps.isEmpty()) {
             target = null
             status = "no jungle camp up: heading to the river"
@@ -55,16 +64,18 @@ object JungleNav {
 
         val d = hypot(t.x - me.first, t.y - me.second)
         if (d < 0.06f) {
-            // at the camp: the monsters should be on screen; if not, it is already taken
+            // at the camp: attack until its icon leaves the minimap (= killed). If it is
+            // still shown after 25 s something is wrong (wrong spot, icon is a timer): move on.
             if (arrivedAt == 0L) arrivedAt = now
-            if (s.creeps.isEmpty() && now - arrivedAt > 3500) {
+            if (now - arrivedAt > 25_000) {
                 skipped[cell(t)] = now + 60_000
                 target = null
-                status = "camp empty, next one"
+                status = "could not finish this camp, next one"
                 return null
             }
-            status = "at a ${if (t.buff) "buff" else "camp"}, waiting for the monsters"
-            return Triple(0f, 0f, "waiting at the camp")
+            atCamp = true
+            status = "killing a ${if (t.buff) "buff" else "camp"} (${(now - arrivedAt) / 1000}s)"
+            return Triple(0f, 0f, "killing the camp")
         }
 
         // stuck on a wall: icon has not moved for 2.5 s while walking -> step sideways
