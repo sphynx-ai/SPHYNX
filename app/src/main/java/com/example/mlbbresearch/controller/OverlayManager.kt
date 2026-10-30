@@ -537,6 +537,7 @@ class OverlayManager(private val ctx: Context) {
                         Team.SELF -> Color.WHITE
                         Team.ALLY -> Color.parseColor("#B0BEC5")
                         Team.ENEMY -> if (s.hero) Color.parseColor("#FFD600") else Color.parseColor("#FFAB00")
+                        Team.NEUTRAL -> Color.parseColor("#CE93D8")
                     }
                     val r = RectF(s.barLeft * w, s.barTop * h, s.barRight * w, s.y * h + h * 0.04f)
                     c.drawRect(r, boxPaint)

@@ -9,6 +9,7 @@ import com.example.mlbbresearch.core.Diag
 import com.example.mlbbresearch.core.Layout
 import com.example.mlbbresearch.game.CooldownTracker
 import com.example.mlbbresearch.game.GameState
+import com.example.mlbbresearch.game.GameStateTracker
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -36,6 +37,8 @@ object ActionExecutor {
     private var joyDirX = 0f
     private var joyDirY = 0f
     @Volatile private var generation = 0
+    private val AIMED = setOf("s1", "s2", "ult")
+    private const val SKILL_AIM_R = 0.045f     // how far a skill button is dragged to aim (fraction of width)
 
     @Volatile var lastDecision: String = "-"
         private set
@@ -76,9 +79,20 @@ object ActionExecutor {
             joyDirX = 0f; joyDirY = 0f
             if (AccessibilityController.instance?.joystickHeld() == true) acts.add(Act.JoyRelease)
         }
+        val self = GameStateTracker.state.self
         for (c in d.casts) {
             val (x, y) = Layout.get(c)
-            acts.add(Act.Tap(x, y))
+            val me = if (Cfg.aimSkills && c in AIMED && d.targetX >= 0f) self else null
+            if (me != null) {
+                // drag the skill button towards the target, like aiming by hand
+                val aspect = AccessibilityController.screenAspect()
+                val dx = (d.targetX - me.x) * aspect
+                val dy = d.targetY - me.y
+                val l = kotlin.math.hypot(dx, dy)
+                if (l > 0.02f) {
+                    acts.add(Act.Drag(x, y, x + dx / l * SKILL_AIM_R, y + dy / l * SKILL_AIM_R * aspect, 110))
+                } else acts.add(Act.Tap(x, y))
+            } else acts.add(Act.Tap(x, y))
             if (c != "attack") CooldownTracker.markCast(c)
         }
         perform(acts)

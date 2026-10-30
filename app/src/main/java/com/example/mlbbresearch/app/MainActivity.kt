@@ -36,6 +36,8 @@ import android.widget.TextView
 import android.widget.Toast
 import com.example.mlbbresearch.R
 import com.example.mlbbresearch.ai.AiRuntime
+import com.example.mlbbresearch.ai.ComboFetcher
+import com.example.mlbbresearch.ai.ComboRunner
 import com.example.mlbbresearch.ai.GemmaEngine
 import com.example.mlbbresearch.ai.StrategicAdvisor
 import com.example.mlbbresearch.capture.FrameHub
@@ -47,6 +49,9 @@ import com.example.mlbbresearch.core.Cfg
 import com.example.mlbbresearch.core.Diag
 import com.example.mlbbresearch.core.Layout
 import com.example.mlbbresearch.game.BuildBook
+import com.example.mlbbresearch.game.ComboBook
+import com.example.mlbbresearch.game.LaneLogic
+import com.example.mlbbresearch.game.SpellDb
 import com.example.mlbbresearch.game.GameStateTracker
 import com.example.mlbbresearch.game.HeroDb
 import com.example.mlbbresearch.game.Role
@@ -57,6 +62,7 @@ import com.example.mlbbresearch.learning.ExperienceRecorder
 import com.example.mlbbresearch.learning.PerformanceEvaluator
 import com.example.mlbbresearch.models.ModelManager
 import com.example.mlbbresearch.vision.FrameProcessor
+import com.example.mlbbresearch.vision.IconMemory
 import kotlin.math.abs
 
 class MainActivity : Activity() {
@@ -413,6 +419,26 @@ class MainActivity : Activity() {
         return sw
     }
 
+    // Several switches where exactly one is on (e.g. the lanes)
+    private fun radioSwitches(options: List<Pair<String, String>>, current: String, onPick: (String) -> Unit) {
+        var syncing = false
+        val all = ArrayList<Switch>()
+        for ((key, label) in options) {
+            lateinit var sw: Switch
+            sw = switch(label, key == current) { on ->
+                if (!syncing) {
+                    syncing = true
+                    if (on) {
+                        onPick(key)
+                        for (o in all) if (o !== sw) o.isChecked = false
+                    } else sw.isChecked = true
+                    syncing = false
+                }
+            }
+            all.add(sw)
+        }
+    }
+
     // Two switches where exactly one is on (e.g. Standard / Ranked)
     private fun exclusivePair(a: String, b: String, aOn: Boolean, onChange: (Boolean) -> Unit) {
         var syncing = false
@@ -486,6 +512,9 @@ class MainActivity : Activity() {
             detected.text = buildString {
                 append("My hero: ").append(hero ?: "unknown")
                 if (s.selfHp >= 0) append("  (HP ").append((s.selfHp * 100).toInt()).append("%)")
+                append("  [${GameStateTracker.ownHeroSource()}]")
+                append("\nLane: ").append(s.lane.label).append("   Spell: ").append(s.spell ?: "unknown")
+                if (s.monsters.isNotEmpty()) append("   Monsters: ").append(s.monsters.size)
                 append("\nPhase: ").append(s.phase.label)
                 if (s.hud.upgradeReady.isNotEmpty()) append("   (can upgrade ").append(s.hud.upgradeReady.joinToString()).append(")")
                 if (s.hud.quickBuyVisible) append("   (quick-buy item showing)")
@@ -535,14 +564,138 @@ class MainActivity : Activity() {
         }
 
         title("YOUR HERO")
-        field("Hero name (leave empty to use the draft / Gemma's guess)", Cfg.myHero, false) { Cfg.myHero = it }
+        text("The app finds the hero you really play: from its skill icons (learned once per hero), from the pick " +
+            "(the AI's own standard pick, or Gemma reading the hero select / loading screen), then from the name below.", 12f, color = "#9AA0A6")
+        val heroBox = field("Hero name (used for the standard pick; leave empty to detect)", Cfg.myHero, false) { Cfg.myHero = it }
         val heroInfo = text("", 13f)
         upd {
             val h = GameStateTracker.ownHero()
             val p = HeroDb.profile(h)
             heroInfo.text = "Using: ${h ?: "unknown"} (${GameStateTracker.ownHeroSource()})\n" +
                 "Role ${p.role.name.lowercase()}, ultimate: ${p.ult.name.lowercase()}, retreat below ${(p.retreatHp * 100).toInt()}% HP\n" +
-                "Learned aggression adjust: ${"%+.2f".format(Cfg.learnedBias(h ?: "unknown"))}"
+                "Learned aggression adjust: ${"%+.2f".format(Cfg.learnedBias(h ?: "unknown"))}\n" +
+                "Heroes whose icons are learned: ${IconMemory.heroCount()}"
+        }
+        btn("This is my hero now (learn its skill icons from the game)") {
+            val h = HeroDb.match(heroBox.text.toString())
+            when {
+                h == null -> toast("Type the hero's name first")
+                GameStateTracker.teachHero(h) -> toast("Learned $h's skill icons")
+                else -> toast("No game frame yet: start the Player or Learn from me during a match, then try again")
+            }
+        }
+
+        title("BATTLE SPELL")
+        val spells = listOf("auto") + SpellDb.names
+        val spellBtn = btn("") {
+            val i = spells.indexOf(Cfg.mySpell).coerceAtLeast(0)
+            Cfg.mySpell = spells[(i + 1) % spells.size]
+        }
+        val spellInfo = text("", 13f)
+        upd {
+            spellBtn.text = "My battle spell: ${if (Cfg.mySpell == "auto") "detect it" else Cfg.mySpell}  (tap to change)"
+            spellInfo.text = "Detected: ${GameStateTracker.spell() ?: "unknown"} (${GameStateTracker.spellSource()}). " +
+                "Spells whose icon is learned: ${IconMemory.spellCount()}"
+        }
+        btn("This is my spell now (learn its icon from the game)") {
+            val sp = SpellDb.match(Cfg.mySpell)
+            when {
+                sp == null -> toast("Choose the spell with the button above first")
+                GameStateTracker.teachSpell(sp) -> toast("Learned the $sp icon")
+                else -> toast("No game frame yet: start the Player during a match, then try again")
+            }
+        }
+
+        title("LANE (only one can be on)")
+        radioSwitches(listOf(
+            "auto" to "Auto (Retribution = jungle, else from the hero's role)",
+            "exp" to "EXP lane (top)", "gold" to "Gold lane (bottom)", "mid" to "Mid lane",
+            "roam" to "Roam (stay with the team)", "jungle" to "Jungle"
+        ), Cfg.lane) { Cfg.lane = it }
+        switch("Retribution equipped = always jungle", Cfg.retriMeansJungle) { Cfg.retriMeansJungle = it }
+        val laneInfo = text("", 13f)
+        upd {
+            val (lane, why) = GameStateTracker.lane()
+            laneInfo.text = "Playing: ${lane.label} ($why)"
+        }
+        field("Seconds to walk from base to the lane (EXP: up, Gold: right, then along the lane)", Cfg.laneTravelSec.toString(), true) {
+            it.toIntOrNull()?.let { v -> Cfg.laneTravelSec = v.coerceIn(0, 60) }
+        }
+
+        title("SKILL COMBOS")
+        switch("Use the hero's combo when fighting", Cfg.useCombos) { Cfg.useCombos = it }
+        switch("Aim skills at the target (drag the skill button)", Cfg.aimSkills) { Cfg.aimSkills = it }
+        val comboInfo = text("", 13f)
+        upd {
+            val h = GameStateTracker.ownHero()
+            val (combo, from) = ComboBook.text(h)
+            comboInfo.text = "Combo for ${h ?: "unknown hero"}: $combo ($from)\nNow: ${ComboRunner.status}"
+        }
+        text("Write it as s1 > s2 > a > ult (a = basic attack). A number in brackets is the pause after that step in ms, " +
+            "e.g. s2(500) > s1 > ult.", 12f, color = "#9AA0A6")
+        val comboBox = EditText(this).apply {
+            setText(ComboBook.text(GameStateTracker.ownHero()).first)
+            setTextColor(Color.WHITE)
+        }
+        content.addView(comboBox)
+        fun heroForCombo(): String? = GameStateTracker.ownHero() ?: HeroDb.match(heroBox.text.toString())
+        btn("Save this combo for my hero") {
+            val h = heroForCombo()
+            val steps = ComboBook.parse(comboBox.text.toString())
+            when {
+                h == null -> toast("Your hero is not known yet: type its name above")
+                steps.size < 2 -> toast("Write at least 2 steps, like s1 > s2 > ult")
+                else -> { Cfg.setHeroCombo(h, ComboBook.format(steps)); toast("Saved for $h") }
+            }
+        }
+        btn("Back to the built-in combo") {
+            heroForCombo()?.let { Cfg.setHeroCombo(it, null); comboBox.setText(ComboBook.text(it).first); toast("Reset") }
+        }
+        text("Get it online: downloads a guide page and copies the combo written there. If the page only describes the " +
+            "skills, Gemma works a combo out of them. Uses the internet only when you tap.", 12f, color = "#9AA0A6")
+        field("Guide address template ({hero} = hero name)", Cfg.comboUrl, false) { if (it.contains("http")) Cfg.comboUrl = it }
+        val pageBox = field("Or a guide page address for this hero (optional)", "", false) { }
+        val fetchBtn = btn("Get my hero's combo online") {
+            val h = heroForCombo()
+            if (h == null) toast("Your hero is not known yet: type its name above") else {
+                toast("Downloading...")
+                ComboFetcher.fetch(h, pageBox.text.toString().trim()) { msg ->
+                    runOnUiThread { toast(msg); comboBox.setText(ComboBook.text(h).first) }
+                }
+            }
+        }
+        upd { fetchBtn.isEnabled = !ComboFetcher.busy }
+        val pasteBox = EditText(this).apply {
+            hint = "...or paste guide text here"
+            setTextColor(Color.WHITE); setHintTextColor(Color.GRAY)
+            minLines = 2
+        }
+        content.addView(pasteBox)
+        btn("Find the combo in the pasted text") {
+            val h = heroForCombo()
+            if (h == null) toast("Your hero is not known yet: type its name above") else {
+                ComboFetcher.fromPaste(h, pasteBox.text.toString()) { msg ->
+                    runOnUiThread { toast(msg); comboBox.setText(ComboBook.text(h).first) }
+                }
+            }
+        }
+
+        title("JUNGLE, TURTLE & LORD")
+        switch("See jungle monsters, turtle and lord (orange / yellow HP bars)", Cfg.detectMonsters) { Cfg.detectMonsters = it }
+        switch("Help the team take turtle and lord", Cfg.takeObjectives) { Cfg.takeObjectives = it }
+        field("Retribution on turtle / lord below HP (%)", Cfg.retriBossPct.toString(), true) {
+            it.toIntOrNull()?.let { v -> Cfg.retriBossPct = v.coerceIn(1, 60) }
+        }
+        field("Retribution on jungle monsters below HP (%)", Cfg.retriCreepPct.toString(), true) {
+            it.toIntOrNull()?.let { v -> Cfg.retriCreepPct = v.coerceIn(1, 90) }
+        }
+        val objInfo = text("", 13f)
+        upd {
+            val st = GameStateTracker.state
+            val b = st.boss
+            objInfo.text = "Monsters on screen: ${st.monsters.size}" +
+                (if (b != null) " | ${LaneLogic.objectiveName(st.matchSec)} HP ${(b.hp * 100).toInt()}%" else "") +
+                (if (st.matchSec >= 0) " | match time ${st.matchSec / 60}:${"%02d".format(st.matchSec % 60)}" else "")
         }
 
         title("BEHAVIOUR")
