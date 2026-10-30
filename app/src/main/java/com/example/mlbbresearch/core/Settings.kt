@@ -41,6 +41,27 @@ object Cfg {
     var spellIsDefensive: Boolean get() = b("spell_def", true); set(v) = put("spell_def", v)
     var readCooldownsFromScreen: Boolean get() = b("cd_vision", false); set(v) = put("cd_vision", v)
 
+    var autoUpgradeSkills: Boolean get() = b("auto_upgrade", true); set(v) = put("auto_upgrade", v)
+    // ult first, then the others in this order (comma separated: ult,s1,s2)
+    var upgradeOrder: String get() = s("upgrade_order", "ult,s1,s2"); set(v) = put("upgrade_order", v)
+    var playerQuickBuy: Boolean get() = b("player_qb", true); set(v) = put("player_qb", v)
+    var smoothJoystick: Boolean get() = b("smooth_joy", true); set(v) = put("smooth_joy", v)
+
+    // ---- match type: "standard" (pick hero, spell, emblem) or "ranked" (ban & pick) ----
+    var matchMode: String get() = s("match_mode", "standard"); set(v) = put("match_mode", v)
+    val ranked: Boolean get() = matchMode == "ranked"
+    var stdPickHero: Boolean get() = b("std_hero", true); set(v) = put("std_hero", v)
+    var stdChangeSpell: Boolean get() = b("std_spell", false); set(v) = put("std_spell", v)
+    var stdChangeEmblem: Boolean get() = b("std_emblem", false); set(v) = put("std_emblem", v)
+
+    // ---- learn from me (imitation) ----
+    var learnFromMe: Boolean get() = b("learn_me", false); set(v) = put("learn_me", v)
+    var playLikeMe: Boolean get() = b("play_like_me", false); set(v) = put("play_like_me", v)
+    var imitationMinDemos: Int get() = i("imit_min", 300); set(v) = put("imit_min", v)
+
+    // ---- calibration ----
+    var activePreset: String get() = s("active_preset", ""); set(v) = put("active_preset", v)
+
     // ---- vision tuning (percent of frame width / height) ----
     var heroBarMinWidthPct: Float get() = f("hero_bar_w", 4.5f); set(v) = put("hero_bar_w", v)
     var bodyBelowBarPct: Float get() = f("body_below", 7f); set(v) = put("body_below", v)

@@ -9,7 +9,7 @@ import com.example.mlbbresearch.game.UltRule
 import com.example.mlbbresearch.vision.Track
 import kotlin.math.hypot
 
-enum class Intent { IDLE, LANE_CLEAR, ENGAGE, RETREAT, RECALL, PUSH, GROUP }
+enum class Intent { IDLE, LANE_CLEAR, ENGAGE, RETREAT, RECALL, PUSH, GROUP, IMITATE }
 
 // What the fast engine wants to do right now. Movement is a direction on screen.
 class TacticalDecision(

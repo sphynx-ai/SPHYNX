@@ -52,7 +52,7 @@ object StrategicAdvisor {
     suspend fun tick(s: GameState, playerOn: Boolean, drafterOn: Boolean, builderOn: Boolean) {
         if (!GemmaEngine.ready) return
         val now = System.currentTimeMillis()
-        val inGame = s.phase == Phase.IN_GAME || s.phase == Phase.DEAD
+        val inGame = s.phase.inMatch
 
         // 1. Draft (outside the match)
         if (drafterOn && !inGame && now - lastDraft >= Cfg.draftEverySec * 1000L) {
@@ -118,7 +118,9 @@ object StrategicAdvisor {
         val known = GameStateTracker.myTeam
         val missing = Role.values().filter { r -> r != Role.UNKNOWN && known.none { HeroDb.role(it) == r } }
             .joinToString { it.name.lowercase() }
-        val prompt = "This is a Mobile Legends: Bang Bang screenshot. $mode " +
+        val type = if (Cfg.ranked) "This is a RANKED match with a ban stage and a pick stage. "
+                   else "This is a STANDARD match: there is NO ban stage, each player just picks a hero, so leave ban empty. "
+        val prompt = "This is a Mobile Legends: Bang Bang screenshot. $type$mode " +
             (if (known.isNotEmpty()) "My team so far: ${known.joinToString()}. Roles still missing: $missing. " else "") +
             "Reply with ONLY one JSON object like this example, no other words: " +
             "{\"screen\":\"draft\",\"stage\":\"pick\",\"my_turn\":true,\"my_team\":[\"Layla\"],\"enemy_team\":[\"Tigreal\"]," +
@@ -164,8 +166,9 @@ object StrategicAdvisor {
             if (d.reason.isNotBlank()) append("\nWhy: ").append(d.reason)
         }
 
-        // Autonomous drafting: both Drafter and Builder on + autonomous switch
-        if (Cfg.autonomous && builderOn && d.screen == Phase.DRAFT && d.myTurn && d.tapX >= 0f &&
+        // Autonomous ranked drafting: both Drafter and Builder on + autonomous switch.
+        // (Standard matches are handled by AiRuntime with calibrated taps.)
+        if (Cfg.ranked && Cfg.autonomous && builderOn && d.screen == Phase.DRAFT && d.myTurn && d.tapX >= 0f &&
             (d.stage == "ban" || d.stage == "pick")
         ) {
             val key = "${d.stage}|${GameStateTracker.myTeam.size}|${GameStateTracker.enemyTeam.size}"

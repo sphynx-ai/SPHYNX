@@ -13,14 +13,21 @@ import java.util.Locale
 // ready for training a policy model later.
 object DatasetManager {
 
-    fun export(ctx: Context, done: (String) -> Unit) {
+    fun export(ctx: Context, done: (String) -> Unit) = exportTable(
+        ctx, "experiences", "mlbb-experiences",
+        "id,ts,hero,intent,actions,self_hp,allies,enemies,minions,target_id,target_hp,plan,aggression,reward", done
+    )
+
+    // "Learn from me" recordings: features are the 17 numbers of Features.of, casts a bit mask
+    fun exportDemos(ctx: Context, done: (String) -> Unit) = exportTable(
+        ctx, "demos", "mlbb-my-play", "id,ts,hero,features,move_x,move_y,casts", done
+    )
+
+    private fun exportTable(ctx: Context, table: String, prefix: String, cols: String, done: (String) -> Unit) {
         ExperienceRecorder.onDb({ db ->
-            val sb = StringBuilder("id,ts,hero,intent,actions,self_hp,allies,enemies,minions,target_id,target_hp,plan,aggression,reward\n")
+            val sb = StringBuilder(cols).append('\n')
             var rows = 0
-            db.rawQuery(
-                "SELECT id,ts,hero,intent,actions,self_hp,allies,enemies,minions,target_id,target_hp,plan,aggression,reward FROM experiences ORDER BY id",
-                null
-            ).use { c ->
+            db.rawQuery("SELECT $cols FROM $table ORDER BY id", null).use { c ->
                 while (c.moveToNext()) {
                     for (i in 0 until c.columnCount) {
                         if (i > 0) sb.append(',')
@@ -31,7 +38,7 @@ object DatasetManager {
                     rows++
                 }
             }
-            val name = "mlbb-experiences-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date()) + ".csv"
+            val name = "$prefix-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date()) + ".csv"
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, name)
                 put(MediaStore.Downloads.MIME_TYPE, "text/csv")
