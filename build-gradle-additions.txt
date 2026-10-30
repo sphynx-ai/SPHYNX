@@ -1,0 +1,17 @@
+// app/build.gradle.kts - only these parts change. Keep everything else the template made.
+
+android {
+    defaultConfig {
+        minSdk = 30
+    }
+}
+
+dependencies {
+    // REMOVE: implementation("com.google.mediapipe:tasks-genai:...")
+    // REMOVE: implementation("com.google.mediapipe:tasks-core:...") and tasks-vision if present
+
+    // Gemma on LiteRT-LM (if Kotlin is older than 2.3, use "0.16.1" instead of latest.release)
+    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    // Kotlin coroutines for the background loops
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+}
