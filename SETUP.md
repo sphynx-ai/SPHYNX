@@ -82,6 +82,10 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
   for the latest patch notes, hero adjustments, tier lists and guides. `openai/gpt-oss-20b` also searches (faster,
   less accurate). Other models answer from memory only. Change the model name on the Meta page if Groq retires it.
   A phone that still has `groq/compound` saved moves to the new default by itself.
+- If Groq answers "Parsing failed" (gpt-oss sometimes writes output Groq cannot read, mostly while searching), the app
+  takes the answer from Groq's raw output when it is there. Otherwise it retries once, then asks without web search.
+  Such results are listed with the source "model knowledge, no web search". A wrong key or a usage limit stops at
+  once with Groq's message.
 - **Update the patch meta**: patch, top bans, top picks per role.
 - **Update this hero**: build, emblem, battle spell, lane, combo, dash skill, laning / jungle / rotation tips, counters
   and recent buffs / nerfs, with the sources it searched.
