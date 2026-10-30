@@ -75,25 +75,46 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
   - Routes from base: EXP walks up, then right. Gold walks right, then up. Mid uses the push direction.
     Roam follows the team. Jungle farms monsters.
 
-## Online meta with Gemini (Meta page)
+## Online meta with Groq (Meta page)
 
-- Get a free API key at aistudio.google.com/apikey and paste it on the Meta page. It is stored only on the phone.
-- **Update the patch meta**: Gemini searches the web (Google Search) for the latest patch notes, hero adjustments and
-  tier lists. It returns the patch, the top bans and the top picks per role.
+- Get a free API key at console.groq.com/keys and paste it on the Meta page. It is stored only on the phone.
+- The default model, `groq/compound`, searches the web by itself. It looks for the latest patch notes, hero
+  adjustments, tier lists and guides. Plain models such as `llama-3.3-70b-versatile` answer from memory only.
+  Change the model name if Groq renames it.
+- **Update the patch meta**: patch, top bans, top picks per role.
 - **Update this hero**: build, emblem, battle spell, lane, combo, dash skill, laning / jungle / rotation tips, counters
-  and recent buffs / nerfs. The sources are listed.
-- **Auto-update**: while you play, the hero you use is refreshed in the background when its meta is older than
-  7 days (you can change this).
+  and recent buffs / nerfs, with the sources it searched.
+- **Auto-update**: the hero you play is refreshed in the background when its meta is older than 7 days.
 - **How the app uses it**, offline once downloaded. Your own settings always win.
   - Combo: yours > online meta > built-in.
   - Dash skill: yours > online meta > built-in.
   - Lane: Auto uses the meta lane. Retribution still means jungle.
-  - The Build page shows the meta build, emblem, spell and counters.
-  - Gemma's game plan gets the hero's laning, jungle and rotation tips.
-  - Ranked drafting asks Gemini for bans and picks whenever the line-ups change. Its picks go first, and Gemma is told
-    to tap them.
-- The model name can be changed when Google releases a newer one (default gemini-2.5-flash).
+  - The Build page shows the meta build.
+  - Gemma's plan gets the laning, jungle and rotation tips.
+  - Ranked drafting asks Groq for bans and picks whenever the line-ups change.
 - The app needs internet only for this and for "Get my hero's combo online".
+
+## Recognising your hero, banners, towers, walls
+
+- **Your hero** is recognised by its look, not its skill icons:
+  - the portrait inside your green-ringed minimap icon (its centre is found by fitting a circle through the ring)
+  - the colours of its in-game model under your HP bar
+
+  Each hero is learned once: from the AI's own pick, Gemma reading the hero select / loading screen, or
+  "This is my hero now". Tested: the same hero scores up to 0.14, a different hero 0.39; the match limit is 0.24.
+- **Kill / assist / FIRST BLOOD banners** are recognised by their long red or blue border lines, and that part of the
+  screen is ignored while they show. Their portraits and lines are no longer read as enemies.
+- **Towers are told apart by side, not colour**: the river runs from the top-left to the bottom-right corner of the
+  minimap. Towers below it are yours, towers above it are the enemy's. Both teams' outer towers can be drawn yellow
+  (bonus gold).
+- **Walls**:
+  - Dark shapes on the minimap, ignoring moments when an icon covers the spot.
+  - Lone dark specks (icon outlines) are not walls.
+  - Places where the hero got stuck while walking become walls for the rest of the match.
+  - Paths keep a small distance from walls.
+- **Minimap icon calibration** (Setup page): pick an icon type (my icon, enemy tower, bonus tower, my tower, buff
+  camp, small camp, wall). Tap "Pick it on the game", switch to MLBB and tap that icon on the minimap. Its colour is
+  then recognised too, up to 4 samples per type.
 
 ## Faster early game
 

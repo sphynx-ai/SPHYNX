@@ -10,7 +10,7 @@ Offline AI companion for Mobile Legends: Bang Bang, built for Code on the Go on 
 - Hero and battle-spell recognition (skill-icon memory + Gemma), lanes (EXP, gold, mid, roam, jungle; Retribution = jungle),
   per-hero skill combos (built-in, typed, or downloaded from a guide page), jungle monsters, turtle and lord.
 - Smart fights: a learning AI (LinUCB contextual bandit) that scores every fight and learns per hero which way to fight works.
-- Online meta (optional, Gemini API with Google Search): latest patch builds, combos, lanes, rotations, draft picks.
+- Online meta (optional, Groq API, groq/compound with web search): latest patch builds, combos, lanes, rotations, draft picks.
 - Offline except the online meta and the optional "Get my hero's combo online" button.
 - Source: `app/src/main` (packages `ai`, `vision`, `game`, `controller`, `capture`, `learning`, `models`, `core`, `app`).
 

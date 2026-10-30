@@ -14,7 +14,8 @@ class MinimapInfo(
     val enemyBase: Pair<Float, Float>? = null,            // the enemy base (destroy it to win)
     val allyWaves: List<Pair<Float, Float>> = emptyList(),// your minion waves (small blue marks)
     val allyTowers: List<Pair<Float, Float>> = emptyList(),
-    val enemyWaves: List<Pair<Float, Float>> = emptyList()
+    val enemyWaves: List<Pair<Float, Float>> = emptyList(),
+    val selfIcon: FloatArray? = null                      // your icon on screen: centre x, y, radius (fractions of width)
 )
 
 // bonus = red-and-yellow icon: an enemy tower that gives extra gold when attacked
@@ -87,13 +88,14 @@ object MinimapAnalyzer {
             if (cls == 1) dots.add((sx.toFloat() / n / gw) to (sy.toFloat() / n / gh)) else allies++
         }
         val (self, camps) = jungle(px, w, h)
+        val icon = lastIcon
         val st = structures(px, w, h)
         // enemy towers are red too: do not count them as enemy heroes
         val heroDots = dots.filter { d ->
             st.towers.none { kotlin.math.hypot(it.x - d.first, it.y - d.second) < 0.05f } &&
                 st.enemyWaves.none { kotlin.math.hypot(it.first - d.first, it.second - d.second) < 0.02f }
         }
-        return MinimapInfo(heroDots.size, allies, heroDots, self, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves)
+        return MinimapInfo(heroDots.size, allies, heroDots, self, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves, icon)
     }
 
     // MLBB always draws YOUR base bottom-left and the river from top-left to bottom-right,
@@ -107,9 +109,12 @@ object MinimapAnalyzer {
         if (mw < 0.03f || mh < 0.05f) return null to emptyList()
         fun inMap(bl: ButtonDetector.Blob) = ((bl.cx - l) / mw) to ((bl.cy - t) / mh)
 
-        // you: the only BIG green ring (camp dots are tiny)
+        // you: the only BIG green ring (camp dots are tiny). The ring can be partly hidden, so
+        // its centre comes from a circle fitted through the ring's pixels.
         val green = ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { isGreen(it) }
-        val me = green.filter { it.w / mw >= 0.04f }.maxByOrNull { it.count }?.let { inMap(it) }
+        val ring = green.filter { it.w / mw >= 0.04f }.maxByOrNull { it.count }
+        lastIcon = ring?.let { fitRing(px, w, h, it, mw) }
+        val me = lastIcon?.let { ((it[0] - l) / mw) to ((it[1] * w / h - t) / mh) } ?: ring?.let { inMap(it) }
 
         val out = ArrayList<Camp>()
         fun add(bl: ButtonDetector.Blob, buff: Boolean) {
@@ -144,7 +149,7 @@ object MinimapAnalyzer {
         fun near(a: Pair<Float, Float>, b: Pair<Float, Float>, d: Float) = kotlin.math.hypot(a.first - b.first, a.second - b.second) < d
         val red = ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { p ->
             val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
-            rr >= 170 && g <= 110 && bb <= 120 && rr - g >= 80
+            rr >= 170 && g <= 110 && bb <= 120 && rr - g >= 80 || MinimapColors.matches(MinimapColors.Kind.ENEMY_TOWER, p)
         }
         val base = red.filter { it.w / mw >= 0.075f && it.count >= 20 }.maxByOrNull { it.count }?.let { inMap(it) }
         val redTowers = red.filter { it.count >= 12 && it.w / mw in 0.018f..0.07f }.map { inMap(it) }
@@ -153,7 +158,7 @@ object MinimapAnalyzer {
         // a yellow body with a BLUE cap = one of your towers
         val yellowBlobs = ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { p ->
             val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
-            rr >= 200 && g >= 160 && bb <= 150 && rr - bb >= 80 && g - bb >= 50
+            rr >= 200 && g >= 160 && bb <= 150 && rr - bb >= 80 && g - bb >= 50 || MinimapColors.matches(MinimapColors.Kind.BONUS_TOWER, p)
         }.filter { it.count >= 8 && it.w / mw in 0.012f..0.07f }
         val yellowEnemy = ArrayList<Pair<Float, Float>>()
         val yellowAlly = ArrayList<Pair<Float, Float>>()
@@ -176,19 +181,24 @@ object MinimapAnalyzer {
                 }
                 yy += 1f / h
             }
-            if (redCap > blueCap && redCap >= 2) yellowEnemy.add(inMap(yb)) else if (blueCap >= 2) yellowAlly.add(inMap(yb))
+            val pos = inMap(yb)
+            if (redCap + blueCap < 2 && yb.count < 12) continue      // not a tower icon
+            if (pos.second < pos.first - 0.02f) yellowEnemy.add(pos) else yellowAlly.add(pos)
         }
-        fun enemySide(p: Pair<Float, Float>) = p.first > 0.5f || p.second < 0.15f
+        // the river runs corner to corner from top-left to bottom-right: your half is below it
+        // (y > x), the enemy half above it. Towers are told apart by side, not by colour
+        // (both teams' outer towers can be drawn yellow).
+        fun enemySide(p: Pair<Float, Float>) = p.second < p.first - 0.02f
         val towers = redTowers.filter { enemySide(it) }.map { tw -> MapTower(tw.first, tw.second, yellowEnemy.any { near(it, tw, 0.05f) }) } +
             yellowEnemy.filter { enemySide(it) }.filter { y -> redTowers.none { near(it, y, 0.05f) } && (base == null || !near(y, base, 0.08f)) }
                 .map { MapTower(it.first, it.second, true) }
         // ally towers: compact solid blue icons (portrait rings are bigger, minion marks smaller)
         val blueAll = ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { p ->
             val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
-            bb >= 170 && rr <= 120 && bb - rr >= 70 && g >= 100
+            bb >= 170 && rr <= 120 && bb - rr >= 70 && g >= 100 || MinimapColors.matches(MinimapColors.Kind.ALLY_TOWER, p)
         }
         // your towers stand on your half (left edge, bottom edge, lower mid); enemy ones on theirs
-        fun allySide(p: Pair<Float, Float>) = p.first < 0.5f || p.second > 0.85f
+        fun allySide(p: Pair<Float, Float>) = p.second > p.first + 0.02f
         val allyTowers = (blueAll.filter { it.count in 15..50 && it.w / mw in 0.04f..0.10f }.map { inMap(it) } +
             yellowAlly.filter { y -> blueAll.none { it.count in 15..50 && near(inMap(it), y, 0.04f) } }).filter { allySide(it) }
         // enemy minion waves: small red marks
@@ -199,14 +209,57 @@ object MinimapAnalyzer {
         return Structures(towers, base, waves, allyTowers, enemyWaves)
     }
 
+    @Volatile private var lastIcon: FloatArray? = null
+
+    // Kasa least-squares circle through the green ring pixels near a blob.
+    // Returns x, y (y as a fraction of the WIDTH, so the circle stays round) and radius, as fractions of the width.
+    private fun fitRing(px: IntArray, w: Int, h: Int, bl: ButtonDetector.Blob, mw: Float): FloatArray? {
+        val reach = 0.07f * mw * w
+        val cx0 = bl.cx * w; val cy0 = bl.cy * h
+        var n = 0
+        var sx = 0.0; var sy = 0.0; var sxx = 0.0; var syy = 0.0; var sxy = 0.0
+        var sxz = 0.0; var syz = 0.0; var sz = 0.0
+        var y = (cy0 - reach).toInt().coerceAtLeast(0)
+        while (y <= (cy0 + reach).toInt().coerceAtMost(h - 1)) {
+            var x = (cx0 - reach).toInt().coerceAtLeast(0)
+            while (x <= (cx0 + reach).toInt().coerceAtMost(w - 1)) {
+                if (isGreen(px[y * w + x])) {
+                    val xd = x.toDouble(); val yd = y.toDouble(); val z = xd * xd + yd * yd
+                    n++; sx += xd; sy += yd; sxx += xd * xd; syy += yd * yd; sxy += xd * yd
+                    sxz += xd * z; syz += yd * z; sz += z
+                }
+                x++
+            }
+            y++
+        }
+        if (n < 8) return null
+        // solve [sxx sxy sx; sxy syy sy; sx sy n] [a b c] = [sxz syz sz]; centre = (a/2, b/2)
+        val m = arrayOf(doubleArrayOf(sxx, sxy, sx, sxz), doubleArrayOf(sxy, syy, sy, syz), doubleArrayOf(sx, sy, n.toDouble(), sz))
+        for (col in 0 until 3) {
+            val piv = (col until 3).maxByOrNull { kotlin.math.abs(m[it][col]) }!!
+            val tmp = m[col]; m[col] = m[piv]; m[piv] = tmp
+            if (kotlin.math.abs(m[col][col]) < 1e-9) return null
+            for (row in 0 until 3) if (row != col) {
+                val f = m[row][col] / m[col][col]
+                for (k in col until 4) m[row][k] -= f * m[col][k]
+            }
+        }
+        val a = m[0][3] / m[0][0]; val b = m[1][3] / m[1][1]; val c = m[2][3] / m[2][2]
+        val cx = a / 2; val cy = b / 2
+        val rad = kotlin.math.sqrt((c + cx * cx + cy * cy).coerceAtLeast(0.0))
+        if (rad < 0.025 * mw * w || rad > 0.09 * mw * w) return null
+        return floatArrayOf((cx / w).toFloat(), (cy / w).toFloat(), (rad / w).toFloat())
+    }
+
     private fun isGreen(p: Int): Boolean {
         val r = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val b = p and 0xff
-        return g >= 150 && g - r >= 50 && g - b >= 40
+        return g >= 150 && g - r >= 50 && g - b >= 40 ||
+            MinimapColors.matches(MinimapColors.Kind.SELF, p) || MinimapColors.matches(MinimapColors.Kind.CREEP, p)
     }
 
     private fun isMagenta(p: Int): Boolean {
         val r = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val b = p and 0xff
-        return r >= 140 && b >= 140 && g <= 110 && r - g >= 60
+        return r >= 140 && b >= 140 && g <= 110 && r - g >= 60 || MinimapColors.matches(MinimapColors.Kind.BUFF, p)
     }
 
     private fun isCyan(p: Int): Boolean {

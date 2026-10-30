@@ -91,6 +91,34 @@ object ScreenReader {
         return intArrayOf((sr / n).toInt(), (sg / n).toInt(), (sb / n).toInt())
     }
 
+    // ---------------- announcements ----------------
+
+    // Kill / assist / "FIRST BLOOD" banners (top middle) have long red or blue border lines
+    // and hero portraits with coloured rings: they must not be read as units.
+    // A row with 6%+ of the screen width in banner red / blue = a banner is up.
+    val bannerRect = floatArrayOf(0.30f, 0.06f, 0.70f, 0.34f)
+
+    fun announcement(px: IntArray, w: Int, h: Int): Boolean {
+        val x0 = (0.33f * w).toInt(); val x1 = (0.67f * w).toInt()
+        val need = (0.06f * w).toInt()
+        var y = (0.12f * h).toInt()
+        val y1 = (0.32f * h).toInt()
+        while (y < y1) {
+            var red = 0; var blue = 0
+            var x = x0
+            while (x < x1) {
+                val p = px[y * w + x]
+                val r = r(p); val g = g(p); val b = b(p)
+                if (r >= 150 && g <= 90 && b <= 110 && r - g >= 80) red++
+                if (b >= 150 && r <= 90 && b - r >= 70) blue++
+                x++
+            }
+            if (red >= need || blue >= need) return true
+            y += 2
+        }
+        return false
+    }
+
     // ---------------- which screen ----------------
 
     fun classify(px: IntArray, w: Int, h: Int): ScreenHint {

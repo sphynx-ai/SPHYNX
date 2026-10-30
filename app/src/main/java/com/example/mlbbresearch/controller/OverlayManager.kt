@@ -318,6 +318,62 @@ class OverlayManager(private val ctx: Context) {
         ScreenMasks.overlay = rects
     }
 
+    // Minimap icon calibration: a see-through layer over the game; tap an icon and its colour
+    // is sampled from the next clean frame (the layer is gone by then). done(null) = no frame.
+    fun pickColor(label: String, done: (IntArray?) -> Unit) {
+        stopCalibration()
+        if (icon == null) show()
+        val root = FrameLayout(ctx)
+        val hint = TextView(ctx).apply {
+            text = "Tap: $label"
+            setTextColor(Color.WHITE); textSize = 13f; setTypeface(null, Typeface.BOLD)
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+            background = GradientDrawable().apply { setColor(Color.parseColor("#E615171C")); cornerRadius = dp(8).toFloat() }
+        }
+        root.addView(hint, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = dp(40) })
+        root.setOnTouchListener { v, e ->
+            if (e.actionMasked == MotionEvent.ACTION_UP) {
+                val fx = e.rawX / ctx.resources.displayMetrics.widthPixels
+                val fy = e.rawY / ctx.resources.displayMetrics.heightPixels
+                stopCalibration()
+                val at = System.currentTimeMillis()
+                // wait for a frame without our layer, then average a 3x3 spot
+                ui.postDelayed(object : Runnable {
+                    var tries = 0
+                    override fun run() {
+                        if (FrameHub.lastFrameAt < at + 150 && tries++ < 20) { ui.postDelayed(this, 100); return }
+                        val snap = FrameHub.snapshot(-1L, null)
+                        if (snap == null) { done(null); return }
+                        val cx = (fx * snap.width).toInt(); val cy = (fy * snap.height).toInt()
+                        var r = 0; var g = 0; var b = 0; var n = 0
+                        for (yy in cy - 1..cy + 1) for (xx in cx - 1..cx + 1) {
+                            if (xx !in 0 until snap.width || yy !in 0 until snap.height) continue
+                            val p = snap.pixels[yy * snap.width + xx]
+                            r += (p shr 16) and 0xff; g += (p shr 8) and 0xff; b += p and 0xff; n++
+                        }
+                        done(if (n == 0) null else intArrayOf(r / n, g / n, b / n))
+                    }
+                }, 200)
+            }
+            true
+        }
+        val lp = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        )
+        try {
+            addOverlay(root, lp)
+            calib = root
+        } catch (e: Exception) {
+            Diag.error("Pick layer failed", e)
+            done(null)
+        }
+    }
+
     private fun toggleAi() {
         val msg = AiRuntime.toggleFromOverlay()
         Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()

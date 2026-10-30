@@ -83,12 +83,13 @@ object Cfg {
     var stdChangeSpell: Boolean get() = b("std_spell", false); set(v) = put("std_spell", v)
     var stdChangeEmblem: Boolean get() = b("std_emblem", false); set(v) = put("std_emblem", v)
 
-    // ---- online meta (Gemini API) ----
-    var geminiKey: String get() = s("gemini_key", ""); set(v) = put("gemini_key", v)
-    var geminiModel: String get() = s("gemini_model", "gemini-2.5-flash"); set(v) = put("gemini_model", v)
+    // ---- online meta (Groq API) ----
+    var groqKey: String get() = s("groq_key", ""); set(v) = put("groq_key", v)
+    // groq/compound searches the web; plain models (e.g. llama-3.3-70b-versatile) answer from memory only
+    var groqModel: String get() = s("groq_model", "groq/compound"); set(v) = put("groq_model", v)
     var useOnlineMeta: Boolean get() = b("online_meta", true); set(v) = put("online_meta", v)
-    var geminiAuto: Boolean get() = b("gemini_auto", true); set(v) = put("gemini_auto", v)
-    var geminiDraft: Boolean get() = b("gemini_draft", true); set(v) = put("gemini_draft", v)
+    var onlineAuto: Boolean get() = b("online_auto", true); set(v) = put("online_auto", v)
+    var onlineDraft: Boolean get() = b("online_draft", true); set(v) = put("online_draft", v)
     var metaMaxAgeDays: Int get() = i("meta_age", 7); set(v) = put("meta_age", v)
 
     // ---- kills, towers, farming ----

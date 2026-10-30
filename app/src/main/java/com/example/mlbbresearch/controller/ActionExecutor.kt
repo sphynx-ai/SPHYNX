@@ -149,6 +149,8 @@ object ActionExecutor {
         if (Cfg.wallAvoid && now - walkSince > 900 && now - GameStateTracker.lastMotionAt > 700 && now > detourUntil + 400) {
             detourUntil = now + 650
             detourSign = -detourSign
+            // remember this wall on the minimap so the next path goes around it
+            GameStateTracker.state.minimapSelf?.let { com.example.mlbbresearch.vision.WallMap.markBlocked(it, mx, my) }
         }
         if (now < detourUntil) {
             val a = Math.toRadians(75.0 * detourSign)
