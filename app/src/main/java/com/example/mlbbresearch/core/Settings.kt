@@ -79,6 +79,15 @@ object Cfg {
     var stdChangeSpell: Boolean get() = b("std_spell", false); set(v) = put("std_spell", v)
     var stdChangeEmblem: Boolean get() = b("std_emblem", false); set(v) = put("std_emblem", v)
 
+    // ---- kills, towers, farming ----
+    var executeHpPct: Int get() = i("exec_hp", 20); set(v) = put("exec_hp", v)       // chase enemies below this
+    var towerGuard: Boolean get() = b("tower_guard", true); set(v) = put("tower_guard", v)
+    var towerRangePct: Int get() = i("tower_range", 8); set(v) = put("tower_range", v) // % of the minimap
+    var useDash: Boolean get() = b("use_dash", true); set(v) = put("use_dash", v)
+    var lanersTakeCamps: Boolean get() = b("laner_camps", true); set(v) = put("laner_camps", v)
+    fun heroDash(hero: String): String = s("dash_" + hero.lowercase(), "auto")
+    fun setHeroDash(hero: String, v: String) = put("dash_" + hero.lowercase(), v)
+
     // ---- smart fights (the learning brain) ----
     var smartFights: Boolean get() = b("smart_fights", true); set(v) = put("smart_fights", v)
     var exploreLevel: Int get() = i("explore", 1); set(v) = put("explore", v)     // 0 low, 1 normal, 2 high

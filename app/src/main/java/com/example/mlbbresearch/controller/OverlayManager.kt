@@ -554,6 +554,12 @@ class OverlayManager(private val ctx: Context) {
                 fun my(f: Float) = (mt + f * (mb - mt)) * h
                 boxPaint.color = Color.parseColor("#CE93D8")
                 for (cp in gs.camps) c.drawCircle(mx(cp.x), my(cp.y), if (cp.buff) 7f * density else 4f * density, boxPaint)
+                // enemy towers with their range (yellow = bonus tower)
+                val rr = com.example.mlbbresearch.game.TowerLogic.range() * (mr - ml) * w
+                for (tw in gs.towers) {
+                    boxPaint.color = Color.parseColor(if (tw.bonus) "#FFD600" else "#FF7043")
+                    c.drawCircle(mx(tw.x), my(tw.y), rr, boxPaint)
+                }
                 gs.minimapSelf?.let {
                     boxPaint.color = Color.WHITE
                     c.drawCircle(mx(it.first), my(it.second), 9f * density, boxPaint)

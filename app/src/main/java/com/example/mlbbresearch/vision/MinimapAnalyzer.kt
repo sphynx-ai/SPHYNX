@@ -9,8 +9,18 @@ class MinimapInfo(
     val allies: Int,
     val enemyDots: List<Pair<Float, Float>>,
     val self: Pair<Float, Float>? = null,          // your icon (green ring), 0..1 inside the map
-    val camps: List<Camp> = emptyList()            // jungle camps on YOUR side of the river
+    val camps: List<Camp> = emptyList(),           // jungle camps on YOUR side of the river
+    val towers: List<MapTower> = emptyList(),             // enemy towers still standing
+    val enemyBase: Pair<Float, Float>? = null,            // the enemy base (destroy it to win)
+    val allyWaves: List<Pair<Float, Float>> = emptyList(),// your minion waves (small blue marks)
+    val allyTowers: List<Pair<Float, Float>> = emptyList(),
+    val enemyWaves: List<Pair<Float, Float>> = emptyList()
 )
+
+// bonus = red-and-yellow icon: an enemy tower that gives extra gold when attacked
+class MapTower(val x: Float, val y: Float, val bonus: Boolean) {
+    val pos: Pair<Float, Float> get() = x to y
+}
 
 // buff = big magenta camp icon, else a small green / cyan camp icon. Positions 0..1 inside the map.
 class Camp(val x: Float, val y: Float, val buff: Boolean)
@@ -77,7 +87,13 @@ object MinimapAnalyzer {
             if (cls == 1) dots.add((sx.toFloat() / n / gw) to (sy.toFloat() / n / gh)) else allies++
         }
         val (self, camps) = jungle(px, w, h)
-        return MinimapInfo(dots.size, allies, dots, self, camps)
+        val st = structures(px, w, h)
+        // enemy towers are red too: do not count them as enemy heroes
+        val heroDots = dots.filter { d ->
+            st.towers.none { kotlin.math.hypot(it.x - d.first, it.y - d.second) < 0.05f } &&
+                st.enemyWaves.none { kotlin.math.hypot(it.first - d.first, it.second - d.second) < 0.02f }
+        }
+        return MinimapInfo(heroDots.size, allies, heroDots, self, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves)
     }
 
     // MLBB always draws YOUR base bottom-left and the river from top-left to bottom-right,
@@ -108,6 +124,79 @@ object MinimapAnalyzer {
         for (bl in green) if (bl.w / mw < 0.035f && bl.count in 3..10) add(bl, false)
         for (bl in ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { isCyan(it) }) if (bl.count in 3..10) add(bl, false)
         return me to out
+    }
+
+    class Structures(
+        val towers: List<MapTower>, val base: Pair<Float, Float>?, val waves: List<Pair<Float, Float>>,
+        val allyTowers: List<Pair<Float, Float>>, val enemyWaves: List<Pair<Float, Float>>
+    )
+
+    // Enemy towers: compact solid red icons. Enemy base: the biggest red icon (top-right).
+    // Hero portraits only have a thin red ring, so they make small red groups.
+    // Destroyed towers are drawn yellow/grey, so they are not picked up.
+    fun structures(px: IntArray, w: Int, h: Int): Structures {
+        val (l, t) = Layout.get("mapTL")
+        val (r, b) = Layout.get("mapBR")
+        val mw = r - l
+        val mh = b - t
+        if (mw < 0.03f || mh < 0.05f) return Structures(emptyList(), null, emptyList(), emptyList(), emptyList())
+        fun inMap(bl: ButtonDetector.Blob) = ((bl.cx - l) / mw) to ((bl.cy - t) / mh)
+        fun near(a: Pair<Float, Float>, b: Pair<Float, Float>, d: Float) = kotlin.math.hypot(a.first - b.first, a.second - b.second) < d
+        val red = ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { p ->
+            val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
+            rr >= 170 && g <= 110 && bb <= 120 && rr - g >= 80
+        }
+        val base = red.filter { it.w / mw >= 0.075f && it.count >= 20 }.maxByOrNull { it.count }?.let { inMap(it) }
+        val redTowers = red.filter { it.count >= 12 && it.w / mw in 0.018f..0.07f }.map { inMap(it) }
+            .filter { tw -> base == null || !near(tw, base, 0.08f) }
+        // yellow tower icons: a yellow body with a RED cap = enemy tower with a gold bonus,
+        // a yellow body with a BLUE cap = one of your towers
+        val yellowBlobs = ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { p ->
+            val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
+            rr >= 200 && g >= 160 && bb <= 150 && rr - bb >= 80 && g - bb >= 50
+        }.filter { it.count >= 8 && it.w / mw in 0.012f..0.07f }
+        val yellowEnemy = ArrayList<Pair<Float, Float>>()
+        val yellowAlly = ArrayList<Pair<Float, Float>>()
+        for (yb in yellowBlobs) {
+            val top = yb.cy - yb.h * w / h / 2f
+            val capH = 0.025f * mh
+            var redCap = 0
+            var blueCap = 0
+            var yy = top - capH
+            while (yy < top) {
+                var xx = yb.cx - 0.02f * mw
+                while (xx <= yb.cx + 0.02f * mw) {
+                    val xi = (xx * w).toInt().coerceIn(0, w - 1)
+                    val yi = (yy * h).toInt().coerceIn(0, h - 1)
+                    val p = px[yi * w + xi]
+                    val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
+                    if (rr >= 190 && g <= 140 && rr - g >= 70) redCap++
+                    if (bb >= 170 && rr <= 130 && bb - rr >= 60) blueCap++
+                    xx += 1f / w
+                }
+                yy += 1f / h
+            }
+            if (redCap > blueCap && redCap >= 2) yellowEnemy.add(inMap(yb)) else if (blueCap >= 2) yellowAlly.add(inMap(yb))
+        }
+        fun enemySide(p: Pair<Float, Float>) = p.first > 0.5f || p.second < 0.15f
+        val towers = redTowers.filter { enemySide(it) }.map { tw -> MapTower(tw.first, tw.second, yellowEnemy.any { near(it, tw, 0.05f) }) } +
+            yellowEnemy.filter { enemySide(it) }.filter { y -> redTowers.none { near(it, y, 0.05f) } && (base == null || !near(y, base, 0.08f)) }
+                .map { MapTower(it.first, it.second, true) }
+        // ally towers: compact solid blue icons (portrait rings are bigger, minion marks smaller)
+        val blueAll = ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { p ->
+            val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
+            bb >= 170 && rr <= 120 && bb - rr >= 70 && g >= 100
+        }
+        // your towers stand on your half (left edge, bottom edge, lower mid); enemy ones on theirs
+        fun allySide(p: Pair<Float, Float>) = p.first < 0.5f || p.second > 0.85f
+        val allyTowers = (blueAll.filter { it.count in 15..50 && it.w / mw in 0.04f..0.10f }.map { inMap(it) } +
+            yellowAlly.filter { y -> blueAll.none { it.count in 15..50 && near(inMap(it), y, 0.04f) } }).filter { allySide(it) }
+        // enemy minion waves: small red marks
+        val enemyWaves = red.filter { it.count in 4..9 && it.w / mw <= 0.03f }.map { inMap(it) }
+            .filter { wv -> towers.none { near(it.pos, wv, 0.03f) } }
+        // your minion waves: small blue marks in a lane
+        val waves = blueAll.filter { it.count in 4..9 && it.w / mw <= 0.03f }.map { inMap(it) }
+        return Structures(towers, base, waves, allyTowers, enemyWaves)
     }
 
     private fun isGreen(p: Int): Boolean {

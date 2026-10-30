@@ -2,6 +2,7 @@ package com.example.mlbbresearch.game
 
 import com.example.mlbbresearch.vision.Camp
 import com.example.mlbbresearch.vision.HudInfo
+import com.example.mlbbresearch.vision.MapTower
 import com.example.mlbbresearch.vision.Seen
 import com.example.mlbbresearch.vision.Track
 import kotlin.math.hypot
@@ -42,7 +43,12 @@ class GameState(
     val matchSec: Int = -1,                   // seconds since the match started, -1 unknown
     val sinceSpawnMs: Long = Long.MAX_VALUE,  // since you last (re)spawned in base
     val minimapSelf: Pair<Float, Float>? = null,   // your icon on the minimap (0..1 inside the map)
-    val camps: List<Camp> = emptyList()            // your side's jungle camps still up
+    val camps: List<Camp> = emptyList(),           // your side's jungle camps still up
+    val towers: List<MapTower> = emptyList(),              // enemy towers on the minimap
+    val enemyBase: Pair<Float, Float>? = null,
+    val allyWaves: List<Pair<Float, Float>> = emptyList(),
+    val allyTowers: List<Pair<Float, Float>> = emptyList(),
+    val enemyWaves: List<Pair<Float, Float>> = emptyList()
 ) {
     val creeps: List<Seen> get() = monsters.filter { !it.hero }
     val boss: Seen? get() = monsters.filter { it.hero }.minByOrNull { distToSelf(it.x, it.y) }

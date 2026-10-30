@@ -724,6 +724,40 @@ class MainActivity : Activity() {
         }
         switch("Buy items (taps the quick-buy item top right when it shows)", Cfg.playerQuickBuy) { Cfg.playerQuickBuy = it }
 
+        title("KILLS, TOWERS & GOLD")
+        text("Priority: finish low-HP enemy heroes (never under their tower), kill jungle camps and minions until they " +
+            "die, push enemy towers only with your minions in range and no enemy hero, defend your towers, and walk your " +
+            "lane to the next enemy tower (yellow bonus towers first). The match is won by destroying the enemy base.", 12f, color = "#9AA0A6")
+        field("Chase and finish enemy heroes below HP (%)", Cfg.executeHpPct.toString(), true) {
+            it.toIntOrNull()?.let { v -> Cfg.executeHpPct = v.coerceIn(5, 60) }
+        }
+        switch("Never enter enemy tower range without my minions", Cfg.towerGuard) { Cfg.towerGuard = it }
+        field("Enemy tower range (% of the minimap width)", Cfg.towerRangePct.toString(), true) {
+            it.toIntOrNull()?.let { v -> Cfg.towerRangePct = v.coerceIn(3, 20) }
+        }
+        switch("Laners also take jungle camps next to them between waves", Cfg.lanersTakeCamps) { Cfg.lanersTakeCamps = it }
+        switch("Use the dash skill to chase and to escape", Cfg.useDash) { Cfg.useDash = it }
+        val dashBtn = btn("") {
+            val h = GameStateTracker.ownHero() ?: HeroDb.match(heroBox.text.toString())
+            if (h == null) toast("Your hero is not known yet") else {
+                val opts = listOf("auto", "s1", "s2", "ult", "none")
+                Cfg.setHeroDash(h, opts[(opts.indexOf(Cfg.heroDash(h)) + 1) % opts.size])
+            }
+        }
+        val towerInfo = text("", 13f)
+        upd {
+            val h = GameStateTracker.ownHero()
+            dashBtn.text = "Dash skill for ${h ?: "my hero"}: ${HeroDb.dashSlot(h) ?: "none"} (${HeroDb.dashSource(h)}) - tap to change"
+            val st = GameStateTracker.state
+            val n = com.example.mlbbresearch.game.TowerLogic.nearest(st)
+            towerInfo.text = "Minimap: ${st.towers.size} enemy towers (${st.towers.count { it.bonus }} bonus), " +
+                "${st.allyTowers.size} of yours, enemy base ${if (st.enemyBase != null) "seen" else "not seen"}\n" +
+                (if (n == null) "Your position on the minimap is not known" else
+                    "Nearest enemy tower: ${(n.second * 100).toInt()}% of the map away" +
+                        (if (n.second < com.example.mlbbresearch.game.TowerLogic.range()) " - INSIDE its range" else "") +
+                        (if (com.example.mlbbresearch.game.TowerLogic.canPush(st)) " - safe to push" else ""))
+        }
+
         title("REGEN & RECALL")
         switch("Use Regen when hurt and no enemy is near", Cfg.useRegen) { Cfg.useRegen = it }
         field("Regen below HP (%)", Cfg.regenHpPct.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.regenHpPct = v.coerceIn(10, 95) } }
