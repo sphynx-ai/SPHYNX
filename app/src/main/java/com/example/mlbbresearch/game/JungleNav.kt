@@ -62,7 +62,8 @@ object JungleNav {
         // nearest (buffs first during the first 90 seconds)
         val keep = hidden ?: target?.let { t -> camps.minByOrNull { hypot(it.x - t.x, it.y - t.y) }?.takeIf { hypot(it.x - t.x, it.y - t.y) < 0.05f } }
         val opening = s.matchSec in 0..90
-        val t = keep ?: camps.minByOrNull { hypot(it.x - me.first, it.y - me.second) - if (opening && it.buff) 0.3f else 0f }!!
+        // nearest by WALKING distance (around walls), so the clear route has no back-tracking
+        val t = keep ?: camps.minByOrNull { WallMap.distance(me, it.x to it.y) - if (opening && it.buff) 0.3f else 0f }!!
         if (t !== keep && t !== target) { target = t; arrivedAt = 0L; sawMonsterAt = 0L }
 
         val d = hypot(t.x - me.first, t.y - me.second)

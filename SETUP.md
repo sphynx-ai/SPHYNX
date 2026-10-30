@@ -75,6 +75,36 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
   - Routes from base: EXP walks up, then right. Gold walks right, then up. Mid uses the push direction.
     Roam follows the team. Jungle farms monsters.
 
+## Online meta with Gemini (Meta page)
+
+- Get a free API key at aistudio.google.com/apikey and paste it on the Meta page. It is stored only on the phone.
+- **Update the patch meta**: Gemini searches the web (Google Search) for the latest patch notes, hero adjustments and
+  tier lists. It returns the patch, the top bans and the top picks per role.
+- **Update this hero**: build, emblem, battle spell, lane, combo, dash skill, laning / jungle / rotation tips, counters
+  and recent buffs / nerfs. The sources are listed.
+- **Auto-update**: while you play, the hero you use is refreshed in the background when its meta is older than
+  7 days (you can change this).
+- **How the app uses it**, offline once downloaded. Your own settings always win.
+  - Combo: yours > online meta > built-in.
+  - Dash skill: yours > online meta > built-in.
+  - Lane: Auto uses the meta lane. Retribution still means jungle.
+  - The Build page shows the meta build, emblem, spell and counters.
+  - Gemma's game plan gets the hero's laning, jungle and rotation tips.
+  - Ranked drafting asks Gemini for bans and picks whenever the line-ups change. Its picks go first, and Gemma is told
+    to tap them.
+- The model name can be changed when Google releases a newer one (default gemini-2.5-flash).
+- The app needs internet only for this and for "Get my hero's combo online".
+
+## Faster early game
+
+- **Jungle**: every ready skill except the ultimate goes into each camp. Camps are cleared in walking-distance order
+  around walls, so the route doesn't double back, with buffs first in the opening. It stands in reach of a monster
+  it can see and aims at it.
+- **Lanes**: in the first 6 minutes, waves of 2+ minions are cleared with the wave-clear skill, and with all skills
+  on bigger waves, when no enemy hero is close. Laners take jungle camps up to 22% of the map away between waves.
+- **Recall**: in the first 3 minutes it recalls only below 20% HP and uses Regen otherwise, so it stays on the map
+  farming.
+
 ## Detectors, movement, aiming and assist (Player page)
 
 - **Neutral monster detector**: jungle monsters, turtle and lord are found by their HP bars on screen.

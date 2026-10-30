@@ -82,9 +82,9 @@ class MainActivity : Activity() {
     private var pendingStage: String? = null
     private val ui = Handler(Looper.getMainLooper())
 
-    private val pages = listOf("home", "player", "draft", "build", "model", "learn", "logs", "setup")
+    private val pages = listOf("home", "player", "draft", "build", "meta", "model", "learn", "logs", "setup")
     private val labels = mapOf(
-        "home" to "Home", "player" to "Player", "draft" to "Draft", "build" to "Build",
+        "home" to "Home", "player" to "Player", "draft" to "Draft", "build" to "Build", "meta" to "Meta",
         "model" to "Model", "learn" to "Learn", "logs" to "Logs", "setup" to "Setup"
     )
 
@@ -351,6 +351,7 @@ class MainActivity : Activity() {
             "player" -> playerPage()
             "draft" -> draftPage()
             "build" -> buildPage()
+            "meta" -> metaPage()
             "model" -> modelPage()
             "learn" -> learnPage()
             "logs" -> logsPage()
@@ -936,6 +937,90 @@ class MainActivity : Activity() {
         for (r in Role.values()) {
             if (r == Role.UNKNOWN) continue
             field(r.name.lowercase(), Cfg.roleBuild(r.name, BuildBook.defaults[r] ?: ""), false) { Cfg.setRoleBuild(r.name, it) }
+        }
+    }
+
+    // =====================================================================
+    //  META: online meta through the Gemini API
+    // =====================================================================
+
+    private fun metaPage() {
+        text("Online meta: Gemini searches the web (patch notes, hero adjustments, tier lists, guides) and returns the " +
+            "current build, emblem, battle spell, lane, combo, dash skill, laning / jungle / rotation tips and draft picks. " +
+            "They are saved on the phone: the Player, Builder and Drafter use them offline. Your own settings still win.", 13f)
+        title("GEMINI API")
+        text("Get a free API key at aistudio.google.com/apikey (Google account). It is stored on this phone only.", 12f, color = "#9AA0A6")
+        btn("Open Google AI Studio (API key page)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey"))) }
+        val keyBox = field("API key", Cfg.geminiKey, false) { Cfg.geminiKey = it.trim() }
+        keyBox.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        field("Model (change it when Google releases a newer one)", Cfg.geminiModel, false) { if (it.isNotBlank()) Cfg.geminiModel = it.trim() }
+        switch("Use the online meta in the app", Cfg.useOnlineMeta) { Cfg.useOnlineMeta = it }
+        switch("Auto-update the hero I play when its meta is old", Cfg.geminiAuto) { Cfg.geminiAuto = it }
+        field("Old after (days)", Cfg.metaMaxAgeDays.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.metaMaxAgeDays = v.coerceIn(1, 60) } }
+        switch("Use it for drafting (ranked bans & picks)", Cfg.geminiDraft) { Cfg.geminiDraft = it }
+        val st = text("", 13f)
+        upd {
+            st.text = "Gemini: " + (if (Cfg.geminiKey.isBlank()) "no key yet" else "key set, ${com.example.mlbbresearch.ai.GeminiClient.calls} answers this session") +
+                (if (com.example.mlbbresearch.ai.MetaAdvisor.busy.isNotEmpty()) "\nWorking: ${com.example.mlbbresearch.ai.MetaAdvisor.busy}..." else "") +
+                (if (com.example.mlbbresearch.ai.MetaAdvisor.lastMessage.isNotEmpty()) "\nLast: ${com.example.mlbbresearch.ai.MetaAdvisor.lastMessage}" else "")
+        }
+
+        title("UPDATE")
+        btn("Update the patch meta (tier list, bans, picks)") {
+            leaveHooks.forEach { it() }
+            if (Cfg.geminiKey.isBlank()) toast("Enter your API key first") else {
+                toast("Asking Gemini (can take 10-30 s)...")
+                com.example.mlbbresearch.ai.MetaAdvisor.updateGeneral { msg -> runOnUiThread { toast(msg) } }
+            }
+        }
+        val heroBox = field("Hero to update (empty = the hero I play)", "", false) { }
+        btn("Update this hero (build, combo, tips)") {
+            leaveHooks.forEach { it() }
+            val h = HeroDb.match(heroBox.text.toString()) ?: GameStateTracker.ownHero() ?: HeroDb.match(Cfg.myHero)
+            when {
+                Cfg.geminiKey.isBlank() -> toast("Enter your API key first")
+                h == null -> toast("Type a hero name")
+                else -> {
+                    toast("Asking Gemini about $h (can take 10-30 s)...")
+                    com.example.mlbbresearch.ai.MetaAdvisor.updateHero(h) { msg -> runOnUiThread { toast(msg) } }
+                }
+            }
+        }
+
+        title("PATCH META")
+        val gc = card()
+        val gt = cardText(gc, 13f)
+        title("HERO META")
+        val hc = card()
+        val ht = cardText(hc, 13f)
+        upd {
+            val g = com.example.mlbbresearch.game.MetaStore.general()
+            gt.text = if (g == null) "(not downloaded yet)" else buildString {
+                append("Patch: ").append(g.patch).append("  (").append("%.0f".format(com.example.mlbbresearch.game.MetaStore.ageDays(g.updatedAt))).append(" days old)")
+                append("\nTop bans: ").append(g.bans.joinToString())
+                for ((r, l) in g.picks) append("\n").append(r.name.lowercase()).append(": ").append(l.joinToString())
+                if (g.notes.isNotBlank()) append("\n").append(g.notes)
+                if (g.sources.isNotEmpty()) append("\nSources: ").append(g.sources.joinToString())
+            }
+            val h = HeroDb.match(heroBox.text.toString()) ?: GameStateTracker.ownHero() ?: HeroDb.match(Cfg.myHero)
+            val m = com.example.mlbbresearch.game.MetaStore.hero(h)
+            ht.text = if (m == null) "${h ?: "No hero"}: not downloaded yet" else buildString {
+                append(m.hero).append(" - ").append(m.patch).append("  (").append("%.0f".format(com.example.mlbbresearch.game.MetaStore.ageDays(m.updatedAt))).append(" days old)")
+                append("\nBuild: ").append(m.build.joinToString())
+                append("\nEmblem: ").append(m.emblem).append("\nSpell: ").append(m.spell ?: "-").append("   Lane: ").append(m.lane?.label ?: "-")
+                append("\nCombo: ").append(m.combo ?: "-").append("   Dash: ").append(m.dash ?: "-")
+                if (m.laning.isNotEmpty()) append("\nLaning: ").append(m.laning.joinToString(" / "))
+                if (m.jungle.isNotEmpty()) append("\nJungle: ").append(m.jungle.joinToString(" / "))
+                if (m.rotation.isNotEmpty()) append("\nRotations: ").append(m.rotation.joinToString(" / "))
+                if (m.counters.isNotEmpty()) append("\nCountered by: ").append(m.counters.joinToString())
+                if (m.changes.isNotBlank()) append("\nRecent changes: ").append(m.changes)
+                if (m.sources.isNotEmpty()) append("\nSources: ").append(m.sources.joinToString())
+            }
+        }
+        btn("Delete all downloaded meta") {
+            AlertDialog.Builder(this).setTitle("Delete the downloaded meta?")
+                .setPositiveButton("Delete") { _, _ -> com.example.mlbbresearch.game.MetaStore.clear(); toast("Deleted") }
+                .setNegativeButton("Cancel", null).show()
         }
     }
 

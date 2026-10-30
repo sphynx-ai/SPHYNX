@@ -94,7 +94,7 @@ object HeroDb {
 
     fun dashSlot(hero: String?): String? {
         val chosen = if (hero == null) "auto" else Cfg.heroDash(hero)
-        val slot = if (chosen != "auto") chosen else dashTable[hero] ?: when (role(hero)) {
+        val slot = if (chosen != "auto") chosen else MetaStore.hero(hero)?.dash ?: dashTable[hero] ?: when (role(hero)) {
             Role.FIGHTER -> "s1"
             Role.ASSASSIN, Role.TANK -> "s2"
             else -> "none"
@@ -104,6 +104,7 @@ object HeroDb {
 
     fun dashSource(hero: String?): String = when {
         hero != null && Cfg.heroDash(hero) != "auto" -> "your choice"
+        MetaStore.hero(hero)?.dash != null -> "online meta"
         dashTable.containsKey(hero) -> "built-in"
         else -> "role default"
     }

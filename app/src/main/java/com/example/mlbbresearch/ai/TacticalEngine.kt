@@ -125,7 +125,9 @@ object TacticalEngine {
             recallUntil = 0L
         }
         val safe = s.enemiesWithin(0.9f).isEmpty()
-        if (Cfg.useRecall && hp in 0f..Cfg.recallHpPct / 100f && safe) {
+        // early game: walking home costs too much farm, so recall only when really low (Regen covers the rest)
+        val recallAt = if (s.matchSec in 0..180) minOf(Cfg.recallHpPct, 20) else Cfg.recallHpPct
+        if (Cfg.useRecall && hp in 0f..recallAt / 100f && safe) {
             // Recall channels ~6 s: stand still; an enemy showing up cancels it (step 1 / above)
             regenUntil = 0L
             recallUntil = now + 8000
@@ -234,7 +236,12 @@ object TacticalEngine {
             if (d <= p.attackRange * 1.4f) casts.add("attack")
             val clustered = minions.count { s.dist(it.x, it.y, mx0, my0) < 0.25f }
             val wc = p.waveClearSkill
-            if (wc != null && clustered >= 3 && s.distToSelf(mx0, my0) <= p.attackRange * 1.8f && CooldownTracker.ready(wc, p)) casts.add(wc)
+            // early game: clear waves fast with skills (no enemy hero close), later only on big waves
+            val early = s.matchSec in 0..360 && threat.isEmpty()
+            if (wc != null && clustered >= (if (early) 2 else 3) && s.distToSelf(mx0, my0) <= p.attackRange * 1.8f && CooldownTracker.ready(wc, p)) casts.add(wc)
+            if (early && clustered >= 3 && s.distToSelf(mx0, my0) <= p.attackRange * 1.8f) {
+                for (sk in p.combo) if (sk != "ult" && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
+            }
             val (mx, my) = if (d > p.attackRange) toward(s, tgt.x, tgt.y) else (0f to 0f)
             return hold(now, TacticalDecision(Intent.LANE_CLEAR, mx, my, casts, tgt.x, tgt.y,
                 "${minions.size} minions", tgt.hp, -1,
@@ -260,7 +267,7 @@ object TacticalEngine {
 
         // ---- 7d. laners: grab a nearby jungle camp between waves (gold + EXP) ----
         if (Cfg.lanersTakeCamps && s.lane != Lane.JUNGLE && s.lane != Lane.ROAM && threat.isEmpty()) {
-            JungleNav.direction(s, 0.15f)?.let { return hold(now, jungleStep(s, p, it)) }
+            JungleNav.direction(s, if (s.matchSec in 0..360) 0.22f else 0.15f)?.let { return hold(now, jungleStep(s, p, it)) }
         }
 
         // ---- 7e. MOBA rule: do not wander alone deep in the enemy half (ganks) ----
@@ -293,11 +300,19 @@ object TacticalEngine {
             return TacticalDecision(Intent.JUNGLE, nav.first, nav.second, emptyList(), -1f, -1f, "-", -1f, -1, "jungle path: ${nav.third}")
         }
         val casts = arrayListOf("attack")
+        // farm fast: every ready skill except the ultimate goes into the camp
         p.waveClearSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
-        if (JungleNav.atBuff) for (sk in p.combo) if (sk != "ult" && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
+        for (sk in p.combo) if (sk != "ult" && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
+        val m = s.creeps.minByOrNull { s.distToSelf(it.x, it.y) }
         // no HP bar to read: Retribution once the camp has taken a few seconds of hits
         val retriAfter = if (JungleNav.atBuff) 5000L else 2500L
         if (s.spell == "Retribution" && JungleNav.atCampMs > retriAfter && CooldownTracker.ready("spell", p)) casts.add("spell")
+        if (m != null) {
+            // a monster is seen: stand in reach of it and aim at it
+            val d = s.distToSelf(m.x, m.y)
+            val (mx, my) = if (d > p.attackRange) toward(s, m.x, m.y) else (0f to 0f)
+            return TacticalDecision(Intent.JUNGLE, mx, my, casts, m.x, m.y, "monster", m.hp, -1, JungleNav.status)
+        }
         return TacticalDecision(Intent.JUNGLE, 0f, 0f, casts, -1f, -1f, "camp", -1f, -1, JungleNav.status)
     }
 
@@ -318,7 +333,7 @@ object TacticalEngine {
         if (d <= p.attackRange * 1.4f) casts.add("attack")
         if (d <= p.attackRange * 1.8f) {
             p.waveClearSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
-            if (m.hero) for (sk in p.combo) if (sk != "ult" && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
+            for (sk in p.combo) if (sk != "ult" && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
         }
         if (s.spell == "Retribution" && m.hp * 100 <= retriPct && d <= 0.45f && CooldownTracker.ready("spell", p)) casts.add("spell")
         val (mx, my) = if (d > p.attackRange) toward(s, m.x, m.y) else (0f to 0f)
