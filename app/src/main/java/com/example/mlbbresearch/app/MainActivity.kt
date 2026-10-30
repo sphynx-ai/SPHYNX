@@ -55,6 +55,7 @@ import com.example.mlbbresearch.game.SpellDb
 import com.example.mlbbresearch.game.GameStateTracker
 import com.example.mlbbresearch.game.HeroDb
 import com.example.mlbbresearch.game.Role
+import com.example.mlbbresearch.learning.Brain
 import com.example.mlbbresearch.learning.DatasetManager
 import com.example.mlbbresearch.learning.DemoRecorder
 import com.example.mlbbresearch.learning.ImitationPolicy
@@ -922,25 +923,74 @@ class MainActivity : Activity() {
 
     private fun learnPage() {
         DemoRecorder.refreshTotal()
-        text("Every decision is saved with the situation, and scored 3 seconds later (did you lose HP, did the target lose HP, " +
-            "did you die). Fights that go badly make the AI more careful with that hero; good ones make it bolder.", 13f)
+        title("SMART FIGHTS - the AI learns from its mistakes")
+        text("When an enemy is close, the AI chooses how to handle it: all in, poke from range, back off, fall back to " +
+            "allies, keep farming, or the normal rules. 4 seconds later it scores the result: damage dealt, kills, HP kept, " +
+            "dying. It learns which choice works best in which situation (your HP vs theirs, how many on each side, skills " +
+            "ready...) for each hero, and sometimes tries something new to keep learning. Low HP always retreats.", 13f)
+        switch("Smart fights (learning AI)", Cfg.smartFights) { Cfg.smartFights = it }
+        val levels = listOf("Low (mostly uses what it knows)", "Normal", "High (tries new things more)")
+        val explore = btn("") { Cfg.exploreLevel = (Cfg.exploreLevel + 1) % 3 }
+        upd { explore.text = "Curiosity: ${levels[Cfg.exploreLevel.coerceIn(0, 2)]}  (tap to change)" }
+        switch("Also learn from my own fights (needs 'Learn from me' on)", Cfg.brainLearnsFromYou) { Cfg.brainLearnsFromYou = it }
+
         val c = card()
-        val t = cardText(c, 14f, true)
+        val head = cardText(c, 15f, true)
+        val table = TextView(this).apply { typeface = Typeface.MONOSPACE; textSize = 12f; setTextColor(Color.parseColor("#E6E6E6")) }
+        c.addView(table)
+        val now = cardText(c, 13f)
+        upd {
+            val hero = GameStateTracker.ownHero()
+            val own = Brain.fights(hero)
+            head.text = "${hero ?: "Unknown hero"}: $own fights learned" +
+                (if (own < 40) " (uses the shared brain, ${Brain.sharedFights()} fights, until 40)" else "") +
+                "\nThis session: ${Brain.learnedThisSession} lessons"
+            val stats = Brain.stats(hero)
+            val best = stats.filter { it.tries >= 3 }.maxByOrNull { it.avgReward }
+            table.text = "choice                   tried  avg result\n" + stats.joinToString("\n") { st ->
+                val bar = if (st.tries == 0) "" else (if (st.avgReward >= 0) "+".repeat((st.avgReward * 4).toInt().coerceIn(0, 8))
+                          else "-".repeat((-st.avgReward * 4).toInt().coerceIn(0, 8)))
+                "%-24s %5d  %+.2f %s%s".format(st.option.label.take(24), st.tries, st.avgReward, bar, if (st === best) "  <- best so far" else "")
+            }
+            now.text = "Now: ${Brain.lastChoice}"
+        }
+
+        title("RECENT LESSONS")
+        val lessons = TextView(this).apply { typeface = Typeface.MONOSPACE; textSize = 12f; setTextColor(Color.parseColor("#C8C8C8")) }
+        content.addView(lessons)
+        upd {
+            val r = Brain.recent(12)
+            lessons.text = if (r.isEmpty()) "(none yet: start the Player and get into a fight)" else r.joinToString("\n")
+        }
+        btn("Forget what it learned for this hero") {
+            val hero = GameStateTracker.ownHero() ?: "unknown"
+            AlertDialog.Builder(this).setTitle("Forget the fights learned with $hero?")
+                .setPositiveButton("Forget") { _, _ -> Brain.reset(hero); toast("Forgotten") }
+                .setNegativeButton("Cancel", null).show()
+        }
+        btn("Forget everything it learned (all heroes)") {
+            AlertDialog.Builder(this).setTitle("Forget all learned fights?")
+                .setPositiveButton("Forget") { _, _ -> Brain.reset(null); toast("Forgotten") }
+                .setNegativeButton("Cancel", null).show()
+        }
+
+        title("OTHER LEARNING")
+        val o = card()
+        val t = cardText(o, 13f)
         upd {
             val hero = GameStateTracker.ownHero() ?: "unknown"
-            t.text = "Examples saved: ${ExperienceRecorder.count}\nScored this session: ${PerformanceEvaluator.evaluated}\n" +
-                "Fight score: ${"%+.2f".format(PerformanceEvaluator.engageScore)}   Retreat score: ${"%+.2f".format(PerformanceEvaluator.retreatScore)}\n" +
+            t.text = "Decisions saved: ${ExperienceRecorder.count} (${PerformanceEvaluator.evaluated} scored this session)\n" +
                 "Aggression adjust for $hero: ${"%+.2f".format(Cfg.learnedBias(hero))}\n" +
-                "Your recorded play (Learn from me): ${DemoRecorder.total} moments - see the Player page"
+                "Your recorded play (Learn from me / Play like me): ${DemoRecorder.total} moments - see the Player page"
         }
-        btn("Export to Downloads (CSV)") {
+        btn("Export decisions to Downloads (CSV)") {
             DatasetManager.export(this) { msg -> runOnUiThread { toast(msg) } }
         }
         btn("Export my recorded play (CSV)") {
             DatasetManager.exportDemos(this) { msg -> runOnUiThread { toast(msg) } }
         }
-        btn("Delete all learning data") {
-            AlertDialog.Builder(this).setTitle("Delete all learning data?")
+        btn("Delete saved decisions") {
+            AlertDialog.Builder(this).setTitle("Delete saved decisions?")
                 .setPositiveButton("Delete") { _, _ -> DatasetManager.clear { runOnUiThread { toast("Deleted") } } }
                 .setNegativeButton("Cancel", null).show()
         }

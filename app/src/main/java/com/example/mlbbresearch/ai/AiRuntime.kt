@@ -14,8 +14,10 @@ import com.example.mlbbresearch.game.CooldownTracker
 import com.example.mlbbresearch.game.GameStateTracker
 import com.example.mlbbresearch.game.HeroDb
 import com.example.mlbbresearch.game.Phase
+import com.example.mlbbresearch.learning.Brain
 import com.example.mlbbresearch.learning.DemoRecorder
 import com.example.mlbbresearch.learning.ExperienceRecorder
+import com.example.mlbbresearch.learning.FightOption
 import com.example.mlbbresearch.learning.ImitationPolicy
 import com.example.mlbbresearch.learning.PerformanceEvaluator
 import com.example.mlbbresearch.vision.FrameProcessor
@@ -145,6 +147,7 @@ object AiRuntime {
     }
 
     private fun stopLoops() {
+        Brain.saveAll()
         visionJob?.cancel(); tacticJob?.cancel(); strategyJob?.cancel()
         visionJob = null; tacticJob = null; strategyJob = null
         TacticalEngine.reset()
@@ -200,13 +203,19 @@ object AiRuntime {
                     val profile = HeroDb.profile(hero)
                     val plan = StrategicAdvisor.plan
                     val bias = Cfg.learnedBias(hero ?: "unknown")
-                    var d = TacticalEngine.decide(s, profile, plan, bias)
+                    // the learning brain picks how to handle a nearby enemy; the engine plays it
+                    val option = Brain.choose(s)
+                    var d = TacticalEngine.decide(s, profile, plan, bias, option)
                     // fights: play the hero's combo in order instead of pressing everything at once
                     d = ComboRunner.apply(d, s, profile)
                     // "Play like me": copy your moves, but the survival rules still come first
                     if (Cfg.playLikeMe) {
                         ImitationPolicy.ensureLoaded(hero)
-                        if (d.intent != Intent.RETREAT && d.intent != Intent.RECALL) ImitationPolicy.decide(s)?.let { d = it }
+                        // fights belong to the learning brain when it is on; copying you covers the rest
+                        val brainFight = option != null && option != FightOption.RULES
+                        if (!brainFight && d.intent != Intent.RETREAT && d.intent != Intent.RECALL && d.intent != Intent.REGEN) {
+                            ImitationPolicy.decide(s)?.let { d = it }
+                        }
                     }
                     ActionExecutor.execute(d)
                     ExperienceRecorder.record(s, d, plan.plan, plan.aggression + bias)
@@ -222,6 +231,7 @@ object AiRuntime {
                 }
                 if (drafterOn && !Cfg.ranked && Cfg.autonomous && !stale) standardSelect(s)
                 PerformanceEvaluator.evaluateDue()
+                if (!stale) Brain.evaluateDue(s)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (t: Throwable) {
@@ -294,6 +304,7 @@ object AiRuntime {
             sb.append("\nPlan: ").append(p.plan).append(" (").append("%.1f".format(p.aggression)).append(")")
             sb.append("\nLane: ").append(s.lane.label).append(" | spell: ").append(s.spell ?: "?")
             if (Cfg.useCombos) sb.append("\nCombo: ").append(ComboRunner.status)
+            if (Cfg.smartFights) sb.append("\nBrain: ").append(Brain.lastChoice)
             s.boss?.let { sb.append("\nObjective in sight: HP ").append((it.hp * 100).toInt()).append('%') }
         }
         if (playerOn && s.hud.upgradeReady.isNotEmpty()) sb.append("\nCan upgrade: ").append(s.hud.upgradeReady.joinToString())

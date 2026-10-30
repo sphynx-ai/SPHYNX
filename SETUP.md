@@ -111,6 +111,34 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
   and only if no enemy hero is near.
 - With Retribution it finishes monsters below the set HP (default: 12% for turtle/lord, 35% for jungle monsters).
 
+## Smart fights: the AI learns from its mistakes (Learn page)
+
+The learning method is LinUCB, a contextual bandit (Li et al., 2010, "A contextual-bandit approach to personalized
+news article recommendation"). It is a simple kind of reinforcement learning that can learn on the phone in a few
+matches.
+
+- **The choices**: when an enemy hero is close, the AI picks one of six ways to handle it: all in (full combo +
+  ultimate), poke from range, back off, fall back to allies, keep farming, or the normal rules.
+- **The situation**: it describes the moment with 20 numbers: your HP vs the enemy's, how many on each side,
+  distances, skills and ultimate ready, minions, and so on.
+- **The score**: 4 seconds later it scores what happened:
+  - plus for damage dealt and for kills (an enemy that disappears after being brought low)
+  - plus for HP kept, minus for HP lost
+  - a big minus for dying
+- **The learning**: one small model per choice learns how well that choice does in each kind of situation. The AI
+  picks the choice with the best expected score, plus a bonus for choices it is still unsure about, so it keeps
+  trying alternatives (Curiosity setting). It also tries a random choice now and then, more often while it is new.
+- **Per hero**: each hero gets its own memory. A shared memory is used until a hero has 40 fights of its own.
+- **From your play too**: with "Learn from me" on, your own fights are scored the same way. It learns from your
+  mistakes and your good plays.
+- **Safety**: low HP always retreats, whatever it has learned.
+- **The Learn page** shows each choice's tries and average result, what it is choosing right now, and the latest
+  lessons. You can make it forget one hero or everything.
+
+In a simulated test where going all in only pays off when you have more HP than the enemy, it went from 79% good
+choices in its first 100 fights to about 90-96% after that, finding the rule by itself. In real matches expect it to
+need a few matches per hero.
+
 ## Learn from me
 
 1. Turn on **Learn from me** (Home or Player page) and play a few matches yourself. The app never touches the screen

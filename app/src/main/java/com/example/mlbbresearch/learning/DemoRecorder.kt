@@ -147,6 +147,7 @@ object DemoRecorder {
         }
         val f = Features.of(s)
         lastAction = describe(mx, my, casts)
+        Brain.observeUser(s, mx, my, casts)
         val values = ContentValues().apply {
             put("ts", now)
             put("hero", s.ownHero ?: "unknown")
