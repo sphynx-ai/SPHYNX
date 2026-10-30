@@ -62,6 +62,7 @@ import com.example.mlbbresearch.learning.ExperienceRecorder
 import com.example.mlbbresearch.learning.PerformanceEvaluator
 import com.example.mlbbresearch.models.ModelManager
 import com.example.mlbbresearch.vision.FrameProcessor
+import com.example.mlbbresearch.vision.ObjectDetector
 import com.example.mlbbresearch.vision.IconMemory
 import kotlin.math.abs
 
@@ -90,6 +91,7 @@ class MainActivity : Activity() {
     private val reqModel = 41
     private val reqCapture = 42
     private val reqNotify = 43
+    private val reqDetector = 44
 
     private val refresher = object : Runnable {
         override fun run() {
@@ -194,6 +196,11 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
             reqModel -> if (resultCode == RESULT_OK) data?.data?.let { importModel(it) }
+            reqDetector -> if (resultCode == RESULT_OK) data?.data?.let { uri ->
+                ModelManager.importDetector(this, uri) { err ->
+                    runOnUiThread { toast(if (err == null) "Detector loaded" else "Detector: $err") }
+                }
+            }
             reqCapture -> {
                 if (resultCode == RESULT_OK && data != null) {
                     val i = Intent(this, ScreenCaptureService::class.java)
@@ -892,6 +899,43 @@ class MainActivity : Activity() {
             AlertDialog.Builder(this).setTitle("Delete the model file?")
                 .setPositiveButton("Delete") { _, _ -> ModelManager.delete(this) }
                 .setNegativeButton("Cancel", null).show()
+        }
+
+        title("OPTIONAL: TRAINED VISION DETECTOR (.tflite)")
+        text("A small YOLO model trained on a Mobile Legends image dataset (for example the CC BY 4.0 " +
+            "\"Mobile Legends Minimap Dataset\" on Roboflow) adds turtle / lord / turret / hero icon detection. " +
+            "Train it free in Google Colab with notebooks/train_mlbb_detector.ipynb from your GitHub repo, then choose the " +
+            "mlbb_detector.tflite file here.", 13f)
+        val ds = text("", 13f, true)
+        upd {
+            ds.text = "Detector: ${ObjectDetector.state}" +
+                (if (ObjectDetector.ready) "  |  ${ObjectDetector.lastMs} ms per run  |  ${ObjectDetector.latest.size} objects" else "")
+        }
+        btn("Open the notebook on GitHub") {
+            startActivity(Intent(Intent.ACTION_VIEW,
+                Uri.parse("https://github.com/georgenaval1-blip/Ai-App/blob/main/notebooks/train_mlbb_detector.ipynb")))
+        }
+        btn("Choose detector file (.tflite)") {
+            val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*" }
+            @Suppress("DEPRECATION")
+            startActivityForResult(i, reqDetector)
+        }
+        btn("Reload detector") {
+            val err = ObjectDetector.load(this)
+            toast(err ?: "Detector loaded")
+        }
+        switch("Use the detector", Cfg.detectorOn) { Cfg.detectorOn = it }
+        val reg = btn("") { Cfg.detectorRegion = if (Cfg.detectorRegion == "minimap") "screen" else "minimap" }
+        upd { reg.text = "Detector looks at: ${if (Cfg.detectorRegion == "minimap") "the minimap" else "the whole screen"} (tap to change)" }
+        field("Class names, in training order (labels.txt from the notebook, comma separated)", Cfg.detectorLabels, false) {
+            if (it.isNotBlank() && it != Cfg.detectorLabels) { Cfg.detectorLabels = it; ObjectDetector.load(this) }
+        }
+        field("Minimum confidence (0.1 - 0.9)", Cfg.detectorMinScore.toString(), true) {
+            it.toFloatOrNull()?.let { v -> Cfg.detectorMinScore = v.coerceIn(0.1f, 0.9f) }
+        }
+        btn("Remove detector") {
+            ObjectDetector.close()
+            ObjectDetector.modelFile(this).delete()
         }
     }
 

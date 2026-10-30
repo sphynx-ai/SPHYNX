@@ -92,6 +92,29 @@ object ModelManager {
         modelFile(ctx).delete()
     }
 
+    // Optional trained detector (.tflite made by notebooks/train_mlbb_detector.ipynb)
+    fun importDetector(ctx: Context, uri: Uri, done: (String?) -> Unit) {
+        val app = ctx.applicationContext
+        val name = queryName(app, uri)
+        if (name != null && !name.endsWith(".tflite", ignoreCase = true)) {
+            done("That file is \"$name\". The detector must be a .tflite file.")
+            return
+        }
+        Thread {
+            var err: String? = null
+            try {
+                val dst = com.example.mlbbresearch.vision.ObjectDetector.modelFile(app)
+                app.contentResolver.openInputStream(uri)!!.use { input -> dst.outputStream().use { input.copyTo(it) } }
+                Diag.info("Detector copied (${dst.length() / 1024} KB)")
+                err = com.example.mlbbresearch.vision.ObjectDetector.load(app)
+            } catch (e: Exception) {
+                err = e.message ?: e.toString()
+                Diag.error("Detector copy failed", e)
+            }
+            done(err)
+        }.start()
+    }
+
     private fun queryName(ctx: Context, uri: Uri): String? = try {
         ctx.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
             if (c.moveToFirst()) c.getString(0) else null
