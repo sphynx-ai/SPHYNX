@@ -79,6 +79,11 @@ object Cfg {
     var stdChangeSpell: Boolean get() = b("std_spell", false); set(v) = put("std_spell", v)
     var stdChangeEmblem: Boolean get() = b("std_emblem", false); set(v) = put("std_emblem", v)
 
+    // ---- smart fights (the learning brain) ----
+    var smartFights: Boolean get() = b("smart_fights", true); set(v) = put("smart_fights", v)
+    var exploreLevel: Int get() = i("explore", 1); set(v) = put("explore", v)     // 0 low, 1 normal, 2 high
+    var brainLearnsFromYou: Boolean get() = b("brain_you", true); set(v) = put("brain_you", v)
+
     // ---- learn from me (imitation) ----
     var learnFromMe: Boolean get() = b("learn_me", false); set(v) = put("learn_me", v)
     var playLikeMe: Boolean get() = b("play_like_me", false); set(v) = put("play_like_me", v)

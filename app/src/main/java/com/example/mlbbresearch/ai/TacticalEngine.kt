@@ -10,6 +10,7 @@ import com.example.mlbbresearch.game.HeroProfile
 import com.example.mlbbresearch.game.JungleNav
 import com.example.mlbbresearch.game.Phase
 import com.example.mlbbresearch.game.UltRule
+import com.example.mlbbresearch.learning.FightOption
 import com.example.mlbbresearch.vision.Seen
 import com.example.mlbbresearch.vision.Track
 import kotlin.math.hypot
@@ -56,7 +57,8 @@ object TacticalEngine {
         JungleNav.reset()
     }
 
-    fun decide(s: GameState, p: HeroProfile, plan: StrategyPlan, learnedBias: Float): TacticalDecision {
+    // option: what the learning brain chose for this fight (null / RULES = the normal rules)
+    fun decide(s: GameState, p: HeroProfile, plan: StrategyPlan, learnedBias: Float, option: FightOption? = null): TacticalDecision {
         val self = s.self
         if (s.phase != Phase.IN_GAME || self == null) return TacticalDecision.IDLE
         val now = s.ts
@@ -69,9 +71,15 @@ object TacticalEngine {
         val minions = s.minionsWithin(0.6f)
 
         // ---- 1. survive ----
-        val outnumbered = threat.size >= alliesNear + 2
-        val losingDuel = threat.size == 1 && alliesNear == 0 && hp < 0.5f && threat[0].hp > hp + 0.25f
-        if (hp in 0f..retreatHp && threat.isNotEmpty() || outnumbered || losingDuel || plan.plan == "retreat" && threat.isNotEmpty()) {
+        // Low HP always retreats. "Outnumbered" / "losing the duel" are rules of thumb: when the
+        // brain has chosen an option it decides those itself (and learns if it was wrong).
+        val rules = option == null || option == FightOption.RULES
+        val outnumbered = rules && threat.size >= alliesNear + 2
+        val losingDuel = rules && threat.size == 1 && alliesNear == 0 && hp < 0.5f && threat[0].hp > hp + 0.25f
+        val brainRetreat = option == FightOption.RETREAT && s.enemiesWithin(0.9f).isNotEmpty()
+        if (hp in 0f..retreatHp && threat.isNotEmpty() || outnumbered || losingDuel || brainRetreat ||
+            plan.plan == "retreat" && threat.isNotEmpty() && rules
+        ) {
             val (mx, my) = away(s, threat)
             val casts = ArrayList<String>()
             p.escapeSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
@@ -82,6 +90,7 @@ object TacticalEngine {
                 when {
                     outnumbered -> "outnumbered ${threat.size} vs ${alliesNear + 1}"
                     losingDuel -> "losing the duel"
+                    brainRetreat && hp > retreatHp -> "brain: back off"
                     else -> "HP ${(hp * 100).toInt()}%"
                 }), force = true)
         }
@@ -121,9 +130,12 @@ object TacticalEngine {
                 "HP ${(hp * 100).toInt()}%, using Regen")
         }
 
-        // ---- 3. engage an enemy hero ----
-        val target = pickTarget(s, threat, plan)
-        if (target != null) {
+        // ---- 3. engage an enemy hero (the brain's choice first) ----
+        val target = pickTarget(s, if (option == null) threat else s.enemiesWithin(0.9f), plan)
+        if (target != null && option != null && !rules) {
+            brainFight(s, p, option, target, hp, alliesNear)?.let { return hold(now, it, force = true) }
+        }
+        if (target != null && (rules || option == FightOption.ALL_IN) && s.distToSelf(target.x, target.y) <= 0.55f) {
             val d = s.distToSelf(target.x, target.y)
             val winnable = target.hp <= hp + 0.1f + (aggression - 0.5f) * 0.4f ||
                 target.hp < 0.35f ||
@@ -241,6 +253,48 @@ object TacticalEngine {
                     t(mx to my, "joining the team")
                 } else t(norm(1f, -1f), if (s.lane == Lane.JUNGLE) "heading into the jungle" else "heading to mid")
             }
+        }
+    }
+
+    // How each brain option is played. null = nothing special, carry on with the normal steps.
+    private fun brainFight(s: GameState, p: HeroProfile, o: FightOption, t: Track, hp: Float, alliesNear: Int): TacticalDecision? {
+        val d = s.distToSelf(t.x, t.y)
+        val tag = "brain: ${o.label}"
+        return when (o) {
+            FightOption.ALL_IN -> {
+                if (d > p.engageRange * 1.4f) return null
+                val casts = ArrayList<String>()
+                if (d <= p.attackRange * 1.3f) casts.add("attack")
+                for (sk in p.combo) if (sk != "ult" && CooldownTracker.ready(sk, p)) casts.add(sk)
+                if (CooldownTracker.ready("ult", p) && d <= p.engageRange) casts.add("ult")
+                val (mx, my) = if (d > p.attackRange) toward(s, t.x, t.y) else (0f to 0f)
+                TacticalDecision(Intent.ENGAGE, mx, my, casts, t.x, t.y, "enemy #${t.id}", t.hp, t.id,
+                    "$tag, target HP ${(t.hp * 100).toInt()}%")
+            }
+            FightOption.POKE -> {
+                // stay near the edge of skill range: skills yes, walking into them no
+                val casts = ArrayList<String>()
+                if (d <= p.engageRange) for (sk in p.combo) if (sk != "ult" && CooldownTracker.ready(sk, p)) casts.add(sk)
+                if (d <= p.attackRange) casts.add("attack")
+                val (mx, my) = when {
+                    d < p.engageRange * 0.7f && p.attackRange < p.engageRange * 0.7f -> away(s, listOf(t))
+                    d > p.engageRange -> toward(s, t.x, t.y)
+                    else -> 0f to 0f
+                }
+                TacticalDecision(Intent.ENGAGE, mx, my, casts, t.x, t.y, "enemy #${t.id}", t.hp, t.id,
+                    "$tag, ${(d * 100).toInt()} away")
+            }
+            FightOption.GROUP -> {
+                if (s.allies.isEmpty()) return null
+                val ax = s.allies.map { it.x }.average().toFloat()
+                val ay = s.allies.map { it.y }.average().toFloat()
+                val casts = if (d <= p.attackRange * 1.2f) listOf("attack") else emptyList()
+                val (mx, my) = if (s.distToSelf(ax, ay) > 0.15f) toward(s, ax, ay) else (0f to 0f)
+                TacticalDecision(Intent.GROUP, mx, my, casts, t.x, t.y, "enemy #${t.id}", t.hp, t.id,
+                    "$tag ($alliesNear near)")
+            }
+            FightOption.FARM -> null          // skip the fight, the farming steps follow
+            FightOption.RETREAT, FightOption.RULES -> null
         }
     }
 
