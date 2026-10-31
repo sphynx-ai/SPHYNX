@@ -356,6 +356,24 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## One folder for all your files (v26)
+
+1. With your file manager, make the folder **Download/MLBB-Research** on the phone.
+2. Put the downloaded files in it:
+   - the Gemma 3n E2B model: the `.litertlm` file from Hugging Face (any name ending in .litertlm)
+   - `mlbb_detector.tflite` and `labels.txt` from the detector notebook
+   - `policy.tflite` from the tactical network notebook
+   - `groq_key.txt`: a text file with your Groq API key on the first line (optional: `groq_model.txt` with a model name)
+3. App -> Model page -> *Choose the folder* -> pick Download/MLBB-Research -> *Use this folder* -> *Allow*.
+   This is needed once; Android then lets the app read that folder for good.
+4. From then on, every time the app starts (or when you tap *Scan the folder now*), it copies what is new or changed,
+   loads the Gemma model, the detector and the tactical network, and applies the class names and the Groq key.
+   Big files are only copied again when they changed. The Model page shows what the last scan did.
+- From a computer you can also copy the files to `Android/data/com.example.mlbbresearch/files/MLBB-Research`
+  (the app reads that folder without choosing it; many phone file managers cannot open it).
+- The Groq key in a text file can be read by other apps that may read your Downloads; delete `groq_key.txt` after the
+  first scan if you prefer (the key stays saved in the app).
+
 ## Tactical network + the detector in decisions (v25)
 
 The AI now has three brains, each at its own speed:

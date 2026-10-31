@@ -94,6 +94,7 @@ class MainActivity : Activity() {
     private val reqNotify = 43
     private val reqDetector = 44
     private val reqPolicy = 45
+    private val reqFolder = 46
 
     private val refresher = object : Runnable {
         override fun run() {
@@ -202,6 +203,9 @@ class MainActivity : Activity() {
                 ModelManager.importDetector(this, uri) { err ->
                     runOnUiThread { toast(if (err == null) "Detector loaded" else "Detector: $err") }
                 }
+            }
+            reqFolder -> if (resultCode == RESULT_OK) data?.data?.let { uri ->
+                com.example.mlbbresearch.models.AutoFolder.onPicked(this, uri) { msg -> runOnUiThread { toast(msg.take(150)) } }
             }
             reqPolicy -> if (resultCode == RESULT_OK) data?.data?.let { uri ->
                 ModelManager.importPolicy(this, uri) { err ->
@@ -1098,6 +1102,29 @@ class MainActivity : Activity() {
     // =====================================================================
 
     private fun modelPage() {
+        title("ONE FOLDER FOR ALL YOUR FILES")
+        text("Put the downloaded files in the folder  Download/MLBB-Research  on your phone (make the folder with your file " +
+            "manager), choose it once below, and the app finds, copies, loads and applies everything by itself - every time " +
+            "it starts, or when you tap Scan. Files it understands:\n" +
+            "  - the Gemma 3n E2B model: any  .litertlm  file\n" +
+            "  - the vision detector:  mlbb_detector.tflite  (+  labels.txt  with its class names)\n" +
+            "  - the tactical network:  policy.tflite\n" +
+            "  - your Groq API key: a text file  groq_key.txt  with the key on the first line (and optionally  groq_model.txt)\n" +
+            "A file is copied again only when it changed. From a computer you can also use  Android/data/com.example.mlbbresearch/" +
+            "files/MLBB-Research  (read without choosing).", 13f)
+        val fold = text("", 13f, true)
+        upd {
+            val af = com.example.mlbbresearch.models.AutoFolder
+            fold.text = "Folder: " + (af.treeUri?.let { Uri.decode(it.lastPathSegment ?: "chosen") } ?: "not chosen") + "\n" + af.status
+        }
+        btn("Choose the folder (Download/MLBB-Research)") {
+            @Suppress("DEPRECATION")
+            startActivityForResult(com.example.mlbbresearch.models.AutoFolder.pickIntent(), reqFolder)
+        }
+        btn("Scan the folder now") {
+            com.example.mlbbresearch.models.AutoFolder.scan(this) { msg -> runOnUiThread { toast(msg.take(150)) } }
+        }
+
         text("One offline model, Gemma 3n E2B, runs on LiteRT-LM. It is the strategic brain for the Player and does all the " +
             "Drafter and Builder reading. No internet or API key needed once the file is on the phone.", 13f)
         val c = card()
