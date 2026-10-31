@@ -356,6 +356,22 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Detector training pictures from your own matches (v28)
+
+- The exported CSV trains the tactical network only; the detector needs PICTURES with boxes.
+- Learn page -> *Collect detector training pictures* (on by default): in a match, every 6 s (300 a day at most) the
+  app saves the minimap as a picture plus a YOLO label file with boxes already drawn, into
+  `Download/MLBB-Research/dataset/` (`images/mm_*.png`, `labels/mm_*.txt`, `classes.txt`), with the same class names
+  as the detector (labels.txt).
+- Boxes come from: hero portraits found by their coloured ring (red enemy, blue ally, green you), your own icon,
+  enemy and ally towers, and the detector's own finds when one is loaded. Checked on your screenshots: most portraits
+  and towers are boxed; some are missed and a few extra boxes appear (skill arrows, lane glow), so check them.
+- Then either:
+  - **best**: upload the dataset folder to your Roboflow project, fix the boxes, export a new version, set `VERSION`
+    in the detector notebook; or
+  - **quick**: zip the dataset folder, run the new cell *2b* in `train_mlbb_detector.ipynb` and choose the zip: your
+    pictures are added to the Roboflow set (85% training, 15% checking) as they are.
+
 ## Cleaner Model and Meta pages (v27)
 
 - No more manual file choosing, loading, reloading or removing: everything comes from the MLBB-Research folder.

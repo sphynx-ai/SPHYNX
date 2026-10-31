@@ -1196,14 +1196,23 @@ class MainActivity : Activity() {
             val hero = GameStateTracker.ownHero() ?: "unknown"
             t.text = "Decisions saved: ${ExperienceRecorder.count} (${PerformanceEvaluator.evaluated} scored this session)\n" +
                 "Aggression adjust for $hero: ${"%+.2f".format(Cfg.learnedBias(hero))}\n" +
-                "Your recorded play (Learn from me / Play like me): ${DemoRecorder.total} moments - see the Player page"
+                "Your recorded play (Coach): ${DemoRecorder.total} moments - see the Player page"
         }
         btn("Export decisions to Downloads (CSV)") {
             DatasetManager.export(this) { msg -> runOnUiThread { toast(msg) } }
         }
-        btn("Export my recorded play (CSV)") {
+        btn("Export my recorded play (CSV) - trains the tactical network") {
             DatasetManager.exportDemos(this) { msg -> runOnUiThread { toast(msg) } }
         }
+
+        title("DETECTOR TRAINING PICTURES")
+        text("While you play, a picture of the minimap is saved every 6 s (300 a day at most) with boxes already drawn " +
+            "around your icon, enemy and ally portraits and towers (and whatever the detector finds, if loaded), in " +
+            "Download/MLBB-Research/dataset. Upload that folder to Roboflow to check / fix the boxes, or zip it and give it " +
+            "to the detector notebook: it trains on your pictures together with the Roboflow set.", 13f)
+        switch("Collect detector training pictures", Cfg.collectDataset) { Cfg.collectDataset = it }
+        val dsInfo = text("", 12f, color = "#9AA0A6")
+        upd { dsInfo.text = com.example.mlbbresearch.learning.DatasetCollector.status }
         btn("Delete saved decisions") {
             AlertDialog.Builder(this).setTitle("Delete saved decisions?")
                 .setPositiveButton("Delete") { _, _ -> DatasetManager.clear { runOnUiThread { toast("Deleted") } } }

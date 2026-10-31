@@ -138,6 +138,9 @@ object FrameProcessor {
             .minByOrNull { kotlin.math.abs(it.x - self.x) + kotlin.math.abs(it.y - self.y) }
             ?.let { LevelReader.levelOf(px, w, h, it) } ?: -1
 
+        // detector training pictures (every 6 s in a match, Learn page switch)
+        com.example.mlbbresearch.learning.DatasetCollector.maybeSave(px, w, h, mini, self != null && hint == ScreenHint.NONE)
+
         // an enemy tower's range circle (every 2nd frame; must show the same colour twice in a row)
         if (self != null && hint == ScreenHint.NONE && frameNo % 2 == 0L) {
             val r = TowerRing.detect(px, w, h, hud + ScreenMasks.overlay, seen, self.x, self.y)
