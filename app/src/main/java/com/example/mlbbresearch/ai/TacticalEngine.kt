@@ -73,6 +73,35 @@ object TacticalEngine {
         return wallHop(s, p, d)
     }
 
+    // ---- skill rules: the last step before the touches go out ----
+    // (also covers combos and "Play like me")
+    //  - the ultimate is kept for enemy heroes (fighting or escaping them), never for creeps
+    //  - Skill 1 and 2 go out the moment they are ready while fighting creeps or heroes in reach
+    fun filterCasts(d: TacticalDecision, s: GameState, p: HeroProfile): TacticalDecision {
+        val vsHero = (d.intent == Intent.ENGAGE || d.intent == Intent.AMBUSH || d.intent == Intent.IMITATE) &&
+            d.targetId >= 0 || d.intent == Intent.RETREAT
+        var casts = d.casts
+        // a wall jump may use the ultimate when that is the hero's dash: keep it
+        val hop = if (d.reason.contains("jumping the wall")) HeroDb.dashSlot(s.ownHero) else null
+        if (Cfg.noUltOnCreeps && !vsHero) casts = casts.filter { it != "ult" || it == hop }
+        if (Cfg.skillsWhenReady && inReach(d, s, p)) {
+            val extra = listOf("s1", "s2").filter { it !in casts && CooldownTracker.ready(it, p) }
+            if (extra.isNotEmpty()) casts = casts + extra
+        }
+        if (casts == d.casts) return d
+        return TacticalDecision(d.intent, d.moveX, d.moveY, casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId, d.reason)
+    }
+
+    // fighting something right now: an enemy hero, minions, a jungle camp or turtle / lord, in reach
+    private fun inReach(d: TacticalDecision, s: GameState, p: HeroProfile): Boolean {
+        return when (d.intent) {
+            Intent.ENGAGE -> d.targetX >= 0f && s.distToSelf(d.targetX, d.targetY) <= p.engageRange
+            Intent.LANE_CLEAR, Intent.OBJECTIVE -> d.targetX >= 0f && s.distToSelf(d.targetX, d.targetY) <= p.attackRange * 1.8f
+            Intent.JUNGLE -> JungleNav.atCamp || d.targetX >= 0f && s.distToSelf(d.targetX, d.targetY) <= p.attackRange * 1.8f
+            else -> false
+        }
+    }
+
     // ---- passing walls with a dash, a mobility skill or Flicker ----
     private var pendingHop = false       // the path planner found a thin wall worth jumping
     private var movingSince = 0L

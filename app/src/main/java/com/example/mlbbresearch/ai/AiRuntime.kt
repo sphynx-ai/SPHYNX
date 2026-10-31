@@ -222,6 +222,7 @@ object AiRuntime {
                             ImitationPolicy.decide(s)?.let { d = it }
                         }
                     }
+                    d = TacticalEngine.filterCasts(d, s, profile)
                     ActionExecutor.execute(d)
                     ExperienceRecorder.record(s, d, plan.plan, plan.aggression + bias)
                     ActionExecutor.maybeUpgrade(s)

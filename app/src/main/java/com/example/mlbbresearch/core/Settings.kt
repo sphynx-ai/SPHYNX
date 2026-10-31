@@ -50,6 +50,10 @@ object Cfg {
     var regenHpPct: Int get() = i("regen_hp", 60); set(v) = put("regen_hp", v)
     var jungleRoute: Boolean get() = b("jungle_route", true); set(v) = put("jungle_route", v)
     var playerQuickBuy: Boolean get() = b("player_qb", true); set(v) = put("player_qb", v)
+    // reserve the ultimate for enemy heroes: never on minions, jungle monsters, turtle or lord
+    var noUltOnCreeps: Boolean get() = b("no_ult_creeps", true); set(v) = put("no_ult_creeps", v)
+    // Skill 1 / 2 go out as soon as they are ready while fighting creeps or heroes (target in reach)
+    var skillsWhenReady: Boolean get() = b("skills_ready", true); set(v) = put("skills_ready", v)
     var wallHop: Boolean get() = b("wall_hop", true); set(v) = put("wall_hop", v)     // dash / Flicker over thin walls
     var useBushes: Boolean get() = b("bushes", true); set(v) = put("bushes", v)      // hide and ambush in bushes
     var fastMode: Boolean get() = b("fast_mode", true); set(v) = put("fast_mode", v)  // fastest decisions and combos
