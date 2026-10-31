@@ -77,10 +77,10 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
 
 ## Online meta with Groq (Meta page)
 
-- Get a free API key at console.groq.com/keys and paste it on the Meta page. It is stored only on the phone.
+- Get a free API key at console.groq.com/keys and save it as `groq_key.txt` (key on the first line) in Download/MLBB-Research.
 - The default model, `openai/gpt-oss-120b`, searches the web with Groq's built-in browser search tool. It looks
   for the latest patch notes, hero adjustments, tier lists and guides. `openai/gpt-oss-20b` also searches (faster,
-  less accurate). Other models answer from memory only. Change the model name on the Meta page if Groq retires it.
+  less accurate). Other models answer from memory only. To use another model, put its name in `groq_model.txt` in the folder.
   A phone that still has `groq/compound` saved moves to the new default by itself.
 - If Groq answers "Parsing failed" (gpt-oss sometimes writes output Groq cannot read, mostly while searching), the app
   takes the answer from Groq's raw output when it is there. Otherwise it retries once, then asks without web search.
@@ -356,6 +356,17 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Cleaner Model and Meta pages (v27)
+
+- No more manual file choosing, loading, reloading or removing: everything comes from the MLBB-Research folder.
+- Model page: one status card (folder, Gemma, detector, tactical network, Groq key, minimap), *Choose / Change the
+  folder*, *Scan the folder now*, links to get the files, and two switches: Gemma on the GPU, and one switch for the
+  trained models (detector + tactical network together).
+- Meta page: the key and model fields are gone (groq_key.txt / groq_model.txt); one switch turns the online meta on
+  for play, auto-update and drafting together.
+- Fixed values that had their own fields: detector looks at the minimap, detector confidence 0.4, class names from
+  labels.txt, network confidence 0.55, meta refreshed after 7 days.
+
 ## One folder for all your files (v26)
 
 1. With your file manager, make the folder **Download/MLBB-Research** on the phone.
@@ -392,7 +403,7 @@ The AI now has three brains, each at its own speed:
 3. Open `notebooks/train_tactical_policy.ipynb` in Google Colab, upload the CSV, run all cells. It trains a small
    network (9 joystick choices: the 8 directions or stand; 6 buttons: attack, skill 1, skill 2, ultimate, spell,
    recall), shows how often it matches your most recent play, and makes `policy.tflite` (about 55 KB).
-4. Model page -> *Choose tactical network file*. It runs in about a millisecond per decision.
+4. Put `policy.tflite` in Download/MLBB-Research; the app loads it by itself. It runs in about a millisecond per decision.
 - How it is used: its joystick choice in fights and when lining up on a minion wave (from 55% confidence, setting on
   the Model page), its buttons when it is sure (60%, attack 50%) and the skill is ready. Retreat, recall / Regen, the
   tower circle, finishing monsters and no early duels always come first; jungle / lane / objective routes stay with
@@ -582,7 +593,7 @@ need a few matches per hero.
    or go to colab.research.google.com > GitHub > paste this repo's URL). Pick a T4 GPU and run every cell.
    You need a free Roboflow account and its API key. Default dataset: "Mobile Legends Minimap Dataset" by gladi
    (Roboflow Universe, CC BY 4.0).
-3. It downloads `mlbb_detector.tflite` and `labels.txt`. In the app: Model page > Choose detector file (.tflite).
+3. It downloads `mlbb_detector.tflite` and `labels.txt`. Put both files in Download/MLBB-Research; the app loads them by itself.
 4. The Home preview shows detections as cyan boxes, and Gemma's strategy prompt gets the counts
    (for example "1 turtle_icon, 4 hero_icon").
 

@@ -72,7 +72,7 @@ object AiRuntime {
         // learning only watches the screen: it needs no accessibility service (no touches)
         val svc = AccessibilityController.instance
         if (svc == null && stage != "learn") return "Turn on the accessibility service first (Setup page)"
-        if (needsGemma(stage) && !GemmaEngine.ready) return "Load the Gemma model first (Model page)"
+        if (needsGemma(stage) && !GemmaEngine.ready) return "The Gemma model is not loaded (put the .litertlm file in the MLBB-Research folder)"
         when (stage) {
             "player" -> {
                 playerOn = true
