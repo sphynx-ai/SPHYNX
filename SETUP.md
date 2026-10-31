@@ -356,6 +356,16 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Monsters at their last HP (v24)
+
+- At the last few % a monster's red bar is only 1-5 pixels wide: it was dropped as too small, so the monster
+  "disappeared", the AI stopped attacking and walked off (your 08:04 screenshot: the lion at 284 HP was not found).
+  A short coloured stub now counts as a bar when a long grey "missing HP" part follows it (lion found, HP 3%).
+  No extra fake units appeared on your other screenshots.
+- A monster that was at 20% or less and goes out of sight is hit for 1.5 s more (Retribution too if ready).
+- Never walking away from a monster it is fighting or that is almost dead, in any lane (before, a laner could walk
+  past a monster at 3% to go back to its lane); with very low HP it still recalls from a healthy monster.
+
 ## Tower circle, your bars, finishing monsters, 8-way joystick (v23)
 
 - **Enemy tower circle** (read on screen, every 2nd frame, same colour twice in a row):
