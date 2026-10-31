@@ -24,8 +24,8 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
 
 1. Setup page: turn on the accessibility service (it is a NEW service name, so turn it on again),
    allow Display over other apps and Notifications.
-2. Model page: open the Gemma 3n E2B page, accept the licence, download the `.litertlm` file,
-   choose it, then Load. (The old MediaPipe `.task` file no longer works.)
+2. Download the Gemma 3n E2B `.litertlm` file (Model page link, accept the licence) into Download/MLBB-Research,
+   then Model page -> *Choose the folder*. The app copies and loads it by itself (see "One folder" below).
 3. Home: Start screen capture, then switch on Player / Drafter / Builder.
 4. Setup page: calibrate the buttons (see below).
 
