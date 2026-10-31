@@ -84,6 +84,8 @@ object FrameProcessor {
             px, w, h, hud + ScreenMasks.overlay + (if (banner) listOf(ScreenReader.bannerRect) else emptyList()),
             Cfg.heroBarMinWidthPct / 100f, Cfg.bodyBelowBarPct / 100f
         ))
+        // optional trained detector: runs on its own thread a few times a second
+        ObjectDetector.maybeRun(px, w, h)
         // you: the green hero bar closest to the centre of the screen
         val self = seen.filter { it.team == Team.SELF }
             .minByOrNull { (it.x - 0.5f) * (it.x - 0.5f) + (it.y - 0.5f) * (it.y - 0.5f) }

@@ -11,10 +11,13 @@ Offline AI companion for Mobile Legends: Bang Bang, built for Code on the Go on 
   per-hero skill combos (built-in, typed, or downloaded from a guide page), jungle monsters, turtle and lord.
 - Smart fights: a learning AI (LinUCB contextual bandit) that scores every fight and learns per hero which way to fight works.
 - Online meta (optional, Groq API, openai/gpt-oss-120b with browser search): latest patch builds, combos, lanes, rotations, draft picks.
+- Optional trained YOLO detector on LiteRT: train it free in Colab with `notebooks/train_mlbb_detector.ipynb`.
 - Offline except the online meta and the optional "Get my hero's combo online" button.
 - Source: `app/src/main` (packages `ai`, `vision`, `game`, `controller`, `capture`, `learning`, `models`, `core`, `app`).
 
 See [SETUP.md](SETUP.md) to install it into a Code on the Go project and
 [build-gradle-additions.txt](build-gradle-additions.txt) for the Gradle lines.
+
+Default training data: "Mobile Legends Minimap Dataset" by gladi on Roboflow Universe, licensed CC BY 4.0.
 
 For research use. Automating the game may break its terms of service.
