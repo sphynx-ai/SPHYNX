@@ -114,8 +114,10 @@ class AccessibilityController : AccessibilityService() {
                     mainHandler.postDelayed({ try { if (joyStroke != null) dispatch(listOf(swipe), false) } catch (_: Exception) {} }, 55)
                     if (showTouches) overlay?.showTouch(Act.Drag(joyAct.cx, joyAct.cy, joyAct.x, joyAct.y, joyAct.ms))
                 } else {
-                    // a continuation must start exactly where the last stroke ended
+                    // a continuation must start exactly where the last stroke ended; a turn
+                    // slides through the in-between directions along the ring
                     p.moveTo(joyX, joyY)
+                    for ((vx, vy) in joyAct.via) p.lineTo(vx * w, vy * h)
                     p.lineTo(tx, ty)
                     newJoy = held.continueStroke(p, 0, joyAct.ms, true)
                     g.addStroke(newJoy)

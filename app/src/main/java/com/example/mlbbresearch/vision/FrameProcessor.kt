@@ -31,6 +31,7 @@ class VisionResult(
     val level: Int = 1,                // your hero level 1..15 (LevelReader)
     val xp: Float = -1f,               // how full the EXP ring is, 0..1 (-1 unknown)
     val enemyLevel: Int = -1,          // nearest enemy hero's level, -1 unknown
+    val towerRing: TowerRing.Ring = TowerRing.NONE,   // an enemy tower's range circle on screen and its colour
     val processMs: Long
 ) {
     val aspect: Float get() = if (frameH == 0) 1.78f else frameW.toFloat() / frameH
@@ -63,6 +64,8 @@ object FrameProcessor {
     private var frameNo = 0L
     private var prevSmall: List<Seen> = emptyList()
     private var lastBush: BushDetector.Result? = null
+    private var ring = TowerRing.NONE
+    private var lastRingRaw = TowerRing.NONE
     private var buffer: IntArray? = null
 
     @Volatile var latest: VisionResult? = null
@@ -90,10 +93,11 @@ object FrameProcessor {
         // a kill / first blood banner is up: ignore that area (its red lines are not enemies)
         val banner = ScreenReader.announcement(px, w, h)
         val mini = MinimapAnalyzer.analyze(px, w, h)
-        val seen = monstersFromRedBars(withoutAttachedBars(HeroDetector.scan(
+        val hint = ScreenReader.classify(px, w, h)
+        val seen = monstersFromRedBars(withoutAttachedBars(ownBars(hint, HeroDetector.scan(
             px, w, h, hud + ScreenMasks.overlay + (if (banner) listOf(ScreenReader.bannerRect) else emptyList()),
             Cfg.heroBarMinWidthPct / 100f, Cfg.bodyBelowBarPct / 100f
-        )), px, w, h, mini)
+        ), px, w, h)), px, w, h, mini)
         // optional trained detector: runs on its own thread a few times a second
         ObjectDetector.maybeRun(px, w, h)
         // you: the green hero bar closest to the centre of the screen
@@ -120,7 +124,6 @@ object FrameProcessor {
         }
 
         // walls from the minimap, every couple of seconds while the normal minimap shows
-        val hint = ScreenReader.classify(px, w, h)
         if (self != null && hint == ScreenHint.NONE && frameNo % 25 == 3L) WallMap.update(px, w, h)
 
         // bushes every 3rd frame (they do not move; the camera does, slowly)
@@ -134,6 +137,13 @@ object FrameProcessor {
         val enemyLevel = if (self == null) -1 else seen.filter { it.team == Team.ENEMY && it.hero }
             .minByOrNull { kotlin.math.abs(it.x - self.x) + kotlin.math.abs(it.y - self.y) }
             ?.let { LevelReader.levelOf(px, w, h, it) } ?: -1
+
+        // an enemy tower's range circle (every 2nd frame; must show the same colour twice in a row)
+        if (self != null && hint == ScreenHint.NONE && frameNo % 2 == 0L) {
+            val r = TowerRing.detect(px, w, h, hud + ScreenMasks.overlay, seen, self.x, self.y)
+            ring = if (r.zone == lastRingRaw.zone) r else ring
+            lastRingRaw = r
+        } else if (self == null || hint != ScreenHint.NONE) ring = TowerRing.NONE
 
         val result = VisionResult(
             ts = t0, frameW = w, frameH = h,
@@ -159,6 +169,7 @@ object FrameProcessor {
             level = LevelReader.level,
             xp = LevelReader.xp,
             enemyLevel = enemyLevel,
+            towerRing = ring,
             processMs = System.currentTimeMillis() - t0
         )
         latest = result
@@ -170,6 +181,34 @@ object FrameProcessor {
             fpsStart = t0
         }
         return result
+    }
+
+    // YOUR bars. The camera keeps your hero in the middle, so your HP bar always sits at about
+    // 47% of the width and 38-39% of the height, and the thin line right under it (40-41%) is NOT
+    // HP: red = passive build-up, blue = mana, yellow = energy (each hero has one kind). That
+    // line is never a unit (a blue one looked like an ally standing on you, a red one could
+    // stand in for your HP). When the green part is too thin to be found (very low HP), your HP
+    // is read straight from the bar: green share of the bar's width.
+    private fun ownBars(hint: ScreenHint, all: List<Seen>, px: IntArray, w: Int, h: Int): List<Seen> {
+        val out = all.filter { u -> !(u.team != Team.SELF && kotlin.math.abs(u.barLeft - 0.471f) < 0.02f && u.barTop in 0.394f..0.416f) }
+        if (out.any { it.team == Team.SELF } || hint != ScreenHint.NONE) return out
+        // no green bar found: is your (nearly empty) HP bar there?
+        val y = (0.388f * h).toInt().coerceIn(0, h - 1)
+        val x0 = (0.473f * w).toInt(); val x1 = (0.546f * w).toInt()
+        var green = 0; var grey = 0; var n = 0
+        for (x in x0..x1) {
+            val p = px[y * w + x]
+            val r = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val b = p and 0xff
+            val mx = maxOf(r, g, b); val mn = minOf(r, g, b)
+            n++
+            if (g >= 140 && g - maxOf(r, b) >= 40) green++ else if (mx < 110 && mx - mn < 45) grey++
+        }
+        if (n == 0 || (green + grey) < n * 0.7f || grey < n * 0.5f) return out
+        val hp = (green.toFloat() / n).coerceIn(0.02f, 0.3f)
+        val me = Seen(Team.SELF, true, 0.51f, (0.395f + Cfg.bodyBelowBarPct / 100f).coerceAtMost(1f), hp,
+            0.471f, 0.382f, 0.548f, 0.394f)
+        // and your level badge with its white number next to it (a dimmed shop screen has none)
+        return if (LevelReader.glyph(px, w, h, me) != null) out + me else out
     }
 
     // Many heroes have a second bar right under their HP bar (passive, energy, mana, e.g. Thamuz's
@@ -214,18 +253,9 @@ object FrameProcessor {
         } ?: false
         val out = ArrayList<Seen>(all.size)
         val monsters = ArrayList<Seen>()
-        val hasSelf = all.any { it.team == Team.SELF }
         for (s in all) {
-            // The camera keeps your hero in the middle, so your HP bar always starts at about 47% of
-            // the width and 38% of the height. A red bar there is YOUR second (passive) bar; at very
-            // low HP the green part is too thin to see, so it also stands in for your own bar.
-            if (s.team == Team.ENEMY && kotlin.math.abs(s.barLeft - 0.471f) < 0.015f && s.barTop in 0.36f..0.43f) {
-                if (!hasSelf && out.none { it.team == Team.SELF }) {
-                    out.add(Seen(Team.SELF, true, 0.51f, (s.barTop - 0.015f + Cfg.bodyBelowBarPct / 100f).coerceAtMost(1f), 0.03f,
-                        s.barLeft, s.barTop - 0.017f, s.barRight, s.barTop - 0.005f))
-                }
-                continue
-            }
+            // a red bar where yours sits is YOUR passive bar, not a unit (see ownBars)
+            if (s.team == Team.ENEMY && kotlin.math.abs(s.barLeft - 0.471f) < 0.015f && s.barTop in 0.36f..0.43f) continue
             if (s.team == Team.ENEMY && s.hero && !(badgeDark(px, w, h, s) >= 0.3f && enemyNearOnMap)) {
                 // an enemy TOWER's bar is red without a badge too: near an enemy tower on the
                 // minimap it is the tower (a structure), not a monster

@@ -56,7 +56,8 @@ class GameState(
     val screenWalls: BooleanArray = BooleanArray(0),
     val level: Int = 1,                       // your hero level 1..15
     val xp: Float = -1f,                      // EXP ring 0..1 towards the next level (-1 unknown)
-    val enemyLevel: Int = -1                  // level of the nearest enemy hero, -1 unknown
+    val enemyLevel: Int = -1,                 // level of the nearest enemy hero, -1 unknown
+    val towerRing: com.example.mlbbresearch.vision.TowerRing.Ring = com.example.mlbbresearch.vision.TowerRing.NONE
 ) {
     val creeps: List<Seen> get() = monsters.filter { !it.hero }
     val boss: Seen? get() = monsters.filter { it.hero }.minByOrNull { distToSelf(it.x, it.y) }
