@@ -1,6 +1,8 @@
 package com.example.mlbbresearch.vision
 
 import com.example.mlbbresearch.core.Layout
+import kotlin.math.max
+import kotlin.math.min
 
 // Reads the minimap (top-left corner) and counts the red enemy icons and blue ally icons.
 // Approximate: it only counts clusters of red/blue pixels, it does not know which hero is which.
@@ -16,7 +18,9 @@ class MinimapInfo(
     val allyTowers: List<Pair<Float, Float>> = emptyList(),
     val enemyWaves: List<Pair<Float, Float>> = emptyList(),
     val selfIcon: FloatArray? = null,                     // your icon on screen: centre x, y, radius (fractions of width)
-    val allyDots: List<Pair<Float, Float>> = emptyList() // blue portrait rings (same units as enemyDots)
+    val allyDots: List<Pair<Float, Float>> = emptyList(), // blue portrait rings (same units as enemyDots)
+    val lordIcon: FloatArray? = null,                     // the lord / turtle icon in its pit (alive):
+    val turtleIcon: FloatArray? = null                    //   left, top, right, bottom as screen fractions
 )
 
 // bonus = red-and-yellow icon: an enemy tower that gives extra gold when attacked
@@ -97,7 +101,8 @@ object MinimapAnalyzer {
             st.towers.none { kotlin.math.hypot(it.x - d.first, it.y - d.second) < 0.05f } &&
                 st.enemyWaves.none { kotlin.math.hypot(it.first - d.first, it.second - d.second) < 0.02f }
         }
-        return MinimapInfo(heroDots.size, allies, heroDots, self, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves, icon, blue)
+        val (lord, turtle) = pits(px, w, h)
+        return MinimapInfo(heroDots.size, allies, heroDots, self, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves, icon, blue, lord, turtle)
     }
 
     // MLBB always draws YOUR base bottom-left and the river from top-left to bottom-right,
@@ -131,6 +136,85 @@ object MinimapAnalyzer {
         for (bl in green) if (bl.w / mw < 0.035f && bl.count in 3..10) add(bl, false)
         for (bl in ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { isCyan(it) }) if (bl.count in 3..10) add(bl, false)
         return me to out
+    }
+
+    // The two pits are always in the same place (measured on your screenshots, in map units):
+    // top-left and bottom-right of the river. What sits in them changes during the match (the
+    // turtle can be in the top-left pit mid-game, the lord there late game), so the icon is
+    // named by its look, not its pit: the LORD is a tall trophy shape (pink early, gold when it is
+    // up, grey when dead), the TURTLE a wide pink blob. A dead / missing one has no coloured icon.
+    val PITS = listOf(0.31f to 0.26f, 0.67f to 0.68f)
+
+    fun pits(px: IntArray, w: Int, h: Int): Pair<FloatArray?, FloatArray?> {
+        val (l, t) = Layout.get("mapTL")
+        val (r, b) = Layout.get("mapBR")
+        val mw = r - l; val mh = b - t
+        if (mw < 0.03f || mh < 0.05f) return null to null
+        var lord: FloatArray? = null; var turtle: FloatArray? = null
+        var lordArea = 0; var turtleArea = 0
+        for (c in PITS) {
+            val x0 = ((l + (c.first - 0.1f) * mw) * w).toInt().coerceAtLeast(0)
+            val x1 = ((l + (c.first + 0.1f) * mw) * w).toInt().coerceAtMost(w - 1)
+            val y0 = ((t + (c.second - 0.11f) * mh) * h).toInt().coerceAtLeast(0)
+            val y1 = ((t + (c.second + 0.1f) * mh) * h).toInt().coerceAtMost(h - 1)
+            // coloured pixels of the window, then the BIGGEST connected shape (camp dots and
+            // portrait rings nearby are separate shapes)
+            val ww = x1 - x0 + 1; val wh = y1 - y0 + 1
+            if (ww <= 0 || wh <= 0) continue
+            val cls = IntArray(ww * wh)            // 0 none, 1 magenta, 2 gold
+            for (y in y0..y1) for (x in x0..x1) {
+                val p = px[y * w + x]
+                val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
+                cls[(y - y0) * ww + (x - x0)] = when {
+                    rr > 170 && g > 130 && bb < 125 && rr - bb > 70 && rr >= g -> 2
+                    rr > 170 && bb > 140 && g < 140 && rr - g > 60 && bb - g > 60 -> 1
+                    else -> 0
+                }
+            }
+            val seen = BooleanArray(cls.size)
+            var n = 0; var gold = 0; var minX = w; var maxX = 0; var minY = h; var maxY = 0; var best = -1
+            val stack = IntArray(cls.size)
+            for (i0 in cls.indices) {
+                if (cls[i0] == 0 || seen[i0]) continue
+                var sp = 0; stack[sp++] = i0; seen[i0] = true
+                var cn = 0; var cg = 0; var ax = w; var bx2 = 0; var ay = h; var by2 = 0
+                while (sp > 0) {
+                    val i = stack[--sp]
+                    val cx = i % ww; val cy = i / ww
+                    cn++; if (cls[i] == 2) cg++
+                    ax = min(ax, cx); bx2 = max(bx2, cx); ay = min(ay, cy); by2 = max(by2, cy)
+                    // pieces up to 2 px apart across / 3 px up-down belong together (the trophy's cup and stem)
+                    for (dy in -3..3) for (dx in -2..2) {
+                        if (dx == 0 && dy == 0) continue
+                        val nx = cx + dx; val ny = cy + dy
+                        if (nx !in 0 until ww || ny !in 0 until wh) continue
+                        val j = ny * ww + nx
+                        if (cls[j] != 0 && !seen[j]) { seen[j] = true; stack[sp++] = j }
+                    }
+                }
+                if (cn > n) { n = cn; gold = cg; minX = ax + x0; maxX = bx2 + x0; minY = ay + y0; maxY = by2 + y0; best = i0 }
+            }
+            // the lord's trophy has a thin STEM: 3+ rows below the cup with only 1-2 coloured pixels
+            // close to the middle; the turtle is a blob without one
+            var stem = false
+            if (best >= 0) {
+                val cxMid = (minX + maxX) / 2f - x0
+                var run = 0
+                for (yy in (minY - y0 + (maxY - minY) / 3)..(maxY - y0)) {
+                    var c = 0; var sx = 0
+                    for (xx in (minX - x0)..(maxX - x0)) if (cls[yy * ww + xx] != 0) { c++; sx += xx }
+                    run = if (c in 1..2 && kotlin.math.abs(sx.toFloat() / c - cxMid) <= 2.5f) run + 1 else 0
+                    if (run >= 3) stem = true
+                }
+            }
+            // a real icon: enough pixels in a compact shape (not a few camp dots)
+            if (n < 10 || maxX - minX > w * 0.04f || maxY - minY > h * 0.08f) continue
+            val box = floatArrayOf((minX - 1f) / w, (minY - 1f) / h, (maxX + 2f) / w, (maxY + 2f) / h)
+            val area = (maxX - minX + 1) * (maxY - minY + 1)
+            if (gold * 2 > n || stem) { if (lord == null || area > lordArea) { lord = box; lordArea = area } }
+            else if (turtle == null || area > turtleArea) { turtle = box; turtleArea = area }
+        }
+        return lord to turtle
     }
 
     // Flying-cloud pick-up spots on the minimap (measured on your screenshots): never towers or enemies

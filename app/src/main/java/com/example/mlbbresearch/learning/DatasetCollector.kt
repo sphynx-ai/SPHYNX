@@ -39,6 +39,15 @@ object DatasetCollector {
 
     fun init(c: Context) { ctx = c.applicationContext }
 
+    // the detector's classes (labels.txt) plus lord and turtle when it does not have them yet:
+    // the pictures then teach a new detector those two as well
+    fun classes(): List<String> {
+        val l = Cfg.detectorLabels.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
+        if (l.none { it.lowercase().contains("lord") }) l.add("lord_icon")
+        if (l.none { it.lowercase().contains("turtle") }) l.add("turtle_icon")
+        return l
+    }
+
     private fun classIndex(labels: List<String>, kind: String): Int = labels.indexOfFirst { l ->
         val n = l.lowercase()
         when (kind) {
@@ -142,6 +151,13 @@ object DatasetCollector {
         }
         mini.selfIcon?.let { add(heroCls, it[0], it[1] * w / h, iconW * 1.1f) }
         val allyTowersScreen = mini.allyTowers.map { (ml + it.first * (mr - ml)) to (mt + it.second * (mb - mt)) }
+        // the lord and the turtle in their pits (when alive)
+        val lordCls = classIndex(labels, "lord"); val turtleCls = classIndex(labels, "turtle")
+        for ((bx, cls) in listOf(mini.lordIcon to lordCls, mini.turtleIcon to turtleCls)) {
+            if (bx == null || cls < 0) continue
+            val x = ((bx[0] + bx[2]) / 2 - r[0]) / rw; val y = ((bx[1] + bx[3]) / 2 - r[1]) / rh
+            if (out.none { it.cls == cls }) out.add(Box(cls, x, y, (bx[2] - bx[0]) / rw, (bx[3] - bx[1]) / rh))
+        }
         // towers (both sides): a little smaller than a portrait
         for (t in mini.towers) add(turretCls, ml + t.x * (mr - ml), mt + t.y * (mb - mt), iconW * 0.7f)
         for (t in allyTowersScreen) add(turretCls, t.first, t.second, iconW * 0.7f)
@@ -159,7 +175,7 @@ object DatasetCollector {
         savedToday = Cfg.raw("ds_count")?.toIntOrNull() ?: 0
         if (savedToday >= 300) { status = "300 pictures saved today (limit)"; return }
         lastAt = now
-        val labels = Cfg.detectorLabels.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val labels = classes()
         val boxes = boxes(w, h, mini, labels, px)
         if (boxes.isEmpty()) return
         // copy the minimap pixels now (the frame buffer is reused)
