@@ -116,9 +116,7 @@ class ScreenCaptureService : Service() {
     }
 
     private fun screenSize(): Pair<Int, Int> {
-        val wm = getSystemService(WindowManager::class.java)!!
-        val b = wm.currentWindowMetrics.bounds
-        return b.width() to b.height()
+        return com.example.mlbbresearch.core.ScreenGeom.size(this)
     }
 
     private fun startCapture(mp: MediaProjection) {

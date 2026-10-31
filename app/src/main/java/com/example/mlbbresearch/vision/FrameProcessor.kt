@@ -43,6 +43,7 @@ object FrameProcessor {
         floatArrayOf(0.30f, 0.00f, 0.70f, 0.09f),   // top scoreboard
         floatArrayOf(0.80f, 0.00f, 1.00f, 0.14f),   // top-right buttons
         floatArrayOf(0.62f, 0.52f, 1.00f, 1.00f),   // skill buttons
+        floatArrayOf(0.76f, 0.40f, 0.92f, 0.52f),   // the ultimate button's top (it reaches above the others)
         floatArrayOf(0.00f, 0.58f, 0.32f, 1.00f),   // joystick
         floatArrayOf(0.00f, 0.38f, 0.10f, 0.62f),   // shop / quick-buy column
         floatArrayOf(0.90f, 0.14f, 1.00f, 0.55f),   // right column (shop, signals, chat)
@@ -53,6 +54,7 @@ object FrameProcessor {
     private val enemyTracker = EnemyDetector()
     private var lastId = 0L
     private var frameNo = 0L
+    private var prevSmall: List<Seen> = emptyList()
     private var lastBush: BushDetector.Result? = null
     private var buffer: IntArray? = null
 
@@ -89,6 +91,15 @@ object FrameProcessor {
         // you: the green hero bar closest to the centre of the screen
         val self = seen.filter { it.team == Team.SELF }
             .minByOrNull { (it.x - 0.5f) * (it.x - 0.5f) + (it.y - 0.5f) * (it.y - 0.5f) }
+        // coloured bits of your own hero (e.g. a blue skin) are not units
+        fun onSelf(u: Seen) = self != null && u !== self && !u.hero &&
+            kotlin.math.abs(u.x - self.x) < 0.05f && u.barTop > self.barBottom - 0.01f && u.barTop < self.y + 0.14f
+        // a minion / monster must be seen on two frames in a row at about the same place:
+        // a single-frame flash (effects, skill colours) is not a target
+        fun steady(u: Seen) = prevSmall.any { it.team == u.team && kotlin.math.abs(it.x - u.x) < 0.04f && kotlin.math.abs(it.y - u.y) < 0.05f }
+        val small = seen.filter { !it.hero && it.team != Team.SELF && !onSelf(it) }
+        val steadySmall = small.filter { steady(it) }
+        prevSmall = small
         val aspect = w.toFloat() / h
         val tracks = enemyTracker.update(seen.filter { it.team == Team.ENEMY && it.hero }, t0, aspect)
 
@@ -96,7 +107,7 @@ object FrameProcessor {
         if (Cfg.readCooldownsFromScreen || trackPlayer) {
             for (k in listOf("s1", "s2", "ult", "spell", "recall", "regen")) {
                 val (fx, fy) = Layout.get(k)
-                brightness[k] = HeroDetector.brightness(px, w, h, fx, fy, 0.012f)
+                brightness[k] = ringBrightness(px, w, h, fx, fy)
             }
         }
 
@@ -115,8 +126,8 @@ object FrameProcessor {
             self = self,
             allies = seen.filter { it.team == Team.ALLY && it.hero },
             enemyHeroes = tracks,
-            enemyMinions = seen.filter { it.team == Team.ENEMY && !it.hero },
-            allyMinions = seen.filter { it.team == Team.ALLY && !it.hero },
+            enemyMinions = steadySmall.filter { it.team == Team.ENEMY },
+            allyMinions = steadySmall.filter { it.team == Team.ALLY },
             all = seen,
             minimap = mini,
             saturation = HeroDetector.saturation(px, w, h),
@@ -125,7 +136,7 @@ object FrameProcessor {
             hud = if (self != null || trackPlayer) ScreenReader.hud(px, w, h, trackPlayer || trackMotion) else HudInfo.NONE,
             heroSig = if (self != null && frameNo % 12 == 0L) heroSig(px, w, h, self, mini) else null,
             spellIcon = if (self != null && frameNo % 12 == 6L) IconMemory.print(px, w, h, "spell", 0.016f) else null,
-            monsters = seen.filter { it.team == Team.NEUTRAL },
+            monsters = steadySmall.filter { it.team == Team.NEUTRAL } + seen.filter { it.team == Team.NEUTRAL && it.hero },
             kda = if (self != null) KdaReader.read(px, w, h) else IntArray(3),
             bushes = bush.bushes,
             inBush = bush.inBush,
@@ -153,6 +164,23 @@ object FrameProcessor {
                     b.barLeft >= a.barLeft - 0.01f && b.barLeft <= a.barRight
             }
         }
+    }
+
+    // Brightness of a ring inside a button, around (not at) its centre: a cooling-down skill is
+    // dark there, while its countdown digits sit in the very middle and would look bright.
+    private fun ringBrightness(px: IntArray, w: Int, h: Int, fx: Float, fy: Float): Float {
+        var sum = 0
+        var n = 0
+        for (r in floatArrayOf(0.012f, 0.017f)) for (i in 0 until 24) {
+            val a = i * Math.PI * 2 / 24
+            val x = (fx * w + Math.cos(a) * r * w).toInt()
+            val y = (fy * h + Math.sin(a) * r * w).toInt()
+            if (x !in 0 until w || y !in 0 until h) continue
+            val p = px[y * w + x]
+            sum += (((p shr 16) and 0xff) * 3 + ((p shr 8) and 0xff) * 6 + (p and 0xff)) / 10
+            n++
+        }
+        return if (n == 0) 0f else sum.toFloat() / n
     }
 
     private fun heroSig(px: IntArray, w: Int, h: Int, self: Seen, mini: MinimapInfo): List<FloatArray>? {

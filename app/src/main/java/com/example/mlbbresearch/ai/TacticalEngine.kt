@@ -88,6 +88,23 @@ object TacticalEngine {
             val extra = listOf("s1", "s2").filter { it !in casts && CooldownTracker.ready(it, p) }
             if (extra.isNotEmpty()) casts = casts + extra
         }
+        // Nothing to hit = no attack, no skills (escape skills, wall jumps, Regen, Recall stay).
+        // Something in reach and no skill ready = keep pressing attack.
+        val skillRange = s.enemiesWithin(p.engageRange).isNotEmpty() ||
+            s.minionsWithin(p.attackRange * 1.8f).isNotEmpty() || s.monsters.any { s.distToSelf(it.x, it.y) <= p.attackRange * 1.8f }
+        val hitRange = s.enemiesWithin(p.attackRange * 1.4f).isNotEmpty() ||
+            s.minionsWithin(p.attackRange * 1.4f).isNotEmpty() || s.monsters.any { s.distToSelf(it.x, it.y) <= p.attackRange * 1.5f } ||
+            TowerLogic.canPush(s)
+        if (d.intent != Intent.RETREAT) {
+            if (!skillRange && !TowerLogic.canPush(s)) {
+                casts = casts.filter { it == hop || it == "regen" || it == "recall" }
+            } else if (!hitRange) {
+                casts = casts.filter { it != "attack" }
+            }
+        }
+        if (hitRange && d.intent != Intent.RETREAT && casts.none { it == "s1" || it == "s2" || it == "ult" } && "attack" !in casts) {
+            casts = casts + "attack"
+        }
         if (casts == d.casts) return d
         return TacticalDecision(d.intent, d.moveX, d.moveY, casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId, d.reason)
     }

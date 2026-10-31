@@ -24,8 +24,9 @@ class AccessibilityController : AccessibilityService() {
             private set
 
         fun screenAspect(): Float {
-            val m = instance?.resources?.displayMetrics ?: return 1.78f
-            return m.widthPixels.toFloat() / m.heightPixels.coerceAtLeast(1)
+            val svc = instance ?: return 1.78f
+            val (w, h) = com.example.mlbbresearch.core.ScreenGeom.size(svc)
+            return w.toFloat() / h.coerceAtLeast(1)
         }
     }
 
@@ -71,8 +72,10 @@ class AccessibilityController : AccessibilityService() {
     // All actions go out as ONE gesture, so moving and casting happen at the same time
     @Synchronized
     fun dispatch(acts: List<Act>, showTouches: Boolean) {
-        val w = resources.displayMetrics.widthPixels.toFloat()
-        val h = resources.displayMetrics.heightPixels.toFloat()
+        // touches are in whole-screen pixels (camera cut-out included), like the capture
+        val (rw, rh) = com.example.mlbbresearch.core.ScreenGeom.size(this)
+        val w = rw.toFloat()
+        val h = rh.toFloat()
         val g = GestureDescription.Builder()
         var n = 0
         var joyAct: Act.Joy? = null

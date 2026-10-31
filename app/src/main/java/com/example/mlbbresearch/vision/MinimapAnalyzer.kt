@@ -91,7 +91,7 @@ object MinimapAnalyzer {
         val icon = lastIcon
         val st = structures(px, w, h)
         // enemy towers are red too: do not count them as enemy heroes
-        val heroDots = dots.filter { d ->
+        val heroDots = dots.filter { d -> CLOUDS.none { kotlin.math.hypot(it.first - d.first, it.second - d.second) < 0.06f } &&
             st.towers.none { kotlin.math.hypot(it.x - d.first, it.y - d.second) < 0.05f } &&
                 st.enemyWaves.none { kotlin.math.hypot(it.first - d.first, it.second - d.second) < 0.02f }
         }
@@ -131,6 +131,9 @@ object MinimapAnalyzer {
         return me to out
     }
 
+    // Flying-cloud pick-up spots on the minimap (measured on your screenshots): never towers or enemies
+    val CLOUDS = listOf(0.20f to 0.25f, 0.79f to 0.72f)
+
     class Structures(
         val towers: List<MapTower>, val base: Pair<Float, Float>?, val waves: List<Pair<Float, Float>>,
         val allyTowers: List<Pair<Float, Float>>, val enemyWaves: List<Pair<Float, Float>>
@@ -147,13 +150,20 @@ object MinimapAnalyzer {
         if (mw < 0.03f || mh < 0.05f) return Structures(emptyList(), null, emptyList(), emptyList(), emptyList())
         fun inMap(bl: ButtonDetector.Blob) = ((bl.cx - l) / mw) to ((bl.cy - t) / mh)
         fun near(a: Pair<Float, Float>, b: Pair<Float, Float>, d: Float) = kotlin.math.hypot(a.first - b.first, a.second - b.second) < d
+        // towers only stand on the three lanes: the map edges (EXP / gold) and the bottom-left to
+        // top-right diagonal (mid). Icons elsewhere (the golden Lord / turtle pit, the flying-cloud
+        // pick-ups, coins) are not towers.
+        // the two flying-cloud pick-ups (small yellow dots, same place every match, mirrored)
+        fun cloud(p: Pair<Float, Float>) = CLOUDS.any { near(it, p, 0.06f) }
+        fun onLane(p: Pair<Float, Float>) = !cloud(p) && p.first < 0.14f || p.first > 0.86f || p.second < 0.12f || p.second > 0.88f ||
+            kotlin.math.abs(p.first + p.second - 1f) < 0.13f
         val red = ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { p ->
             val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
             rr >= 170 && g <= 110 && bb <= 120 && rr - g >= 80 || MinimapColors.matches(MinimapColors.Kind.ENEMY_TOWER, p)
         }
         val base = red.filter { it.w / mw >= 0.075f && it.count >= 20 }.maxByOrNull { it.count }?.let { inMap(it) }
         val redTowers = red.filter { it.count >= 12 && it.w / mw in 0.018f..0.07f }.map { inMap(it) }
-            .filter { tw -> base == null || !near(tw, base, 0.08f) }
+            .filter { tw -> (base == null || !near(tw, base, 0.08f)) && onLane(tw) }
         // yellow tower icons: a yellow body with a RED cap = enemy tower with a gold bonus,
         // a yellow body with a BLUE cap = one of your towers
         val yellowBlobs = ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { p ->
@@ -175,14 +185,18 @@ object MinimapAnalyzer {
                     val yi = (yy * h).toInt().coerceIn(0, h - 1)
                     val p = px[yi * w + xi]
                     val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
-                    if (rr >= 190 && g <= 140 && rr - g >= 70) redCap++
+                    if (rr >= 190 && g <= 165 && rr - bb >= 90 && rr - g >= 50) redCap++
                     if (bb >= 170 && rr <= 130 && bb - rr >= 60) blueCap++
                     xx += 1f / w
                 }
                 yy += 1f / h
             }
             val pos = inMap(yb)
-            if (redCap + blueCap < 2 && yb.count < 12) continue      // not a tower icon
+            // a tower icon has a coloured cap and stands upright; round dots (flying clouds,
+            // coins) and the Lord / turtle pit icon are not towers
+            if (redCap + blueCap < 2) continue
+            if (yb.h < yb.w * 1.05f) continue
+            if (!onLane(pos)) continue
             if (pos.second < pos.first - 0.02f) yellowEnemy.add(pos) else yellowAlly.add(pos)
         }
         // the river runs corner to corner from top-left to bottom-right: your half is below it
@@ -199,7 +213,7 @@ object MinimapAnalyzer {
         }
         // your towers stand on your half (left edge, bottom edge, lower mid); enemy ones on theirs
         fun allySide(p: Pair<Float, Float>) = p.second > p.first + 0.02f
-        val allyTowers = (blueAll.filter { it.count in 15..50 && it.w / mw in 0.04f..0.10f }.map { inMap(it) } +
+        val allyTowers = (blueAll.filter { it.count in 15..50 && it.w / mw in 0.04f..0.10f }.map { inMap(it) }.filter { onLane(it) } +
             yellowAlly.filter { y -> blueAll.none { it.count in 15..50 && near(inMap(it), y, 0.04f) } }).filter { allySide(it) }
         // enemy minion waves: small red marks
         val enemyWaves = red.filter { it.count in 4..9 && it.w / mw <= 0.03f }.map { inMap(it) }

@@ -39,7 +39,8 @@ object Cfg {
     var strategyWithImage: Boolean get() = b("strat_img", false); set(v) = put("strat_img", v)
     var pushDir: String get() = s("push_dir", "up-right"); set(v) = put("push_dir", v)
     var spellIsDefensive: Boolean get() = b("spell_def", true); set(v) = put("spell_def", v)
-    var readCooldownsFromScreen: Boolean get() = b("cd_vision", false); set(v) = put("cd_vision", v)
+    // read skill availability from the buttons (dark + countdown = cooling down); on by default
+    var readCooldownsFromScreen: Boolean get() = b("cd_vision2", true); set(v) = put("cd_vision2", v)
 
     var autoUpgradeSkills: Boolean get() = b("auto_upgrade", true); set(v) = put("auto_upgrade", v)
     // ult first, then the others in this order (comma separated: ult,s1,s2)
