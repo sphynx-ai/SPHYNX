@@ -70,7 +70,28 @@ object TacticalEngine {
             if (changed) d = TacticalDecision(d.intent, gx, gy, d.casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId,
                 d.reason + " (keeping out of enemy tower range)")
         }
-        return wallHop(s, p, d)
+        return wallHop(s, p, steerAroundWalls(s, d))
+    }
+
+    // Walls seen on screen right ahead (rock, cliff, trees): curve 35 or 70 degrees to the clear
+    // side before bumping into them. If every way is blocked, the wall-jump check takes over.
+    private fun steerAroundWalls(s: GameState, d: TacticalDecision): TacticalDecision {
+        val self = s.self ?: return d
+        if (!Cfg.wallAvoid || (d.moveX == 0f && d.moveY == 0f) || s.screenWalls.isEmpty()) return d
+        val bd = com.example.mlbbresearch.vision.BushDetector
+        val fy = self.y + 0.02f                        // feet
+        if (bd.wallAhead(s.screenWalls, self.x, fy, d.moveX, d.moveY, s.aspect) < 0.34f) return d
+        for (deg in intArrayOf(35, -35, 70, -70)) {
+            val a = Math.toRadians(deg.toDouble())
+            val rx = (d.moveX * Math.cos(a) - d.moveY * Math.sin(a)).toFloat()
+            val ry = (d.moveX * Math.sin(a) + d.moveY * Math.cos(a)).toFloat()
+            if (bd.wallAhead(s.screenWalls, self.x, fy, rx, ry, s.aspect) < 0.2f) {
+                return TacticalDecision(d.intent, rx, ry, d.casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId,
+                    d.reason + " (curving around a wall)")
+            }
+        }
+        pendingHop = true                              // boxed in: jump it if a dash is ready
+        return d
     }
 
     // ---- thinking ahead: what comes after the current task ----

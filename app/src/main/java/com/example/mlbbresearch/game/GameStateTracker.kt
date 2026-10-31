@@ -224,7 +224,8 @@ object GameStateTracker {
             enemyWaves = if (onMap) emptyList() else v.minimap.enemyWaves,
             bossHp = v.bossHp,
             bushes = v.bushes,
-            inBush = v.inBush
+            inBush = v.inBush,
+            screenWalls = v.screenWalls
         )
         state = s
         CooldownTracker.observe(v)

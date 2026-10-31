@@ -27,6 +27,7 @@ class VisionResult(
     val bossHp: Float,                 // turtle / lord HP (0..1) from the bar under the scoreboard, -1 = none
     val bushes: List<Bush>,            // bushes on screen (tall grass: hide / ambush)
     val inBush: Boolean,               // you are standing in a bush (hidden from enemies)
+    val screenWalls: BooleanArray,     // rock / cliff / tree cells on screen (40 x 20 grid)
     val processMs: Long
 ) {
     val aspect: Float get() = if (frameH == 0) 1.78f else frameW.toFloat() / frameH
@@ -121,7 +122,7 @@ object FrameProcessor {
 
         // bushes every 3rd frame (they do not move; the camera does, slowly)
         val bush = if (self != null && (frameNo % 3 == 0L || lastBush == null)) {
-            BushDetector.detect(px, w, h, hud + ScreenMasks.overlay, self).also { lastBush = it }
+            BushDetector.detect(px, w, h, hud + ScreenMasks.overlay, self, seen.filter { it.team != Team.SELF }).also { lastBush = it }
         } else if (self != null) lastBush!! else BushDetector.Result(emptyList(), false)
 
         val result = VisionResult(
@@ -144,6 +145,7 @@ object FrameProcessor {
             kda = if (self != null) KdaReader.read(px, w, h) else IntArray(3),
             bushes = bush.bushes,
             inBush = bush.inBush,
+            screenWalls = bush.walls,
             processMs = System.currentTimeMillis() - t0
         )
         latest = result
