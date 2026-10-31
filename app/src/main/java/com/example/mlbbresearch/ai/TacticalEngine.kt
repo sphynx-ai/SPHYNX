@@ -213,7 +213,8 @@ object TacticalEngine {
         // shows, the attack button is pressed anyway (it locks on to the nearest monster), and the
         // bars appear after the first hit.
         val atCamp = JungleNav.atCamp && (d.intent == Intent.JUNGLE || d.intent == Intent.LANE_CLEAR) ||
-            d.intent == Intent.PUSH && s.towerRing.zone == com.example.mlbbresearch.vision.TowerRing.Zone.GREEN
+            d.intent == Intent.PUSH && s.towerRing.zone == com.example.mlbbresearch.vision.TowerRing.Zone.GREEN ||
+            d.reason.startsWith("finishing the monster")
         val skillRange = s.enemiesWithin(p.engageRange).isNotEmpty() || atCamp ||
             s.minionsWithin(p.attackRange * 1.8f).isNotEmpty() || s.monsters.any { s.distToSelf(it.x, it.y) <= p.attackRange * 1.8f }
         val hitRange = s.enemiesWithin(p.attackRange * 1.4f).isNotEmpty() || atCamp ||
@@ -347,15 +348,29 @@ object TacticalEngine {
                 }), force = true)
         }
 
-        // ---- 1b. low HP but a monster is almost dead: finish it first (its gold / EXP / buff),
-        // then recall. Only with no enemy hero near; a monster still healthy is left alone.
+        // ---- 1a. a monster that was almost dead just went out of sight (its last few % of bar
+        // are tiny): keep hitting for 1.5 s - with Retribution if it is ready - instead of leaving ----
+        if (s.creeps.isEmpty() && s.boss == null && threat.isEmpty() && lastMonAt > 0 && now - lastMonAt in 0..1500 &&
+            lastMonHp <= 0.2f && s.distToSelf(lastMonX, lastMonY) <= p.attackRange * 2f
+        ) {
+            val casts = arrayListOf("attack")
+            if (s.spell == "Retribution" && CooldownTracker.ready("spell", p)) casts.add("spell")
+            return TacticalDecision(Intent.JUNGLE, 0f, 0f, casts, lastMonX, lastMonY, "monster", lastMonHp, -1,
+                "finishing the monster (last seen at ${(lastMonHp * 100).toInt()}% HP)")
+        }
+
+        // ---- 1b. never walk away from a monster that is almost dead or that you are fighting:
+        // finish it first (its gold / EXP / buff), whatever the lane - then recall / move on.
+        // Only with no enemy hero near.
+        val fighting = now - lastMonAt in 0..2000
         val lowMon = (s.creeps + listOfNotNull(s.boss)).filter {
-            s.distToSelf(it.x, it.y) <= p.attackRange * 1.8f && it.hp <= (if (it.hero) 0.15f else 0.35f)
+            s.distToSelf(it.x, it.y) <= p.attackRange * 1.8f && (it.hp <= (if (it.hero) 0.15f else 0.35f) ||
+                fighting && !it.hero && s.dist(it.x, it.y, lastMonX, lastMonY) < 0.15f && (hp >= 0.3f || it.hp <= 0.5f))
         }.minByOrNull { it.hp }
-        if (lowMon != null && threat.isEmpty() && hp in 0.04f..0.5f && now >= recallUntil) {
+        if (lowMon != null && threat.isEmpty() && hp >= 0.04f && now >= recallUntil) {
             return hold(now, hitMonster(s, p, lowMon, if (lowMon.hero) Cfg.retriBossPct else Cfg.retriCreepPct,
                 if (lowMon.hero) Intent.OBJECTIVE else Intent.JUNGLE,
-                "finishing the monster first (${(lowMon.hp * 100).toInt()}% HP), then recall"), force = true)
+                "finishing the monster first (${(lowMon.hp * 100).toInt()}% HP)"), force = true)
         }
 
         // ---- 2. recall when low and safe ----
@@ -660,7 +675,11 @@ object TacticalEngine {
         if (d > p.attackRange * 1.5f && d <= p.engageRange * 1.4f) dashSlot(s, p) else null
 
     // Attack a jungle monster / turtle / lord; Retribution (if you have it) to finish it
+    // the monster last fought: its bar at the last 1-3% can flicker out of sight
+    private var lastMonX = -1f; private var lastMonY = -1f; private var lastMonHp = 1f; private var lastMonAt = 0L
+
     private fun hitMonster(s: GameState, p: HeroProfile, m: Seen, retriPct: Int, intent: Intent, why: String): TacticalDecision {
+        lastMonX = m.x; lastMonY = m.y; lastMonHp = m.hp; lastMonAt = s.ts
         val d = s.distToSelf(m.x, m.y)
         val casts = ArrayList<String>()
         if (d <= p.attackRange * 1.4f) casts.add("attack")

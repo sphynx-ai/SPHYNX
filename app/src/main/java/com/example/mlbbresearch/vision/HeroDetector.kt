@@ -92,7 +92,9 @@ object HeroDetector {
                     start = x
                 }
             }
-            rowRuns.removeAll { it[1] - it[0] + 1 < minRun }
+            // a very short coloured run is still a bar when a long grey "missing HP" part follows
+            // it: a unit (often a monster) at its last few % HP shows only 1-5 px of colour
+            rowRuns.removeAll { it[1] - it[0] + 1 < minRun && !(it[1] - it[0] + 1 >= 2 && emptyAfter(px, w, base, it[1] + 1) >= minRun * 3) }
             // attach runs to blobs that touched the previous rows; a run touching two blobs
             // joins them (a bar split by tick marks in one row is whole in the next)
             for (run in rowRuns) {
@@ -135,7 +137,8 @@ object HeroDetector {
         for (bl in done) {
             val bw = bl.maxX - bl.minX + 1
             val bh = bl.maxY - bl.minY + 1
-            if (bh > maxBarH || bw < minRun || bw < bh * 3) continue
+            val nearlyEmpty = (bw < minRun || bw < bh * 3) && emptyAfter(px, w, ((bl.minY + bl.maxY) / 2) * w, bl.maxX + 1) >= max(minRun * 3, bh * 6)
+            if (bh > maxBarH || (bw < minRun || bw < bh * 3) && !nearlyEmpty) continue
             if (bl.count.toFloat() / (bw * bh) < 0.55f) continue
             val cx = (bl.minX + bl.maxX) / 2
             val cy = (bl.minY + bl.maxY) / 2
@@ -196,6 +199,19 @@ object HeroDetector {
             )
         }
         return out
+    }
+
+    // length of the grey empty-bar stretch starting at x on the row starting at base (thin dark
+    // tick marks of 1-3 px are stepped over), up to 80 px
+    private fun emptyAfter(px: IntArray, w: Int, base: Int, x0: Int): Int {
+        var n = 0
+        var x = x0
+        while (x < w && n < 80) {
+            if (isEmptyBar(px[base + x]) && lum(px[base + x]) >= 45) { n++; x++; continue }
+            val skip = (1..3).firstOrNull { x + it < w && isEmptyBar(px[base + x + it]) && lum(px[base + x + it]) >= 45 } ?: break
+            n += skip; x += skip
+        }
+        return n
     }
 
     // An HP bar is a solid strip: at least one row is its colour almost end to end (tick marks
