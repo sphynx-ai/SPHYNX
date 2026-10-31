@@ -73,6 +73,29 @@ object TacticalEngine {
         return wallHop(s, p, d)
     }
 
+    // ---- thinking ahead: what comes after the current task ----
+    // Worked out on every decision while the current task runs, so the next one starts at once.
+    @Volatile var nextPlan = "-"
+        private set
+
+    fun planAhead(s: GameState, d: TacticalDecision, p: HeroProfile): String {
+        val hp = s.selfHp
+        nextPlan = when {
+            d.intent == Intent.RECALL -> "back in base: buy, then walk the lane"
+            hp in 0f..0.35f && d.intent != Intent.RETREAT -> "recall or Regen once safe"
+            d.intent == Intent.ENGAGE && s.minionsWithin(0.9f).isNotEmpty() -> "after the fight: clear the minion wave"
+            d.intent == Intent.ENGAGE && s.lane == Lane.JUNGLE -> "after the fight: back to the jungle camps"
+            d.intent == Intent.ENGAGE -> "after the fight: walk the lane / push"
+            d.intent == Intent.JUNGLE -> JungleNav.next?.let { "next: the ${if (it.buff) "buff" else "camp"} at %.0f%%,%.0f%% of the map".format(it.x * 100, it.y * 100) }
+                ?: "next: look for the next camp"
+            d.intent == Intent.LANE_CLEAR && TowerLogic.selfInRange(s, 0.06f) -> "after the wave: push the tower with our minions"
+            d.intent == Intent.LANE_CLEAR -> "after the wave: a nearby camp or the next tower"
+            d.intent == Intent.OBJECTIVE -> "after the objective: push a lane with the buff"
+            else -> "keep going: ${d.reason}"
+        }
+        return nextPlan
+    }
+
     // ---- skill rules: the last step before the touches go out ----
     // (also covers combos and "Play like me")
     //  - the ultimate is kept for enemy heroes (fighting or escaping them), never for creeps
@@ -254,11 +277,13 @@ object TacticalEngine {
                 "finishing enemy at ${(low.hp * 100).toInt()}% HP"), force = true)
         }
 
-        // ---- 2d. ambush from a bush: wait hidden until the enemy walks into reach (6 s at most) ----
+        // ---- 2d. ambush from a bush: hide while an enemy walks towards us (3 s at most) ----
         if (Cfg.useBushes && hp > 0.55f && (s.lane == Lane.ROAM || s.lane == Lane.JUNGLE || alliesNear > 0)) {
             val e = safeTargets.minByOrNull { s.distToSelf(it.x, it.y) }
             val de = e?.let { s.distToSelf(it.x, it.y) } ?: 9f
-            if (e != null && de > p.engageRange * 1.1f && de < 0.9f && (ambushSince == 0L || now - ambushSince < 6000)) {
+            // only while the enemy is actually coming towards us, and 3 s at most (no long waits)
+            val coming = e != null && self.let { me -> (me.x - e.x) * e.vx * s.aspect * s.aspect + (me.y - e.y) * e.vy > 0f }
+            if (e != null && coming && de > p.engageRange * 1.1f && de < 0.9f && (ambushSince == 0L || now - ambushSince < 3000)) {
                 if (ambushSince == 0L) ambushSince = now
                 if (s.inBush) {
                     return hold(now, TacticalDecision(Intent.AMBUSH, 0f, 0f, emptyList(), e.x, e.y, "enemy #${e.id}", e.hp, e.id,
@@ -514,7 +539,12 @@ object TacticalEngine {
         }
         val dist = kotlin.math.hypot(target.x - me.first, target.y - me.second)
         val what = if (target.bonus) "bonus tower" else if (s.towers.isEmpty()) "enemy base" else "next enemy tower"
-        if (dist < TowerLogic.range() + 0.03f) return Triple(0f, 0f, "waiting for our minions at the $what")
+        if (dist < TowerLogic.range() + 0.03f) {
+            // no standing around at the tower: walk back along the lane to meet our next wave
+            val home = s.allyTowers.minByOrNull { kotlin.math.hypot(it.first - me.first, it.second - me.second) } ?: (0.1f to 0.9f)
+            val (bx, by) = mapDir(me, home)
+            return Triple(bx, by, "meeting our next minion wave (the $what needs minions)")
+        }
         val (mx, my) = mapDir(me, target.x to target.y)
         return Triple(mx, my, "pushing to the $what")
     }

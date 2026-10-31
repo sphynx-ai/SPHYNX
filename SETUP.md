@@ -184,6 +184,32 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
   yet. The reading uses a ring around the button's centre, so the white countdown digits in the middle don't fool
   it. The Player page shows what each button reads now.
 
+## Learned from your gameplay video (40 s, Thamuz)
+
+Measured frame by frame and copied into the AI:
+- **Skills**: 26 casts, almost all quick taps (MLBB auto-aims); only 2 deliberate aimed drags (291 and 750 ms). The
+  AI now taps a skill when the target is near and only drags (220-300 ms) to aim at a target far away.
+- **Turning**: 90% of your direction changes are under 27 degrees per 1/12 s. The AI now turns at about 340
+  degrees a second, timed by the clock rather than by how often it decides; reversals (running away) are faster.
+- **Joystick**: your thumb sits at the edge of the ring (full speed) and your joystick floats (it appears where the
+  thumb lands). The AI now pushes to 93-99% of the ring.
+- **Attack**: you press about every 330 ms while fighting. The AI now presses attack every 250-330 ms, while skills
+  still go out at once.
+
+## No idle, thinking ahead
+
+- **Next step planned**: while the current task runs, the next one is worked out (shown as "Next:" in the floating
+  window). Jungle: the next camp is chosen while the current one is being killed, and the hero walks off the moment
+  the kill is confirmed.
+- **No waiting at an empty camp**: it moves on after 4 s instead of 12 s.
+- **No waiting at a tower**: instead of standing at the edge of tower range for minions, it walks back along the
+  lane to meet the next wave.
+- **Shorter ambushes**: only while an enemy is actually walking towards the bush, 3 s at most.
+- **No freezing**: if your HP bar vanishes for a moment (effects, animations), the last movement continues for up
+  to 0.6 s.
+- **Towers are not monsters**: an enemy tower's red bar near an enemy tower on the minimap is a structure, never a
+  monster to farm.
+
 ## Monsters, melee / ranged heroes and aggro circles
 
 - **Monsters have red HP bars** like enemies, with their HP number above. An enemy hero's bar has a dark level badge

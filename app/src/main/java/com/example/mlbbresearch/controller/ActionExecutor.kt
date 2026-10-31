@@ -37,6 +37,9 @@ object ActionExecutor {
     private var joyDirX = 0f
     private var joyDirY = 0f
     private var walkSince = 0L
+    private var lastAttackTap = 0L
+    private var attackGap = 280L
+    private var lastJoyAt = 0L
     private var detourUntil = 0L
     private var detourSign = 1f
     private var pushRadius = 0.9f
@@ -93,7 +96,14 @@ object ActionExecutor {
         val casts = if (!assist) d.casts else if (d.intent == Intent.ENGAGE || d.intent == Intent.OBJECTIVE)
             d.casts.filter { it in AIMED || it == "attack" || it == "spell" && gs.spell in com.example.mlbbresearch.game.SpellDb.offensive }
             else emptyList()
+        val nowMs = System.currentTimeMillis()
         for (c in casts) {
+            // basic attack at a human rhythm (your recording: about every 330 ms); skills go out at once
+            if (c == "attack") {
+                if (nowMs - lastAttackTap < attackGap) continue
+                lastAttackTap = nowMs
+                attackGap = 250L + rnd.nextInt(80)
+            }
             val (x, y) = Layout.get(c)
             val me = if (Cfg.aimSkills && c in AIMED && d.targetX >= 0f) self else null
             if (me != null) acts.add(aimedCast(c, x, y, me.x, me.y, d, gs)) else acts.add(Act.Tap(x, y))
@@ -128,9 +138,11 @@ object ActionExecutor {
         val dx = (tx - sx) * aspect
         val dy = ty - sy
         val l = kotlin.math.hypot(dx, dy)
-        if (l < 0.05f) return Act.Tap(bx, by)                           // on top of it: quick cast auto-aims
+        // Like your recording: a quick tap almost every time (the game auto-aims at the nearest
+        // target); a deliberate drag only for a target far away (your aimed drags: 290-750 ms)
+        if (l < 0.30f) return Act.Tap(bx, by)
         val reach = SKILL_AIM_R * (0.55f + 0.45f * (l / 0.45f).coerceAtMost(1f))
-        return Act.Drag(bx, by, bx + dx / l * reach, by + dy / l * reach * aspect, 90L + rnd.nextInt(40))
+        return Act.Drag(bx, by, bx + dx / l * reach, by + dy / l * reach * aspect, 220L + rnd.nextInt(80))
     }
 
     // Direction (-1..1) -> joystick touch. Natural mode: the finger stays down, the hero turns
@@ -171,15 +183,21 @@ object ActionExecutor {
             var delta = want - cur
             while (delta > Math.PI) delta -= (2 * Math.PI).toFloat()
             while (delta < -Math.PI) delta += (2 * Math.PI).toFloat()
-            val maxTurn = 0.87f
-            want = cur + delta.coerceIn(-maxTurn, maxTurn) + (rnd.nextFloat() - 0.5f) * 0.06f
+            // turn at a thumb's speed: about 340 degrees a second (your recording: 90% of turns
+            // under 27 degrees per 1/12 s), however often the AI decides
+            val dt = ((now - lastJoyAt).coerceIn(20L, 250L)) / 1000f
+            // a reversal (running away, dodging) is a flick to the other side: faster
+            val maxTurn = (if (kotlin.math.abs(delta) > 2.1f) 15f else 6.0f) * dt
+            want = cur + delta.coerceIn(-maxTurn, maxTurn) + (rnd.nextFloat() - 0.5f) * 0.03f
             nx = kotlin.math.cos(want); ny = kotlin.math.sin(want)
-            pushRadius = (pushRadius * 0.8f + (0.82f + rnd.nextFloat() * 0.13f) * 0.2f)
+            // the thumb sits at the ring's edge (full speed), with a little wobble
+            pushRadius = (pushRadius * 0.8f + (0.93f + rnd.nextFloat() * 0.06f) * 0.2f)
         } else {
             val l = kotlin.math.hypot(mx, my).coerceAtLeast(1e-4f)
             nx = mx / l; ny = my / l
-            pushRadius = 0.9f
+            pushRadius = 0.96f
         }
+        lastJoyAt = now
         joyDirX = nx; joyDirY = ny
         // the finger is already down: only move it when the direction really changed (> ~6
         // degrees) or every 0.5 s, so taps and skills are not held up by joystick strokes

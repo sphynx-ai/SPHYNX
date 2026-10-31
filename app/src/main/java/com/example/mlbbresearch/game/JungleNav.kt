@@ -14,6 +14,8 @@ object JungleNav {
     private var arrivedAt = 0L
     private val skipped = HashMap<Pair<Int, Int>, Long>()   // camp grid cell -> skip until
     private var sawMonsterAt = 0L
+    @Volatile var next: Camp? = null           // planned while the current camp is being fought
+        private set
     @Volatile var campsKilled = 0
         private set
     private var lastSelf: Pair<Float, Float>? = null
@@ -74,15 +76,27 @@ object JungleNav {
             if (arrivedAt == 0L) arrivedAt = now
             if (s.creeps.isNotEmpty() || s.boss != null) sawMonsterAt = now
             val killed = sawMonsterAt > 0 && now - sawMonsterAt > 1500
-            val giveUp = if (sawMonsterAt > 0) now - arrivedAt > 40_000 else now - arrivedAt > 12_000
+            // no monster here: leave fast (no standing around)
+            val giveUp = if (sawMonsterAt > 0) now - arrivedAt > 40_000 else now - arrivedAt > 4_000
+            // THINK AHEAD: while this camp dies, the next one is already chosen
+            next = camps.filter { hypot(it.x - t.x, it.y - t.y) > 0.05f }
+                .minByOrNull { WallMap.distance(t.x to t.y, it.x to it.y) }
             if (killed || giveUp) {
                 skipped[cell(t)] = now + if (t.buff) 120_000 else 70_000     // respawn time
-                target = null
                 arrivedAt = 0L
                 sawMonsterAt = 0L
                 if (killed) campsKilled++
-                status = if (killed) "camp killed, next one" else "no monster found here, next camp"
-                return null
+                // go straight on to the camp planned while fighting
+                val n = next
+                target = n
+                next = null
+                if (n == null) {
+                    status = if (killed) "camp killed, no other camp up" else "no monster found here"
+                    return null
+                }
+                status = (if (killed) "camp killed" else "no monster here") + ", on to the next camp"
+                val (dx, dy) = WallMap.direction(me, n.x to n.y) ?: norm(n.x - me.first, n.y - me.second)
+                return Triple(dx, dy, "to the next jungle ${if (n.buff) "buff" else "camp"}")
             }
             atCamp = true
             status = "killing a ${if (t.buff) "buff" else "camp"} (${(now - arrivedAt) / 1000}s" +
