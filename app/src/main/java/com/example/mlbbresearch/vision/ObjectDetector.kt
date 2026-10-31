@@ -31,6 +31,7 @@ object ObjectDetector {
     private var inW = 640
     private var inH = 640
     private var inType: DataType = DataType.FLOAT32
+    private var channelsFirstIn = false
     private var inBuf: ByteBuffer? = null
     private var outShape = intArrayOf()
     private var outType: DataType = DataType.FLOAT32
@@ -64,9 +65,14 @@ object ObjectDetector {
             close()
             val it = Interpreter(f, Interpreter.Options().setNumThreads(2))
             val inT = it.getInputTensor(0)
-            val s = inT.shape()                     // [1, H, W, 3]
-            if (s.size != 4 || s[3] != 3) throw IllegalStateException("unexpected input shape ${s.joinToString()}")
-            inH = s[1]; inW = s[2]
+            // channels last [1, H, W, 3] (classic TFLite export) or channels first [1, 3, H, W]
+            // (newer "litert" exports from Ultralytics / PyTorch)
+            val s = inT.shape()
+            when {
+                s.size == 4 && s[3] == 3 -> { inH = s[1]; inW = s[2]; channelsFirstIn = false }
+                s.size == 4 && s[1] == 3 -> { inH = s[2]; inW = s[3]; channelsFirstIn = true }
+                else -> throw IllegalStateException("unexpected input shape ${s.joinToString()}")
+            }
             inType = inT.dataType()
             val bytesPer = if (inType == DataType.FLOAT32) 4 else 1
             inBuf = ByteBuffer.allocateDirect(inW * inH * 3 * bytesPer).order(ByteOrder.nativeOrder())
@@ -80,7 +86,7 @@ object ObjectDetector {
             labels = Cfg.detectorLabels.split(",").map { l -> l.trim() }.filter { l -> l.isNotEmpty() }
             interpreter = it
             state = "ready (${inW}x$inH, ${classCount()} classes)"
-            Diag.info("Detector loaded: input ${inW}x$inH $inType, output ${outShape.joinToString("x")}")
+            Diag.info("Detector loaded: input ${inW}x$inH $inType ${if (channelsFirstIn) "channels first" else "channels last"}, output ${outShape.joinToString("x")}")
             null
         } catch (t: Throwable) {
             state = "load failed (see Logs)"
@@ -147,15 +153,18 @@ object ObjectDetector {
         val ib = inBuf ?: return emptyList()
         val ob = outBuf ?: return emptyList()
         ib.rewind()
-        for (p in rgb) {
-            val red = (p shr 16) and 0xff
-            val grn = (p shr 8) and 0xff
-            val blu = p and 0xff
+        fun put(v: Int) {
             when (inType) {
-                DataType.FLOAT32 -> { ib.putFloat(red / 255f); ib.putFloat(grn / 255f); ib.putFloat(blu / 255f) }
-                DataType.INT8 -> { ib.put((red - 128).toByte()); ib.put((grn - 128).toByte()); ib.put((blu - 128).toByte()) }
-                else -> { ib.put(red.toByte()); ib.put(grn.toByte()); ib.put(blu.toByte()) }
+                DataType.FLOAT32 -> ib.putFloat(v / 255f)
+                DataType.INT8 -> ib.put((v - 128).toByte())
+                else -> ib.put(v.toByte())
             }
+        }
+        if (channelsFirstIn) {
+            // all reds, then all greens, then all blues
+            for (shift in intArrayOf(16, 8, 0)) for (p in rgb) put((p shr shift) and 0xff)
+        } else {
+            for (p in rgb) { put((p shr 16) and 0xff); put((p shr 8) and 0xff); put(p and 0xff) }
         }
         ib.rewind()
         ob.rewind()
