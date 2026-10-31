@@ -69,7 +69,9 @@ object AiRuntime {
 
     // Returns an error message, or null when started
     fun start(stage: String): String? {
-        val svc = AccessibilityController.instance ?: return "Turn on the accessibility service first (Setup page)"
+        // learning only watches the screen: it needs no accessibility service (no touches)
+        val svc = AccessibilityController.instance
+        if (svc == null && stage != "learn") return "Turn on the accessibility service first (Setup page)"
         if (needsGemma(stage) && !GemmaEngine.ready) return "Load the Gemma model first (Model page)"
         when (stage) {
             "player" -> {
@@ -96,7 +98,7 @@ object AiRuntime {
             FrameProcessor.trackPlayer = true
         }
         lastError = ""
-        svc.overlay?.show()
+        svc?.overlay?.show()
         ensureLoops()
         Diag.info("$stage started" + if (stage == "player" && !GemmaEngine.ready) " (rules only, no Gemma)" else "")
         ActionExecutor.note("$stage started")
@@ -251,6 +253,8 @@ object AiRuntime {
                 } else if (playerOn) {
                     ActionExecutor.execute(TacticalDecision.IDLE)
                 }
+                // Player off and you play: everything you do is yours (combos, cast distance, joystick)
+                if (!playerOn && learnOn && inGame) com.example.mlbbresearch.learning.Coach.tick(s, youPlay = true)
                 // your moments: whenever you play yourself, also while helping the AI (coach)
                 if (learnOn && inGame && (!playerOn || com.example.mlbbresearch.learning.Coach.userActive())) DemoRecorder.record(s)
                 // learn from other heroes too: the ally you watch while dead, enemies on screen
