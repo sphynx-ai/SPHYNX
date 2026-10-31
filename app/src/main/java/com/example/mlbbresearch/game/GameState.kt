@@ -52,7 +52,8 @@ class GameState(
     val enemyWaves: List<Pair<Float, Float>> = emptyList(),
     val bossHp: Float = -1f,                  // turtle / lord HP from the bar under the scoreboard
     val bushes: List<Bush> = emptyList(),
-    val inBush: Boolean = false
+    val inBush: Boolean = false,
+    val screenWalls: BooleanArray = BooleanArray(0)
 ) {
     val creeps: List<Seen> get() = monsters.filter { !it.hero }
     val boss: Seen? get() = monsters.filter { it.hero }.minByOrNull { distToSelf(it.x, it.y) }

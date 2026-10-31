@@ -196,6 +196,25 @@ Measured frame by frame and copied into the AI:
 - **Attack**: you press about every 330 ms while fighting. The AI now presses attack every 250-330 ms, while skills
   still go out at once.
 
+## Bushes and walls, tuned on your video and screenshots
+
+Measured on 4 sharp screenshots and frames of your video, per small patch of screen:
+
+| | side-to-side texture | blade ratio (side / up-down) | teal share |
+|---|---|---|---|
+| Bushes (tall grass) | 6.0-6.6 | 1.33-1.48 | 71-96% |
+| Stone floor / grass / river | 1.7-2.8 | 0.64-1.13 | varies |
+| Rock / cliff | 3.6 | 0.59 | 15% |
+| Tree leaves / trunk | 4.4-8.3 | 0.79-0.94 | 22-51% |
+
+- **Bush** = strong texture, more side-to-side than up-down (upright blades), mostly teal, not too bright. Monster
+  and hero bodies are skipped (the turtle's shell is textured teal too).
+- **Wall on screen** (rock, cliff, tree canopy) = strong up-down texture, more up-down than side-to-side, lighter,
+  not teal. It mostly marks wall edges. When the way straight ahead is mostly wall, the hero curves 35 or 70
+  degrees to the clear side before bumping; if every way is blocked, it jumps with a dash. The minimap wall map and
+  the "stuck" check stay the main wall detection.
+- The video is compressed (blurry), which weakens textures there; the app reads sharp frames.
+
 ## No idle, thinking ahead
 
 - **Next step planned**: while the current task runs, the next one is worked out (shown as "Next:" in the floating
