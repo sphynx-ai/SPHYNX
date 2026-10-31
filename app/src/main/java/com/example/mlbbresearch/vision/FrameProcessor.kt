@@ -100,6 +100,7 @@ object FrameProcessor {
         ), px, w, h)), px, w, h, mini)
         // optional trained detector: runs on its own thread a few times a second
         ObjectDetector.maybeRun(px, w, h)
+        if (Cfg.detectorOn) ScreenDetector.maybeRun(px, w, h)
         // you: the green hero bar closest to the centre of the screen
         val self = seen.filter { it.team == Team.SELF }
             .minByOrNull { (it.x - 0.5f) * (it.x - 0.5f) + (it.y - 0.5f) * (it.y - 0.5f) }
@@ -148,6 +149,11 @@ object FrameProcessor {
             lastRingRaw = r
         } else if (self == null || hint != ScreenHint.NONE) ring = TowerRing.NONE
 
+        // what the whole-screen detector adds (when loaded): monsters nobody has hit yet (no HP
+        // bar), bushes and walls the colour finder missed, an enemy tower when its circle is not shown
+        val scr = ScreenIntel.merge(t0, self, steadySmall.filter { it.team == Team.NEUTRAL } + seen.filter { it.team == Team.NEUTRAL && it.hero },
+            bush.bushes, bush.walls, ring, steadySmall.filter { it.team == Team.ALLY })
+
         val result = VisionResult(
             ts = t0, frameW = w, frameH = h,
             self = self,
@@ -163,18 +169,22 @@ object FrameProcessor {
             hud = hudInfo,
             heroSig = if (self != null && frameNo % 12 == 0L) heroSig(px, w, h, self, mini) else null,
             spellIcon = if (self != null && frameNo % 12 == 6L) IconMemory.print(px, w, h, "spell", 0.016f) else null,
-            monsters = steadySmall.filter { it.team == Team.NEUTRAL } + seen.filter { it.team == Team.NEUTRAL && it.hero },
+            monsters = scr.monsters,
             bossHp = if (self != null) ScreenReader.bossBar(px, w, h) else -1f,
             kda = if (self != null) KdaReader.read(px, w, h) else IntArray(3),
-            bushes = bush.bushes,
+            bushes = scr.bushes,
             inBush = bush.inBush,
-            screenWalls = bush.walls,
+            screenWalls = scr.walls,
             level = LevelReader.level,
             xp = LevelReader.xp,
             enemyLevel = enemyLevel,
-            towerRing = ring,
+            towerRing = scr.ring,
             processMs = System.currentTimeMillis() - t0
         )
+        // whole-screen detector training pictures (every 10 s in a match)
+        com.example.mlbbresearch.learning.ScreenDatasetCollector.maybeSave(px, w, h, result, mini, self != null && hint == ScreenHint.NONE,
+            com.example.mlbbresearch.game.JungleNav.atBuff, com.example.mlbbresearch.game.GameStateTracker.state.matchSec,
+            steadySmall.filter { it.team == Team.NEUTRAL } + seen.filter { it.team == Team.NEUTRAL && it.hero }, ring)
         latest = result
         fpsCount++
         if (fpsStart == 0L) fpsStart = t0

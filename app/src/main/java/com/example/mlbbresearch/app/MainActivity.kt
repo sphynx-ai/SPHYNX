@@ -1087,7 +1087,8 @@ class MainActivity : Activity() {
         text("Put the downloaded files in  Download/MLBB-Research  and choose that folder once. The app copies, loads and " +
             "applies them by itself every time it starts:\n" +
             "  - Gemma 3n E2B model: the  .litertlm  file\n" +
-            "  - vision detector:  mlbb_detector.tflite  +  labels.txt\n" +
+            "  - minimap detector:  mlbb_detector.tflite  +  labels.txt\n" +
+            "  - screen detector:  mlbb_screen_detector.tflite  +  screen_labels.txt\n" +
             "  - tactical network:  policy.tflite\n" +
             "  - Groq API key:  groq_key.txt  (the key on the first line)", 13f)
         val c = card()
@@ -1100,8 +1101,11 @@ class MainActivity : Activity() {
                 "\n${af.status}" +
                 "\n\n${mark(GemmaEngine.ready)} Gemma: ${ModelManager.status(this)}, ${GemmaEngine.state}" +
                 (if (GemmaEngine.calls > 0) " (last answer ${GemmaEngine.lastLatencyMs} ms)" else "") +
-                "\n${mark(ObjectDetector.ready)} Detector: ${ObjectDetector.state}" +
+                "\n${mark(ObjectDetector.ready)} Minimap detector: ${ObjectDetector.state}" +
                 (if (ObjectDetector.ready) ", ${ObjectDetector.lastMs} ms per run" else "") +
+                "\n${mark(com.example.mlbbresearch.vision.ScreenDetector.ready)} Screen detector: ${com.example.mlbbresearch.vision.ScreenDetector.state}" +
+                (if (com.example.mlbbresearch.vision.ScreenDetector.ready) ", ${com.example.mlbbresearch.vision.ScreenDetector.lastMs} ms per run; " +
+                    com.example.mlbbresearch.vision.ScreenIntel.added else "") +
                 "\n${mark(pn.ready)} Tactical network: ${pn.state}" +
                 (if (pn.ready && pn.agreeRate >= 0f) ", agrees with the rules ${(pn.agreeRate * 100).toInt()}%" else "") +
                 "\n${mark(Cfg.groqKey.isNotBlank())} Groq key: " + (if (Cfg.groqKey.isBlank()) "not found" else "set") +
@@ -1126,7 +1130,7 @@ class MainActivity : Activity() {
         title("SETTINGS")
         switch("Run Gemma on the GPU (faster; falls back to the CPU)", Cfg.useGpu) { Cfg.useGpu = it }
         // the detector and the tactical network are used together: one switch
-        switch("Use the trained models (detector + tactical network)", Cfg.detectorOn && Cfg.policyOn) {
+        switch("Use the trained models (detectors + tactical network)", Cfg.detectorOn && Cfg.policyOn) {
             Cfg.detectorOn = it; Cfg.policyOn = it
         }
     }
@@ -1206,13 +1210,16 @@ class MainActivity : Activity() {
         }
 
         title("DETECTOR TRAINING PICTURES")
-        text("While you play, a picture of the minimap is saved every 6 s (300 a day at most) with boxes already drawn " +
-            "around your icon, enemy and ally portraits and towers (and whatever the detector finds, if loaded), in " +
-            "Download/MLBB-Research/dataset. Upload that folder to Roboflow to check / fix the boxes, or zip it and give it " +
-            "to the detector notebook: it trains on your pictures together with the Roboflow set.", 13f)
+        text("While you play, pictures are saved with boxes already drawn from what the app sees:\n" +
+            "  - the minimap every 6 s (hero icons, towers, turtle / lord) -> Download/MLBB-Research/dataset, for " +
+            "train_mlbb_detector.ipynb\n" +
+            "  - the whole screen every 10 s (heroes, minions, creeps, buffs, turtle, lord, enemy towers, bushes, walls) -> " +
+            "Download/MLBB-Research/screen_dataset, for train_screen_detector.ipynb\n" +
+            "Fixing the boxes in Roboflow before training makes the detectors much better than the app's own guesses.", 13f)
         switch("Collect detector training pictures", Cfg.collectDataset) { Cfg.collectDataset = it }
         val dsInfo = text("", 12f, color = "#9AA0A6")
-        upd { dsInfo.text = com.example.mlbbresearch.learning.DatasetCollector.status }
+        upd { dsInfo.text = "Minimap: " + com.example.mlbbresearch.learning.DatasetCollector.status +
+            "\nScreen: " + com.example.mlbbresearch.learning.ScreenDatasetCollector.status }
         btn("Delete saved decisions") {
             AlertDialog.Builder(this).setTitle("Delete saved decisions?")
                 .setPositiveButton("Delete") { _, _ -> DatasetManager.clear { runOnUiThread { toast("Deleted") } } }

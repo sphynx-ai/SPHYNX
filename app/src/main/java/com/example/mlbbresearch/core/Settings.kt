@@ -143,7 +143,9 @@ object Cfg {
 
     // ---- optional trained detector (.tflite from the Colab notebook) ----
     var detectorOn: Boolean get() = b("det_on", true); set(v) = put("det_on", v)
-    var detectorRegion: String get() = s("det_region", "minimap"); set(v) = put("det_region", v)   // minimap | screen
+    // the whole-screen detector's class names (screen_labels.txt)
+    var screenLabels: String get() = s("screen_labels", "hero_ally,hero_enemy,hero_self,minion_ally,minion_enemy,creep,buff,turtle,lord,tower_enemy,tower_ally,bush,wall")
+        set(v) = put("screen_labels", v)
     var detectorLabels: String get() = s("det_labels", "hero_icon,lord_icon,turrent_icon,turrets-heros,turtle_icon")
         set(v) = put("det_labels", v)
     var detectorMinScore: Float get() = f("det_score", 0.4f); set(v) = put("det_score", v)
