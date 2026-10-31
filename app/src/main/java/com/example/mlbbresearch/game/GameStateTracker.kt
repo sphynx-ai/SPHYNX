@@ -276,14 +276,25 @@ object CooldownTracker {
     }
 
     @Synchronized
+    // Ready = the button is bright again on screen (a skill on cooldown is dark with a countdown,
+    // a skill not learned yet is dark too). The screen beats the estimated timer, which is only
+    // used when the buttons cannot be read.
     fun ready(slot: String, p: HeroProfile): Boolean {
+        val since = System.currentTimeMillis() - (lastCast[slot] ?: 0L)
+        if (Cfg.readCooldownsFromScreen) {
+            val b = current[slot]
+            val base = baseline[slot]
+            if (b != null && base != null && base > 40f) return since > 400 && b >= base * 0.72f
+        }
         val cd = ((p.cooldownSec[slot] ?: 8f) * 1000 * cdFactor).toLong()
-        val timerOk = System.currentTimeMillis() - (lastCast[slot] ?: 0L) >= cd
-        if (!timerOk) return false
-        if (!Cfg.readCooldownsFromScreen) return true
-        val b = current[slot] ?: return true
-        val base = baseline[slot] ?: return true
-        return b >= base * 0.72f
+        return since >= cd
+    }
+
+    // for the Player page: what the buttons show right now
+    @Synchronized
+    fun screenState(): String = listOf("s1", "s2", "ult", "spell").joinToString("  ") { k ->
+        val b = current[k]; val base = baseline[k]
+        k + ": " + if (b == null || base == null || base <= 40f) "?" else if (b >= base * 0.72f) "ready" else "cooling down"
     }
 
     @Synchronized

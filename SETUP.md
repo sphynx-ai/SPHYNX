@@ -161,6 +161,29 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
   - Defend your towers.
   - Recall and Regen when safe.
 
+## Screen size, minimap and attacking (fixes)
+
+- **Whole screen**: vision, touches and the overlay drawings all use the whole screen including the camera cut-out
+  (2712 x 1220 on a POCO X6 Pro). Before, the overlay window sat beside the cut-out, so the drawings, and
+  possibly the taps, were shifted sideways. The Setup page shows the size in use.
+- **The overlay no longer covers what it marks**: screen capture records the overlay too. Labels drawn on the HP
+  bars had hidden your own bar from the AI, so boxes now start under the bars and your own bar gets no box.
+- **Minimap**:
+  - Towers only count on the three lanes.
+  - The two flying-cloud pick-ups (yellow dots, always at the same two mirrored spots) and the golden Lord / turtle
+    pit icon are never towers or enemies.
+- **No false units**:
+  - The top of the ultimate button is masked.
+  - Coloured parts of your own hero (e.g. a blue skin) are not units.
+  - A minion or monster must show on two frames in a row.
+- **Attacking**:
+  - With no enemy hero, minion or monster in reach, the hero does not press attack or skills. Escape skills, wall
+    jumps, Regen and Recall still work.
+  - With something in reach and no skill ready, it keeps pressing attack.
+- **Skill availability is read from the buttons** (on by default): a dark button means cooling down or not learned
+  yet. The reading uses a ring around the button's centre, so the white countdown digits in the middle don't fool
+  it. The Player page shows what each button reads now.
+
 ## Skill use (Player page)
 
 - **Reserve the ultimate for heroes** (on by default): the ultimate is only used against enemy heroes, in a fight or

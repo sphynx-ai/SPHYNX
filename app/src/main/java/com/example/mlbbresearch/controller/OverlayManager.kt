@@ -92,8 +92,9 @@ class OverlayManager(private val ctx: Context) {
 
     fun showTouch(a: Act) {
         val pv = pointer ?: return
-        val w = ctx.resources.displayMetrics.widthPixels.toFloat()
-        val h = ctx.resources.displayMetrics.heightPixels.toFloat()
+        val (rw, rh) = com.example.mlbbresearch.core.ScreenGeom.size(ctx)
+        val w = rw.toFloat()
+        val h = rh.toFloat()
         when (a) {
             is Act.Tap -> pv.addTouch(a.x * w, a.y * h, a.x * w, a.y * h, false)
             is Act.Drag -> pv.addTouch(a.x1 * w, a.y1 * h, a.x2 * w, a.y2 * h, true)
@@ -110,6 +111,8 @@ class OverlayManager(private val ctx: Context) {
     // ---------------- building ----------------
 
     private fun addOverlay(v: View, lp: WindowManager.LayoutParams) {
+        // draw over the camera cut-out area too, like the game does
+        lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
         if (!useAppOverlay) {
             try {
                 lp.type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
@@ -305,8 +308,9 @@ class OverlayManager(private val ctx: Context) {
         if (panel?.visibility == View.VISIBLE) panelText?.text = AiRuntime.panelText()
         pointer?.invalidate()
         // tell vision where our own windows are, so it ignores them
-        val sw = ctx.resources.displayMetrics.widthPixels.toFloat()
-        val sh = ctx.resources.displayMetrics.heightPixels.toFloat()
+        val (rsw, rsh) = com.example.mlbbresearch.core.ScreenGeom.size(ctx)
+        val sw = rsw.toFloat()
+        val sh = rsh.toFloat()
         val rects = ArrayList<FloatArray>()
         val visibleLp = if (panel?.visibility == View.VISIBLE) panelLp else iconLp
         val visibleView = if (panel?.visibility == View.VISIBLE) panel else icon
@@ -334,8 +338,9 @@ class OverlayManager(private val ctx: Context) {
             Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = dp(40) })
         root.setOnTouchListener { v, e ->
             if (e.actionMasked == MotionEvent.ACTION_UP) {
-                val fx = e.rawX / ctx.resources.displayMetrics.widthPixels
-                val fy = e.rawY / ctx.resources.displayMetrics.heightPixels
+                val (rw, rh) = com.example.mlbbresearch.core.ScreenGeom.size(ctx)
+                val fx = e.rawX / rw
+                val fy = e.rawY / rh
                 stopCalibration()
                 val at = System.currentTimeMillis()
                 // wait for a frame without our layer, then average a 3x3 spot
@@ -516,9 +521,14 @@ class OverlayManager(private val ctx: Context) {
         private var offY = 0f
 
         override fun onDraw(c: Canvas) {
-            val w = width.toFloat()
-            val h = height.toFloat()
-            c.drawRect(0f, 0f, w, h, shade)
+            c.drawRect(0f, 0f, width.toFloat(), height.toFloat(), shade)
+            // positions are fractions of the WHOLE screen; this view may start beside the cut-out
+            val (rw, rh) = com.example.mlbbresearch.core.ScreenGeom.size(context)
+            val w = rw.toFloat()
+            val h = rh.toFloat()
+            val o = IntArray(2).also { getLocationOnScreen(it) }
+            c.save()
+            c.translate(-o[0].toFloat(), -o[1].toFloat())
             for (ctl in controls) {
                 val p = pos[ctl.key] ?: continue
                 val x = p[0] * w
@@ -527,24 +537,28 @@ class OverlayManager(private val ctx: Context) {
                 c.drawCircle(x, y, 3f * density, dot)
                 c.drawText(ctl.label, x + 21f * density, y - 6f * density, label)
             }
+            c.restore()
         }
 
         override fun onTouchEvent(e: MotionEvent): Boolean {
-            val w = width.toFloat().coerceAtLeast(1f)
-            val h = height.toFloat().coerceAtLeast(1f)
+            val (rw, rh) = com.example.mlbbresearch.core.ScreenGeom.size(context)
+            val w = rw.toFloat().coerceAtLeast(1f)
+            val h = rh.toFloat().coerceAtLeast(1f)
+            val ex = e.rawX
+            val ey = e.rawY
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     var best: String? = null
                     var bestD = 48f * density
                     for ((k, p) in pos) {
-                        val d = kotlin.math.hypot(p[0] * w - e.x, p[1] * h - e.y)
+                        val d = kotlin.math.hypot(p[0] * w - ex, p[1] * h - ey)
                         if (d < bestD) { bestD = d; best = k }
                     }
                     dragging = best
-                    best?.let { val p = pos[it]!!; offX = p[0] * w - e.x; offY = p[1] * h - e.y }
+                    best?.let { val p = pos[it]!!; offX = p[0] * w - ex; offY = p[1] * h - ey }
                 }
                 MotionEvent.ACTION_MOVE -> dragging?.let {
-                    pos[it] = floatArrayOf(((e.x + offX) / w).coerceIn(0f, 1f), ((e.y + offY) / h).coerceIn(0f, 1f))
+                    pos[it] = floatArrayOf(((ex + offX) / w).coerceIn(0f, 1f), ((ey + offY) / h).coerceIn(0f, 1f))
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> dragging = null
             }
@@ -569,6 +583,9 @@ class OverlayManager(private val ctx: Context) {
             color = Color.WHITE; textSize = 13f * density; setShadowLayer(4f, 0f, 0f, Color.BLACK)
         }
 
+        // where this view starts on the screen (beside the cut-out on some phones)
+        fun screenOffset(): IntArray = IntArray(2).also { getLocationOnScreen(it) }
+
         fun addTouch(x: Float, y: Float, x2: Float, y2: Float, drag: Boolean) {
             synchronized(marks) { marks.add(Mark(x, y, x2, y2, drag, System.currentTimeMillis())) }
             postInvalidate()
@@ -581,9 +598,15 @@ class OverlayManager(private val ctx: Context) {
         }
 
         override fun onDraw(c: Canvas) {
-            val w = width.toFloat()
-            val h = height.toFloat()
+            // vision and calibration use fractions of the WHOLE screen (2712 x 1220 on a POCO X6 Pro,
+            // camera cut-out included); draw in those coordinates, shifted by where this view starts
+            val (rw, rh) = com.example.mlbbresearch.core.ScreenGeom.size(context)
+            val w = rw.toFloat()
+            val h = rh.toFloat()
             val now = System.currentTimeMillis()
+            val o = screenOffset()
+            c.save()
+            c.translate(-o[0].toFloat(), -o[1].toFloat())
 
             // what the AI sees
             val v = FrameProcessor.latest
@@ -595,9 +618,13 @@ class OverlayManager(private val ctx: Context) {
                         Team.ENEMY -> if (s.hero) Color.parseColor("#FFD600") else Color.parseColor("#FFAB00")
                         Team.NEUTRAL -> Color.parseColor("#CE93D8")
                     }
-                    val r = RectF(s.barLeft * w, s.barTop * h, s.barRight * w, s.y * h + h * 0.04f)
+                    // Screen capture also records this overlay, so nothing is drawn ON the HP bars
+                    // (that hid your own bar from the AI): the box starts under the bar, the label
+                    // sits under the box.
+                    if (s.team == Team.SELF) continue
+                    val r = RectF(s.barLeft * w - 4f, s.barBottom * h + 0.02f * h, s.barRight * w + 4f, s.y * h + h * 0.04f)
                     c.drawRect(r, boxPaint)
-                    if (s.hero) c.drawText("${(s.hp * 100).toInt()}%", r.left, r.top - 4f, textPaint)
+                    if (s.hero) c.drawText("${(s.hp * 100).toInt()}%", r.left, r.bottom + 14f * density, textPaint)
                 }
             }
 
@@ -653,6 +680,7 @@ class OverlayManager(private val ctx: Context) {
                 }
                 if (marks.isNotEmpty() || now < flashUntil) postInvalidateOnAnimation()
             }
+            c.restore()
         }
     }
 }

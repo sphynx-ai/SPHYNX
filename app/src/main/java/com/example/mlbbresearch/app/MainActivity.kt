@@ -834,7 +834,9 @@ class MainActivity : Activity() {
                 .setPositiveButton("Delete") { _, _ -> DemoRecorder.clear { runOnUiThread { toast("Deleted") } } }
                 .setNegativeButton("Cancel", null).show()
         }
-        switch("Read skill cooldowns from the screen", Cfg.readCooldownsFromScreen) { Cfg.readCooldownsFromScreen = it }
+        switch("Read skill cooldowns from the screen (dark button = cooling down)", Cfg.readCooldownsFromScreen) { Cfg.readCooldownsFromScreen = it }
+        val cdInfo = text("", 12f, color = "#9AA0A6")
+        upd { cdInfo.text = "Buttons now: " + com.example.mlbbresearch.game.CooldownTracker.screenState() }
         field("Ask Gemma for a new plan every (seconds)", Cfg.strategyEverySec.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.strategyEverySec = v.coerceIn(3, 120) }
         }
@@ -1253,6 +1255,13 @@ class MainActivity : Activity() {
         val cap = btn("4. Screen capture (asked each time it starts)") { askScreenCapture() }
         upd { mark(cap, ScreenCaptureService.running) }
         text("On POCO/Xiaomi also allow: Settings > Apps > MLBB Research > Other permissions > 'Display pop-up windows while running in the background', and turn off 'Manage app if unused'.", 12f, color = "#9AA0A6")
+
+        title("SCREEN")
+        val scr = text("", 12f, color = "#9AA0A6")
+        upd {
+            scr.text = "Screen: " + com.example.mlbbresearch.core.ScreenGeom.describe(this) +
+                "\nVision, touches and drawings all use the whole screen (a POCO X6 Pro is 2712 x 1220), so positions match MLBB exactly."
+        }
 
         title("CALIBRATE BUTTON POSITIONS")
         text("Easiest: open MLBB in a match, then come back and tap a calibrate button. After 5 seconds yellow markers " +
