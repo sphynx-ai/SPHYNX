@@ -101,8 +101,11 @@ object DemoRecorder {
     }
 
     // every frame while learning: spot the moment a button goes dark = you just used it
+    // aiPlaying: the Player AI is on. Its own casts are already known, and a button that only
+    // LOOKS dark (shop, death screen, effects) must not be taken as a cast: that marked skills as
+    // cooling down and the AI stopped using them while "Learn from me" was on.
     @Synchronized
-    fun observe(v: VisionResult) {
+    fun observe(v: VisionResult, aiPlaying: Boolean = false) {
         sumMx += v.hud.motionX
         sumMy += v.hud.motionY
         frames++
@@ -111,7 +114,7 @@ object DemoRecorder {
             baseline[k] = if (b > base) b else base * 0.995f + b * 0.005f
             val prev = previous[k] ?: b
             previous[k] = b
-            if (base > 40f && b < base * 0.72f && prev >= base * 0.82f) {
+            if (!aiPlaying && base > 40f && b < base * 0.72f && prev >= base * 0.82f) {
                 val bit = Casts.bySlot[k] ?: continue
                 pendingCasts = pendingCasts or bit
                 if (k != "recall") CooldownTracker.markCast(k)
@@ -161,6 +164,85 @@ object DemoRecorder {
         }
     }
 
+    // ---- learning from the heroes you watch (allies when you are dead, enemies on screen) ----
+    //  - dead and watching an ally: the camera follows THEM, so the camera's motion is where
+    //    they walked, and the screen is their situation (their bar sits where yours would)
+    //  - alive, camera still: an enemy hero's own movement on screen is its decision; its
+    //    situation is seen from its side (you and your allies are its enemies)
+    // Saved as "~watched" / "~enemy" moments: Play like me uses them too, a bit less than yours.
+    @Volatile var watched = 0L
+        private set
+    private var lastWatched = 0L
+    private var lastEnemyRec = 0L
+
+    fun recordWatched(s: GameState) {
+        val now = System.currentTimeMillis()
+        if (s.matchSec < 0) return
+        if (s.self == null) {
+            if (now - lastWatched < 180) return
+            lastWatched = now
+            // an ally hero bar where your own would be = the camera is on that ally
+            val a = s.allies.firstOrNull { kotlin.math.abs(it.barLeft - 0.471f) < 0.02f && it.barTop in 0.35f..0.44f } ?: run {
+                synchronized(this) { sumMx = 0f; sumMy = 0f; frames = 0 }
+                return
+            }
+            var mx: Float; var my: Float
+            synchronized(this) {
+                mx = if (frames > 0) sumMx / frames else 0f
+                my = if (frames > 0) sumMy / frames else 0f
+                sumMx = 0f; sumMy = 0f; frames = 0
+            }
+            val me = com.example.mlbbresearch.vision.Seen(com.example.mlbbresearch.vision.Team.SELF, true, a.x, a.y, a.hp,
+                a.barLeft, a.barTop, a.barRight, a.barBottom)
+            val view = GameState(now, s.phase, me, a.hp, s.allies.filter { it !== a }, s.enemies, s.enemyMinions, s.allyMinions,
+                s.minimapEnemies, s.aspect, null, emptyList(), emptyList(), -1, -1, Long.MAX_VALUE)
+            save(view, "~watched", mx, my)
+            return
+        }
+        // alive: enemy heroes, only while your camera stands still (their screen motion is their own)
+        if (now - lastEnemyRec < 400 || s.hud.motionX * s.hud.motionX + s.hud.motionY * s.hud.motionY > 0.04f) return
+        lastEnemyRec = now
+        for (e in s.enemies) {
+            if (now - e.lastSeen > 300 || now - e.firstSeen < 600) continue
+            val me = com.example.mlbbresearch.vision.Seen(com.example.mlbbresearch.vision.Team.SELF, true, e.x, e.y, e.hp,
+                e.x - 0.04f, e.y - 0.09f, e.x + 0.04f, e.y - 0.08f)
+            // from its side: you and your allies are its enemies, your minions its targets
+            val foes = (listOfNotNull(s.self) + s.allies).mapIndexed { i, u ->
+                com.example.mlbbresearch.vision.Track(1000 + i, u.x, u.y, u.hp, 0f, 0f, now, now, u.hp)
+            }
+            val friends = s.enemies.filter { it.id != e.id }.map {
+                com.example.mlbbresearch.vision.Seen(com.example.mlbbresearch.vision.Team.ALLY, true, it.x, it.y, it.hp, it.x, it.y, it.x, it.y)
+            }
+            val view = GameState(now, s.phase, me, e.hp, friends, foes, s.allyMinions, s.enemyMinions,
+                0, s.aspect, null, emptyList(), emptyList(), -1, -1, Long.MAX_VALUE)
+            val sp = hypot(e.vx * s.aspect, e.vy)
+            val (mx, my) = if (sp > 0.05f) (e.vx * s.aspect / sp) to (e.vy / sp) else (0f to 0f)
+            save(view, "~enemy", mx, my)
+        }
+    }
+
+    private fun save(view: GameState, who: String, mx0: Float, my0: Float) {
+        var mx = mx0; var my = my0
+        val ml = hypot(mx, my)
+        if (ml < 0.4f) { mx = 0f; my = 0f } else { mx /= ml; my /= ml }
+        var casts = 0
+        // standing next to someone to fight = attacking (their skill buttons cannot be seen)
+        if (mx == 0f && my == 0f && (view.enemiesWithin(0.25f).isNotEmpty() || view.minionsWithin(0.25f).isNotEmpty())) casts = Casts.ATTACK
+        val f = Features.of(view)
+        f[13] = 1f; f[14] = 1f; f[15] = 1f        // their cooldowns are unknown
+        val values = ContentValues().apply {
+            put("ts", System.currentTimeMillis())
+            put("hero", who)
+            put("features", f.joinToString(",") { "%.3f".format(Locale.US, it) })
+            put("move_x", mx)
+            put("move_y", my)
+            put("casts", casts)
+        }
+        ExperienceRecorder.onDb({ db -> db.insert("demos", null, values) }) { id ->
+            if (id != null && id > 0) { watched++; total++ }
+        }
+    }
+
     fun describe(mx: Float, my: Float, casts: Int): String {
         val dir = if (mx == 0f && my == 0f) "stand" else "move " + compass(mx, my)
         val c = Casts.names(casts)
@@ -195,7 +277,7 @@ object DemoRecorder {
 // Plays like you: k nearest saved moments (same hero if there are enough), weighted vote.
 object ImitationPolicy {
 
-    private class Demo(val f: FloatArray, val mx: Float, val my: Float, val casts: Int)
+    private class Demo(val f: FloatArray, val mx: Float, val my: Float, val casts: Int, val watched: Boolean = false)
 
     @Volatile private var demos: List<Demo> = emptyList()
     @Volatile private var loadedHero: String? = null
@@ -221,12 +303,12 @@ object ImitationPolicy {
         if (!stale || loading) return
         loading = true
         ExperienceRecorder.onDb({ db ->
-            fun read(sql: String, args: Array<String>?): ArrayList<Demo> {
+            fun read(sql: String, args: Array<String>?, watched: Boolean = false): ArrayList<Demo> {
                 val out = ArrayList<Demo>()
                 db.rawQuery(sql, args).use { c ->
                     while (c.moveToNext()) {
                         val f = c.getString(0).split(",").mapNotNull { it.toFloatOrNull() }
-                        if (f.size == Features.SIZE) out.add(Demo(f.toFloatArray(), c.getFloat(1), c.getFloat(2), c.getInt(3)))
+                        if (f.size == Features.SIZE) out.add(Demo(f.toFloatArray(), c.getFloat(1), c.getFloat(2), c.getInt(3), watched))
                     }
                 }
                 return out
@@ -235,10 +317,12 @@ object ImitationPolicy {
             var list = read("$cols WHERE hero = ? ORDER BY id DESC LIMIT 20000", arrayOf(h))
             var scope = h
             if (list.size < Cfg.imitationMinDemos) {
-                list = read("$cols ORDER BY id DESC LIMIT 20000", null)
+                list = read("$cols WHERE hero NOT LIKE '~%' ORDER BY id DESC LIMIT 20000", null)
                 scope = "all heroes"
             }
-            list to scope
+            // plus what the heroes you watched did (allies while you were dead, enemies on screen)
+            val seen = read("$cols WHERE hero LIKE '~%' ORDER BY id DESC LIMIT 10000", null, watched = true)
+            (list + seen) to "$scope + ${seen.size} watched"
         }) { r ->
             loading = false
             loadedAt = System.currentTimeMillis()
@@ -251,6 +335,25 @@ object ImitationPolicy {
         }
     }
 
+    // "Play like me" mixed INTO the AI's decision instead of replacing it. Replacing it froze the
+    // hero: a remembered "stand still, press nothing" moment took over the joystick and skills.
+    //  - the AI keeps its goal (camp, wave, tower, target) and its skills
+    //  - your way of moving is used while walking and fighting, when the moment is clearly like
+    //    one you played, and only if it actually moves
+    //  - skills you used in such moments are added (if ready)
+    fun blend(d: TacticalDecision, s: GameState): TacticalDecision {
+        val im = decide(s) ?: return d
+        val sure = lastMatch >= 0.55f
+        val styleOk = d.intent == Intent.ENGAGE || d.intent == Intent.AMBUSH || d.intent == Intent.GROUP ||
+            d.intent == Intent.PUSH && (d.moveX != 0f || d.moveY != 0f)
+        val useMove = sure && styleOk && (im.moveX != 0f || im.moveY != 0f)
+        val casts = (d.casts + if (sure) im.casts.filter { it != "recall" } else emptyList()).distinct()
+        if (!useMove && casts == d.casts) return d
+        return TacticalDecision(d.intent, if (useMove) im.moveX else d.moveX, if (useMove) im.moveY else d.moveY, casts,
+            d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId,
+            d.reason + " | like you (${(lastMatch * 100).toInt()}%)")
+    }
+
     // null = not enough data or nothing similar: the normal rules play instead
     fun decide(s: GameState): TacticalDecision? {
         val all = demos
@@ -261,10 +364,12 @@ object ImitationPolicy {
         val bestD = FloatArray(k) { Float.MAX_VALUE }
         val best = arrayOfNulls<Demo>(k)
         for (d in all) {
+            // a watched hero's moment counts a bit less than one of yours
+            val pen = if (d.watched) 2.25f else 1f
             var dist = 0f
             for (i in 0 until Features.SIZE) {
                 val diff = (q[i] - d.f[i]) * w[i]
-                dist += diff * diff
+                dist += diff * diff * pen
                 if (dist >= bestD[k - 1]) break
             }
             if (dist < bestD[k - 1]) {

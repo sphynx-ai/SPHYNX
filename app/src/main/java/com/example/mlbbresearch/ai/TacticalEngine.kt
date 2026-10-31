@@ -173,14 +173,21 @@ object TacticalEngine {
         val hitRange = s.enemiesWithin(p.attackRange * 1.4f).isNotEmpty() || atCamp ||
             s.minionsWithin(p.attackRange * 1.4f).isNotEmpty() || s.monsters.any { s.distToSelf(it.x, it.y) <= p.attackRange * 1.5f } ||
             TowerLogic.canPush(s)
+        // Chasing an enemy hero: keep pressing attack while walking after it (it lands the moment
+        // they are in reach). Standing hidden in a bush: still hit whatever is in reach.
+        val chasing = (d.intent == Intent.ENGAGE || d.intent == Intent.IMITATE) && d.targetId >= 0 &&
+            d.targetX >= 0f && s.distToSelf(d.targetX, d.targetY) <= p.engageRange * 1.3f
+        val hiding = d.intent == Intent.RETREAT && d.moveX == 0f && d.moveY == 0f
         if (d.intent != Intent.RETREAT) {
-            if (!skillRange && !TowerLogic.canPush(s)) {
+            if (!skillRange && !TowerLogic.canPush(s) && !chasing) {
                 casts = casts.filter { it == hop || it == "regen" || it == "recall" }
-            } else if (!hitRange) {
+            } else if (!hitRange && !chasing) {
                 casts = casts.filter { it != "attack" }
             }
         }
-        if (hitRange && d.intent != Intent.RETREAT && casts.none { it == "s1" || it == "s2" || it == "ult" } && "attack" !in casts) {
+        if ((hitRange && (d.intent != Intent.RETREAT || hiding) || chasing) &&
+            casts.none { it == "s1" || it == "s2" || it == "ult" } && "attack" !in casts
+        ) {
             casts = casts + "attack"
         }
         if (casts == d.casts) return d
