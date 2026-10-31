@@ -249,7 +249,7 @@ object TacticalEngine {
             for (sk in p.combo) if (sk != "ult" && sk !in casts && d <= p.engageRange && CooldownTracker.ready(sk, p)) casts.add(sk)
             if (d <= p.engageRange && CooldownTracker.ready("ult", p) && (p.ult == UltRule.EXECUTE || p.ult == UltRule.ENGAGE)) casts.add("ult")
             if (s.spell in setOf("Execute", "Flameshot") && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
-            val (mx, my) = if (d > p.attackRange) toward(s, low.x, low.y) else (0f to 0f)
+            val (mx, my) = heroSpacing(s, p, low, d)
             return hold(now, TacticalDecision(Intent.ENGAGE, mx, my, casts, low.x, low.y, "enemy #${low.id}", low.hp, low.id,
                 "finishing enemy at ${(low.hp * 100).toInt()}% HP"), force = true)
         }
@@ -294,7 +294,7 @@ object TacticalEngine {
                 }
                 if (useUlt(p, s, target, d, hp, threat.size, alliesNear)) casts.add("ult")
                 chaseDash(s, p, d)?.let { if (it !in casts) casts.add(it) }
-                val (mx, my) = if (d > p.attackRange) toward(s, target.x, target.y) else (0f to 0f)
+                val (mx, my) = heroSpacing(s, p, target, d)
                 return hold(now, TacticalDecision(Intent.ENGAGE, mx, my, casts, target.x, target.y,
                     "enemy #${target.id}", target.hp, target.id,
                     "target HP ${(target.hp * 100).toInt()}%, ${(d * 100).toInt()} away"))
@@ -445,9 +445,34 @@ object TacticalEngine {
             p.waveClearSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
             for (sk in p.combo) if (sk != "ult" && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
         }
-        if (s.spell == "Retribution" && m.hp * 100 <= retriPct && d <= 0.45f && CooldownTracker.ready("spell", p)) casts.add("spell")
-        val (mx, my) = if (d > p.attackRange) toward(s, m.x, m.y) else (0f to 0f)
-        return TacticalDecision(intent, mx, my, casts, m.x, m.y, if (m.hero) "objective" else "monster", m.hp, -1, why)
+        // turtle / lord: the HP bar under the scoreboard is exact
+        val mhp = if (m.hero && s.bossHp >= 0f) s.bossHp else m.hp
+        if (s.spell == "Retribution" && mhp * 100 <= retriPct && d <= 0.45f && CooldownTracker.ready("spell", p)) casts.add("spell")
+        // no poking monsters: walk into reach, and never leave its aggro circle (it would reset)
+        val (mx, my) = if (d > p.attackRange || !inLeash(s, m)) toward(s, m.x, m.y) else (0f to 0f)
+        return TacticalDecision(intent, mx, my, casts, m.x, m.y, if (m.hero) "objective" else "monster", mhp, -1, why)
+    }
+
+    // A monster fights back only inside the round indicator on the ground around it (seen as a
+    // wide ellipse because of the camera tilt); step out and it stops and heals. Measured on
+    // your screenshots: about 0.6 screen heights across and 0.27 up / down. Stay well inside.
+    private fun inLeash(s: GameState, m: Seen): Boolean {
+        val self = s.self ?: return true
+        val dx = (self.x - m.x) * s.aspect / 0.5f
+        val dy = (self.y - m.y) / 0.22f
+        return dx * dx + dy * dy <= 1f
+    }
+
+    // Fighting an enemy HERO: melee walks up close and stays there; ranged keeps a safe distance
+    // at the edge of its attack range, steps back if the enemy gets too close (kiting), and
+    // steps in if it is out of range.
+    private fun heroSpacing(s: GameState, p: HeroProfile, t: Track, d: Float): Pair<Float, Float> {
+        if (!p.ranged) return if (d > p.attackRange * 0.8f) toward(s, t.x, t.y) else (0f to 0f)
+        return when {
+            d < p.attackRange * 0.55f -> away(s, listOf(t))
+            d > p.attackRange -> toward(s, t.x, t.y)
+            else -> 0f to 0f
+        }
     }
 
     // Lane route from base: EXP = up then right, Gold = right then up, Mid = your push direction.
@@ -532,11 +557,13 @@ object TacticalEngine {
                 for (sk in p.combo) if (sk != "ult" && CooldownTracker.ready(sk, p)) casts.add(sk)
                 if (CooldownTracker.ready("ult", p) && d <= p.engageRange) casts.add("ult")
                 chaseDash(s, p, d)?.let { if (it !in casts) casts.add(it) }
-                val (mx, my) = if (d > p.attackRange) toward(s, t.x, t.y) else (0f to 0f)
+                val (mx, my) = heroSpacing(s, p, t, d)
                 TacticalDecision(Intent.ENGAGE, mx, my, casts, t.x, t.y, "enemy #${t.id}", t.hp, t.id,
                     "$tag, target HP ${(t.hp * 100).toInt()}%")
             }
             FightOption.POKE -> {
+                // only ranged heroes poke (a melee hero cannot hit from there): fall back to the rules
+                if (!p.ranged) return null
                 // stay near the edge of skill range: skills yes, walking into them no
                 val casts = ArrayList<String>()
                 if (d <= p.engageRange) for (sk in p.combo) if (sk != "ult" && CooldownTracker.ready(sk, p)) casts.add(sk)

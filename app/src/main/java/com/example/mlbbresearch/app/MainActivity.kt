@@ -780,6 +780,18 @@ class MainActivity : Activity() {
         }
         switch("Laners also take jungle camps next to them between waves", Cfg.lanersTakeCamps) { Cfg.lanersTakeCamps = it }
         switch("Use the dash skill to chase and to escape", Cfg.useDash) { Cfg.useDash = it }
+        val rangeBtn = btn("") {
+            val h = GameStateTracker.ownHero() ?: HeroDb.match(heroBox.text.toString())
+            if (h == null) toast("Your hero is not known yet") else {
+                val opts = listOf("auto", "melee", "ranged")
+                Cfg.setHeroRange(h, opts[(opts.indexOf(Cfg.heroRange(h)) + 1) % opts.size])
+            }
+        }
+        upd {
+            val h = GameStateTracker.ownHero()
+            rangeBtn.text = "Range type of ${h ?: "my hero"}: ${if (HeroDb.isRanged(h)) "RANGED (pokes heroes, keeps distance)" else "MELEE (fights heroes up close)"} " +
+                "(${HeroDb.rangeSource(h)}) - tap to change"
+        }
         val dashBtn = btn("") {
             val h = GameStateTracker.ownHero() ?: HeroDb.match(heroBox.text.toString())
             if (h == null) toast("Your hero is not known yet") else {

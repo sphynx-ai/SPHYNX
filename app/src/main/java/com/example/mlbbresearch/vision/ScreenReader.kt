@@ -119,6 +119,26 @@ object ScreenReader {
         return false
     }
 
+    // ---------------- turtle / lord HP bar ----------------
+
+    // While you fight the turtle or the lord, its HP bar shows under the scoreboard (with its
+    // portrait on the left and "11436/12005"). Returns its HP 0..1, or -1 when it is not there.
+    // Measured on a 2712 x 1220 screen: the bar runs from 46.5% to 55.7% of the width at 8%.
+    fun bossBar(px: IntArray, w: Int, h: Int): Float {
+        val x0 = (0.468f * w).toInt(); val x1 = (0.556f * w).toInt()
+        var best = -1f
+        for (fy in floatArrayOf(0.074f, 0.079f, 0.084f)) {
+            val y = (fy * h).toInt().coerceIn(0, h - 1)
+            var red = 0; var lastRed = -1
+            for (x in x0..x1) {
+                val p = px[y * w + x]
+                if (r(p) >= 150 && g(p) <= 90 && b(p) <= 100 && r(p) - g(p) >= 80) { red++; lastRed = x }
+            }
+            if (red >= (x1 - x0) / 8) best = maxOf(best, (lastRed - x0 + 1).toFloat() / (x1 - x0 + 1))
+        }
+        return best
+    }
+
     // ---------------- which screen ----------------
 
     fun classify(px: IntArray, w: Int, h: Int): ScreenHint {

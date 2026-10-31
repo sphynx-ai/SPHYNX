@@ -24,6 +24,7 @@ class VisionResult(
     val spellIcon: FloatArray?,        // fingerprint of the battle spell button
     val monsters: List<Seen>,          // jungle creeps (hero = false) and turtle / lord (hero = true)
     val kda: IntArray,                 // kills, deaths, assists gained on this frame (0 or 1 each)
+    val bossHp: Float,                 // turtle / lord HP (0..1) from the bar under the scoreboard, -1 = none
     val bushes: List<Bush>,            // bushes on screen (tall grass: hide / ambush)
     val inBush: Boolean,               // you are standing in a bush (hidden from enemies)
     val processMs: Long
@@ -44,6 +45,8 @@ object FrameProcessor {
         floatArrayOf(0.80f, 0.00f, 1.00f, 0.14f),   // top-right buttons
         floatArrayOf(0.62f, 0.52f, 1.00f, 1.00f),   // skill buttons
         floatArrayOf(0.76f, 0.40f, 0.92f, 0.52f),   // the ultimate button's top (it reaches above the others)
+        floatArrayOf(0.42f, 0.04f, 0.59f, 0.125f),  // turtle / lord HP bar under the scoreboard (read separately)
+        floatArrayOf(0.18f, 0.00f, 0.30f, 0.06f),   // battery / ping (a low battery icon is red)
         floatArrayOf(0.00f, 0.58f, 0.32f, 1.00f),   // joystick
         floatArrayOf(0.00f, 0.38f, 0.10f, 0.62f),   // shop / quick-buy column
         floatArrayOf(0.90f, 0.14f, 1.00f, 0.55f),   // right column (shop, signals, chat)
@@ -82,10 +85,11 @@ object FrameProcessor {
         HeroDetector.neutralOn = Cfg.detectMonsters
         // a kill / first blood banner is up: ignore that area (its red lines are not enemies)
         val banner = ScreenReader.announcement(px, w, h)
-        val seen = withoutAttachedBars(HeroDetector.scan(
+        val mini = MinimapAnalyzer.analyze(px, w, h)
+        val seen = monstersFromRedBars(withoutAttachedBars(HeroDetector.scan(
             px, w, h, hud + ScreenMasks.overlay + (if (banner) listOf(ScreenReader.bannerRect) else emptyList()),
             Cfg.heroBarMinWidthPct / 100f, Cfg.bodyBelowBarPct / 100f
-        ))
+        )), px, w, h, mini)
         // optional trained detector: runs on its own thread a few times a second
         ObjectDetector.maybeRun(px, w, h)
         // you: the green hero bar closest to the centre of the screen
@@ -113,7 +117,6 @@ object FrameProcessor {
 
         // walls from the minimap, every couple of seconds while the normal minimap shows
         val hint = ScreenReader.classify(px, w, h)
-        val mini = MinimapAnalyzer.analyze(px, w, h)
         if (self != null && hint == ScreenHint.NONE && frameNo % 25 == 3L) WallMap.update(px, w, h)
 
         // bushes every 3rd frame (they do not move; the camera does, slowly)
@@ -137,6 +140,7 @@ object FrameProcessor {
             heroSig = if (self != null && frameNo % 12 == 0L) heroSig(px, w, h, self, mini) else null,
             spellIcon = if (self != null && frameNo % 12 == 6L) IconMemory.print(px, w, h, "spell", 0.016f) else null,
             monsters = steadySmall.filter { it.team == Team.NEUTRAL } + seen.filter { it.team == Team.NEUTRAL && it.hero },
+            bossHp = if (self != null) ScreenReader.bossBar(px, w, h) else -1f,
             kda = if (self != null) KdaReader.read(px, w, h) else IntArray(3),
             bushes = bush.bushes,
             inBush = bush.inBush,
@@ -181,6 +185,71 @@ object FrameProcessor {
             n++
         }
         return if (n == 0) 0f else sum.toFloat() / n
+    }
+
+    // Jungle monsters, turtle and lord have RED HP bars like enemy heroes. An enemy hero's bar has
+    // a dark level badge on its left (measured: 0.4-0.8 dark) and the hero shows on the minimap
+    // near you (red-ringed portrait); a monster's bar has no badge (0.0-0.17). Wide red bars
+    // without a badge, or with no enemy near you on the minimap, are monsters. Small red pieces
+    // right next to a monster bar (its tick segments) are dropped.
+    private fun monstersFromRedBars(all: List<Seen>, px: IntArray, w: Int, h: Int, mini: MinimapInfo): List<Seen> {
+        val enemyNearOnMap = enemyNearOnMinimap(mini, w, h)
+        val out = ArrayList<Seen>(all.size)
+        val monsters = ArrayList<Seen>()
+        val hasSelf = all.any { it.team == Team.SELF }
+        for (s in all) {
+            // The camera keeps your hero in the middle, so your HP bar always starts at about 47% of
+            // the width and 38% of the height. A red bar there is YOUR second (passive) bar; at very
+            // low HP the green part is too thin to see, so it also stands in for your own bar.
+            if (s.team == Team.ENEMY && kotlin.math.abs(s.barLeft - 0.471f) < 0.015f && s.barTop in 0.36f..0.43f) {
+                if (!hasSelf && out.none { it.team == Team.SELF }) {
+                    out.add(Seen(Team.SELF, true, 0.51f, (s.barTop - 0.015f + Cfg.bodyBelowBarPct / 100f).coerceAtMost(1f), 0.03f,
+                        s.barLeft, s.barTop - 0.017f, s.barRight, s.barTop - 0.005f))
+                }
+                continue
+            }
+            if (s.team == Team.ENEMY && s.hero && !(badgeDark(px, w, h, s) >= 0.3f && enemyNearOnMap)) {
+                val boss = s.barRight - s.barLeft >= 0.09f
+                val m = Seen(Team.NEUTRAL, boss, s.x, s.y, s.hp, s.barLeft, s.barTop, s.barRight, s.barBottom)
+                monsters.add(m); out.add(m)
+            } else out.add(s)
+        }
+        if (monsters.isEmpty()) return out
+        return out.filter { u ->
+            !(u.team == Team.ENEMY && !u.hero && monsters.any { m ->
+                u.barLeft >= m.barLeft - 0.03f && u.barRight <= m.barRight + 0.03f && kotlin.math.abs(u.barTop - m.barTop) < 0.06f
+            })
+        }
+    }
+
+    // dark level badge just left of a bar
+    private fun badgeDark(px: IntArray, w: Int, h: Int, s: Seen): Float {
+        val cy = ((s.barTop + s.barBottom) / 2 * h).toInt()
+        val x0 = ((s.barLeft - 0.022f) * w).toInt()
+        val x1 = (s.barLeft * w).toInt()
+        var dark = 0; var n = 0
+        for (y in cy - 6..cy + 6) for (x in x0 until x1) {
+            if (x !in 0 until w || y !in 0 until h) continue
+            val q = px[y * w + x]
+            n++
+            if (((q shr 16) and 255) < 50 && ((q shr 8) and 255) < 50 && (q and 255) < 50) dark++
+        }
+        return if (n == 0) 0f else dark.toFloat() / n
+    }
+
+    // an enemy hero portrait on the minimap close to your own icon (no minimap: assume yes)
+    private fun enemyNearOnMinimap(mini: MinimapInfo, w: Int, h: Int): Boolean {
+        val icon = mini.selfIcon ?: return true
+        val r = MinimapAnalyzer.rect
+        val (l, _) = Layout.get("mapTL")
+        val (rr, _) = Layout.get("mapBR")
+        val reach = 0.2f * (rr - l)                     // about what the screen shows, in screen widths
+        val sx = icon[0]; val sy = icon[1]              // y is a fraction of the width
+        return mini.enemyDots.any { (dx, dy) ->
+            val ex = r[0] + dx * (r[2] - r[0])
+            val ey = (r[1] + dy * (r[3] - r[1])) * h / w
+            kotlin.math.hypot(ex - sx, ey - sy) < reach
+        }
     }
 
     private fun heroSig(px: IntArray, w: Int, h: Int, self: Seen, mini: MinimapInfo): List<FloatArray>? {

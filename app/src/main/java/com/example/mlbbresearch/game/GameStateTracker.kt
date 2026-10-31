@@ -222,6 +222,7 @@ object GameStateTracker {
             allyWaves = if (onMap) emptyList() else v.minimap.allyWaves,
             allyTowers = if (onMap) emptyList() else v.minimap.allyTowers,
             enemyWaves = if (onMap) emptyList() else v.minimap.enemyWaves,
+            bossHp = v.bossHp,
             bushes = v.bushes,
             inBush = v.inBush
         )
