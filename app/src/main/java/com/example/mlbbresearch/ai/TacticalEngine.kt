@@ -164,9 +164,13 @@ object TacticalEngine {
         }
         // Nothing to hit = no attack, no skills (escape skills, wall jumps, Regen, Recall stay).
         // Something in reach and no skill ready = keep pressing attack.
-        val skillRange = s.enemiesWithin(p.engageRange).isNotEmpty() ||
+        // A jungle monster shows NO HP bar until it is hit: standing at a camp the minimap still
+        // shows, the attack button is pressed anyway (it locks on to the nearest monster), and the
+        // bars appear after the first hit.
+        val atCamp = JungleNav.atCamp && (d.intent == Intent.JUNGLE || d.intent == Intent.LANE_CLEAR)
+        val skillRange = s.enemiesWithin(p.engageRange).isNotEmpty() || atCamp ||
             s.minionsWithin(p.attackRange * 1.8f).isNotEmpty() || s.monsters.any { s.distToSelf(it.x, it.y) <= p.attackRange * 1.8f }
-        val hitRange = s.enemiesWithin(p.attackRange * 1.4f).isNotEmpty() ||
+        val hitRange = s.enemiesWithin(p.attackRange * 1.4f).isNotEmpty() || atCamp ||
             s.minionsWithin(p.attackRange * 1.4f).isNotEmpty() || s.monsters.any { s.distToSelf(it.x, it.y) <= p.attackRange * 1.5f } ||
             TowerLogic.canPush(s)
         if (d.intent != Intent.RETREAT) {
@@ -188,7 +192,7 @@ object TacticalEngine {
         return when (d.intent) {
             Intent.ENGAGE -> d.targetX >= 0f && s.distToSelf(d.targetX, d.targetY) <= p.engageRange
             Intent.LANE_CLEAR, Intent.OBJECTIVE -> d.targetX >= 0f && s.distToSelf(d.targetX, d.targetY) <= p.attackRange * 1.8f
-            Intent.JUNGLE -> JungleNav.atCamp || d.targetX >= 0f && s.distToSelf(d.targetX, d.targetY) <= p.attackRange * 1.8f
+            Intent.JUNGLE -> JungleNav.atCamp && s.creeps.isNotEmpty() || d.targetX >= 0f && s.distToSelf(d.targetX, d.targetY) <= p.attackRange * 1.8f
             else -> false
         }
     }
@@ -504,7 +508,10 @@ object TacticalEngine {
             val (mx, my) = if (d > p.attackRange) toward(s, m.x, m.y) else (0f to 0f)
             return TacticalDecision(Intent.JUNGLE, mx, my, casts, m.x, m.y, "monster", m.hp, -1, JungleNav.status)
         }
-        return TacticalDecision(Intent.JUNGLE, 0f, 0f, casts, -1f, -1f, "camp", -1f, -1, JungleNav.status)
+        // no bar yet (a monster's HP bar only shows once it is hit): basic attack to start the
+        // fight, the skills follow as soon as the bars appear (no skills thrown at nothing)
+        return TacticalDecision(Intent.JUNGLE, 0f, 0f, listOf("attack"), -1f, -1f, "camp", -1f, -1,
+            JungleNav.status + ", first hit to show the monsters")
     }
 
     private fun dashSlot(s: GameState, p: HeroProfile): String? {

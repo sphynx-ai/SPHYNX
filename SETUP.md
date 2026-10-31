@@ -357,6 +357,16 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Jungle camps and the joystick (v18)
+
+- A jungle monster shows no HP bar until it is hit. Standing at a camp the minimap still shows, the AI now presses
+  attack anyway (the button locks on to the nearest monster); the skills follow once the bars appear. Before, the
+  "nothing to hit" rule cancelled the attack, so the fight never started. An empty camp is left after 6 s.
+- Joystick: the thumb stays down, pushed firmly just past the edge of the ring, and turns without lifting while
+  walking, chasing an enemy hero or running away. Melee heroes keep walking into their target in a fight. It is
+  lifted only to stand and hit minions, monsters, turtle / lord or a tower, and to recall, regen or hide in a bush.
+  A brief "stand still" in a chase keeps the last direction for 0.7 s instead of lifting and pressing again.
+
 ## HP bar fix (v17)
 
 - Your HP bar's tick marks split it into pieces, so it was often missed or read as 3-40% HP at full health. The AI
