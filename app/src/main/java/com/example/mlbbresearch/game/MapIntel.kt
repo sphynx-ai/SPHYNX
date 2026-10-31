@@ -40,7 +40,7 @@ object MapIntel {
     fun read(mini: MinimapInfo, now: Long): Info {
         val det = ObjectDetector.latest
         val fresh = ObjectDetector.ready && now - ObjectDetector.latestAt < 1500
-        val info = if (fresh) {
+        val info0 = if (fresh) {
             val heroes = det.filter { it.label.contains("hero") && !it.label.contains("turret") }
             Info(
                 heroes.filter { it.team == "enemy" }.map { toMap(it.cx, it.cy) },
@@ -55,6 +55,10 @@ object MapIntel {
             Info(mini.enemyDots.map { (dx, dy) -> toMap(r[0] + dx * (r[2] - r[0]), r[1] + dy * (r[3] - r[1])) },
                 emptyList(), null, emptyList(), false)
         }
+        // turtle / lord alive: from the detector, else from the icon in its pit (colour)
+        val pitObj = (mini.turtleIcon ?: mini.lordIcon)?.let { toMap((it[0] + it[2]) / 2, (it[1] + it[3]) / 2) }
+        val info = if (info0.objective == null && pitObj != null)
+            Info(info0.enemies, info0.allies, pitObj, info0.turrets, info0.fromDetector) else info0
         // gank: an enemy that came 0.06+ closer to you over ~2 s and is now near
         val me = mini.self
         if (me != null) {

@@ -356,6 +356,19 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Turtle and lord (v30)
+
+- The app finds the turtle and lord icons on the minimap by itself: both pits are at fixed spots; the LORD is a
+  trophy with a thin stem (pink early, gold when it is up, grey = dead), the TURTLE a pink blob (it can sit in
+  either pit). Checked on your screenshots from 00:17 to 11:30: early both found, mid-game the turtle in the top-left
+  pit, late the gold lord, a dead lord not counted; one miss (a turtle under the glowing lane highlight).
+- Used right away (no detector needed): "turtle / lord is up" sends junglers and roamers there with an ally.
+- Detector training pictures now get lord_icon / turtle_icon boxes too (added to the class list when the detector's
+  labels.txt does not have them).
+- Detector notebook, cell 2b: lord_icon and turtle_icon are ADDED as new classes when the Roboflow version lacks them
+  (it has only hero_icon and turrent_icon), boxes are converted by class name, and your older pictures get their
+  lord / turtle boxes drawn in the notebook. The exported labels.txt lists the classes the model really learned.
+
 ## Your movement is recorded correctly now (v29)
 
 - Your walking direction is read from how the picture shifts. It compared two frames ~0.1 s apart in 8-pixel steps:
