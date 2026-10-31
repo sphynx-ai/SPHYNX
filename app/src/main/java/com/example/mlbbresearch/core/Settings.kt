@@ -84,6 +84,14 @@ object Cfg {
 
     // ---- vision tuning (percent of frame width / height) ----
     var heroBarMinWidthPct: Float get() = f("hero_bar_w", 4.5f); set(v) = put("hero_bar_w", v)
+
+    // ---- optional trained detector (.tflite from the Colab notebook) ----
+    var detectorOn: Boolean get() = b("det_on", true); set(v) = put("det_on", v)
+    var detectorRegion: String get() = s("det_region", "minimap"); set(v) = put("det_region", v)   // minimap | screen
+    var detectorLabels: String get() = s("det_labels", "hero_icon,lord_icon,turrent_icon,turrets-heros,turtle_icon")
+        set(v) = put("det_labels", v)
+    var detectorMinScore: Float get() = f("det_score", 0.4f); set(v) = put("det_score", v)
+    var detectorEveryMs: Int get() = i("det_ms", 300); set(v) = put("det_ms", v)
     var bodyBelowBarPct: Float get() = f("body_below", 7f); set(v) = put("body_below", v)
 
     // ---- drafter / builder ----
