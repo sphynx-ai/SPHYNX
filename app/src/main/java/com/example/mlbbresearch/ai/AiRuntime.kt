@@ -21,7 +21,6 @@ import com.example.mlbbresearch.learning.FightOption
 import com.example.mlbbresearch.learning.ImitationPolicy
 import com.example.mlbbresearch.learning.PerformanceEvaluator
 import com.example.mlbbresearch.vision.FrameProcessor
-import com.example.mlbbresearch.vision.MonsterDetector
 import com.example.mlbbresearch.game.JungleNav
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,7 +56,6 @@ object AiRuntime {
     // standard match: hero / spell / emblem chosen once per hero-select screen
     @Volatile private var stdSelectAt = 0L
     @Volatile private var stdSelectTries = 0
-    private var lastLearnTry = 0L
     @Volatile private var lastActive: TacticalDecision? = null
     @Volatile private var lastActiveAt = 0L
     // stages that were on when the floating icon paused the AI
@@ -244,13 +242,6 @@ object AiRuntime {
                     ActionExecutor.execute(TacticalDecision.IDLE)
                 }
                 if (learnOn && !playerOn && inGame) DemoRecorder.record(s)
-                // at a jungle camp but no monster found: learn the monsters' HP bar colour
-                if (inGame && Cfg.detectMonsters && JungleNav.atCamp && s.monsters.isEmpty() && s.self != null &&
-                    System.currentTimeMillis() - lastLearnTry > 2500
-                ) {
-                    lastLearnTry = System.currentTimeMillis()
-                    FrameHub.snapshot(-1L, null)?.let { MonsterDetector.tryLearn(it.pixels, it.width, it.height, s.self) }
-                }
                 if (builderOn && inGame) {
                     if (Cfg.qbOn) QuickBuySwap.watch(s)
                     if (Cfg.autonomous && drafterOn && !(playerOn && Cfg.playerQuickBuy)) ActionExecutor.maybeQuickBuy(s, blind = true)
@@ -330,6 +321,7 @@ object AiRuntime {
         sb.append("Match: ").append(if (Cfg.ranked) "ranked" else "standard")
         sb.append(" | Phase: ").append(s.phase.label)
         if (s.selfHp >= 0) sb.append(" | my HP ").append((s.selfHp * 100).toInt()).append('%')
+        if (s.self != null) sb.append(" | level ").append(s.level).append(if (s.xp >= 0f) " (EXP ${(s.xp * 100).toInt()}%)" else "")
         sb.append("\nHero: ").append(GameStateTracker.ownHero() ?: "unknown").append(" (").append(GameStateTracker.ownHeroSource()).append(")")
         sb.append(" | enemies ").append(s.enemies.size).append(" | minions ").append(s.enemyMinions.size)
         if (playerOn) {

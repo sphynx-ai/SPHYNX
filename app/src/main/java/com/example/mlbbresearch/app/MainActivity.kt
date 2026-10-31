@@ -521,6 +521,7 @@ class MainActivity : Activity() {
             detected.text = buildString {
                 append("My hero: ").append(hero ?: "unknown")
                 if (s.selfHp >= 0) append("  (HP ").append((s.selfHp * 100).toInt()).append("%)")
+                if (s.self != null) append("  Level ").append(s.level).append(if (s.enemyLevel > 0) " (nearest enemy ${s.enemyLevel})" else "")
                 append("  [${GameStateTracker.ownHeroSource()}]")
                 append("\nLane: ").append(s.lane.label).append("   Spell: ").append(s.spell ?: "unknown")
                 if (s.monsters.isNotEmpty()) append("   Monsters: ").append(s.monsters.size)
@@ -704,19 +705,18 @@ class MainActivity : Activity() {
         title("JUNGLE, TURTLE & LORD")
         switch("Neutral monster detector (jungle monsters, turtle, lord)", Cfg.detectMonsters) { Cfg.detectMonsters = it }
         val monInfo = text("", 13f)
-        upd { monInfo.text = "Monster HP bar: ${com.example.mlbbresearch.vision.MonsterDetector.learnedText}. " +
-            "It learns the real colour by itself at the first jungle camp." }
-        btn("Learn the monster bar colour now (stand next to a jungle monster)") {
-            val self = GameStateTracker.state.self
-            val snap = FrameHub.snapshot(-1L, null)
-            when {
-                self == null || snap == null -> toast("Needs a live match frame: start the Player or Learn from me in a match")
-                com.example.mlbbresearch.vision.MonsterDetector.tryLearn(snap.pixels, snap.width, snap.height, self, force = true) ->
-                    toast("Learned: ${com.example.mlbbresearch.vision.MonsterDetector.learnedText}")
-                else -> toast("No monster bar found next to your hero")
-            }
-        }
-        btn("Forget the learned monster colour") { com.example.mlbbresearch.vision.MonsterDetector.forget(); toast("Back to the default colours") }
+        upd { monInfo.text = "Monsters are found by their red HP bar with no level badge next to it " +
+            "(enemy heroes have one). Nothing to learn or set." }
+        title("HERO LEVEL")
+        text("Your level (1-15) is read from the badge left of your HP bar: it starts at 1, goes up when the badge " +
+            "changes or a new skill point (+) shows, and every badge seen at a known level is remembered, so later " +
+            "matches read it directly (also for enemy heroes). Before level 4 the AI farms first; at levels 4, 8 and 12 " +
+            "and when ahead in level it fights more; 2+ levels behind it avoids even fights; at 15 it stops farming " +
+            "small camps and pushes. It does not recall while a level-up is moments away.", 13f)
+        val lvInfo = text("", 13f)
+        upd { lvInfo.text = "Badges remembered: ${com.example.mlbbresearch.vision.LevelReader.templatesKnown} of 15 (levels 1, 2, 9 and 12 are built in)" }
+        btn("Forget the remembered level badges") { com.example.mlbbresearch.vision.LevelReader.forgetTemplates(); toast("Forgotten") }
+        title("TURTLE & LORD")
         switch("Help the team take turtle and lord", Cfg.takeObjectives) { Cfg.takeObjectives = it }
         field("Retribution on turtle / lord below HP (%)", Cfg.retriBossPct.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.retriBossPct = v.coerceIn(1, 60) }
