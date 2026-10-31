@@ -356,6 +356,19 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Your movement is recorded correctly now (v29)
+
+- Your walking direction is read from how the picture shifts. It compared two frames ~0.1 s apart in 8-pixel steps:
+  at walking speed the shift is only 2-5 px, so most walking was saved as "standing", diagonal walking as "right",
+  and up / down almost never (the camera tilt makes it look shorter). That is why the tactical network learned
+  "always stand".
+- Now: a 5-px grid with sub-pixel precision, compared with the picture from ~0.25 s ago, up / down corrected for the
+  camera tilt. Test (a real game picture panned in each of the 8 directions at walking speed): old 0% right
+  (everything "standing"), new 98-100%; standing still is still read as standing.
+- Also better: the stuck-on-a-wall check and Coach's "you are steering" check use the same reading.
+- **Delete the old recordings** (Player page -> Delete my recorded play) and record new matches before training the
+  tactical network again: the old ones mostly say "stand".
+
 ## Detector training pictures from your own matches (v28)
 
 - The exported CSV trains the tactical network only; the detector needs PICTURES with boxes.
