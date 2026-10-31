@@ -36,7 +36,7 @@ object GroqClient {
     // WITHOUT web search (the answer then comes from the model's own knowledge).
     suspend fun ask(prompt: String): Pair<String, List<String>> = withContext(Dispatchers.IO) {
         val key = Cfg.groqKey.trim()
-        if (key.isEmpty()) throw IllegalStateException("No Groq API key (Meta page)")
+        if (key.isEmpty()) throw IllegalStateException("No Groq API key (put groq_key.txt in the MLBB-Research folder)")
         val model = Cfg.groqModel.trim().ifEmpty { Cfg.DEFAULT_GROQ_MODEL }
         val canSearch = model.startsWith("openai/gpt-oss")
         val attempts = if (canSearch) listOf(true, true, false) else listOf(false)

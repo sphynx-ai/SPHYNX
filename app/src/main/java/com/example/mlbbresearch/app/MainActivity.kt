@@ -89,11 +89,8 @@ class MainActivity : Activity() {
         "model" to "Model", "learn" to "Learn", "logs" to "Logs", "setup" to "Setup"
     )
 
-    private val reqModel = 41
     private val reqCapture = 42
     private val reqNotify = 43
-    private val reqDetector = 44
-    private val reqPolicy = 45
     private val reqFolder = 46
 
     private val refresher = object : Runnable {
@@ -198,19 +195,8 @@ class MainActivity : Activity() {
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
-            reqModel -> if (resultCode == RESULT_OK) data?.data?.let { importModel(it) }
-            reqDetector -> if (resultCode == RESULT_OK) data?.data?.let { uri ->
-                ModelManager.importDetector(this, uri) { err ->
-                    runOnUiThread { toast(if (err == null) "Detector loaded" else "Detector: $err") }
-                }
-            }
             reqFolder -> if (resultCode == RESULT_OK) data?.data?.let { uri ->
                 com.example.mlbbresearch.models.AutoFolder.onPicked(this, uri) { msg -> runOnUiThread { toast(msg.take(150)) } }
-            }
-            reqPolicy -> if (resultCode == RESULT_OK) data?.data?.let { uri ->
-                ModelManager.importPolicy(this, uri) { err ->
-                    runOnUiThread { toast(if (err == null) "Tactical network loaded" else "Tactical network: $err") }
-                }
             }
             reqCapture -> {
                 if (resultCode == RESULT_OK && data != null) {
@@ -852,7 +838,7 @@ class MainActivity : Activity() {
         title("SKILLS & PASSIVE (what each skill does, how to cast it)")
         text("Each skill's range, target type, crowd control, mobility, shield / heal, damage and cast mode (tap, aim, or " +
             "hold to charge and release), plus the passive turned into play rules (e.g. a basic attack after every skill " +
-            "when the passive powers it up). Learned online from the skill descriptions (Groq key on the Meta page) - the " +
+            "when the passive powers it up). Learned online from the skill descriptions (Groq key from the MLBB-Research folder) - the " +
             "hero you play is learned by itself. In play it checks every cast: a skill that did not go off twice is tried " +
             "with the next cast mode, and a missed aimed skill changes how far ahead it aims.", 13f)
         val skInfo = text("", 13f)
@@ -1021,19 +1007,14 @@ class MainActivity : Activity() {
         text("Online meta: Groq (model openai/gpt-oss-120b with browser search) searches the web (patch notes, hero adjustments, tier lists, guides) and returns the " +
             "current build, emblem, battle spell, lane, combo, dash skill, laning / jungle / rotation tips and draft picks. " +
             "They are saved on the phone: the Player, Builder and Drafter use them offline. Your own settings still win.", 13f)
-        title("GROQ API")
-        text("Get a free API key at console.groq.com/keys. It is stored on this phone only.", 12f, color = "#9AA0A6")
-        btn("Open the Groq console (API key page)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) }
-        val keyBox = field("API key", Cfg.groqKey, false) { Cfg.groqKey = it.trim() }
-        keyBox.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-        field("Model (openai/gpt-oss-120b or -20b search the web; change it if Groq retires it)", Cfg.groqModel, false) { if (it.isNotBlank()) Cfg.groqModel = it.trim() }
-        switch("Use the online meta in the app", Cfg.useOnlineMeta) { Cfg.useOnlineMeta = it }
-        switch("Auto-update the hero I play when its meta is old", Cfg.onlineAuto) { Cfg.onlineAuto = it }
-        field("Old after (days)", Cfg.metaMaxAgeDays.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.metaMaxAgeDays = v.coerceIn(1, 60) } }
-        switch("Use it for drafting (ranked bans & picks)", Cfg.onlineDraft) { Cfg.onlineDraft = it }
+        text("The Groq API key is read from  groq_key.txt  in your MLBB-Research folder (Model page).", 12f, color = "#9AA0A6")
+        // one switch: use the online meta everywhere, keep it fresh for the hero I play, use it for drafting
+        switch("Use the online meta (auto-updated, also for drafting)", Cfg.useOnlineMeta && Cfg.onlineAuto) {
+            Cfg.useOnlineMeta = it; Cfg.onlineAuto = it; Cfg.onlineDraft = it
+        }
         val st = text("", 13f)
         upd {
-            st.text = "Groq: " + (if (Cfg.groqKey.isBlank()) "no key yet" else "key set, ${com.example.mlbbresearch.ai.GroqClient.calls} answers this session") +
+            st.text = "Groq: " + (if (Cfg.groqKey.isBlank()) "no key (put groq_key.txt in the folder)" else "key set, ${com.example.mlbbresearch.ai.GroqClient.calls} answers this session") +
                 (if (com.example.mlbbresearch.ai.MetaAdvisor.busy.isNotEmpty()) "\nWorking: ${com.example.mlbbresearch.ai.MetaAdvisor.busy}..." else "") +
                 (if (com.example.mlbbresearch.ai.MetaAdvisor.lastMessage.isNotEmpty()) "\nLast: ${com.example.mlbbresearch.ai.MetaAdvisor.lastMessage}" else "")
         }
@@ -1041,7 +1022,7 @@ class MainActivity : Activity() {
         title("UPDATE")
         btn("Update the patch meta (tier list, bans, picks)") {
             leaveHooks.forEach { it() }
-            if (Cfg.groqKey.isBlank()) toast("Enter your API key first") else {
+            if (Cfg.groqKey.isBlank()) toast("No Groq key: put groq_key.txt in the MLBB-Research folder") else {
                 toast("Asking Groq (can take 10-30 s)...")
                 com.example.mlbbresearch.ai.MetaAdvisor.updateGeneral { msg -> runOnUiThread { toast(msg) } }
             }
@@ -1051,7 +1032,7 @@ class MainActivity : Activity() {
             leaveHooks.forEach { it() }
             val h = HeroDb.match(heroBox.text.toString()) ?: GameStateTracker.ownHero() ?: HeroDb.match(Cfg.myHero)
             when {
-                Cfg.groqKey.isBlank() -> toast("Enter your API key first")
+                Cfg.groqKey.isBlank() -> toast("No Groq key: put groq_key.txt in the MLBB-Research folder")
                 h == null -> toast("Type a hero name")
                 else -> {
                     toast("Asking Groq about $h (can take 10-30 s)...")
@@ -1102,135 +1083,54 @@ class MainActivity : Activity() {
     // =====================================================================
 
     private fun modelPage() {
-        title("ONE FOLDER FOR ALL YOUR FILES")
-        text("Put the downloaded files in the folder  Download/MLBB-Research  on your phone (make the folder with your file " +
-            "manager), choose it once below, and the app finds, copies, loads and applies everything by itself - every time " +
-            "it starts, or when you tap Scan. Files it understands:\n" +
-            "  - the Gemma 3n E2B model: any  .litertlm  file\n" +
-            "  - the vision detector:  mlbb_detector.tflite  (+  labels.txt  with its class names)\n" +
-            "  - the tactical network:  policy.tflite\n" +
-            "  - your Groq API key: a text file  groq_key.txt  with the key on the first line (and optionally  groq_model.txt)\n" +
-            "A file is copied again only when it changed. From a computer you can also use  Android/data/com.example.mlbbresearch/" +
-            "files/MLBB-Research  (read without choosing).", 13f)
-        val fold = text("", 13f, true)
+        title("FILES")
+        text("Put the downloaded files in  Download/MLBB-Research  and choose that folder once. The app copies, loads and " +
+            "applies them by itself every time it starts:\n" +
+            "  - Gemma 3n E2B model: the  .litertlm  file\n" +
+            "  - vision detector:  mlbb_detector.tflite  +  labels.txt\n" +
+            "  - tactical network:  policy.tflite\n" +
+            "  - Groq API key:  groq_key.txt  (the key on the first line)", 13f)
+        val c = card()
+        val st = cardText(c, 14f, true)
         upd {
             val af = com.example.mlbbresearch.models.AutoFolder
-            fold.text = "Folder: " + (af.treeUri?.let { Uri.decode(it.lastPathSegment ?: "chosen") } ?: "not chosen") + "\n" + af.status
+            val pn = com.example.mlbbresearch.learning.PolicyNet
+            fun mark(ok: Boolean) = if (ok) "\u2713" else "\u2717"
+            st.text = "Folder: " + (af.treeUri?.let { Uri.decode(it.lastPathSegment ?: "chosen").substringAfter(':') } ?: "not chosen yet") +
+                "\n${af.status}" +
+                "\n\n${mark(GemmaEngine.ready)} Gemma: ${ModelManager.status(this)}, ${GemmaEngine.state}" +
+                (if (GemmaEngine.calls > 0) " (last answer ${GemmaEngine.lastLatencyMs} ms)" else "") +
+                "\n${mark(ObjectDetector.ready)} Detector: ${ObjectDetector.state}" +
+                (if (ObjectDetector.ready) ", ${ObjectDetector.lastMs} ms per run" else "") +
+                "\n${mark(pn.ready)} Tactical network: ${pn.state}" +
+                (if (pn.ready && pn.agreeRate >= 0f) ", agrees with the rules ${(pn.agreeRate * 100).toInt()}%" else "") +
+                "\n${mark(Cfg.groqKey.isNotBlank())} Groq key: " + (if (Cfg.groqKey.isBlank()) "not found" else "set") +
+                "\n\nMinimap: " + com.example.mlbbresearch.game.MapIntel.status
         }
-        btn("Choose the folder (Download/MLBB-Research)") {
+        val pick = btn("") {
             @Suppress("DEPRECATION")
             startActivityForResult(com.example.mlbbresearch.models.AutoFolder.pickIntent(), reqFolder)
         }
+        upd { pick.text = if (com.example.mlbbresearch.models.AutoFolder.treeUri == null) "Choose the folder" else "Change the folder" }
         btn("Scan the folder now") {
             com.example.mlbbresearch.models.AutoFolder.scan(this) { msg -> runOnUiThread { toast(msg.take(150)) } }
         }
 
-        text("One offline model, Gemma 3n E2B, runs on LiteRT-LM. It is the strategic brain for the Player and does all the " +
-            "Drafter and Builder reading. No internet or API key needed once the file is on the phone.", 13f)
-        val c = card()
-        val st = cardText(c, 14f, true)
-        upd {
-            st.text = "File: ${ModelManager.status(this)}\nEngine: ${GemmaEngine.state}" +
-                (if (GemmaEngine.calls > 0) "\nAnswers: ${GemmaEngine.calls}, last took ${GemmaEngine.lastLatencyMs} ms" else "")
+        title("WHERE TO GET THEM")
+        btn("Gemma 3n E2B (Hugging Face, about 3 GB)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.MODEL_PAGE))) }
+        btn("Training notebooks: detector and tactical network (GitHub)") {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/georgenaval1-blip/Ai-App/tree/main/notebooks")))
         }
-        title("1. GET THE MODEL")
-        text("Open the page, sign in to Hugging Face, accept Google's Gemma licence, then download the .litertlm file (about 3 GB, use Wi-Fi).", 13f)
-        btn("Open Gemma 3n E2B (LiteRT-LM) page") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.MODEL_PAGE))) }
-        title("2. CHOOSE THE FILE")
-        btn("Choose model file (.litertlm)") {
-            val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*" }
-            @Suppress("DEPRECATION")
-            startActivityForResult(i, reqModel)
-        }
-        title("3. LOAD IT")
-        switch("Use the GPU (faster; falls back to CPU if it fails)", Cfg.useGpu) { Cfg.useGpu = it }
-        val load = btn("Load model into memory") {
-            ModelManager.load(this) { err -> runOnUiThread { toast(if (err == null) "Gemma loaded" else "Load failed: $err") } }
-        }
-        upd { mark(load, GemmaEngine.ready) }
-        btn("Unload / delete the model file") {
-            AlertDialog.Builder(this).setTitle("Delete the model file?")
-                .setPositiveButton("Delete") { _, _ -> ModelManager.delete(this) }
-                .setNegativeButton("Cancel", null).show()
-        }
+        btn("Groq API key (free)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) }
 
-        title("TRAINED VISION DETECTOR (.tflite) - the AI's minimap eyes")
-        text("A small YOLO model trained on a Mobile Legends image dataset (for example the CC BY 4.0 " +
-            "\"Mobile Legends Minimap Dataset\" on Roboflow) finds hero icons (and their team, from the ring colour), " +
-            "turtle / lord and turrets on the minimap. The AI USES it: enemies close to you on the minimap but not on " +
-            "screen (hidden in bushes) lower its survival and fight scores, an enemy coming towards you is a gank warning, " +
-            "and junglers / roamers go to a turtle or lord that is up when an ally is there. Without it, a rougher colour " +
-            "reading of the minimap is used. Train it free in Google Colab with notebooks/train_mlbb_detector.ipynb, then " +
-            "choose the mlbb_detector.tflite file here.", 13f)
-        val ds = text("", 13f, true)
-        upd {
-            ds.text = "Detector: ${ObjectDetector.state}" +
-                (if (ObjectDetector.ready) "  |  ${ObjectDetector.lastMs} ms per run  |  ${ObjectDetector.latest.size} objects" else "")
-        }
-        btn("Open the notebook on GitHub") {
-            startActivity(Intent(Intent.ACTION_VIEW,
-                Uri.parse("https://github.com/georgenaval1-blip/Ai-App/blob/main/notebooks/train_mlbb_detector.ipynb")))
-        }
-        btn("Choose detector file (.tflite)") {
-            val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*" }
-            @Suppress("DEPRECATION")
-            startActivityForResult(i, reqDetector)
-        }
-        btn("Reload detector") {
-            val err = ObjectDetector.load(this)
-            toast(err ?: "Detector loaded")
-        }
-        switch("Use the detector", Cfg.detectorOn) { Cfg.detectorOn = it }
-        val reg = btn("") { Cfg.detectorRegion = if (Cfg.detectorRegion == "minimap") "screen" else "minimap" }
-        upd { reg.text = "Detector looks at: ${if (Cfg.detectorRegion == "minimap") "the minimap" else "the whole screen"} (tap to change)" }
-        field("Class names, in training order (labels.txt from the notebook, comma separated)", Cfg.detectorLabels, false) {
-            if (it.isNotBlank() && it != Cfg.detectorLabels) { Cfg.detectorLabels = it; ObjectDetector.load(this) }
-        }
-        field("Minimum confidence (0.1 - 0.9)", Cfg.detectorMinScore.toString(), true) {
-            it.toFloatOrNull()?.let { v -> Cfg.detectorMinScore = v.coerceIn(0.1f, 0.9f) }
-        }
-        btn("Remove detector") {
-            ObjectDetector.close()
-            ObjectDetector.modelFile(this).delete()
-        }
-        val mapInfo = text("", 12f, color = "#9AA0A6")
-        upd { mapInfo.text = "Minimap now: " + com.example.mlbbresearch.game.MapIntel.status }
-
-        title("TRAINED TACTICAL NETWORK (.tflite) - learned from your play")
-        text("The fast part of the AI: a small neural network trained on your recorded play (Learn page -> Export my " +
-            "recorded play) with notebooks/train_tactical_policy.ipynb in Google Colab. It runs in about a millisecond on " +
-            "every decision and suggests the joystick direction and the buttons; its suggestions are mixed into the rules " +
-            "(retreat, recall, the tower circle and the skill rules always come first). Gemma stays the strategist.", 13f)
-        val ps = text("", 13f, true)
-        upd {
-            val pn = com.example.mlbbresearch.learning.PolicyNet
-            ps.text = "Tactical network: ${pn.state}" + if (pn.ready && pn.agreeRate >= 0f)
-                "  |  last: ${pn.last}  |  agrees with the rules ${(pn.agreeRate * 100).toInt()}%" else ""
-        }
-        btn("Open the training notebook on GitHub") {
-            startActivity(Intent(Intent.ACTION_VIEW,
-                Uri.parse("https://github.com/georgenaval1-blip/Ai-App/blob/main/notebooks/train_tactical_policy.ipynb")))
-        }
-        btn("Choose tactical network file (.tflite)") {
-            val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*" }
-            @Suppress("DEPRECATION")
-            startActivityForResult(i, reqPolicy)
-        }
-        switch("Use the tactical network", Cfg.policyOn) { Cfg.policyOn = it }
-        field("Use its joystick choice from this confidence (0.3 - 0.95)", Cfg.policyMinConf.toString(), true) {
-            it.toFloatOrNull()?.let { v -> Cfg.policyMinConf = v.coerceIn(0.3f, 0.95f) }
-        }
-        btn("Remove tactical network") {
-            com.example.mlbbresearch.learning.PolicyNet.close()
-            com.example.mlbbresearch.learning.PolicyNet.modelFile(this).delete()
+        title("SETTINGS")
+        switch("Run Gemma on the GPU (faster; falls back to the CPU)", Cfg.useGpu) { Cfg.useGpu = it }
+        // the detector and the tactical network are used together: one switch
+        switch("Use the trained models (detector + tactical network)", Cfg.detectorOn && Cfg.policyOn) {
+            Cfg.detectorOn = it; Cfg.policyOn = it
         }
     }
 
-    private fun importModel(uri: Uri) {
-        ModelManager.import(this, uri) { err ->
-            runOnUiThread { toast(if (err == null) "Model copied. Tap 'Load model into memory'." else err) }
-        }
-    }
 
     // =====================================================================
     //  LEARN
