@@ -53,7 +53,7 @@ object PolicyNet {
             val it = Interpreter(f, Interpreter.Options().setNumThreads(1))
             val n = it.getInputTensor(0).shape().last()
             val out = it.getOutputTensor(0).shape().last()
-            if (n != Features.SIZE && n != Features2.SIZE) throw IllegalStateException("it expects $n inputs (17 or 32)")
+            if (n != Features.SIZE && n != Features2.SIZE_V1 && n != Features2.SIZE) throw IllegalStateException("it expects $n inputs (17, 32 or 40)")
             if (out != 15) throw IllegalStateException("it gives $out outputs, not 15")
             inputs = n
             inBuf = ByteBuffer.allocateDirect(n * 4).order(ByteOrder.nativeOrder())
@@ -85,7 +85,9 @@ object PolicyNet {
         val ib = inBuf ?: return null
         val ob = outBuf ?: return null
         val base = Features.of(s)
-        val f = if (inputs == Features2.SIZE) Features2.of(s, base) else base
+        // the way the AI is already steering = "the way you were moving" in your recordings
+        val full = if (inputs > Features.SIZE) Features2.of(s, base, com.example.mlbbresearch.controller.ActionExecutor.steering()) else base
+        val f = if (inputs == full.size) full else full.copyOf(inputs)
         ib.rewind(); for (v in f) ib.putFloat(v); ib.rewind()
         ob.rewind()
         it.run(ib, ob)

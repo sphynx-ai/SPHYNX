@@ -29,6 +29,8 @@ object JungleNav {
         private set
     val atCampMs: Long get() = if (atCamp && arrivedAt > 0) System.currentTimeMillis() - arrivedAt else 0L
     val atBuff: Boolean get() = atCamp && target?.buff == true
+    // the camp it is walking to (map units), for the tactical network's situation
+    val targetPos: Pair<Float, Float>? get() = target?.let { it.x to it.y }
 
     fun reset() {
         target = null
