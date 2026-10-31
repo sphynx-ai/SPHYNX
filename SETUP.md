@@ -150,8 +150,7 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
   variation in how far it pushes and in timing.
 - **Skill aiming**: it aims where a moving enemy will be (enemy speed x skill travel time). It drags less far for
   close targets and quick-casts when on top of the target.
-- **Assist mode**: you move. The AI only presses skills and combos when you are in a fight. Android cancels the
-  finger on the screen when an app taps, so you may need to re-press the joystick after a cast.
+- **Coach mode** (replaces Assist): the AI plays and you can help at any moment; see "Coach" below.
 - **MOBA rules**:
   - Retreat towards your own tower.
   - Never fight under the enemy tower.
@@ -357,6 +356,18 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Joystick, kills, early game (v20)
+
+- Joystick: press the centre, hold, then swipe out to one direction and keep holding past the ring's edge. Turns are
+  one straight slide to the new direction (no curving), and only after holding the current one for a while (0.9 s
+  when walking, or what Coach learned from you; 0.25 s in fights; at once for a reversal or a wall detour). The thumb
+  never lifts while walking, chasing or retreating; ranged heroes side-step around their target in fights instead of
+  standing. It lifts only to stand and hit minions, monsters, turtle / lord or a tower, and to recall / regen / hide.
+- Enemies under 10% HP are always chased when possible: further out, Flicker / dash to catch them, attack pressed
+  while running after them, even under their tower when you have 40%+ HP and it is a quick kill.
+- No duels before level 4: alone with an enemy hero close (above 10% HP), it steps back and keeps farming; with an
+  ally near it may fight together. Kills under 10% are still taken.
+
 ## Walking straight, attacking, learning (v19)
 
 - Joystick: the hero keeps one heading and walks straight. It only turns when the course really changes: more than
@@ -417,17 +428,23 @@ In a simulated test where going all in only pays off when you have more HP than 
 choices in its first 100 fights to about 90-96% after that, finding the rule by itself. In real matches expect it to
 need a few matches per hero.
 
-## Learn from me
+## Coach: help the AI, it learns from you (v20, replaces Assist / Learn from me / Play like me)
 
-1. Turn on **Learn from me** (Home or Player page) and play a few matches yourself. The app never touches the screen
-   in this mode. It saves the situation 5 times a second, along with what you did:
-   - where you walked (from the camera movement)
-   - when you used a skill, spell or recall (the button suddenly goes dark)
-   - when you attacked (standing still next to a target)
-2. Turn on **Play like me** on the Player page. The Player finds the moments most like the current one and does what
-   you did then. Retreating at low HP and recalling stay with the safety rules. It starts copying after 300 recorded
-   moments (about a minute of play) and falls back to the rules when nothing similar was recorded.
-3. The Learn page can export your recorded play as CSV.
+- The AI plays. Take the joystick or press a skill whenever you want: while your finger is on the screen the AI
+  touches nothing (its touches would cancel yours) and it takes over 1.2 s after you let go.
+- It knows you are playing when the system cancels its own touch because you touched the screen, when the camera moves
+  a different way than it steers (3 checks in a row), or when a skill button goes dark that it did not press.
+- What it learns and uses:
+  - **Combo**: the order you chain skills in a fight (within 2.5 s, an enemy hero near). Seen twice = it becomes the
+    hero's combo.
+  - **Aim / timing**: how close the enemy was when you cast each skill. After 3 casts the AI waits until a target is
+    that close before using it. Skills you use on minions / camps become its wave-clear skill.
+  - **Joystick**: how long you hold one direction before turning; the AI holds its heading as long.
+  - **Your moves**: every moment you play is saved; your moves are mixed into the AI's when a moment is clearly like
+    one you played (it keeps its goal and skills). Also the ally you watch while dead and enemy heroes on screen.
+- Player page: "Coach mode" switch (on by default), what was learned, and "Forget what Coach learned for this hero".
+- Limits: your finger itself cannot be seen, only its effects. Skill aim direction (where you dragged) cannot be read
+  from the screen; the AI keeps aiming at where the target will be.
 
 ## Optional: trained vision detector (YOLO on LiteRT)
 

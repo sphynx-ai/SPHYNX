@@ -81,24 +81,24 @@ object ActionExecutor {
         if (System.currentTimeMillis() < QuickBuySwap.busyUntil) return   // the item swap owns the screen
 
         val acts = ArrayList<Act>()
-        val assist = Cfg.assistMode
-        if (assist) {
-            // you move: never touch the joystick
-        } else {
-            val (mx, my) = holdDirection(d)
-            if (mx != 0f || my != 0f) {
-                joystick(mx, my, d.intent)?.let { acts.add(it) }
-            } else if (Cfg.smoothJoystick) {
-                joyDirX = 0f; joyDirY = 0f; headX = 0f; headY = 0f
-                if (AccessibilityController.instance?.joystickHeld() == true) acts.add(Act.JoyRelease)
-            }
+        // COACH: while your finger is on the screen (you steer or cast), the AI touches nothing:
+        // any touch it sends would cancel yours. It takes over again 1.2 s after you let go,
+        // and learns from what you did (Coach).
+        if (Cfg.coachMode && com.example.mlbbresearch.learning.Coach.userActive()) {
+            joyDirX = 0f; joyDirY = 0f; headX = 0f; headY = 0f
+            lastDecision = "you are playing: AI waits (learning)"
+            return
+        }
+        val (mx, my) = holdDirection(d)
+        if (mx != 0f || my != 0f) {
+            joystick(mx, my, d.intent)?.let { acts.add(it) }
+        } else if (Cfg.smoothJoystick) {
+            joyDirX = 0f; joyDirY = 0f; headX = 0f; headY = 0f
+            if (AccessibilityController.instance?.joystickHeld() == true) acts.add(Act.JoyRelease)
         }
         val gs = GameStateTracker.state
         val self = gs.self
-        // assist mode: only skills / combo steps in fights (your own taps keep the rest)
-        val casts = if (!assist) d.casts else if (d.intent == Intent.ENGAGE || d.intent == Intent.OBJECTIVE)
-            d.casts.filter { it in AIMED || it == "attack" || it == "spell" && gs.spell in com.example.mlbbresearch.game.SpellDb.offensive }
-            else emptyList()
+        val casts = d.casts
         val nowMs = System.currentTimeMillis()
         for (c in casts) {
             // basic attack at a human rhythm (your recording: about every 330 ms); skills go out at once
@@ -110,7 +110,7 @@ object ActionExecutor {
             val (x, y) = Layout.get(c)
             val me = if (Cfg.aimSkills && c in AIMED && d.targetX >= 0f) self else null
             if (me != null) acts.add(aimedCast(c, x, y, me.x, me.y, d, gs)) else acts.add(Act.Tap(x, y))
-            if (c != "attack") CooldownTracker.markCast(c)
+            if (c != "attack") { CooldownTracker.markCast(c); aiCastAt[c] = nowMs; lastAiCastAt = nowMs }
         }
         perform(acts)
 
@@ -141,20 +141,33 @@ object ActionExecutor {
         }
         if (stay || !Cfg.smoothJoystick) return 0f to 0f
         val self = GameStateTracker.state.self
-        // a melee hero in a fight keeps walking into the target (attack lands as it walks)
-        if (d.intent == Intent.ENGAGE && d.targetX >= 0f && self != null &&
-            !com.example.mlbbresearch.game.HeroDb.isRanged(GameStateTracker.state.ownHero)
-        ) {
+        // in a fight the thumb never stops: a melee hero walks into its target (the attack lands
+        // as it walks), a ranged hero side-steps around it at its range (harder to hit back)
+        if (d.intent == Intent.ENGAGE && d.targetX >= 0f && self != null) {
             val ax = (d.targetX - self.x) * AccessibilityController.screenAspect()
             val ay = d.targetY - self.y
             val l = kotlin.math.hypot(ax, ay)
-            if (l > 0.02f) return (ax / l) to (ay / l)
+            if (l > 0.02f) {
+                if (!com.example.mlbbresearch.game.HeroDb.isRanged(GameStateTracker.state.ownHero)) return (ax / l) to (ay / l)
+                if (now - strafeFlipAt > 1800) { strafeFlipAt = now; strafeSign = -strafeSign }
+                return (-ay / l * strafeSign) to (ax / l * strafeSign)
+            }
         }
-        // otherwise keep the last direction for a moment rather than lifting and pressing again
-        if ((joyDirX != 0f || joyDirY != 0f) && now - lastMoveAt < 700) return joyDirX to joyDirY
+        // otherwise keep walking the same way rather than lifting and pressing again
+        if ((joyDirX != 0f || joyDirY != 0f) && now - lastMoveAt < 1500) return joyDirX to joyDirY
         return 0f to 0f
     }
     private var lastMoveAt = 0L
+    // what the AI itself pressed (Coach tells your casts and moves from the AI's)
+    private val aiCastAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    @Volatile var lastAiCastAt = 0L
+        private set
+    fun aiCastAgo(slot: String): Long = System.currentTimeMillis() - (aiCastAt[slot] ?: 0L)
+    // the way the AI is steering right now (0,0 = joystick not held)
+    fun steering(): Pair<Float, Float> =
+        if (AccessibilityController.instance?.joystickHeld() == true) joyDirX to joyDirY else 0f to 0f
+    private var strafeFlipAt = 0L
+    private var strafeSign = 1f
 
     // Drag a skill button to aim, like a player: at where a moving enemy WILL be (its speed
     // times the skill's travel time), and drag less far for close targets (range skills).
@@ -179,9 +192,9 @@ object ActionExecutor {
         return Act.Drag(bx, by, bx + dx / l * reach, by + dy / l * reach * aspect, 220L + rnd.nextInt(80))
     }
 
-    // Direction (-1..1) -> joystick touch. Natural mode: the finger stays down, the hero turns
-    // at a human rate (no snapping), the push varies a little, and when the camera stops
-    // moving while walking (a wall) it steps around it.
+    // Direction (-1..1) -> joystick touch. The thumb presses the centre, slides out to the edge
+    // and stays down; it keeps one heading and only slides to a new one when the course really
+    // changes. When the camera stops moving while walking (a wall) it steps around it.
     private var sentDirX = 0f
     private var sentDirY = 0f
     private var sentAt = 0L
@@ -190,6 +203,8 @@ object ActionExecutor {
     private var headX = 0f
     private var headY = 0f
     private var headIntent: Intent? = null
+    private var headSince = 0L
+    private fun Intent.walking() = this == Intent.PUSH || this == Intent.GROUP || this == Intent.JUNGLE || this == Intent.LANE_CLEAR
 
     private fun joystick(mx0: Float, my0: Float, intent: Intent = Intent.PUSH): Act? {
         val (jx, jy) = Layout.get("joystick")
@@ -205,13 +220,22 @@ object ActionExecutor {
         // well off to the side). Small differences keep the current heading.
         val l0 = kotlin.math.hypot(mx, my).coerceAtLeast(1e-4f)
         mx /= l0; my /= l0
+        // A new heading also has to wait a moment after the last turn (no swerving back and
+        // forth): about 0.9 s when walking (or what Coach learned from your thumb), 0.25 s in a
+        // fight; a reversal (> 100 deg: running away, a dodge) or a wall detour turns at once.
         val fight = intent == Intent.ENGAGE || intent == Intent.RETREAT
         val keep = if (fight) 0.906f else 0.766f          // cos 25 deg in fights, cos 40 deg when walking
+        val minHold = if (fight) 250L else com.example.mlbbresearch.learning.Coach.holdMs
         val held0 = AccessibilityController.instance?.joystickHeld() == true
-        if (held0 && (headX != 0f || headY != 0f) && intent == headIntent && mx * headX + my * headY >= keep && now >= detourUntil) {
-            mx = headX; my = headY
-        } else {
+        val dot = mx * headX + my * headY
+        val hasHead = held0 && (headX != 0f || headY != 0f)
+        val turn = !hasHead || now < detourUntil || dot < -0.17f || intent != headIntent && !(intent.walking() && headIntent?.walking() == true) ||
+            dot < keep && now - headSince >= minHold
+        if (turn) {
+            if (!hasHead || dot < 0.999f) headSince = now
             headX = mx; headY = my; headIntent = intent
+        } else {
+            mx = headX; my = headY
         }
         if (joyDirX == 0f && joyDirY == 0f) walkSince = now
         // stuck on a wall: walking for a while but the camera has not moved for 0.7 s
@@ -227,30 +251,12 @@ object ActionExecutor {
             val ry = (mx * Math.sin(a) + my * Math.cos(a)).toFloat()
             mx = rx; my = ry
         }
-        var nx: Float
-        var ny: Float
-        if (Cfg.naturalMove && (joyDirX != 0f || joyDirY != 0f)) {
-            // turn at most ~50 degrees per step, plus a tiny wobble like a thumb
-            val cur = kotlin.math.atan2(joyDirY, joyDirX)
-            var want = kotlin.math.atan2(my, mx)
-            var delta = want - cur
-            while (delta > Math.PI) delta -= (2 * Math.PI).toFloat()
-            while (delta < -Math.PI) delta += (2 * Math.PI).toFloat()
-            // turn at a thumb's speed: about 340 degrees a second (your recording: 90% of turns
-            // under 27 degrees per 1/12 s), however often the AI decides
-            val dt = ((now - lastJoyAt).coerceIn(20L, 250L)) / 1000f
-            // a reversal (running away, dodging) is a flick to the other side: faster
-            val maxTurn = (if (kotlin.math.abs(delta) > 2.1f) 15f else 6.0f) * dt
-            want = cur + delta.coerceIn(-maxTurn, maxTurn)
-            nx = kotlin.math.cos(want); ny = kotlin.math.sin(want)
-            // the thumb sits at the ring's edge (full speed), with a little wobble
-            // the thumb sits firmly at (just past) the ring's edge: full speed, the stick clamps it
-            pushRadius = 1.1f
-        } else {
-            val l = kotlin.math.hypot(mx, my).coerceAtLeast(1e-4f)
-            nx = mx / l; ny = my / l
-            pushRadius = 1.1f
-        }
+        // the turn is ONE slide of the thumb straight to the new direction (no curving arcs),
+        // held firmly just past the ring's edge (full speed; the stick clamps it)
+        val l = kotlin.math.hypot(mx, my).coerceAtLeast(1e-4f)
+        val nx = mx / l
+        val ny = my / l
+        pushRadius = 1.1f
         lastJoyAt = now
         joyDirX = nx; joyDirY = ny
         // the finger is already down: only move it when the direction really changed (> ~6

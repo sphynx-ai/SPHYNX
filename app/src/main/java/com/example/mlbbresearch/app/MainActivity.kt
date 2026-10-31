@@ -415,7 +415,6 @@ class MainActivity : Activity() {
         var syncing = false
         val sw = switch(label, isOn()) { on ->
             if (!syncing) {
-                if (stage == "learn") Cfg.learnFromMe = on
                 if (on) startStage(stage) else AiRuntime.stop(stage)
             }
         }
@@ -498,7 +497,6 @@ class MainActivity : Activity() {
         stageSwitch("Player (plays the hero)", "player") { AiRuntime.playerOn }
         stageSwitch("Drafter (ban & pick)", "draft") { AiRuntime.drafterOn }
         stageSwitch("Builder (items)", "build") { AiRuntime.builderOn }
-        stageSwitch("Learn from me (watches you play, no touches)", "learn") { AiRuntime.learnOn }
         switch("Autonomous: Drafter + Builder act on their own", Cfg.autonomous) { Cfg.autonomous = it }
         switch("Dry run: only show where it would tap", Cfg.dryRun) { Cfg.dryRun = it }
         val mode = text("", 13f, color = "#9AA0A6")
@@ -574,10 +572,6 @@ class MainActivity : Activity() {
                         else "Gemma not loaded: the Player still works with the fast rules only."
         }
 
-        title("ASSIST MODE")
-        switch("Assist: I move, the AI only presses skills and combos in fights", Cfg.assistMode) { Cfg.assistMode = it }
-        text("The AI never touches the joystick in this mode. Note: Android cancels the finger that is on the screen when " +
-            "an app taps, so your joystick may need a re-press after the AI casts.", 12f, color = "#9AA0A6")
 
         title("YOUR HERO")
         text("The app finds the hero you really play: from its portrait on the minimap and its in-game model (learned once per hero), from the pick " +
@@ -823,14 +817,22 @@ class MainActivity : Activity() {
             "Calibrate the Regen and Recall buttons on the Setup page.", 12f, color = "#9AA0A6")
         text("Calibrate 'Skill upgrade (+)' and 'Quick-buy item' on the Setup page. Buying waits until no enemy is close.", 12f, color = "#9AA0A6")
 
-        title("LEARN FROM ME")
-        text("1) Turn on 'Learn from me' and play a few matches yourself: the app saves what you saw and what you did " +
-            "(joystick, skills, spell, recall). 2) Turn on 'Play like me': the Player copies what you did in the most similar " +
-            "moments. Retreating at low HP and recalling stay with the safety rules.", 13f)
-        stageSwitch("Learn from me (record my play)", "learn") { AiRuntime.learnOn }
-        switch("Play like me (Player copies my recorded play)", Cfg.playLikeMe) { on ->
-            Cfg.playLikeMe = on
+        title("COACH: HELP THE AI, IT LEARNS FROM YOU")
+        text("The AI plays; take the joystick or press a skill whenever you want. While your finger is on the screen the " +
+            "AI touches nothing, and it takes over 1.2 s after you let go. It remembers what you did: your skill COMBO " +
+            "(the order you chain skills in fights; seen twice = used), your AIM / timing (how close the enemy was when " +
+            "you cast each skill, and which skill you use on waves and camps), and your JOYSTICK (how long you hold one " +
+            "direction). Every moment you play is saved and your moves are mixed into the AI's when a moment is like one " +
+            "you played. It also learns from the ally you watch while dead and from enemy heroes on screen. " +
+            "(This replaces Assist, Learn from me and Play like me.)", 13f)
+        switch("Coach mode (I can help; the AI learns from me)", Cfg.coachMode) { on ->
+            Cfg.coachMode = on
             if (on) ImitationPolicy.ensureLoaded(GameStateTracker.ownHero())
+        }
+        val coachInfo = text("", 13f)
+        upd { coachInfo.text = "Learned: " + com.example.mlbbresearch.learning.Coach.summary(GameStateTracker.ownHero()) }
+        btn("Forget what Coach learned for this hero") {
+            com.example.mlbbresearch.learning.Coach.forget(GameStateTracker.ownHero()); toast("Forgotten")
         }
         field("Start copying after this many recorded moments (5 per second of play)", Cfg.imitationMinDemos.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.imitationMinDemos = v.coerceIn(50, 100_000) }
@@ -840,11 +842,8 @@ class MainActivity : Activity() {
         upd {
             learnInfo.text = "Recorded moments: ${DemoRecorder.total} (${DemoRecorder.recorded} of you, " +
                 "${DemoRecorder.watched} from heroes you watched this session)\n" +
-                "Learn from me is on by default: it runs with the Player, records you whenever you play yourself, " +
-                "the ally you watch while dead, and enemy heroes on screen. Play like me mixes your style into the " +
-                "AI's moves and skills (the AI keeps control).\n" +
-                "Last seen from you: ${DemoRecorder.lastAction}\nPlay like me: ${ImitationPolicy.status}" +
-                (if (Cfg.playLikeMe && ImitationPolicy.size > 0) ", similarity now ${(ImitationPolicy.lastMatch * 100).toInt()}%" else "")
+                "Last seen from you: ${DemoRecorder.lastAction}\nYour moves: ${ImitationPolicy.status}" +
+                (if (Cfg.coachMode && ImitationPolicy.size > 0) ", similarity now ${(ImitationPolicy.lastMatch * 100).toInt()}%" else "")
         }
         btn("Delete my recorded play") {
             AlertDialog.Builder(this).setTitle("Delete all recorded play?")

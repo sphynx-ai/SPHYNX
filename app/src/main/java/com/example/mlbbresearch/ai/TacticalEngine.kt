@@ -64,7 +64,9 @@ object TacticalEngine {
     fun decide(s: GameState, p: HeroProfile, plan: StrategyPlan, learnedBias: Float, option: FightOption? = null): TacticalDecision {
         pendingHop = false
         var d = decideRaw(s, p, plan, learnedBias, option)
-        if (d.intent != Intent.RETREAT && d.intent != Intent.RECALL && d.intent != Intent.IDLE) {
+        // (a chase for a kill on an enemy under 10% may follow it into tower range)
+        val killChase = d.intent == Intent.ENGAGE && d.targetHp in 0f..0.10f
+        if (d.intent != Intent.RETREAT && d.intent != Intent.RECALL && d.intent != Intent.IDLE && !killChase) {
             // never walk into enemy tower range without your minions there
             val (gx, gy, changed) = TowerLogic.guard(s, d.moveX, d.moveY)
             if (changed) d = TacticalDecision(d.intent, gx, gy, d.casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId,
@@ -158,6 +160,15 @@ object TacticalEngine {
         // a wall jump may use the ultimate when that is the hero's dash: keep it
         val hop = if (d.reason.contains("jumping the wall")) HeroDb.dashSlot(s.ownHero) else null
         if (Cfg.noUltOnCreeps && !vsHero) casts = casts.filter { it != "ult" || it == hop }
+        // Coach: you cast this skill at enemies about this close; wait until the target is that
+        // close (a far-away cast mostly misses) - only for skills seen at least 3 times
+        if (Cfg.coachMode && vsHero && d.intent != Intent.RETREAT && d.targetX >= 0f) {
+            val dist = s.distToSelf(d.targetX, d.targetY)
+            casts = casts.filter { c ->
+                val r = if (c in setOf("s1", "s2", "ult")) com.example.mlbbresearch.learning.Coach.castRange(s.ownHero, c) else null
+                r == null || dist <= r * 1.3f + 0.05f
+            }
+        }
         if (Cfg.skillsWhenReady && inReach(d, s, p)) {
             val extra = listOf("s1", "s2").filter { it !in casts && CooldownTracker.ready(it, p) }
             if (extra.isNotEmpty()) casts = casts + extra
@@ -176,7 +187,7 @@ object TacticalEngine {
         // Chasing an enemy hero: keep pressing attack while walking after it (it lands the moment
         // they are in reach). Standing hidden in a bush: still hit whatever is in reach.
         val chasing = (d.intent == Intent.ENGAGE || d.intent == Intent.IMITATE) && d.targetId >= 0 &&
-            d.targetX >= 0f && s.distToSelf(d.targetX, d.targetY) <= p.engageRange * 1.3f
+            d.targetX >= 0f && (s.distToSelf(d.targetX, d.targetY) <= p.engageRange * 1.3f || d.targetHp in 0f..0.10f)
         val hiding = d.intent == Intent.RETREAT && d.moveX == 0f && d.moveY == 0f
         if (d.intent != Intent.RETREAT) {
             if (!skillRange && !TowerLogic.canPush(s) && !chasing) {
@@ -326,10 +337,19 @@ object TacticalEngine {
                 "HP ${(hp * 100).toInt()}%, using Regen")
         }
 
-        // ---- 2c. finish off low-HP enemy heroes (never under their tower) ----
+        // ---- 2c. finish off low-HP enemy heroes ----
+        //  - under 10% HP: ALWAYS chase if possible: further out, and even under their tower when
+        //    you are healthy (40%+ HP) and it is a quick kill (close, or a dash is ready)
+        //  - under the execute % (20 by default): chase, but never under their tower
+        //  - before level 4 only the under-10% kills (no duels yet)
         val safeTargets = s.enemiesWithin(0.9f).filter { !TowerLogic.enemyUnderTower(s, it) }
-        val low = safeTargets.filter { it.hp * 100 <= Cfg.executeHpPct }.minByOrNull { it.hp + s.distToSelf(it.x, it.y) * 0.3f }
-        if (low != null && hp > retreatHp) {
+        val dying = s.enemiesWithin(1.3f).filter { e ->
+            e.hp <= 0.10f && hp > 0.15f && (!TowerLogic.enemyUnderTower(s, e) ||
+                hp >= 0.4f && (s.distToSelf(e.x, e.y) <= p.attackRange * 1.6f || dashSlot(s, p) != null || s.spell == "Flicker" && CooldownTracker.ready("spell", p)))
+        }.minByOrNull { it.hp + s.distToSelf(it.x, it.y) * 0.3f }
+        val low = dying ?: if (s.level < 4) null else
+            safeTargets.filter { it.hp * 100 <= Cfg.executeHpPct }.minByOrNull { it.hp + s.distToSelf(it.x, it.y) * 0.3f }
+        if (low != null && (hp > retreatHp || low === dying)) {
             val d = s.distToSelf(low.x, low.y)
             val casts = ArrayList<String>()
             if (d <= p.attackRange * 1.3f) casts.add("attack")
@@ -337,9 +357,12 @@ object TacticalEngine {
             for (sk in p.combo) if (sk != "ult" && sk !in casts && d <= p.engageRange && CooldownTracker.ready(sk, p)) casts.add(sk)
             if (d <= p.engageRange && CooldownTracker.ready("ult", p) && (p.ult == UltRule.EXECUTE || p.ult == UltRule.ENGAGE)) casts.add("ult")
             if (s.spell in setOf("Execute", "Flameshot") && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
-            val (mx, my) = heroSpacing(s, p, low, d)
+            // Flicker onto a fleeing enemy under 10% that is just out of reach
+            if (low === dying && s.spell == "Flicker" && d > p.attackRange * 1.5f && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
+            // chasing: straight after it (no keeping distance)
+            val (mx, my) = if (low === dying && d > p.attackRange * 0.8f) toward(s, low.x, low.y) else heroSpacing(s, p, low, d)
             return hold(now, TacticalDecision(Intent.ENGAGE, mx, my, casts, low.x, low.y, "enemy #${low.id}", low.hp, low.id,
-                "finishing enemy at ${(low.hp * 100).toInt()}% HP"), force = true)
+                (if (low === dying) "chasing a kill: enemy at " else "finishing enemy at ") + "${(low.hp * 100).toInt()}% HP"), force = true)
         }
 
         // ---- 2d. ambush from a bush: hide while an enemy walks towards us (3 s at most) ----
@@ -365,8 +388,20 @@ object TacticalEngine {
         }
         if (safeTargets.isEmpty()) ambushSince = 0L
 
+        // ---- 2e. no duels before level 4 (no ultimate yet): alone with an enemy hero close by,
+        // step back to your side and keep farming; with an ally near you may fight together ----
+        val noDuel = s.level < 4 && alliesNear == 0
+        if (noDuel) {
+            val close = threat.filter { s.distToSelf(it.x, it.y) < 0.35f && it.hp > 0.10f }
+            if (close.isNotEmpty()) {
+                val (mx, my) = retreatDir(s, close)
+                return hold(now, TacticalDecision(Intent.RETREAT, mx, my, emptyList(), -1f, -1f, "-", -1f, -1,
+                    "level ${s.level}: no duels before level 4"))
+            }
+        }
+
         // ---- 3. engage an enemy hero (the brain's choice first; never one under their tower) ----
-        val target = pickTarget(s, if (option == null) threat.filter { it in safeTargets } else safeTargets, plan)
+        val target = if (noDuel) null else pickTarget(s, if (option == null) threat.filter { it in safeTargets } else safeTargets, plan)
         if (target != null && option != null && !rules) {
             brainFight(s, p, option, target, hp, alliesNear)?.let { return hold(now, it, force = true) }
         }
