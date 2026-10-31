@@ -356,6 +356,16 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Tactical network: only the reliable parts are used (v33)
+
+- The notebook writes `policy_info.json` next to `policy.tflite`: how well the joystick and each button did on your
+  most recent play. Put both files in Download/MLBB-Research.
+- The app then uses the network's joystick only with 40%+ (every move counted equally) on 300+ checked moments and
+  15+ of each move, and a button only with 20+ presses checked and 40%+ of its presses right. The rest stays with
+  the rules. Without the file, everything it suggests is used (as before).
+- The notebook prints YES / not yet for each part; the Model page shows what is used.
+- Example, your last training: joystick not yet (31% on 102 moments); buttons used: skill 2, ultimate.
+
 ## Tactical network: where you are going (v32)
 
 - With good recordings the network still only guessed (13% vs 11% blind): each moment only described the units
