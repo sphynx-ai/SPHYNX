@@ -11,7 +11,7 @@ import java.util.concurrent.Executors
 
 // Saves what the AI saw and did (one row about twice a second) into a local SQLite
 // database. PerformanceEvaluator later scores each row: did it help or hurt?
-class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "experiences.db", null, 2) {
+class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "experiences.db", null, 3) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE experiences (" +
@@ -27,12 +27,14 @@ class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "exp
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS demos (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, hero TEXT, features TEXT, " +
-                "move_x REAL, move_y REAL, casts INTEGER)"
+                "move_x REAL, move_y REAL, casts INTEGER, features2 TEXT)"
         )
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) createDemos(db)
+        // v3: the richer situation (32 numbers, Features2) for the trained tactical network
+        else if (oldVersion < 3) db.execSQL("ALTER TABLE demos ADD COLUMN features2 TEXT")
     }
 }
 

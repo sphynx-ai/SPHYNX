@@ -356,6 +356,41 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Tactical network + the detector in decisions (v25)
+
+The AI now has three brains, each at its own speed:
+
+| Part | How often | What |
+|---|---|---|
+| Strategy | every few seconds | Gemma 3n E2B (offline): plan and aggression |
+| Tactics | 5-10 times a second | the rules and scores, plus the trained tactical network (if loaded) |
+| Eyes | every frame | colour vision + the trained YOLO detector on the minimap |
+
+**Tactical network** (learned from your play):
+1. Play matches with screen capture on (Coach records you; it now also saves a richer 32-number situation:
+   the 17 from before plus level, EXP, survival score, monsters, bush, tower circle, enemies near you on the
+   minimap, lane, match time, spell ready).
+2. Learn page -> *Export my recorded play* (CSV in Downloads/MLBB-Research).
+3. Open `notebooks/train_tactical_policy.ipynb` in Google Colab, upload the CSV, run all cells. It trains a small
+   network (9 joystick choices: the 8 directions or stand; 6 buttons: attack, skill 1, skill 2, ultimate, spell,
+   recall), shows how often it matches your most recent play, and makes `policy.tflite` (about 55 KB).
+4. Model page -> *Choose tactical network file*. It runs in about a millisecond per decision.
+- How it is used: its joystick choice in fights and when lining up on a minion wave (from 55% confidence, setting on
+  the Model page), its buttons when it is sure (60%, attack 50%) and the skill is ready. Retreat, recall / Regen, the
+  tower circle, finishing monsters and no early duels always come first; jungle / lane / objective routes stay with
+  the planner; the skill rules still filter its buttons. The Player status shows its suggestion and how often it
+  agrees with the rules. Re-train every few matches: more of your play = better.
+- Without it, the nearest recorded moments of yours are used as before.
+
+**The YOLO detector is now part of the decisions** (not just shown):
+- hero icons on the minimap get their team from the ring colour (red enemy, blue ally, green you)
+- enemies close to you on the minimap but not on screen (bushes, fog) lower the survival score (-8 each) and the
+  fight score (-15 each); an enemy closing in over ~2 s is a gank warning (-12 / -15)
+- missing enemies are counted from the detector's icons
+- a turtle / lord icon on the minimap = it is up: junglers and roamers (level 4+, healthy) go there when an ally is
+  near it and no enemy is
+- without the detector, the colour reading of the minimap is used (rougher, no allies or objectives)
+
 ## Monsters at their last HP (v24)
 
 - At the last few % a monster's red bar is only 1-5 pixels wide: it was dropped as too small, so the monster

@@ -93,6 +93,7 @@ class MainActivity : Activity() {
     private val reqCapture = 42
     private val reqNotify = 43
     private val reqDetector = 44
+    private val reqPolicy = 45
 
     private val refresher = object : Runnable {
         override fun run() {
@@ -200,6 +201,11 @@ class MainActivity : Activity() {
             reqDetector -> if (resultCode == RESULT_OK) data?.data?.let { uri ->
                 ModelManager.importDetector(this, uri) { err ->
                     runOnUiThread { toast(if (err == null) "Detector loaded" else "Detector: $err") }
+                }
+            }
+            reqPolicy -> if (resultCode == RESULT_OK) data?.data?.let { uri ->
+                ModelManager.importPolicy(this, uri) { err ->
+                    runOnUiThread { toast(if (err == null) "Tactical network loaded" else "Tactical network: $err") }
                 }
             }
             reqCapture -> {
@@ -1121,11 +1127,14 @@ class MainActivity : Activity() {
                 .setNegativeButton("Cancel", null).show()
         }
 
-        title("OPTIONAL: TRAINED VISION DETECTOR (.tflite)")
+        title("TRAINED VISION DETECTOR (.tflite) - the AI's minimap eyes")
         text("A small YOLO model trained on a Mobile Legends image dataset (for example the CC BY 4.0 " +
-            "\"Mobile Legends Minimap Dataset\" on Roboflow) adds turtle / lord / turret / hero icon detection. " +
-            "Train it free in Google Colab with notebooks/train_mlbb_detector.ipynb from your GitHub repo, then choose the " +
-            "mlbb_detector.tflite file here.", 13f)
+            "\"Mobile Legends Minimap Dataset\" on Roboflow) finds hero icons (and their team, from the ring colour), " +
+            "turtle / lord and turrets on the minimap. The AI USES it: enemies close to you on the minimap but not on " +
+            "screen (hidden in bushes) lower its survival and fight scores, an enemy coming towards you is a gank warning, " +
+            "and junglers / roamers go to a turtle or lord that is up when an ally is there. Without it, a rougher colour " +
+            "reading of the minimap is used. Train it free in Google Colab with notebooks/train_mlbb_detector.ipynb, then " +
+            "choose the mlbb_detector.tflite file here.", 13f)
         val ds = text("", 13f, true)
         upd {
             ds.text = "Detector: ${ObjectDetector.state}" +
@@ -1156,6 +1165,37 @@ class MainActivity : Activity() {
         btn("Remove detector") {
             ObjectDetector.close()
             ObjectDetector.modelFile(this).delete()
+        }
+        val mapInfo = text("", 12f, color = "#9AA0A6")
+        upd { mapInfo.text = "Minimap now: " + com.example.mlbbresearch.game.MapIntel.status }
+
+        title("TRAINED TACTICAL NETWORK (.tflite) - learned from your play")
+        text("The fast part of the AI: a small neural network trained on your recorded play (Learn page -> Export my " +
+            "recorded play) with notebooks/train_tactical_policy.ipynb in Google Colab. It runs in about a millisecond on " +
+            "every decision and suggests the joystick direction and the buttons; its suggestions are mixed into the rules " +
+            "(retreat, recall, the tower circle and the skill rules always come first). Gemma stays the strategist.", 13f)
+        val ps = text("", 13f, true)
+        upd {
+            val pn = com.example.mlbbresearch.learning.PolicyNet
+            ps.text = "Tactical network: ${pn.state}" + if (pn.ready && pn.agreeRate >= 0f)
+                "  |  last: ${pn.last}  |  agrees with the rules ${(pn.agreeRate * 100).toInt()}%" else ""
+        }
+        btn("Open the training notebook on GitHub") {
+            startActivity(Intent(Intent.ACTION_VIEW,
+                Uri.parse("https://github.com/georgenaval1-blip/Ai-App/blob/main/notebooks/train_tactical_policy.ipynb")))
+        }
+        btn("Choose tactical network file (.tflite)") {
+            val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*" }
+            @Suppress("DEPRECATION")
+            startActivityForResult(i, reqPolicy)
+        }
+        switch("Use the tactical network", Cfg.policyOn) { Cfg.policyOn = it }
+        field("Use its joystick choice from this confidence (0.3 - 0.95)", Cfg.policyMinConf.toString(), true) {
+            it.toFloatOrNull()?.let { v -> Cfg.policyMinConf = v.coerceIn(0.3f, 0.95f) }
+        }
+        btn("Remove tactical network") {
+            com.example.mlbbresearch.learning.PolicyNet.close()
+            com.example.mlbbresearch.learning.PolicyNet.modelFile(this).delete()
         }
     }
 

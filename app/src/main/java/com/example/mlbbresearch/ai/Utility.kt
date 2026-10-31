@@ -53,7 +53,13 @@ object Utility {
         // what the enemies can still do: a nearly dead enemy is much less of a threat
         v -= near.sumOf { (6.0 + 12.0 * it.hp) }.toFloat()
         // enemies missing from the minimap may be waiting nearby (after the first minute)
-        if (s.matchSec > 60) v -= (5 - s.minimapEnemies.coerceIn(0, 5) - near.size).coerceAtLeast(0) * 2.5f
+        val onMap = if (s.map.fromDetector) s.map.enemies.size else s.minimapEnemies
+        if (s.matchSec > 60) v -= (5 - onMap.coerceIn(0, 5) - near.size).coerceAtLeast(0) * 2.5f
+        // enemies close on the minimap but not on screen: in a bush or the fog, about to arrive
+        val hidden = (com.example.mlbbresearch.game.MapIntel.enemiesNear(s, 0.15f) - s.enemies.size).coerceAtLeast(0)
+        v -= hidden * 8f
+        // they are coming at you (a gank)
+        if (com.example.mlbbresearch.game.MapIntel.gank(s)) v -= 12f
         val me = s.minimapSelf
         if (me != null && s.towers.any { kotlin.math.hypot(it.x - me.first, it.y - me.second) < TowerLogic.range() } && s.allyMinions.isEmpty()) v -= 20f
         if (k.has(Passive.LOW_HP_POWER) && hp < 0.5f) v += 6f
@@ -82,6 +88,10 @@ object Utility {
         if (ready("ult", p)) add(15f, "ultimate ready")
         if (k.cc.any { ready(it.slot, p) }) add(8f, "crowd control ready")
         if (hp < 0.3f) add(-30f * (0.3f - hp) / 0.3f - 10f, "own HP low")
+        // more enemies close on the minimap than on screen = hidden ones joining the fight
+        val hiddenNear = (com.example.mlbbresearch.game.MapIntel.enemiesNear(s, 0.15f) - s.enemies.size).coerceAtLeast(0)
+        if (hiddenNear > 0) add(-15f * hiddenNear, "$hiddenNear enemy hidden nearby (minimap)")
+        if (com.example.mlbbresearch.game.MapIntel.gank(s)) add(-15f, "enemy coming on the minimap")
         val extra = s.enemiesWithin(0.6f).size - 1
         if (extra > 0) add(-25f * extra, "$extra more enemies")
         val esc = k.escape
