@@ -356,6 +356,31 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Whole-screen detector (v31)
+
+A second trained detector looks at the WHOLE screen (the first one only reads the minimap). Classes: hero_ally,
+hero_enemy, hero_self, minion_ally, minion_enemy, creep, buff, turtle, lord, tower_enemy, tower_ally, bush, wall.
+
+1. Play with *Collect detector training pictures* on (Learn page): every 10 s (200 a day) the whole screen is saved
+   with boxes drawn from the colour vision into `Download/MLBB-Research/screen_dataset` (heroes and minions from
+   their HP bars and team colour, creeps / buffs from monster bars and the camp type, turtle / lord from the boss bar
+   and the minimap icons, enemy towers from the range circle, bushes and walls from the bush / wall finder). Only
+   the colour vision's finds are used, never the screen detector's own (it would learn its own mistakes).
+2. Quick: zip `screen_dataset`, open `notebooks/train_screen_detector.ipynb` in Colab (T4 GPU), run all, choose the
+   zip. Best: upload the folder to a Roboflow project, fix and add boxes (ally towers are never drawn by the app),
+   generate a version and use the notebook's Roboflow cell instead.
+3. Put `mlbb_screen_detector.tflite` and `screen_labels.txt` in Download/MLBB-Research; the app loads them.
+
+What the AI does with it (only filling gaps in the colour vision):
+- creeps, buffs, turtle, lord with no HP bar near them = monsters nobody has hit yet: the AI walks up and attacks
+- extra bushes (hiding, ambush) and wall cells (steering around them)
+- an enemy tower whose circle is not on screen: a circle of the usual size around it (red inside, green with our
+  minions there, yellow otherwise), so the tower rules still apply
+
+Honest limits: trained only on the app's own boxes, it mostly learns what the colour vision already sees (plus the
+shapes, so it can also find things without an HP bar); fixed boxes from Roboflow are what make it clearly better.
+Pictures are taken from the 800-px capture, so tiny far-away things are hard.
+
 ## Turtle and lord (v30)
 
 - The app finds the turtle and lord icons on the minimap by itself: both pits are at fixed spots; the LORD is a

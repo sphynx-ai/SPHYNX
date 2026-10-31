@@ -20,12 +20,19 @@ class Detection(val label: String, val score: Float, val left: Float, val top: F
     val cy: Float get() = (top + bottom) / 2f
 }
 
-// Optional trained vision model (YOLOv8 exported to LiteRT .tflite), e.g. trained on the
-// Roboflow "Mobile Legends Minimap Dataset". It runs a few times a second on its own thread
-// next to the colour-based detector, never blocking it.
-object ObjectDetector {
+// A trained vision model (YOLOv8 exported to LiteRT .tflite). It runs a few times a second on
+// its own thread next to the colour-based vision, never blocking it. Two of them:
+//  - ObjectDetector: the MINIMAP (hero icons with team, turrets, turtle / lord)
+//  - ScreenDetector: the WHOLE SCREEN (heroes, minions, creeps, buffs, turtle, lord, towers,
+//    bushes, walls) - trained on pictures of your own matches
+open class YoloDetector(
+    private val fileName: String,
+    private val labelsOf: () -> String,
+    private val wholeScreen: Boolean,
+    private val name: String
+) {
 
-    private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "detector") }
+    private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, name) }
     @Volatile private var interpreter: Interpreter? = null
     @Volatile private var busy = false
     private var lastRun = 0L
@@ -54,11 +61,10 @@ object ObjectDetector {
 
     val ready: Boolean get() = interpreter != null
 
-    // Minimap area (same as MinimapAnalyzer) or the whole screen
-    private fun region(): FloatArray =
-        if (Cfg.detectorRegion == "screen") floatArrayOf(0f, 0f, 1f, 1f) else MinimapAnalyzer.rect
+    // the minimap area (same as MinimapAnalyzer) or the whole screen
+    private fun region(): FloatArray = if (wholeScreen) floatArrayOf(0f, 0f, 1f, 1f) else MinimapAnalyzer.rect
 
-    fun modelFile(ctx: Context) = File(ctx.applicationContext.filesDir, "mlbb_detector.tflite")
+    fun modelFile(ctx: Context) = File(ctx.applicationContext.filesDir, fileName)
 
     fun load(ctx: Context): String? {
         val f = modelFile(ctx)
@@ -85,14 +91,14 @@ object ObjectDetector {
             outZero = outT.quantizationParams().getZeroPoint()
             val outCount = outShape.fold(1) { a, b -> a * b }
             outBuf = ByteBuffer.allocateDirect(outCount * (if (outType == DataType.FLOAT32) 4 else 1)).order(ByteOrder.nativeOrder())
-            labels = Cfg.detectorLabels.split(",").map { l -> l.trim() }.filter { l -> l.isNotEmpty() }
+            labels = labelsOf().split(",").map { l -> l.trim() }.filter { l -> l.isNotEmpty() }
             interpreter = it
             state = "ready (${inW}x$inH, ${classCount()} classes)"
-            Diag.info("Detector loaded: input ${inW}x$inH $inType ${if (channelsFirstIn) "channels first" else "channels last"}, output ${outShape.joinToString("x")}")
+            Diag.info("$name loaded: input ${inW}x$inH $inType ${if (channelsFirstIn) "channels first" else "channels last"}, output ${outShape.joinToString("x")}")
             null
         } catch (t: Throwable) {
             state = "load failed (see Logs)"
-            Diag.error("Detector load failed", t)
+            Diag.error("$name load failed", t)
             t.message ?: t.toString()
         }
     }
@@ -125,7 +131,7 @@ object ObjectDetector {
                 latestAt = System.currentTimeMillis()
                 lastMs = latestAt - t0
             } catch (t: Throwable) {
-                Diag.error("Detector run failed", t)
+                Diag.error("$name run failed", t)
                 state = "error (see Logs)"
             } finally {
                 busy = false
@@ -271,6 +277,15 @@ object ObjectDetector {
         if (!ready || System.currentTimeMillis() - latestAt > 3000) return ""
         val counts = latest.groupingBy { it.label }.eachCount()
         if (counts.isEmpty()) return "detector: nothing"
-        return "detector: " + counts.entries.joinToString { "${it.value} ${it.key}" }
+        return "$name: " + counts.entries.joinToString { "${it.value} ${it.key}" }
     }
+}
+
+// the minimap detector
+object ObjectDetector : YoloDetector("mlbb_detector.tflite", { Cfg.detectorLabels }, false, "detector")
+
+// the whole-screen detector (notebooks/train_screen_detector.ipynb)
+object ScreenDetector : YoloDetector("mlbb_screen_detector.tflite", { Cfg.screenLabels }, true, "screen detector") {
+    val CLASSES = listOf("hero_ally", "hero_enemy", "hero_self", "minion_ally", "minion_enemy", "creep", "buff",
+        "turtle", "lord", "tower_enemy", "tower_ally", "bush", "wall")
 }

@@ -20,6 +20,8 @@ import java.io.InputStream
 //   *.litertlm                      Gemma 3n E2B model        -> copied in, loaded
 //   mlbb_detector*.tflite / *detector*.tflite   YOLO detector -> copied in, loaded
 //   labels.txt / mlbb_labels.txt    detector class names      -> applied
+//   mlbb_screen_detector.tflite / *screen*.tflite   whole-screen detector -> copied in, loaded
+//   screen_labels.txt               its class names           -> applied
 //   policy*.tflite / *tactical*.tflite          tactical network -> copied in, loaded
 //   groq_key.txt / groq.txt         Groq API key (first line)  -> applied
 //   groq_model.txt                  Groq model name (optional) -> applied
@@ -142,7 +144,22 @@ object AutoFolder {
                                         found.add("tactical network " + (com.example.mlbbresearch.learning.PolicyNet.load(app) ?: "loaded"))
                                     } else if (!com.example.mlbbresearch.learning.PolicyNet.ready) com.example.mlbbresearch.learning.PolicyNet.load(app)
                                 }
-                                n.endsWith(".tflite") -> {           // the detector (mlbb_detector.tflite or any other .tflite)
+                                n.endsWith(".tflite") && n.contains("screen") -> {   // the whole-screen detector
+                                    val dst = com.example.mlbbresearch.vision.ScreenDetector.modelFile(app)
+                                    if (changed("screen", e, dst)) {
+                                        copy(e, dst); remember("screen", e)
+                                        found.add("screen detector " + (com.example.mlbbresearch.vision.ScreenDetector.load(app) ?: "loaded"))
+                                    } else if (!com.example.mlbbresearch.vision.ScreenDetector.ready) com.example.mlbbresearch.vision.ScreenDetector.load(app)
+                                }
+                                n == "screen_labels.txt" -> {
+                                    val labels = text(e).lines().flatMap { it.split(",") }.map { it.trim() }.filter { it.isNotEmpty() }.joinToString(",")
+                                    if (labels.isNotEmpty() && labels != Cfg.screenLabels) {
+                                        Cfg.screenLabels = labels
+                                        if (com.example.mlbbresearch.vision.ScreenDetector.modelFile(app).exists()) com.example.mlbbresearch.vision.ScreenDetector.load(app)
+                                        found.add("screen detector class names")
+                                    }
+                                }
+                                n.endsWith(".tflite") -> {           // the minimap detector (mlbb_detector.tflite or any other .tflite)
                                     val dst = com.example.mlbbresearch.vision.ObjectDetector.modelFile(app)
                                     if (changed("detector", e, dst)) {
                                         copy(e, dst); remember("detector", e)
