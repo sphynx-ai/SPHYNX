@@ -108,6 +108,8 @@ class ScreenCaptureService : Service() {
             startCapture(mp)
             running = true
             Diag.info("Screen capture started (${capW}x$capH)")
+            // learning from you runs whenever the screen is captured, Player on or off
+            if (!com.example.mlbbresearch.ai.AiRuntime.learnOn) com.example.mlbbresearch.ai.AiRuntime.start("learn")
         } catch (e: Exception) {
             Diag.error("Capture: could not start", e)
             stopSelf()

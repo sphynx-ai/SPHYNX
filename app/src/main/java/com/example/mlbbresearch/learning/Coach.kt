@@ -90,14 +90,15 @@ object Coach {
 
     // every decision tick in a match
     @Synchronized
-    fun tick(s: GameState) {
+    fun tick(s: GameState, youPlay: Boolean = false) {
         val now = s.ts
+        if (youPlay) lastUserAt = now
         val hero = s.ownHero
         if (hero != null && chain.isNotEmpty() && now - chain.last().at > 2500) endChain(hero)
         val mx = s.hud.motionX; val my = s.hud.motionY
         val ml = hypot(mx, my)
         // the camera moves (your hero walks) a way the AI is not steering = your thumb
-        if (ml > 0.5f && now - ActionExecutor.lastAiCastAt > 900) {
+        if (!youPlay && ml > 0.5f && now - ActionExecutor.lastAiCastAt > 900) {
             val (ax, ay) = ActionExecutor.steering()
             val agree = (ax != 0f || ay != 0f) && (mx * ax + my * ay) / ml > 0.3f
             mismatch = if (agree) 0 else mismatch + 1

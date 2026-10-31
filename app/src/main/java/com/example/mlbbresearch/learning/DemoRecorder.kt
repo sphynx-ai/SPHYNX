@@ -122,7 +122,7 @@ object DemoRecorder {
                 val bit = Casts.bySlot[k] ?: continue
                 pendingCasts = pendingCasts or bit
                 if (k != "recall") CooldownTracker.markCast(k)
-                if (aiPlaying && s != null) Coach.onUserCast(k, s)
+                if (s != null) Coach.onUserCast(k, s)       // Player off: every cast is yours
             }
         }
     }

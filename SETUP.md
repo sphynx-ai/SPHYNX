@@ -443,6 +443,9 @@ need a few matches per hero.
   - **Your moves**: every moment you play is saved; your moves are mixed into the AI's when a moment is clearly like
     one you played (it keeps its goal and skills). Also the ally you watch while dead and enemy heroes on screen.
 - Player page: "Coach mode" switch (on by default), what was learned, and "Forget what Coach learned for this hero".
+- Recording you also works with the Player OFF (v21): it starts by itself as soon as screen capture runs. Then
+  everything you do is yours: your moments, combos, cast distances and joystick holding are all learned. The Player
+  page shows "Recording you: ON".
 - Limits: your finger itself cannot be seen, only its effects. Skill aim direction (where you dragged) cannot be read
   from the screen; the AI keeps aiming at where the target will be.
 

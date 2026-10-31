@@ -830,7 +830,11 @@ class MainActivity : Activity() {
             if (on) ImitationPolicy.ensureLoaded(GameStateTracker.ownHero())
         }
         val coachInfo = text("", 13f)
-        upd { coachInfo.text = "Learned: " + com.example.mlbbresearch.learning.Coach.summary(GameStateTracker.ownHero()) }
+        upd {
+            coachInfo.text = (if (AiRuntime.learnOn) "Recording you: ON" + (if (AiRuntime.playerOn) " (while you help the AI)" else " (Player off: everything you do is recorded)")
+                else "Recording you: starts with screen capture or the Player") +
+                "\nLearned: " + com.example.mlbbresearch.learning.Coach.summary(GameStateTracker.ownHero())
+        }
         btn("Forget what Coach learned for this hero") {
             com.example.mlbbresearch.learning.Coach.forget(GameStateTracker.ownHero()); toast("Forgotten")
         }
