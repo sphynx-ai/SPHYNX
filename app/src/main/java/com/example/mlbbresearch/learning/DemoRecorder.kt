@@ -105,7 +105,7 @@ object DemoRecorder {
     // LOOKS dark (shop, death screen, effects) must not be taken as a cast: that marked skills as
     // cooling down and the AI stopped using them while "Learn from me" was on.
     @Synchronized
-    fun observe(v: VisionResult, aiPlaying: Boolean = false) {
+    fun observe(v: VisionResult, aiPlaying: Boolean = false, s: GameState? = null) {
         sumMx += v.hud.motionX
         sumMy += v.hud.motionY
         frames++
@@ -114,10 +114,15 @@ object DemoRecorder {
             baseline[k] = if (b > base) b else base * 0.995f + b * 0.005f
             val prev = previous[k] ?: b
             previous[k] = b
-            if (!aiPlaying && base > 40f && b < base * 0.72f && prev >= base * 0.82f) {
+            // a cast: the button goes dark. While the AI plays, only one the AI did NOT press is
+            // yours (coach mode); never on the shop / death screens (no hero = no buttons to read)
+            if (v.self != null && base > 40f && b < base * 0.72f && prev >= base * 0.82f &&
+                (!aiPlaying || com.example.mlbbresearch.controller.ActionExecutor.aiCastAgo(k) > 800)
+            ) {
                 val bit = Casts.bySlot[k] ?: continue
                 pendingCasts = pendingCasts or bit
                 if (k != "recall") CooldownTracker.markCast(k)
+                if (aiPlaying && s != null) Coach.onUserCast(k, s)
             }
         }
     }

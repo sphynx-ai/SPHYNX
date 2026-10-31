@@ -60,8 +60,9 @@ object Cfg {
     var fastMode: Boolean get() = b("fast_mode", true); set(v) = put("fast_mode", v)  // fastest decisions and combos
     var naturalMove: Boolean get() = b("natural_move", true); set(v) = put("natural_move", v)
     var wallAvoid: Boolean get() = b("wall_avoid", true); set(v) = put("wall_avoid", v)
-    // assist: YOU move, the AI only presses skills / combos in fights
-    var assistMode: Boolean get() = b("assist", false); set(v) = put("assist", v)
+    // coach: the AI plays, YOU can take over the joystick or skills at any moment; it steps back
+    // while you touch, and learns your combos, when / how far you cast, and how you walk
+    var coachMode: Boolean get() = b("coach", true); set(v) = put("coach", v)
     var smoothJoystick: Boolean get() = b("smooth_joy", true); set(v) = put("smooth_joy", v)
 
     // ---- hero, spell, lane, combos, objectives ----
@@ -122,9 +123,9 @@ object Cfg {
     var brainLearnsFromYou: Boolean get() = b("brain_you", true); set(v) = put("brain_you", v)
 
     // ---- learn from me (imitation) ----
-    // on by default: whenever the AI runs it also learns from you (and from heroes you watch)
-    var learnFromMe: Boolean get() = b("learn_me2", true); set(v) = put("learn_me2", v)
-    var playLikeMe: Boolean get() = b("play_like_me", false); set(v) = put("play_like_me", v)
+    // learning from you is part of the coach mode (no separate switches any more)
+    val learnFromMe: Boolean get() = true
+    val playLikeMe: Boolean get() = coachMode
     var imitationMinDemos: Int get() = i("imit_min", 300); set(v) = put("imit_min", v)
 
     // ---- calibration ----

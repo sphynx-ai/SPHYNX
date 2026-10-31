@@ -189,7 +189,7 @@ object AiRuntime {
                 val v = FrameProcessor.processNext()
                 if (v != null) {
                     GameStateTracker.update(v)
-                    if (learnOn) DemoRecorder.observe(v, aiPlaying = playerOn)
+                    if (learnOn) DemoRecorder.observe(v, aiPlaying = playerOn, s = GameStateTracker.state)
                     kotlinx.coroutines.yield()
                 } else {
                     delay(15)
@@ -213,7 +213,9 @@ object AiRuntime {
                 val inGame = !stale && (s.phase == Phase.IN_GAME || s.phase == Phase.MAP)
                 if (playerOn && inGame) {
                     val hero = s.ownHero
-                    val profile = HeroDb.profile(hero)
+                    // what Coach learned from you (e.g. your wave-clear skill) on top of the hero's profile
+                    val profile = com.example.mlbbresearch.learning.Coach.adjust(HeroDb.profile(hero), hero)
+                    if (Cfg.coachMode) com.example.mlbbresearch.learning.Coach.tick(s)
                     val plan = StrategicAdvisor.plan
                     val bias = Cfg.learnedBias(hero ?: "unknown")
                     // the learning brain picks how to handle a nearby enemy; the engine plays it
@@ -249,7 +251,8 @@ object AiRuntime {
                 } else if (playerOn) {
                     ActionExecutor.execute(TacticalDecision.IDLE)
                 }
-                if (learnOn && !playerOn && inGame) DemoRecorder.record(s)
+                // your moments: whenever you play yourself, also while helping the AI (coach)
+                if (learnOn && inGame && (!playerOn || com.example.mlbbresearch.learning.Coach.userActive())) DemoRecorder.record(s)
                 // learn from other heroes too: the ally you watch while dead, enemies on screen
                 if (learnOn && !stale && s.phase != Phase.SHOP && s.phase != Phase.SCOREBOARD && s.phase != Phase.MAP &&
                     s.phase != Phase.DRAFT && s.phase != Phase.LOADING) DemoRecorder.recordWatched(s)
@@ -314,7 +317,7 @@ object AiRuntime {
     fun statusLine(): String = when {
         !anyOn() -> "Stopped"
         else -> "Running: " + listOfNotNull(
-            if (playerOn) (if (Cfg.playLikeMe) "Player (like me)" else "Player") else null,
+            if (playerOn) (if (Cfg.coachMode) "Player (coach)" else "Player") else null,
             if (drafterOn) (if (Cfg.ranked) "Drafter (ranked)" else "Drafter (standard)") else null,
             if (builderOn) "Builder" else null,
             if (learnOn) "Learning from you" else null
@@ -347,7 +350,7 @@ object AiRuntime {
             s.boss?.let { sb.append("\nObjective in sight: HP ").append((it.hp * 100).toInt()).append('%') }
         }
         if (playerOn && s.hud.upgradeReady.isNotEmpty()) sb.append("\nCan upgrade: ").append(s.hud.upgradeReady.joinToString())
-        if (playerOn && Cfg.playLikeMe) sb.append("\nLike me: ").append(ImitationPolicy.status)
+        if (playerOn && Cfg.coachMode) sb.append("\nCoach: ").append(com.example.mlbbresearch.learning.Coach.summary(s.ownHero)).append(" | like you: ").append(ImitationPolicy.status)
         if (learnOn) {
             sb.append("\n\nLEARNING FROM YOU").append(if (playerOn) " (paused: Player is on)" else "")
             sb.append("\nYou: ").append(DemoRecorder.lastAction)

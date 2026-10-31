@@ -23,6 +23,8 @@ class AccessibilityController : AccessibilityService() {
         @Volatile var instance: AccessibilityController? = null
             private set
 
+        // last time a real finger interrupted the AI's touches (coach mode: the AI steps back)
+        @Volatile var userTouchAt = 0L
         fun screenAspect(): Float {
             val svc = instance ?: return 1.78f
             val (w, h) = com.example.mlbbresearch.core.ScreenGeom.size(svc)
@@ -97,20 +99,31 @@ class AccessibilityController : AccessibilityService() {
                 val tx = if (held != null && joyAct.x * w == joyX && ty == joyY) nudge(joyX) else joyAct.x * w
                 val p = Path()
                 if (held == null) {
-                    p.moveTo(joyAct.cx * w, joyAct.cy * h)
-                    p.lineTo(tx, ty)
-                    newJoy = GestureDescription.StrokeDescription(p, 0, joyAct.ms, true)
+                    // like a thumb: press the joystick's CENTRE, hold, then swipe one way to the edge
+                    // (the swipe follows a moment later as a continuation of this press)
+                    val cx = joyAct.cx * w; val cy = joyAct.cy * h
+                    p.moveTo(cx, cy)
+                    p.lineTo(cx + 0.5f, cy)
+                    newJoy = GestureDescription.StrokeDescription(p, 0, 40, true)
+                    g.addStroke(newJoy)
+                    n++
+                    joyX = cx + 0.5f
+                    joyY = cy
+                    joyStroke = newJoy
+                    val swipe = joyAct
+                    mainHandler.postDelayed({ try { if (joyStroke != null) dispatch(listOf(swipe), false) } catch (_: Exception) {} }, 55)
+                    if (showTouches) overlay?.showTouch(Act.Drag(joyAct.cx, joyAct.cy, joyAct.x, joyAct.y, joyAct.ms))
                 } else {
                     // a continuation must start exactly where the last stroke ended
                     p.moveTo(joyX, joyY)
                     p.lineTo(tx, ty)
                     newJoy = held.continueStroke(p, 0, joyAct.ms, true)
+                    g.addStroke(newJoy)
+                    n++
+                    joyX = tx
+                    joyY = ty
+                    if (showTouches) overlay?.showTouch(Act.Drag(joyAct.cx, joyAct.cy, joyAct.x, joyAct.y, joyAct.ms))
                 }
-                g.addStroke(newJoy)
-                n++
-                joyX = tx
-                joyY = ty
-                if (showTouches) overlay?.showTouch(Act.Drag(joyAct.cx, joyAct.cy, joyAct.x, joyAct.y, joyAct.ms))
             } else if (held != null) {
                 val p = Path()
                 p.moveTo(joyX, joyY)
@@ -148,16 +161,21 @@ class AccessibilityController : AccessibilityService() {
         }
         if (n == 0) return
         val mine = newJoy
+        val seq = ++dispatchSeq
         val ok = dispatchGesture(g.build(), object : GestureResultCallback() {
             override fun onCancelled(gestureDescription: GestureDescription?) {
                 // interrupted (e.g. the user touched the screen): the finger is lifted
                 if (mine != null && joyStroke === mine) joyStroke = null
+                // not replaced by a newer gesture of ours = YOUR finger touched the screen
+                if (seq == dispatchSeq) userTouchAt = System.currentTimeMillis()
             }
         }, null)
         if (!ok && joyStroke === mine) joyStroke = null
     }
 
     fun joystickHeld() = joyStroke != null
+    @Volatile private var dispatchSeq = 0
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     // Lifts the joystick finger at once (emergency stop, AI off)
     fun releaseJoystick() {
