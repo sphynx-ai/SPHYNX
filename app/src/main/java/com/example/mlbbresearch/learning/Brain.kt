@@ -87,6 +87,8 @@ object Brain {
         val allowed = FightOption.values().filter { o ->
             when (o) {
                 FightOption.GROUP -> s.allies.isNotEmpty()
+                // only ranged heroes can poke; a melee hero has to be up close to hit
+                FightOption.POKE -> com.example.mlbbresearch.game.HeroDb.isRanged(s.ownHero)
                 FightOption.FARM -> s.enemyMinions.isNotEmpty() || s.monsters.isNotEmpty()
                 else -> true
             }

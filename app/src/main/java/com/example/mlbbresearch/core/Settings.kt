@@ -111,6 +111,8 @@ object Cfg {
     var towerRangePct: Int get() = i("tower_range", 8); set(v) = put("tower_range", v) // % of the minimap
     var useDash: Boolean get() = b("use_dash", true); set(v) = put("use_dash", v)
     var lanersTakeCamps: Boolean get() = b("laner_camps", true); set(v) = put("laner_camps", v)
+    fun heroRange(hero: String): String = s("range_" + hero.lowercase(), "auto")     // auto | ranged | melee
+    fun setHeroRange(hero: String, v: String) = put("range_" + hero.lowercase(), v)
     fun heroDash(hero: String): String = s("dash_" + hero.lowercase(), "auto")
     fun setHeroDash(hero: String, v: String) = put("dash_" + hero.lowercase(), v)
 

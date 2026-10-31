@@ -133,7 +133,15 @@ object HeroDetector {
             var empty = 0
             var x = bl.maxX + 1
             val limit = min(w - 1, bl.maxX + bw * 6)
-            val firstLum = if (x < w) lum(px[cy * w + x]) else 0
+            // the empty (grey) part's brightness, taken past a tick mark that may sit right at
+            // the end of the coloured part (a black tick there used to cut the measurement short)
+            // (or a soft blended pixel): use the brightest real grey among the next 5 pixels
+            var firstLum = -1
+            for (k in 0..4) {
+                val xx = x + k
+                if (xx < w && isEmptyBar(px[cy * w + xx])) firstLum = maxOf(firstLum, lum(px[cy * w + xx]))
+            }
+            if (firstLum < 0) firstLum = if (x < w) lum(px[cy * w + x]) else 0
             fun emptyAt(xx: Int): Boolean {
                 val p = px[cy * w + xx]
                 return isEmptyBar(p) && abs(lum(p) - firstLum) <= 30 && framed(px, w, h, bl, xx)
@@ -179,9 +187,10 @@ object HeroDetector {
         return false
     }
 
-    // HP bars have a dark outline/background directly above or below them
+    // HP bars have a dark outline/background directly above or below them (up to 3 px away:
+    // a soft, anti-aliased bar edge can push the outline one pixel further out)
     private fun hasDarkFrame(px: IntArray, w: Int, h: Int, bl: Blob): Boolean {
-        for (yy in intArrayOf(bl.minY - 1, bl.minY - 2, bl.maxY + 1, bl.maxY + 2)) {
+        for (yy in intArrayOf(bl.minY - 1, bl.minY - 2, bl.minY - 3, bl.maxY + 1, bl.maxY + 2, bl.maxY + 3)) {
             if (yy < 0 || yy >= h) continue
             var dark = 0
             var n = 0

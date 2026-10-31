@@ -184,6 +184,25 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
   yet. The reading uses a ring around the button's centre, so the white countdown digits in the middle don't fool
   it. The Player page shows what each button reads now.
 
+## Monsters, melee / ranged heroes and aggro circles
+
+- **Monsters have red HP bars** like enemies, with their HP number above. An enemy hero's bar has a dark level badge
+  on its left and the hero shows on the minimap near you; a monster's bar has none. Wide red bars without a badge,
+  or with no enemy near you on the minimap, are read as monsters; the widest (turtle / lord) as the boss.
+  Tested on your screenshots: golem, dragon, crab and turtle all read as monsters, no false enemy heroes.
+- **Turtle / lord HP** comes from the bar under the scoreboard while you fight it (read 97% for 11436/12005), so
+  Retribution lands at the right moment.
+- **Your own bar**: the camera keeps your hero at the same spot, so a red bar there is your passive bar (not an
+  enemy). At very low HP, when the green part is too thin to see, it still counts as yours.
+- **Melee or ranged**: marksmen, mages and a few supports (Estes, Rafaela, Angela, Floryn...) are ranged, others
+  melee. You can change it per hero on the Player page.
+  - Against enemy **heroes**, a melee hero walks up close and stays there. A ranged hero keeps a safe distance at
+    the edge of its attack range, steps back if the enemy gets too close (kiting) and steps in if it is out of range.
+    Only ranged heroes can poke; the learning AI never picks "poke" for a melee hero.
+  - Against **minions and monsters** there is no poking: walk into reach and hit.
+- **Aggro circle**: a monster only fights inside the round indicator around it (a wide ellipse on screen: about
+  0.6 screen heights across, 0.27 up / down). The hero stays inside it while fighting a monster so it doesn't reset.
+
 ## Skill use (Player page)
 
 - **Reserve the ultimate for heroes** (on by default): the ultimate is only used against enemy heroes, in a fight or

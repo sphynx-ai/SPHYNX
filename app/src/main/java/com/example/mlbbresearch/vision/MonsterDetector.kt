@@ -24,14 +24,16 @@ object MonsterDetector {
         learned = Cfg.raw("monster_rgb")?.split(",")?.mapNotNull { it.trim().toIntOrNull() }?.takeIf { it.size == 3 }?.toIntArray()
     }
 
-    val learnedText: String get() { load(); return learned?.let { "learned colour ${it[0]},${it[1]},${it[2]}" } ?: "default orange / yellow" }
+    val learnedText: String get() { load(); return learned?.let { "learned colour ${it[0]},${it[1]},${it[2]}" } ?: "red bars without a level badge" }
 
     // per pixel: is this a monster HP bar colour?
     fun matches(r: Int, g: Int, b: Int): Boolean {
         if (!loaded) load()
         val c = learned
         if (c != null && abs(r - c[0]) + abs(g - c[1]) + abs(b - c[2]) <= 70 && max(r, max(g, b)) - min(r, min(g, b)) >= 50) return true
-        return r >= 200 && g in 110..215 && b <= 90 && r - g >= 25 && g - b >= 60
+        // monster HP bars turned out to be RED like enemies (they are told apart by the missing
+        // level badge, see FrameProcessor); only a colour you taught is used here
+        return false
     }
 
     fun forget() {

@@ -50,6 +50,7 @@ class GameState(
     val allyWaves: List<Pair<Float, Float>> = emptyList(),
     val allyTowers: List<Pair<Float, Float>> = emptyList(),
     val enemyWaves: List<Pair<Float, Float>> = emptyList(),
+    val bossHp: Float = -1f,                  // turtle / lord HP from the bar under the scoreboard
     val bushes: List<Bush> = emptyList(),
     val inBush: Boolean = false
 ) {

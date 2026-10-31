@@ -28,7 +28,8 @@ class HeroProfile(
     val waveClearSkill: String?,      // skill used on a minion wave
     val escapeSkill: String?,         // skill used to run away
     val ult: UltRule,
-    val cooldownSec: Map<String, Float>
+    val cooldownSec: Map<String, Float>,
+    val ranged: Boolean = false       // attacks from a distance (can poke heroes and keep away)
 )
 
 object HeroDb {
@@ -154,10 +155,29 @@ object HeroDb {
             Role.SUPPORT -> HeroProfile(name, role, dmg, 0.32f, 0.40f, 0.35f, listOf("s1", "s2", "ult"), null, null, UltRule.TEAMFIGHT, cds)
             Role.UNKNOWN -> HeroProfile(name, role, dmg, 0.20f, 0.40f, 0.30f, listOf("s1", "s2", "ult"), "s1", null, UltRule.ENGAGE, cds)
         }
-        val ult = ultOverride[hero] ?: return base
-        return HeroProfile(base.name, base.role, base.damage, base.attackRange, base.engageRange, base.retreatHp,
-            base.combo, base.waveClearSkill, base.escapeSkill, ult, base.cooldownSec)
+        // melee (close range) or ranged decides the attack range and how heroes are fought
+        val ranged = isRanged(hero)
+        val range = when {
+            ranged && base.attackRange < 0.3f -> 0.32f       // a ranged hero of a melee role
+            !ranged && base.attackRange > 0.2f -> 0.16f      // a melee hero of a ranged role
+            else -> base.attackRange
+        }
+        return HeroProfile(base.name, base.role, base.damage, range, maxOf(base.engageRange, range * 1.1f), base.retreatHp,
+            base.combo, base.waveClearSkill, base.escapeSkill, ultOverride[hero] ?: base.ult, base.cooldownSec, ranged)
     }
+
+    // Ranged = marksmen, mages and these; everyone else fights up close (melee).
+    private val rangedExtra = setOf("Estes", "Rafaela", "Angela", "Floryn", "Faramis", "Diggie", "Chip", "Yi Sun-shin", "Kimmy", "Natan")
+    private val meleeExtra = setOf<String>()
+
+    fun isRanged(hero: String?): Boolean {
+        if (hero != null) when (Cfg.heroRange(hero)) { "ranged" -> return true; "melee" -> return false }
+        if (hero in rangedExtra) return true
+        if (hero in meleeExtra) return false
+        return role(hero) == Role.MARKSMAN || role(hero) == Role.MAGE
+    }
+
+    fun rangeSource(hero: String?): String = if (hero != null && Cfg.heroRange(hero) != "auto") "your choice" else "auto, from the role"
 
     private fun distance(a: String, b: String): Int {
         val dp = IntArray(b.length + 1) { it }
