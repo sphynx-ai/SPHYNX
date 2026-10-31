@@ -356,6 +356,17 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Tactical network: where you are going (v32)
+
+- With good recordings the network still only guessed (13% vs 11% blind): each moment only described the units
+  around you, but most walking is about WHERE you are going. Each moment now also records (40 numbers): your place
+  on the minimap, the way to the camp you head for, the way to the nearest enemy tower, and the way you were already
+  moving.
+- The notebook learns and checks the joystick only on moments with enemies / minions / monsters near (that is where
+  the app uses the network; walking routes stay with the planner), and a button press counts within 0.2 s.
+- The notebook uses the 40-number moments once 1500+ exist (older ones are skipped then), so play a few matches on
+  v32 before training again.
+
 ## Whole-screen detector (v31)
 
 A second trained detector looks at the WHOLE screen (the first one only reads the minimap). Classes: hero_ally,

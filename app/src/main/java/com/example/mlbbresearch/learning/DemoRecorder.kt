@@ -69,9 +69,11 @@ object Features {
 // the 17 numbers above plus level, EXP, survival score, jungle monsters, bush, the enemy tower
 // circle, enemies near you on the minimap (detector), lane, match time and the battle spell.
 object Features2 {
-    const val SIZE = 32
+    const val SIZE = 40
+    const val SIZE_V1 = 32      // recordings from v25-v31 (without the last 8 numbers)
 
-    fun of(s: GameState, base: FloatArray = Features.of(s)): FloatArray {
+    // prev: the direction you (or the AI) were already moving, 0,0 = standing
+    fun of(s: GameState, base: FloatArray = Features.of(s), prev: Pair<Float, Float> = 0f to 0f): FloatArray {
         val f = FloatArray(SIZE)
         System.arraycopy(base, 0, f, 0, Features.SIZE)
         val self = s.self
@@ -94,6 +96,21 @@ object Features2 {
         f[29] = if (s.lane == com.example.mlbbresearch.game.Lane.JUNGLE) 1f else 0f
         f[30] = (s.matchSec.coerceAtLeast(0) / 1200f).coerceAtMost(1f)
         f[31] = if (CooldownTracker.ready("spell", HeroDb.profile(s.ownHero))) 1f else 0f
+        // WHERE you are going (most walking is about that, not about the units around you):
+        // your place on the minimap, the way to the camp you head for (else the nearest one),
+        // the way to the nearest enemy tower, and the way you were already moving
+        val me = s.minimapSelf
+        f[32] = me?.first ?: 0.5f
+        f[33] = me?.second ?: 0.5f
+        fun dir(to: Pair<Float, Float>?, a: Int) {
+            if (me == null || to == null) return
+            val dx = to.first - me.first; val dy = to.second - me.second
+            val l = hypot(dx, dy)
+            if (l > 1e-3f) { f[a] = dx / l; f[a + 1] = dy / l }
+        }
+        dir(com.example.mlbbresearch.game.JungleNav.targetPos ?: s.camps.minByOrNull { me?.let { m -> hypot(it.x - m.first, it.y - m.second) } ?: 0f }?.let { it.x to it.y }, 34)
+        dir(s.towers.minByOrNull { me?.let { m -> hypot(it.x - m.first, it.y - m.second) } ?: 0f }?.let { it.x to it.y }, 36)
+        f[38] = prev.first; f[39] = prev.second
         return f
     }
 }
@@ -119,6 +136,8 @@ object DemoRecorder {
     private var sumMy = 0f
     private var frames = 0
     private var lastRecord = 0L
+    private var lastMx = 0f
+    private var lastMy = 0f
 
     @Volatile var recorded = 0L        // this session
         private set
@@ -189,7 +208,8 @@ object DemoRecorder {
         val f = Features.of(s)
         lastAction = describe(mx, my, casts)
         Brain.observeUser(s, mx, my, casts)
-        val f2 = Features2.of(s, f)
+        val f2 = Features2.of(s, f, lastMx to lastMy)
+        lastMx = mx; lastMy = my
         val values = ContentValues().apply {
             put("ts", now)
             put("hero", s.ownHero ?: "unknown")
