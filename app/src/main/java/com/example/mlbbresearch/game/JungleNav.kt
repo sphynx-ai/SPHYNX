@@ -69,15 +69,17 @@ object JungleNav {
         if (t !== keep && t !== target) { target = t; arrivedAt = 0L; sawMonsterAt = 0L }
 
         val d = hypot(t.x - me.first, t.y - me.second)
-        if (d < 0.07f) {
-            // At the camp. The kill is confirmed by the MONSTER DETECTOR: monsters were seen on
-            // screen and now none are left for 1.5 s. (The minimap icon is not used: your own
-            // icon covers it.) If no monster was ever seen here, attack for 12 s and move on.
+        if (d < 0.09f) {
+            // At the camp (close enough that the attack button locks on to the monsters: their
+            // HP bars only show once they are hit, so attacking starts before any bar is seen).
+            // The kill is confirmed by the MONSTER DETECTOR: monsters were seen on screen and now
+            // none are left for 1.5 s. (The minimap icon is not used: your own icon covers it.)
+            // If no monster shows up after 6 s of attacking, the camp is empty: move on.
             if (arrivedAt == 0L) arrivedAt = now
             if (s.creeps.isNotEmpty() || s.boss != null) sawMonsterAt = now
             val killed = sawMonsterAt > 0 && now - sawMonsterAt > 1500
             // no monster here: leave fast (no standing around)
-            val giveUp = if (sawMonsterAt > 0) now - arrivedAt > 40_000 else now - arrivedAt > 4_000
+            val giveUp = if (sawMonsterAt > 0) now - arrivedAt > 40_000 else now - arrivedAt > 6_000
             // THINK AHEAD: while this camp dies, the next one is already chosen
             next = camps.filter { hypot(it.x - t.x, it.y - t.y) > 0.05f }
                 .minByOrNull { WallMap.distance(t.x to t.y, it.x to it.y) }

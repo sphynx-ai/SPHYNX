@@ -42,7 +42,7 @@ object ActionExecutor {
     private var lastJoyAt = 0L
     private var detourUntil = 0L
     private var detourSign = 1f
-    private var pushRadius = 0.9f
+    private var pushRadius = 1.1f
     private val rnd = java.util.Random()
     @Volatile private var generation = 0
     private val AIMED = setOf("s1", "s2", "ult")
@@ -84,11 +84,14 @@ object ActionExecutor {
         val assist = Cfg.assistMode
         if (assist) {
             // you move: never touch the joystick
-        } else if (d.moveX != 0f || d.moveY != 0f) {
-            joystick(d.moveX, d.moveY)?.let { acts.add(it) }
-        } else if (Cfg.smoothJoystick) {
-            joyDirX = 0f; joyDirY = 0f
-            if (AccessibilityController.instance?.joystickHeld() == true) acts.add(Act.JoyRelease)
+        } else {
+            val (mx, my) = holdDirection(d)
+            if (mx != 0f || my != 0f) {
+                joystick(mx, my)?.let { acts.add(it) }
+            } else if (Cfg.smoothJoystick) {
+                joyDirX = 0f; joyDirY = 0f
+                if (AccessibilityController.instance?.joystickHeld() == true) acts.add(Act.JoyRelease)
+            }
         }
         val gs = GameStateTracker.state
         val self = gs.self
@@ -121,6 +124,37 @@ object ActionExecutor {
             note(d.describe())
         }
     }
+
+    // When to keep the thumb on the joystick. Like a player: the thumb stays down, pushed to the
+    // edge of the ring, and only turns while walking, chasing or running away. It is lifted only
+    // to stand and hit something: minions, jungle monsters, turtle / lord, a tower, or to
+    // recall / regen / hide. A decision that briefly says "stand still" in a chase or an escape
+    // does not lift it: the hero keeps going the same way (melee heroes stick to their target).
+    private fun holdDirection(d: TacticalDecision): Pair<Float, Float> {
+        val now = System.currentTimeMillis()
+        if (d.moveX != 0f || d.moveY != 0f) { lastMoveAt = now; return d.moveX to d.moveY }
+        val stay = when (d.intent) {
+            Intent.LANE_CLEAR, Intent.JUNGLE, Intent.OBJECTIVE, Intent.PUSH, Intent.RECALL, Intent.REGEN,
+            Intent.AMBUSH, Intent.IDLE -> true
+            Intent.RETREAT -> d.reason.contains("hiding")
+            else -> false
+        }
+        if (stay || !Cfg.smoothJoystick) return 0f to 0f
+        val self = GameStateTracker.state.self
+        // a melee hero in a fight keeps walking into the target (attack lands as it walks)
+        if (d.intent == Intent.ENGAGE && d.targetX >= 0f && self != null &&
+            !com.example.mlbbresearch.game.HeroDb.isRanged(GameStateTracker.state.ownHero)
+        ) {
+            val ax = (d.targetX - self.x) * AccessibilityController.screenAspect()
+            val ay = d.targetY - self.y
+            val l = kotlin.math.hypot(ax, ay)
+            if (l > 0.02f) return (ax / l) to (ay / l)
+        }
+        // otherwise keep the last direction for a moment rather than lifting and pressing again
+        if ((joyDirX != 0f || joyDirY != 0f) && now - lastMoveAt < 700) return joyDirX to joyDirY
+        return 0f to 0f
+    }
+    private var lastMoveAt = 0L
 
     // Drag a skill button to aim, like a player: at where a moving enemy WILL be (its speed
     // times the skill's travel time), and drag less far for close targets (range skills).
@@ -191,11 +225,12 @@ object ActionExecutor {
             want = cur + delta.coerceIn(-maxTurn, maxTurn) + (rnd.nextFloat() - 0.5f) * 0.03f
             nx = kotlin.math.cos(want); ny = kotlin.math.sin(want)
             // the thumb sits at the ring's edge (full speed), with a little wobble
-            pushRadius = (pushRadius * 0.8f + (0.93f + rnd.nextFloat() * 0.06f) * 0.2f)
+            // the thumb sits firmly at (just past) the ring's edge: full speed, the stick clamps it
+            pushRadius = (pushRadius * 0.8f + (1.08f + rnd.nextFloat() * 0.04f) * 0.2f)
         } else {
             val l = kotlin.math.hypot(mx, my).coerceAtLeast(1e-4f)
             nx = mx / l; ny = my / l
-            pushRadius = 0.96f
+            pushRadius = 1.1f
         }
         lastJoyAt = now
         joyDirX = nx; joyDirY = ny
