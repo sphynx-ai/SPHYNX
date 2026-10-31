@@ -356,6 +356,29 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Tower circle, your bars, finishing monsters, 8-way joystick (v23)
+
+- **Enemy tower circle** (read on screen, every 2nd frame, same colour twice in a row):
+  - GREEN = your minions are inside: it walks in and hits the tower.
+  - YELLOW = you are just outside and no minions are in: it never steps in; it waits at the edge for its minions
+    (a step towards the tower is taken out of the movement).
+  - RED = you are inside with no minions: it walks straight out, away from the tower, and does not hit it.
+    Only a kill on an enemy under 10% with a healthy survival score may stay a moment.
+  - Found by its bright colour away from the HUD and HP bars, kept only when it forms a big arc, then a circle is
+    fitted (the ground is seen at a tilt). Checked on your screenshots: green, yellow and red correct, nothing found on
+    30+ other match screenshots.
+- **Your bars**: the thin line right under your HP bar (red passive, blue mana, yellow energy) is never read as your
+  HP or as a unit. Before, a blue mana line looked like an ally standing on you, and when the green part was very
+  thin the red passive line stood in for your HP (your lord-fight screenshot: real HP about 18%, it read 3%, now 14%).
+  At very low HP your HP is read straight from the bar.
+- The shop check no longer fires in dark jungle or the lord pit (it did at 66-79% dark; the shop is 93%).
+- **Finishing monsters**: at low HP with no enemy hero near, a monster in reach that is almost dead (creep 35% or
+  less, turtle / lord 15% or less) is finished before recalling. A recall or Regen no longer presses attack.
+- **Joystick in 8 directions** (N, NE, E, SE, S, SW, W, NW): the heading changes only when the wanted direction is
+  clearly closer to another of the eight (37 deg off when walking, 30 in fights), and when walking not sooner than
+  ~0.9 s after the last turn. A turn of 90 deg or more slides the thumb along the ring through the directions in
+  between, so the hero curves round instead of snapping. A wall detour steps two directions (90 deg) to one side.
+
 ## Smarter fights: scores, states, skill knowledge, checked casts (v22)
 
 Hybrid design: vision -> game state -> decision scores -> combo planner -> touches, and every important touch is

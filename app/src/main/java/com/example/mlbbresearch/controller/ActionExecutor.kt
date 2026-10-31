@@ -21,7 +21,9 @@ sealed class Act {
     data class Tap(val x: Float, val y: Float) : Act()
     data class Drag(val x1: Float, val y1: Float, val x2: Float, val y2: Float, val ms: Long) : Act()
     // hold the joystick (centre cx,cy) pushed towards x,y; the finger stays down between ticks
-    data class Joy(val cx: Float, val cy: Float, val x: Float, val y: Float, val ms: Long) : Act()
+    // via: points the thumb slides through on its way (along the ring, for a smooth turn)
+    data class Joy(val cx: Float, val cy: Float, val x: Float, val y: Float, val ms: Long,
+                   val via: List<Pair<Float, Float>> = emptyList()) : Act()
     object JoyRelease : Act()
 }
 
@@ -89,7 +91,7 @@ object ActionExecutor {
         // any touch it sends would cancel yours. It takes over again 1.2 s after you let go,
         // and learns from what you did (Coach).
         if (Cfg.coachMode && com.example.mlbbresearch.learning.Coach.userActive()) {
-            joyDirX = 0f; joyDirY = 0f; headX = 0f; headY = 0f
+            joyDirX = 0f; joyDirY = 0f; headX = 0f; headY = 0f; headOct = -1
             lastDecision = "you are playing: AI waits (learning)"
             return
         }
@@ -97,7 +99,7 @@ object ActionExecutor {
         if (mx != 0f || my != 0f) {
             joystick(mx, my, d.intent)?.let { acts.add(it) }
         } else if (Cfg.smoothJoystick) {
-            joyDirX = 0f; joyDirY = 0f; headX = 0f; headY = 0f
+            joyDirX = 0f; joyDirY = 0f; headX = 0f; headY = 0f; headOct = -1
             if (AccessibilityController.instance?.joystickHeld() == true) acts.add(Act.JoyRelease)
         }
         val gs = GameStateTracker.state
@@ -295,29 +297,28 @@ object ActionExecutor {
         val now = System.currentTimeMillis()
         var mx = mx0
         var my = my0
-        // WALK STRAIGHT: the decision is re-made several times a second and its direction
-        // jitters a little; a player keeps the thumb still and only turns when the course really
-        // changes (a new camp / lane, the path bends round a wall or tower, the target moved
-        // well off to the side). Small differences keep the current heading.
+        // EIGHT DIRECTIONS, WALK STRAIGHT: like a thumb on the stick the hero goes N, NE, E, SE,
+        // S, SW, W or NW. The decision is re-made several times a second and jitters a little; the
+        // heading only changes when the wanted direction is clearly closer to another of the 8
+        // (more than 37 deg off the current one when walking, 30 deg in a fight) and, when
+        // walking, not sooner than ~0.9 s after the last turn (or what Coach learned from your
+        // thumb). A reversal (running away, a dodge) or a wall detour turns at once.
         val l0 = kotlin.math.hypot(mx, my).coerceAtLeast(1e-4f)
         mx /= l0; my /= l0
-        // A new heading also has to wait a moment after the last turn (no swerving back and
-        // forth): about 0.9 s when walking (or what Coach learned from your thumb), 0.25 s in a
-        // fight; a reversal (> 100 deg: running away, a dodge) or a wall detour turns at once.
         val fight = intent == Intent.ENGAGE || intent == Intent.RETREAT
-        val keep = if (fight) 0.906f else 0.766f          // cos 25 deg in fights, cos 40 deg when walking
-        val minHold = if (fight) 250L else com.example.mlbbresearch.learning.Coach.holdMs
+        val want = kotlin.math.atan2(my, mx)
+        val wantOct = (Math.round(want / OCT).toInt() + 8) % 8
         val held0 = AccessibilityController.instance?.joystickHeld() == true
-        val dot = mx * headX + my * headY
-        val hasHead = held0 && (headX != 0f || headY != 0f)
-        val turn = !hasHead || now < detourUntil || dot < -0.17f || intent != headIntent && !(intent.walking() && headIntent?.walking() == true) ||
-            dot < keep && now - headSince >= minHold
-        if (turn) {
-            if (!hasHead || dot < 0.999f) headSince = now
-            headX = mx; headY = my; headIntent = intent
-        } else {
-            mx = headX; my = headY
-        }
+        val hasHead = held0 && headOct >= 0
+        val off = if (hasHead) angleDiff(want, headOct * OCT) else 9f
+        val hyst = Math.toRadians(if (fight) 30.0 else 37.5).toFloat()
+        val minHold = if (fight) 250L else com.example.mlbbresearch.learning.Coach.holdMs
+        val turn = !hasHead || now < detourUntil || off > Math.toRadians(100.0).toFloat() ||
+            off > hyst && now - headSince >= minHold
+        fromOct = headOct
+        if (turn && wantOct != headOct) { headOct = wantOct; headSince = now }
+        mx = kotlin.math.cos(headOct * OCT); my = kotlin.math.sin(headOct * OCT)
+        headX = mx; headY = my; headIntent = intent
         if (joyDirX == 0f && joyDirY == 0f) walkSince = now
         // stuck on a wall: walking for a while but the camera has not moved for 0.7 s
         if (Cfg.wallAvoid && now - walkSince > 900 && now - GameStateTracker.lastMotionAt > 700 && now > detourUntil + 400) {
@@ -327,10 +328,9 @@ object ActionExecutor {
             GameStateTracker.state.minimapSelf?.let { com.example.mlbbresearch.vision.WallMap.markBlocked(it, mx, my) }
         }
         if (now < detourUntil) {
-            val a = Math.toRadians(75.0 * detourSign)
-            val rx = (mx * Math.cos(a) - my * Math.sin(a)).toFloat()
-            val ry = (mx * Math.sin(a) + my * Math.cos(a)).toFloat()
-            mx = rx; my = ry
+            // step around the wall: two of the eight directions (90 deg) to one side
+            val o = (headOct + (if (detourSign > 0) 2 else 6)) % 8
+            mx = kotlin.math.cos(o * OCT); my = kotlin.math.sin(o * OCT)
         }
         // the turn is ONE slide of the thumb straight to the new direction (no curving arcs),
         // held firmly just past the ring's edge (full speed; the stick clamps it)
@@ -346,13 +346,36 @@ object ActionExecutor {
         if (held && nx * sentDirX + ny * sentDirY > 0.995f && now - sentAt < 500 && now >= detourUntil) return null
         sentDirX = nx; sentDirY = ny; sentAt = now
         val ms = if (Cfg.fastMode) 45L + rnd.nextInt(15) else if (Cfg.naturalMove) 140L + rnd.nextInt(35) else 150L
-        return Act.Joy(jx, jy, jx + nx * r * pushRadius, jy + ny * r * pushRadius * aspect, ms)
+        // a turn of 90 deg or more slides the thumb ALONG the ring through the directions in
+        // between (E -> NE -> N), so the hero curves round smoothly instead of snapping
+        val via = ArrayList<Pair<Float, Float>>()
+        val from = fromOct
+        val to = (Math.round(kotlin.math.atan2(ny, nx) / OCT).toInt() + 8) % 8
+        if (held && from >= 0 && from != to) {
+            var steps = (to - from + 8) % 8
+            val dirStep = if (steps <= 4) 1 else { steps = 8 - steps; -1 }
+            for (k in 1 until steps) {
+                val o = (from + dirStep * k + 8) % 8
+                via.add((jx + kotlin.math.cos(o * OCT) * r * pushRadius) to (jy + kotlin.math.sin(o * OCT) * r * pushRadius * aspect))
+            }
+        }
+        return Act.Joy(jx, jy, jx + nx * r * pushRadius, jy + ny * r * pushRadius * aspect, ms + via.size * 35L, via)
+    }
+
+    private val OCT = (Math.PI / 4).toFloat()
+    private var headOct = -1
+    private var fromOct = -1
+    private fun angleDiff(a: Float, b: Float): Float {
+        var d = a - b
+        while (d > Math.PI) d -= (2 * Math.PI).toFloat()
+        while (d < -Math.PI) d += (2 * Math.PI).toFloat()
+        return kotlin.math.abs(d)
     }
 
     // Lift the joystick finger (AI paused or stopped)
     fun release() {
         joyDirX = 0f; joyDirY = 0f
-        headX = 0f; headY = 0f
+        headX = 0f; headY = 0f; headOct = -1
         val svc = AccessibilityController.instance ?: return
         if (svc.joystickHeld()) main.post { try { svc.releaseJoystick() } catch (e: Exception) { } }
     }

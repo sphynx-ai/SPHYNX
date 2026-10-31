@@ -75,7 +75,36 @@ object TacticalEngine {
             if (changed) d = TacticalDecision(d.intent, gx, gy, d.casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId,
                 d.reason + " (keeping out of enemy tower range)")
         }
+        d = towerRingRule(s, d)
         return wallHop(s, p, steerAroundWalls(s, d))
+    }
+
+    // The enemy tower's circle on screen:
+    //  RED (inside, no minions): the tower shoots you - walk straight out, away from the tower
+    //    (only a kill on an enemy under 10% with a healthy survival score may stay a moment)
+    //  YELLOW (just outside, no minions): never step in; wait at the edge for your minions
+    //  GREEN (your minions are in): safe to go in and hit the tower (see step 7b)
+    private fun towerRingRule(s: GameState, d0: TacticalDecision): TacticalDecision {
+        val ring = s.towerRing
+        val self = s.self ?: return d0
+        if (ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.NONE || ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.GREEN) return d0
+        val (tx, ty) = ring.dirFrom(self.x, self.y, s.aspect)
+        val killChase = d0.intent == Intent.ENGAGE && d0.targetHp in 0f..0.10f && Utility.lastSurvival >= 50f
+        if (ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.RED && ring.inside) {
+            if (killChase) return d0
+            val casts = d0.casts.filter { it != "attack" }      // no hitting the tower from in here
+            return TacticalDecision(Intent.RETREAT, -tx, -ty, casts, -1f, -1f, "-", -1f, -1,
+                "inside the enemy tower range with no minions (red circle): getting out")
+        }
+        // yellow: any step towards the tower is taken out; with nothing left, wait for minions
+        val dot = d0.moveX * tx + d0.moveY * ty
+        if (dot <= 0.15f || killChase || d0.intent == Intent.RETREAT) return d0
+        val sx = d0.moveX - dot * tx; val sy = d0.moveY - dot * ty
+        val l = kotlin.math.hypot(sx, sy)
+        return if (l > 0.35f) TacticalDecision(d0.intent, sx / l, sy / l, d0.casts.filter { it != "attack" }, d0.targetX, d0.targetY,
+            d0.targetLabel, d0.targetHp, d0.targetId, d0.reason + " (along the edge of the tower range, yellow circle)")
+        else TacticalDecision(Intent.PUSH, 0f, 0f, emptyList(), -1f, -1f, "-", -1f, -1,
+            "waiting for our minions at the tower range (yellow circle)")
     }
 
     // Walls seen on screen right ahead (rock, cliff, trees): curve 35 or 70 degrees to the clear
@@ -183,7 +212,8 @@ object TacticalEngine {
         // A jungle monster shows NO HP bar until it is hit: standing at a camp the minimap still
         // shows, the attack button is pressed anyway (it locks on to the nearest monster), and the
         // bars appear after the first hit.
-        val atCamp = JungleNav.atCamp && (d.intent == Intent.JUNGLE || d.intent == Intent.LANE_CLEAR)
+        val atCamp = JungleNav.atCamp && (d.intent == Intent.JUNGLE || d.intent == Intent.LANE_CLEAR) ||
+            d.intent == Intent.PUSH && s.towerRing.zone == com.example.mlbbresearch.vision.TowerRing.Zone.GREEN
         val skillRange = s.enemiesWithin(p.engageRange).isNotEmpty() || atCamp ||
             s.minionsWithin(p.attackRange * 1.8f).isNotEmpty() || s.monsters.any { s.distToSelf(it.x, it.y) <= p.attackRange * 1.8f }
         val hitRange = s.enemiesWithin(p.attackRange * 1.4f).isNotEmpty() || atCamp ||
@@ -201,7 +231,10 @@ object TacticalEngine {
                 casts = casts.filter { it != "attack" }
             }
         }
-        if ((hitRange && (d.intent != Intent.RETREAT || hiding) || chasing) &&
+        // (never while recalling or regenerating: attacking cancels the channel)
+        // (nor while backing off to wait for a better moment: stopping to hit would undo it)
+        if (d.intent == Intent.RECALL || d.intent == Intent.REGEN || d.reason.startsWith("positioning")) casts = casts.filter { it != "attack" }
+        else if ((hitRange && (d.intent != Intent.RETREAT || hiding) || chasing) &&
             casts.none { it == "s1" || it == "s2" || it == "ult" } && "attack" !in casts
         ) {
             casts = casts + "attack"
@@ -312,6 +345,17 @@ object TacticalEngine {
                     brainRetreat && hp > retreatHp -> "brain: back off"
                     else -> "HP ${(hp * 100).toInt()}%, survival ${surv.toInt()}"
                 }), force = true)
+        }
+
+        // ---- 1b. low HP but a monster is almost dead: finish it first (its gold / EXP / buff),
+        // then recall. Only with no enemy hero near; a monster still healthy is left alone.
+        val lowMon = (s.creeps + listOfNotNull(s.boss)).filter {
+            s.distToSelf(it.x, it.y) <= p.attackRange * 1.8f && it.hp <= (if (it.hero) 0.15f else 0.35f)
+        }.minByOrNull { it.hp }
+        if (lowMon != null && threat.isEmpty() && hp in 0.04f..0.5f && now >= recallUntil) {
+            return hold(now, hitMonster(s, p, lowMon, if (lowMon.hero) Cfg.retriBossPct else Cfg.retriCreepPct,
+                if (lowMon.hero) Intent.OBJECTIVE else Intent.JUNGLE,
+                "finishing the monster first (${(lowMon.hp * 100).toInt()}% HP), then recall"), force = true)
         }
 
         // ---- 2. recall when low and safe ----
@@ -525,7 +569,17 @@ object TacticalEngine {
         }
 
         // ---- 7b. push the enemy tower: only with your minions in its range and no enemy hero ----
-        if (TowerLogic.canPush(s)) {
+        // the circle on screen is GREEN = our minions are inside: walk in and hit it
+        val ring = s.towerRing
+        if (ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.GREEN && threat.isEmpty()) {
+            val dx = (ring.cx - self.x) * s.aspect; val dy = ring.cy - self.y
+            val dd = kotlin.math.hypot(dx, dy)
+            val (mx, my) = if (dd > ring.ry * 0.55f) (dx / dd) to (dy / dd) else (0f to 0f)
+            return hold(now, TacticalDecision(Intent.PUSH, mx, my, listOf("attack"), -1f, -1f, "tower", -1f, -1,
+                "pushing the tower: our minions are in (green circle)"))
+        }
+        if (TowerLogic.canPush(s) && ring.zone != com.example.mlbbresearch.vision.TowerRing.Zone.YELLOW &&
+            ring.zone != com.example.mlbbresearch.vision.TowerRing.Zone.RED) {
             val n = TowerLogic.nearest(s)!!
             val me = s.minimapSelf!!
             val (mx, my) = if (n.second > TowerLogic.range() * 0.6f) norm(n.first.first - me.first, n.first.second - me.second) else (0f to 0f)
@@ -818,7 +872,7 @@ object TacticalEngine {
     // Keeps an intent for at least 0.6 s so the hero does not jitter between choices
     private fun hold(now: Long, d: TacticalDecision, force: Boolean = false): TacticalDecision {
         if (d.intent != held) {
-            if (!force && now - heldSince < (if (Cfg.fastMode) 300 else 600) && held != Intent.IDLE && held != Intent.PUSH) {
+            if (!force && now - heldSince in 0..(if (Cfg.fastMode) 300 else 600) && held != Intent.IDLE && held != Intent.PUSH) {
                 // keep moving the old way, but still allow attacks/skills
                 return TacticalDecision(held, d.moveX, d.moveY, d.casts, d.targetX, d.targetY, d.targetLabel,
                     d.targetHp, d.targetId, d.reason)

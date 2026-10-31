@@ -157,9 +157,10 @@ object ScreenReader {
         val right = avg(px, w, h, 0.62f, 0.15f, 0.85f, 0.20f)
         if (left[2] - left[0] >= 30 && right[0] - right[2] >= 20) return ScreenHint.SCOREBOARD
 
-        // shop: a big dark panel over the middle of the screen
+        // shop: a big dark panel over the middle of the screen (measured: the shop 93% dark;
+        // dark jungle and the lord pit in play reach 66-79%, so the line sits at 86%)
         val dark = fraction(px, w, h, 0.12f, 0.15f, 0.88f, 0.80f, 6) { lum(it) < 80 }
-        if (dark > 0.62f) return ScreenHint.SHOP
+        if (dark > 0.86f) return ScreenHint.SHOP
 
         // big map: a column of 5 enemy portraits with dark red rings right of the map
         var rings = 0

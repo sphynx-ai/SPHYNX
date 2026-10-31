@@ -229,7 +229,8 @@ object GameStateTracker {
             screenWalls = v.screenWalls,
             level = v.level,
             xp = v.xp,
-            enemyLevel = v.enemyLevel
+            enemyLevel = v.enemyLevel,
+            towerRing = v.towerRing
         )
         state = s
         CooldownTracker.observe(v)
