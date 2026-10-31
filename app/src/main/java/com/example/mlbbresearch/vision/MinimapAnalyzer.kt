@@ -15,7 +15,8 @@ class MinimapInfo(
     val allyWaves: List<Pair<Float, Float>> = emptyList(),// your minion waves (small blue marks)
     val allyTowers: List<Pair<Float, Float>> = emptyList(),
     val enemyWaves: List<Pair<Float, Float>> = emptyList(),
-    val selfIcon: FloatArray? = null                      // your icon on screen: centre x, y, radius (fractions of width)
+    val selfIcon: FloatArray? = null,                     // your icon on screen: centre x, y, radius (fractions of width)
+    val allyDots: List<Pair<Float, Float>> = emptyList() // blue portrait rings (same units as enemyDots)
 )
 
 // bonus = red-and-yellow icon: an enemy tower that gives extra gold when attacked
@@ -55,6 +56,7 @@ object MinimapAnalyzer {
             }
         }
         val dots = ArrayList<Pair<Float, Float>>()
+        val blue = ArrayList<Pair<Float, Float>>()
         var allies = 0
         val seen = BooleanArray(grid.size)
         val stack = IntArray(grid.size)
@@ -85,7 +87,7 @@ object MinimapAnalyzer {
                 }
             }
             if (n < 3 || n > 60) continue   // too small = noise, too big = not an icon
-            if (cls == 1) dots.add((sx.toFloat() / n / gw) to (sy.toFloat() / n / gh)) else allies++
+            if (cls == 1) dots.add((sx.toFloat() / n / gw) to (sy.toFloat() / n / gh)) else { allies++; blue.add((sx.toFloat() / n / gw) to (sy.toFloat() / n / gh)) }
         }
         val (self, camps) = jungle(px, w, h)
         val icon = lastIcon
@@ -95,7 +97,7 @@ object MinimapAnalyzer {
             st.towers.none { kotlin.math.hypot(it.x - d.first, it.y - d.second) < 0.05f } &&
                 st.enemyWaves.none { kotlin.math.hypot(it.first - d.first, it.second - d.second) < 0.02f }
         }
-        return MinimapInfo(heroDots.size, allies, heroDots, self, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves, icon)
+        return MinimapInfo(heroDots.size, allies, heroDots, self, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves, icon, blue)
     }
 
     // MLBB always draws YOUR base bottom-left and the river from top-left to bottom-right,

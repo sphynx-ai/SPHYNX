@@ -14,6 +14,7 @@ class MainApplication : Application() {
         Diag.init(this)
         CrashLog.install()
         ExperienceRecorder.init(this)
+        com.example.mlbbresearch.learning.DatasetCollector.init(this)
         ScreenCaptureService.ensureChannel(this)
         // load the trained detector / tactical network added before
         Thread { if (com.example.mlbbresearch.vision.ObjectDetector.modelFile(this).exists()) com.example.mlbbresearch.vision.ObjectDetector.load(this) }.start()
