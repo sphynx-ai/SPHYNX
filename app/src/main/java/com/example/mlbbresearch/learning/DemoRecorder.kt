@@ -65,6 +65,39 @@ object Features {
     val weight = floatArrayOf(2f, 1.5f, 2f, 2f, 1.5f, 1f, 1.5f, 1f, 1.2f, 1.2f, 0.8f, 0.6f, 0.6f, 0.7f, 0.7f, 0.9f, 0.5f)
 }
 
+// The richer situation for the trained tactical network (notebooks/train_tactical_policy.ipynb):
+// the 17 numbers above plus level, EXP, survival score, jungle monsters, bush, the enemy tower
+// circle, enemies near you on the minimap (detector), lane, match time and the battle spell.
+object Features2 {
+    const val SIZE = 32
+
+    fun of(s: GameState, base: FloatArray = Features.of(s)): FloatArray {
+        val f = FloatArray(SIZE)
+        System.arraycopy(base, 0, f, 0, Features.SIZE)
+        val self = s.self
+        f[17] = s.level / 15f
+        f[18] = if (s.xp >= 0f) s.xp else 0f
+        f[19] = com.example.mlbbresearch.ai.Utility.survival(s, HeroDb.profile(s.ownHero)) / 100f
+        f[20] = min(s.creeps.size, 4) / 4f
+        val c = s.creeps.minByOrNull { s.distToSelf(it.x, it.y) }
+        if (c != null && self != null) {
+            f[21] = ((c.x - self.x) * s.aspect).coerceIn(-1f, 1f)
+            f[22] = (c.y - self.y).coerceIn(-1f, 1f)
+            f[23] = c.hp
+        }
+        f[24] = if (s.inBush) 1f else 0f
+        val ring = s.towerRing
+        f[25] = if (ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.RED && ring.inside) 1f else 0f
+        f[26] = if (ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.YELLOW) 1f else 0f
+        f[27] = if (ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.GREEN) 1f else 0f
+        f[28] = min(com.example.mlbbresearch.game.MapIntel.enemiesNear(s, 0.2f), 5) / 5f
+        f[29] = if (s.lane == com.example.mlbbresearch.game.Lane.JUNGLE) 1f else 0f
+        f[30] = (s.matchSec.coerceAtLeast(0) / 1200f).coerceAtMost(1f)
+        f[31] = if (CooldownTracker.ready("spell", HeroDb.profile(s.ownHero))) 1f else 0f
+        return f
+    }
+}
+
 object Casts {
     const val ATTACK = 1
     const val S1 = 2
@@ -156,10 +189,12 @@ object DemoRecorder {
         val f = Features.of(s)
         lastAction = describe(mx, my, casts)
         Brain.observeUser(s, mx, my, casts)
+        val f2 = Features2.of(s, f)
         val values = ContentValues().apply {
             put("ts", now)
             put("hero", s.ownHero ?: "unknown")
             put("features", f.joinToString(",") { "%.3f".format(Locale.US, it) })
+            put("features2", f2.joinToString(",") { "%.3f".format(Locale.US, it) })
             put("move_x", mx)
             put("move_y", my)
             put("casts", casts)
@@ -235,10 +270,13 @@ object DemoRecorder {
         if (mx == 0f && my == 0f && (view.enemiesWithin(0.25f).isNotEmpty() || view.minionsWithin(0.25f).isNotEmpty())) casts = Casts.ATTACK
         val f = Features.of(view)
         f[13] = 1f; f[14] = 1f; f[15] = 1f        // their cooldowns are unknown
+        val f2 = Features2.of(view, f)
+        f2[17] = 0.5f; f2[18] = 0f; f2[31] = 1f    // their level, EXP and spell are unknown
         val values = ContentValues().apply {
             put("ts", System.currentTimeMillis())
             put("hero", who)
             put("features", f.joinToString(",") { "%.3f".format(Locale.US, it) })
+            put("features2", f2.joinToString(",") { "%.3f".format(Locale.US, it) })
             put("move_x", mx)
             put("move_y", my)
             put("casts", casts)

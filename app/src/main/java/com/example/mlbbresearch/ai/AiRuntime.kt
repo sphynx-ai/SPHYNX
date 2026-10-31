@@ -227,7 +227,11 @@ object AiRuntime {
                     d = ComboRunner.apply(d, s, profile)
                     // "Play like me": your style mixed into the AI's decision (it keeps control of the
                     // joystick and skills); the survival rules still come first
-                    if (Cfg.playLikeMe) {
+                    // the trained tactical network (if loaded) learned your play; without it, the
+                    // nearest recorded moments of yours are used
+                    if (com.example.mlbbresearch.learning.PolicyNet.ready && Cfg.policyOn) {
+                        d = com.example.mlbbresearch.learning.PolicyNet.blend(d, s, profile)
+                    } else if (Cfg.playLikeMe) {
                         ImitationPolicy.ensureLoaded(hero)
                         val brainFight = option != null && option != FightOption.RULES
                         if (!brainFight && d.intent != Intent.RETREAT && d.intent != Intent.RECALL && d.intent != Intent.REGEN) {
@@ -348,6 +352,9 @@ object AiRuntime {
             sb.append("\n\nDecision: ").append(ActionExecutor.lastDecision)
             sb.append("\nTarget: ").append(ActionExecutor.lastTarget)
             sb.append("\nNext: ").append(TacticalEngine.nextPlan)
+            sb.append("\nMap: ").append(com.example.mlbbresearch.game.MapIntel.status)
+            if (com.example.mlbbresearch.learning.PolicyNet.ready) sb.append("\nNetwork: ").append(com.example.mlbbresearch.learning.PolicyNet.last)
+                .append(" | agrees with the rules ").append((com.example.mlbbresearch.learning.PolicyNet.agreeRate * 100).toInt()).append('%')
             sb.append("\nState: ").append(Utility.state.name.lowercase()).append(" | survival ").append(Utility.lastSurvival.toInt())
                 .append(" | engage ").append(Utility.lastEngage.toInt()).append(" (").append(Utility.lastWhy).append(")")
             val p = StrategicAdvisor.plan

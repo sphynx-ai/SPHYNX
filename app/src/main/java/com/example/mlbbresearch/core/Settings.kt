@@ -117,6 +117,10 @@ object Cfg {
     fun heroDash(hero: String): String = s("dash_" + hero.lowercase(), "auto")
     fun setHeroDash(hero: String, v: String) = put("dash_" + hero.lowercase(), v)
 
+    // ---- trained tactical network (policy.tflite) ----
+    var policyOn: Boolean get() = b("policy_on", true); set(v) = put("policy_on", v)
+    var policyMinConf: Float get() = f("policy_conf", 0.55f); set(v) = put("policy_conf", v)
+
     // ---- smart fights (the learning brain) ----
     var smartFights: Boolean get() = b("smart_fights", true); set(v) = put("smart_fights", v)
     var exploreLevel: Int get() = i("explore", 1); set(v) = put("explore", v)     // 0 low, 1 normal, 2 high

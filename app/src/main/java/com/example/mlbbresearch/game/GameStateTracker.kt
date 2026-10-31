@@ -230,7 +230,8 @@ object GameStateTracker {
             level = v.level,
             xp = v.xp,
             enemyLevel = v.enemyLevel,
-            towerRing = v.towerRing
+            towerRing = v.towerRing,
+            map = if (onMap) MapIntel.Info.NONE else MapIntel.read(v.minimap, now)
         )
         state = s
         CooldownTracker.observe(v)

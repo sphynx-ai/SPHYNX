@@ -13,7 +13,9 @@ import kotlin.math.max
 import kotlin.math.min
 
 // One object found by the trained detector. Positions are fractions of the whole screen.
-class Detection(val label: String, val score: Float, val left: Float, val top: Float, val right: Float, val bottom: Float) {
+// team: for hero icons on the minimap, "enemy" (red ring), "ally" (blue ring), "self" (green ring) or ""
+class Detection(val label: String, val score: Float, val left: Float, val top: Float, val right: Float, val bottom: Float,
+                val team: String = "") {
     val cx: Float get() = (left + right) / 2f
     val cy: Float get() = (top + bottom) / 2f
 }
@@ -217,7 +219,34 @@ object ObjectDetector {
                 )
             )
         }
-        return nms(found, 0.45f).take(50)
+        // hero icons: which team, from the colour of the ring around the portrait
+        return nms(found, 0.45f).take(50).map { d ->
+            if (!d.label.contains("hero")) d else Detection(d.label, d.score, d.left, d.top, d.right, d.bottom, ringTeam(rgb, d, r))
+        }
+    }
+
+    // count red / blue / green pixels on the icon's border ring (in the model's input image)
+    private fun ringTeam(rgb: IntArray, d: Detection, r: FloatArray): String {
+        val rw = r[2] - r[0]; val rh = r[3] - r[1]
+        val cx = (d.cx - r[0]) / rw * inW; val cy = (d.cy - r[1]) / rh * inH
+        val rad = maxOf((d.right - d.left) / rw * inW, (d.bottom - d.top) / rh * inH) / 2f
+        var red = 0; var blue = 0; var green = 0
+        for (k in 0 until 32) {
+            val a = k * Math.PI * 2 / 32
+            for (f in floatArrayOf(0.85f, 1.0f)) {
+                val x = (cx + Math.cos(a) * rad * f).toInt(); val y = (cy + Math.sin(a) * rad * f).toInt()
+                if (x !in 0 until inW || y !in 0 until inH) continue
+                val p = rgb[y * inW + x]
+                val rr = (p shr 16) and 0xff; val gg = (p shr 8) and 0xff; val bb = p and 0xff
+                when {
+                    rr > 150 && rr - maxOf(gg, bb) > 60 -> red++
+                    bb > 150 && bb - rr > 60 -> blue++
+                    gg > 150 && gg - maxOf(rr, bb) > 50 -> green++
+                }
+            }
+        }
+        val m = maxOf(red, blue, green)
+        return when { m < 6 -> ""; m == green -> "self"; m == red -> "enemy"; else -> "ally" }
     }
 
     private fun nms(list: List<Detection>, iouMax: Float): List<Detection> {

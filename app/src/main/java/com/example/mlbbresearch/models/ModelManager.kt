@@ -115,6 +115,29 @@ object ModelManager {
         }.start()
     }
 
+    // Trained tactical network (.tflite made by notebooks/train_tactical_policy.ipynb)
+    fun importPolicy(ctx: Context, uri: Uri, done: (String?) -> Unit) {
+        val app = ctx.applicationContext
+        val name = queryName(app, uri)
+        if (name != null && !name.endsWith(".tflite", ignoreCase = true)) {
+            done("That file is \"$name\". The tactical network must be a .tflite file.")
+            return
+        }
+        Thread {
+            var err: String? = null
+            try {
+                val dst = com.example.mlbbresearch.learning.PolicyNet.modelFile(app)
+                app.contentResolver.openInputStream(uri)!!.use { input -> dst.outputStream().use { input.copyTo(it) } }
+                Diag.info("Tactical network copied (${dst.length() / 1024} KB)")
+                err = com.example.mlbbresearch.learning.PolicyNet.load(app)
+            } catch (e: Exception) {
+                err = e.message ?: e.toString()
+                Diag.error("Tactical network copy failed", e)
+            }
+            done(err)
+        }.start()
+    }
+
     private fun queryName(ctx: Context, uri: Uri): String? = try {
         ctx.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
             if (c.moveToFirst()) c.getString(0) else null

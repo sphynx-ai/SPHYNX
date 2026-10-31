@@ -21,3 +21,5 @@ See [SETUP.md](SETUP.md) to install it into a Code on the Go project and
 Default training data: "Mobile Legends Minimap Dataset" by gladi on Roboflow Universe, licensed CC BY 4.0.
 
 For research use. Automating the game may break its terms of service.
+- Trained tactical network (`notebooks/train_tactical_policy.ipynb`): learns from your recorded play, runs on the phone in ~1 ms, mixed into the rules; Gemma 3n stays the strategist.
+- Trained YOLO minimap detector (`notebooks/train_mlbb_detector.ipynb`): hero icons with team, turtle / lord, turrets - used for gank warnings, hidden enemies and objectives.

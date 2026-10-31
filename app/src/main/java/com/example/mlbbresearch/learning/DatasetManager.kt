@@ -18,9 +18,11 @@ object DatasetManager {
         "id,ts,hero,intent,actions,self_hp,allies,enemies,minions,target_id,target_hp,plan,aggression,reward", done
     )
 
-    // "Learn from me" recordings: features are the 17 numbers of Features.of, casts a bit mask
+    // your recorded play (Coach): features = the 17 numbers of Features.of, features2 = the 32 of
+    // Features2.of (empty in rows recorded before v25), casts a bit mask. Train the tactical
+    // network on it with notebooks/train_tactical_policy.ipynb.
     fun exportDemos(ctx: Context, done: (String) -> Unit) = exportTable(
-        ctx, "demos", "mlbb-my-play", "id,ts,hero,features,move_x,move_y,casts", done
+        ctx, "demos", "mlbb-my-play", "id,ts,hero,features,move_x,move_y,casts,features2", done
     )
 
     private fun exportTable(ctx: Context, table: String, prefix: String, cols: String, done: (String) -> Unit) {

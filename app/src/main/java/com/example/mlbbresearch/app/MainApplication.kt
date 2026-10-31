@@ -12,6 +12,7 @@ class MainApplication : Application() {
         super.onCreate()
         // load the optional trained detector in the background if it was added before
         Thread { if (com.example.mlbbresearch.vision.ObjectDetector.modelFile(this).exists()) com.example.mlbbresearch.vision.ObjectDetector.load(this) }.start()
+        Thread { if (com.example.mlbbresearch.learning.PolicyNet.modelFile(this).exists()) com.example.mlbbresearch.learning.PolicyNet.load(this) }.start()
         Cfg.init(this)
         Diag.init(this)
         CrashLog.install()

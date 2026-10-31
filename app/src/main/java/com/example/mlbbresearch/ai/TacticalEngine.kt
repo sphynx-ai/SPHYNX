@@ -554,6 +554,23 @@ object TacticalEngine {
             }
         }
 
+        // ---- 6a. turtle / lord alive on the minimap (detector): junglers and roamers go and
+        // take it with the team - an ally near it, no enemy near it, healthy, ultimate learned ----
+        val obj = s.map.objective
+        val meMap = s.minimapSelf
+        if (Cfg.takeObjectives && obj != null && meMap != null && (s.lane == Lane.JUNGLE || s.lane == Lane.ROAM) &&
+            threat.isEmpty() && hp > 0.55f && s.level >= 4 && s.boss == null
+        ) {
+            val dObj = kotlin.math.hypot(obj.first - meMap.first, obj.second - meMap.second)
+            val alliesThere = s.map.allies.count { kotlin.math.hypot(it.first - obj.first, it.second - obj.second) < 0.2f }
+            val enemiesThere = s.map.enemies.count { kotlin.math.hypot(it.first - obj.first, it.second - obj.second) < 0.2f }
+            if (dObj in 0.05f..0.4f && alliesThere >= 1 && enemiesThere == 0) {
+                val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(meMap, obj) ?: mapDir(meMap, obj)
+                return hold(now, TacticalDecision(Intent.OBJECTIVE, mx, my, emptyList(), -1f, -1f, "-", -1f, -1,
+                    "${LaneLogic.objectiveName(s.matchSec)} is up (minimap): joining $alliesThere allies there"))
+            }
+        }
+
         // ---- 6b. jungler: walk the jungle path to the next camp (from the minimap), not the lanes ----
         // (at level 15 more EXP is useless: the jungler pushes lanes and towers instead,
         // farming only when a camp is right on the way)
