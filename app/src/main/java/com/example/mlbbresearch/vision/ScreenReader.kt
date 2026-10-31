@@ -181,9 +181,6 @@ object ScreenReader {
 
     // ---------------- HUD ----------------
 
-    private var prevGrid: IntArray? = null
-    private var prevGw = 0
-    private var prevGh = 0
 
     fun hud(px: IntArray, w: Int, h: Int, withMovement: Boolean): HudInfo {
         val ups = HashSet<String>()
@@ -200,7 +197,7 @@ object ScreenReader {
             val m = motion(px, w, h)
             mx = m.first; my = m.second
         } else {
-            prevGrid = null
+            history.clear()
         }
         return HudInfo(ups, qb, mx, my)
     }
@@ -235,46 +232,73 @@ object ScreenReader {
     }
 
     // Camera follows your hero, so the whole field shifting left means you walked right.
-    // Coarse block matching on a small grey grid, HUD corners left out.
+    // Block matching of the middle of the field against the picture from about a quarter of a
+    // second ago (one frame apart the shift is only a few pixels: slow and up / down movement got
+    // lost, so diagonal walking was read as "right" and most walking as "standing"). A finer grid
+    // (5 px at 800 wide) with sub-pixel interpolation, and the up / down part scaled up for the
+    // camera's tilt (ground distances look 1.45x shorter up / down than across).
+    @Volatile var clock: () -> Long = { System.currentTimeMillis() }
+    private val history = ArrayDeque<Pair<Long, IntArray>>()
+    private var histW = 0
+    private var histH = 0
+    private var lastMove = 0f to 0f
+    private var lastMoveAt = 0L
+
     private fun motion(px: IntArray, w: Int, h: Int): Pair<Float, Float> {
-        val gw = 96
-        val gh = max(8, gw * h / w)
+        val now = clock()
+        val gw = 160
+        val gh = max(16, gw * h / w)
         val grid = IntArray(gw * gh)
         for (gy in 0 until gh) {
             val y = gy * h / gh
             for (gx in 0 until gw) grid[gy * gw + gx] = lum(px[y * w + gx * w / gw])
         }
-        val prev = prevGrid
-        val pw = prevGw
-        val ph = prevGh
-        prevGrid = grid; prevGw = gw; prevGh = gh
-        if (prev == null || pw != gw || ph != gh) return 0f to 0f
+        if (histW != gw || histH != gh) { history.clear(); histW = gw; histH = gh }
+        history.addLast(now to grid)
+        while (history.isNotEmpty() && now - history.first().first > 700) history.removeFirst()
+        // the reference: the newest picture at least 180 ms old
+        val ref = history.lastOrNull { now - it.first >= 180 } ?: return if (now - lastMoveAt < 300) lastMove else (0f to 0f)
+        val prev = ref.second
+        val span = (now - ref.first).coerceAtLeast(1L)
 
-        val s = 4
-        // middle of the field: away from minimap, skill buttons, joystick and scoreboard
-        val ax0 = (gw * 0.30f).toInt(); val ax1 = (gw * 0.62f).toInt()
+        val s = 10
+        // middle of the field: away from the minimap, skill buttons, joystick and scoreboard
+        val ax0 = max(s, (gw * 0.30f).toInt()); val ax1 = min(gw - s, (gw * 0.62f).toInt())
         val ay0 = max(s, (gh * 0.15f).toInt()); val ay1 = min(gh - s, (gh * 0.55f).toInt())
+        val costs = LongArray((2 * s + 1) * (2 * s + 1))
         var best = Long.MAX_VALUE
         var bx = 0; var by = 0
-        var zero = Long.MAX_VALUE
         for (dy in -s..s) for (dx in -s..s) {
             var cost = 0L
             var y = ay0
             while (y < ay1) {
                 var x = ax0
+                val row = y * gw; val prow = (y + dy) * gw + dx
                 while (x < ax1) {
-                    cost += abs(grid[y * gw + x] - prev[(y + dy) * gw + (x + dx)])
-                    x++
+                    cost += abs(grid[row + x] - prev[prow + x])
+                    x += 2
                 }
-                y++
+                y += 2
             }
-            if (dx == 0 && dy == 0) zero = cost
+            costs[(dy + s) * (2 * s + 1) + dx + s] = cost
             if (cost < best) { best = cost; bx = dx; by = dy }
         }
-        // ignore tiny or unclear shifts (standing still, effects flashing)
-        if (bx == 0 && by == 0 || best > zero * 0.85) return 0f to 0f
-        // content now at (x) came from (x + dx): the field moved by -dx, so the hero moved +dx
-        val l = hypot(bx.toFloat(), by.toFloat())
-        return (bx / l) to (by / l)
+        val zero = costs[s * (2 * s + 1) + s]
+        // unclear (effects flashing, fights) or no shift: standing
+        if (best > zero * 0.85 || bx == 0 && by == 0) return (0f to 0f).also { lastMove = it; lastMoveAt = now }
+        // sub-cell position from a parabola through the neighbouring costs
+        fun c(dx: Int, dy: Int): Long? = if (dx in -s..s && dy in -s..s) costs[(dy + s) * (2 * s + 1) + dx + s] else null
+        fun sub(cm: Long?, c0: Long, cp: Long?): Float {
+            if (cm == null || cp == null) return 0f
+            val den = (cm - 2 * c0 + cp).toFloat()
+            return if (den <= 0f) 0f else ((cm - cp) / (2f * den)).coerceIn(-0.5f, 0.5f)
+        }
+        val fx = bx + sub(c(bx - 1, by), best, c(bx + 1, by))
+        val fy = (by + sub(c(bx, by - 1), best, c(bx, by + 1))) * 1.45f
+        // at least ~1 cell per quarter second (slower = shuffling on the spot)
+        val l = hypot(fx, fy)
+        val res = if (l * 250f / span < 0.9f) 0f to 0f else (fx / l) to (fy / l)
+        lastMove = res; lastMoveAt = now
+        return res
     }
 }
