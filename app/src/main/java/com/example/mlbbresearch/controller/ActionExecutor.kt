@@ -10,6 +10,8 @@ import com.example.mlbbresearch.core.Layout
 import com.example.mlbbresearch.game.CooldownTracker
 import com.example.mlbbresearch.game.GameState
 import com.example.mlbbresearch.game.GameStateTracker
+import com.example.mlbbresearch.game.SkillBook
+import com.example.mlbbresearch.game.CastMode
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -79,6 +81,8 @@ object ActionExecutor {
             return
         }
         if (System.currentTimeMillis() < QuickBuySwap.busyUntil) return   // the item swap owns the screen
+        verify(GameStateTracker.state)
+        if (System.currentTimeMillis() < holdUntil) return     // a hold-to-charge skill is being held
 
         val acts = ArrayList<Act>()
         // COACH: while your finger is on the screen (you steer or cast), the AI touches nothing:
@@ -108,9 +112,25 @@ object ActionExecutor {
                 attackGap = 250L + rnd.nextInt(80)
             }
             val (x, y) = Layout.get(c)
-            val me = if (Cfg.aimSkills && c in AIMED && d.targetX >= 0f) self else null
-            if (me != null) acts.add(aimedCast(c, x, y, me.x, me.y, d, gs)) else acts.add(Act.Tap(x, y))
+            if (c in AIMED && self != null) {
+                // how this skill is cast, from its description and what worked before:
+                // tap (quick cast), aim (drag towards where the target will be), hold (press,
+                // hold to charge, aim, release)
+                val mode = SkillBook.castMode(gs.ownHero, c)
+                val act = when {
+                    mode == CastMode.HOLD -> {
+                        val hold = SkillBook.holdMs(gs.ownHero, c)
+                        holdUntil = nowMs + hold + 60          // nothing else may touch until it is released
+                        aimDrag(c, x, y, self.x, self.y, d, gs, hold)
+                    }
+                    mode == CastMode.AIM && Cfg.aimSkills -> aimDrag(c, x, y, self.x, self.y, d, gs, 220L + rnd.nextInt(80))
+                    else -> Act.Tap(x, y)
+                }
+                acts.add(act)
+                checks.add(Check(c, mode, nowMs, d.targetId, d.targetHp, SkillBook.get(gs.ownHero)[c]?.travelSec ?: 0.3f, gs.ownHero))
+            } else acts.add(Act.Tap(x, y))
             if (c != "attack") { CooldownTracker.markCast(c); aiCastAt[c] = nowMs; lastAiCastAt = nowMs }
+            if (nowMs < holdUntil) break                     // a held skill goes out alone
         }
         perform(acts)
 
@@ -123,6 +143,89 @@ object ActionExecutor {
             lastLoggedAt = now
             note(d.describe())
         }
+    }
+
+    // ---- execution feedback: did the skill go off, did it hit? ----
+    // After every skill: 0.5-1.5 s later the button must be dark (it fired). Two misfires in a
+    // row with one cast mode -> the next mode is learned for that skill (tap -> aim -> hold).
+    // An aimed skill whose target lost no HP by the time it should have landed = a miss: the
+    // aim lead (how far ahead of a moving enemy) is nudged, the other way after a second miss.
+    private class Check(val slot: String, val mode: CastMode, val at: Long, val targetId: Int, val targetHp: Float,
+                        val travel: Float, val hero: String?, var fired: Boolean? = null)
+    private val checks = java.util.concurrent.CopyOnWriteArrayList<Check>()
+    private val misfires = HashMap<String, Int>()
+    private val misses = HashMap<String, Int>()
+    @Volatile private var holdUntil = 0L
+    @Volatile var lastFeedback = "-"
+        private set
+
+    private fun verify(gs: GameState) {
+        val now = System.currentTimeMillis()
+        for (c in checks) {
+            val age = now - c.at
+            val key = (c.hero ?: "?") + c.slot
+            if (c.fired == null && age > 500 + (if (c.mode == CastMode.HOLD) SkillBook.holdMs(c.hero, c.slot) else 0L)) {
+                if (!CooldownTracker.screenKnown(c.slot)) { checks.remove(c); continue }
+                c.fired = !CooldownTracker.lookReady(c.slot)
+                if (c.fired == true) misfires[key] = 0 else {
+                    val n = (misfires[key] ?: 0) + 1
+                    misfires[key] = n
+                    if (n >= 2) {
+                        val next = CastMode.values()[(c.mode.ordinal + 1) % CastMode.values().size]
+                        SkillBook.setCastMode(c.hero, c.slot, next)
+                        misfires[key] = 0
+                        lastFeedback = "${c.slot} did not go off twice with ${c.mode.name.lowercase()}: now ${next.name.lowercase()}"
+                        note("Learned: cast ${c.slot} with ${next.name.lowercase()}")
+                    } else lastFeedback = "${c.slot} did not go off"
+                    checks.remove(c); continue
+                }
+            }
+            if (c.fired == true && age > (c.travel * 1000).toLong() + 600) {
+                checks.remove(c)
+                if (c.mode == CastMode.TAP || c.targetId < 0 || c.targetHp < 0f) continue
+                val t = gs.enemies.firstOrNull { it.id == c.targetId } ?: continue
+                if (c.targetHp - t.hp >= 0.03f) {
+                    misses[key] = 0
+                    lastFeedback = "${c.slot} hit"
+                } else {
+                    val n = (misses[key] ?: 0) + 1
+                    misses[key] = n
+                    val lead = SkillBook.aimLead(c.hero, c.slot)
+                    val nl = (lead + if (n % 2 == 1) 0.3f else -0.6f).coerceIn(0f, 2f)
+                    SkillBook.setAimLead(c.hero, c.slot, nl)
+                    lastFeedback = "${c.slot} missed: aim lead ${"%.1f".format(lead)} -> ${"%.1f".format(nl)}"
+                }
+            }
+            if (age > 5000) checks.remove(c)
+        }
+    }
+
+    // Drag a skill button towards where the target WILL be (its speed x the skill's travel time
+    // x the learned lead), or the way the hero walks when there is no target (dashes, escapes).
+    // holdMs: how long the finger stays down (a hold-to-charge skill is released at the end).
+    private fun aimDrag(c: String, bx: Float, by: Float, sx: Float, sy: Float, d: TacticalDecision, gs: GameState, holdMs: Long): Act {
+        val aspect = AccessibilityController.screenAspect()
+        if (d.targetX < 0f || d.intent == Intent.RETREAT) {
+            val (wx, wy) = if (d.moveX != 0f || d.moveY != 0f) d.moveX to d.moveY else joyDirX to joyDirY
+            if (wx == 0f && wy == 0f) return if (holdMs > 400) Act.Drag(bx, by, bx + 0.0005f, by, holdMs) else Act.Tap(bx, by)
+            val l = kotlin.math.hypot(wx, wy)
+            return Act.Drag(bx, by, bx + wx / l * SKILL_AIM_R, by + wy / l * SKILL_AIM_R * aspect, holdMs)
+        }
+        var tx = d.targetX
+        var ty = d.targetY
+        val track = if (d.targetId >= 0) gs.enemies.firstOrNull { it.id == d.targetId } else null
+        if (track != null) {
+            val travel = (SkillBook.get(gs.ownHero)[c]?.travelSec ?: 0.3f) + holdMs.coerceAtMost(400) / 1000f * 0.5f
+            val lead = travel * SkillBook.aimLead(gs.ownHero, c)
+            tx += track.vx * lead
+            ty += track.vy * lead
+        }
+        val dx = (tx - sx) * aspect
+        val dy = ty - sy
+        val l = kotlin.math.hypot(dx, dy).coerceAtLeast(1e-3f)
+        val range = SkillBook.get(gs.ownHero)[c]?.range ?: 0.45f
+        val reach = SKILL_AIM_R * (0.35f + 0.65f * (l / range).coerceAtMost(1f))
+        return Act.Drag(bx, by, bx + dx / l * reach, by + dy / l * reach * aspect, holdMs)
     }
 
     // When to keep the thumb on the joystick. Like a player: the thumb stays down, pushed to the
@@ -169,28 +272,6 @@ object ActionExecutor {
     private var strafeFlipAt = 0L
     private var strafeSign = 1f
 
-    // Drag a skill button to aim, like a player: at where a moving enemy WILL be (its speed
-    // times the skill's travel time), and drag less far for close targets (range skills).
-    private fun aimedCast(c: String, bx: Float, by: Float, sx: Float, sy: Float, d: TacticalDecision, gs: GameState): Act {
-        val aspect = AccessibilityController.screenAspect()
-        var tx = d.targetX
-        var ty = d.targetY
-        val dist0 = kotlin.math.hypot((tx - sx) * aspect, ty - sy)
-        val track = if (d.targetId >= 0) gs.enemies.firstOrNull { it.id == d.targetId } else null
-        if (track != null) {
-            val lead = (0.15f + dist0 * 0.7f).coerceAtMost(0.5f)       // seconds until the skill lands
-            tx += track.vx * lead
-            ty += track.vy * lead
-        }
-        val dx = (tx - sx) * aspect
-        val dy = ty - sy
-        val l = kotlin.math.hypot(dx, dy)
-        // Like your recording: a quick tap almost every time (the game auto-aims at the nearest
-        // target); a deliberate drag only for a target far away (your aimed drags: 290-750 ms)
-        if (l < 0.30f) return Act.Tap(bx, by)
-        val reach = SKILL_AIM_R * (0.55f + 0.45f * (l / 0.45f).coerceAtMost(1f))
-        return Act.Drag(bx, by, bx + dx / l * reach, by + dy / l * reach * aspect, 220L + rnd.nextInt(80))
-    }
 
     // Direction (-1..1) -> joystick touch. The thumb presses the centre, slides out to the edge
     // and stays down; it keeps one heading and only slides to a new one when the course really
@@ -378,6 +459,8 @@ object ActionExecutor {
     // Fast mode sends the touches straight from the AI's thread (no wait for the UI thread)
     fun perform(acts: List<Act>) {
         if (acts.isEmpty()) return
+        // a skill being held to charge: any other touch now would cancel it
+        if (System.currentTimeMillis() < holdUntil && acts.none { it is Act.Drag && (it as Act.Drag).ms > 400 }) return
         val svc = AccessibilityController.instance ?: return
         val send = {
             try {

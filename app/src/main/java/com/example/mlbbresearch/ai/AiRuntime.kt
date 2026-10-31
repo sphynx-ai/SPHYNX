@@ -305,6 +305,8 @@ object AiRuntime {
             try {
                 // keep the online meta of the hero you play fresh (Groq, in the background)
                 MetaAdvisor.autoUpdate(GameStateTracker.ownHero())
+                // and learn its skills and passive once (descriptions from the web)
+                com.example.mlbbresearch.game.SkillBook.autoFetch(GameStateTracker.ownHero())
                 StrategicAdvisor.tick(GameStateTracker.state, playerOn, drafterOn, builderOn)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -346,6 +348,8 @@ object AiRuntime {
             sb.append("\n\nDecision: ").append(ActionExecutor.lastDecision)
             sb.append("\nTarget: ").append(ActionExecutor.lastTarget)
             sb.append("\nNext: ").append(TacticalEngine.nextPlan)
+            sb.append("\nState: ").append(Utility.state.name.lowercase()).append(" | survival ").append(Utility.lastSurvival.toInt())
+                .append(" | engage ").append(Utility.lastEngage.toInt()).append(" (").append(Utility.lastWhy).append(")")
             val p = StrategicAdvisor.plan
             sb.append("\nPlan: ").append(p.plan).append(" (").append("%.1f".format(p.aggression)).append(")")
             sb.append("\nLane: ").append(s.lane.label).append(" | spell: ").append(s.spell ?: "?")

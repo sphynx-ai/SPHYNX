@@ -356,6 +356,46 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Smarter fights: scores, states, skill knowledge, checked casts (v22)
+
+Hybrid design: vision -> game state -> decision scores -> combo planner -> touches, and every important touch is
+checked on the next frames. Gemma / Groq only plan and look things up; they never press buttons.
+
+- **Survival score (0-100)** instead of fixed HP lines: HP, the hero's role (a tank at 20% outlasts a marksman at 40%),
+  a ready escape / shield / heal / Flicker, allies near, enemies near and how much HP they still have, enemies missing
+  from the minimap, standing in enemy tower range. Retreat when it falls under 30 with an enemy near (and always
+  under 15% HP); it stays retreating until it is above 50.
+- **Engagement score**: target HP, killable with the ready skills, isolated target, allies, ultimate / crowd control
+  ready, own low HP, extra enemies, no escape ready, target under its tower, level difference, passive bonuses, your
+  K/D trend (ahead = press, behind = only clear fights), and how SURE the vision is about that enemy (a fresh or
+  flickering sighting lowers the score). 50+ fights, 35+ keeps fighting, 25-49 keeps a safe distance and waits,
+  below 25 stays away. A turtle / lord the team is taking comes first unless the fight scores 70+.
+- **Target choice** by role, not the nearest: exposed (far from its team) and low-HP enemies; tanks and supports
+  peel the enemy closest to their allies; assassins dive exposed targets; marksmen and mages pick what they can hit
+  from range; fighters look for 1v1s; heroes whose passive stacks stay on one target.
+- **Fight states** FARMING / POSITIONING / ENGAGING / RETREATING / OBJECTIVE with hysteresis (a switch must hold for
+  0.6 s, retreating is at once), so it does not change its mind every tick. The Player status shows the state and
+  why ("+20 isolated, -15 no escape ready, ...").
+- **Kills**: a target under 10% is chased only when survival is 35+, no other healthy enemy is next to it, and no
+  objective would be lost.
+- **Skill knowledge (SkillBook)**: per skill range, target type (target / direction / area / self / dash), crowd
+  control, mobility, shield / heal, damage share, cast mode (tap / aim / hold to charge and release), hold time and
+  travel time; the passive becomes play rules (basic attack after every skill, stay on one target, stronger at low
+  HP, regen out of combat = fewer recalls, bush bonus = more ambushes, execute bonus = chase at higher HP, bonus
+  after a dash = open with the dash). Learned from the skill descriptions online (the hero you play is learned by
+  itself; a button learns all heroes), or from descriptions you paste.
+- **Combo planner**: before every step: is the target still there, in THIS skill's range, still alone, not at its
+  tower, is your HP still fine, is it still a good fight? If not, the combo stops and the engine reassesses. The
+  ultimate is saved unless the ready skills can kill (lethal estimate), it is a teamfight, or the engine asked;
+  an enemy about to die to basic attacks does not get the ultimate.
+- **Checked casts**: after each skill the button must go dark (it fired); a skill that did not go off is tried once
+  more, and after two misfires with one cast mode the next mode is learned for that skill (tap -> aim -> hold). A
+  held skill is pressed, held for its charge time while aiming, and released; nothing else touches the screen
+  meanwhile. Aimed skills aim where the enemy will be (its speed x travel time x a learned lead); a miss (the target
+  lost no HP) nudges the lead, the other way after a second miss.
+- Not done: reading enemies' skill cooldowns and baiting skills (enemy skill effects cannot be read yet), mana /
+  energy (no bar reading), which enemy hero each on-screen enemy is (roles come from behaviour, not names).
+
 ## Joystick, kills, early game (v20)
 
 - Joystick: press the centre, hold, then swipe out to one direction and keep holding past the ring's edge. Turns are

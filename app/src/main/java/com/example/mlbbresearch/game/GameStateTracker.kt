@@ -297,6 +297,18 @@ object CooldownTracker {
         return since >= cd
     }
 
+    @Synchronized
+    fun screenKnown(slot: String): Boolean = Cfg.readCooldownsFromScreen && (baseline[slot] ?: 0f) > 40f && current[slot] != null
+
+    // what the button shows right now: bright = ready (true), dark = cooling down / used
+    // (false); unknown buttons count as not ready so nothing is pressed twice by mistake
+    @Synchronized
+    fun lookReady(slot: String): Boolean {
+        val b = current[slot] ?: return false
+        val base = baseline[slot] ?: return false
+        return base > 40f && b >= base * 0.72f
+    }
+
     // for the Player page: what the buttons show right now
     @Synchronized
     fun screenState(): String = listOf("s1", "s2", "ult", "spell").joinToString("  ") { k ->

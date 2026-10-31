@@ -1,5 +1,8 @@
 package com.example.mlbbresearch.ai
 
+import com.example.mlbbresearch.game.SkillBook
+import com.example.mlbbresearch.game.Passive
+
 import com.example.mlbbresearch.core.Cfg
 import com.example.mlbbresearch.game.CooldownTracker
 import com.example.mlbbresearch.game.GameState
@@ -131,6 +134,8 @@ object TacticalEngine {
         return "level ${s.level}$xp$vs: $next"
     }
 
+    @Volatile var lastTargetId = -1
+
     fun planAhead(s: GameState, d: TacticalDecision, p: HeroProfile): String {
         val hp = s.selfHp
         nextPlan = when {
@@ -255,14 +260,26 @@ object TacticalEngine {
         val alliesNear = s.alliesWithin(0.5f).size
         val minions = s.minionsWithin(0.6f)
 
+        // ---- 0. assess: survival, the best target and how good a fight with it is, the state ----
+        val kit = SkillBook.get(s.ownHero)
+        val surv = Utility.survival(s, p, kit)
+        val cand = Utility.bestTarget(s, p, threat, lastTargetId)
+        val eng = cand?.let { Utility.engagement(s, p, it, kit) + (aggression - 0.5f) * 30f } ?: 0f
+        val bossNow = s.boss
+        val objectiveOn = Cfg.takeObjectives && bossNow != null &&
+            (s.allies.count { s.dist(it.x, it.y, bossNow.x, bossNow.y) < 0.5f } >= 1 || s.lane == Lane.JUNGLE)
+        val fstate = Utility.update(s, surv, eng, objectiveOn, threat.isNotEmpty())
+
         // ---- 1. survive ----
         // Low HP always retreats. "Outnumbered" / "losing the duel" are rules of thumb: when the
         // brain has chosen an option it decides those itself (and learns if it was wrong).
         val rules = option == null || option == FightOption.RULES
-        val outnumbered = rules && threat.size >= alliesNear + 2
-        val losingDuel = rules && threat.size == 1 && alliesNear == 0 && hp < 0.5f && threat[0].hp > hp + 0.25f
+        // HP alone does not decide (a tank at 20% outlasts a marksman at 40%): the survival score
+        // does, except at critical HP (under 15%)
+        val outnumbered = rules && threat.size >= alliesNear + 2 && surv < 55f
+        val losingDuel = rules && threat.size == 1 && alliesNear == 0 && hp < 0.5f && threat[0].hp > hp + 0.25f && surv < 45f
         val brainRetreat = option == FightOption.RETREAT && s.enemiesWithin(0.9f).isNotEmpty()
-        if (hp in 0f..retreatHp && threat.isNotEmpty() || outnumbered || losingDuel || brainRetreat ||
+        if ((hp in 0f..0.15f || fstate == Utility.State.RETREATING) && threat.isNotEmpty() || outnumbered || losingDuel || brainRetreat ||
             plan.plan == "retreat" && threat.isNotEmpty() && rules
         ) {
             var (mx, my) = retreatDir(s, threat)
@@ -293,7 +310,7 @@ object TacticalEngine {
                     outnumbered -> "outnumbered ${threat.size} vs ${alliesNear + 1}"
                     losingDuel -> "losing the duel"
                     brainRetreat && hp > retreatHp -> "brain: back off"
-                    else -> "HP ${(hp * 100).toInt()}%"
+                    else -> "HP ${(hp * 100).toInt()}%, survival ${surv.toInt()}"
                 }), force = true)
         }
 
@@ -311,7 +328,9 @@ object TacticalEngine {
         }
         val safe = s.enemiesWithin(0.9f).isEmpty()
         // early game: walking home costs too much farm, so recall only when really low (Regen covers the rest)
-        val recallAt = if (s.matchSec in 0..180) minOf(Cfg.recallHpPct, 20) else Cfg.recallHpPct
+        var recallAt = if (s.matchSec in 0..180) minOf(Cfg.recallHpPct, 20) else Cfg.recallHpPct
+        // passive heals out of combat: stepping away beats walking home
+        if (kit.has(Passive.OUT_OF_COMBAT_REGEN)) recallAt = recallAt * 6 / 10
         // a level-up is moments away (EXP ring almost full) and not in danger: finish the camp or
         // wave first, the new level heals a little and makes the walk back worth it
         val levelSoon = s.xp >= 0.8f && s.level < 15 && hp > 0.15f && (s.creeps.isNotEmpty() || minions.isNotEmpty())
@@ -343,12 +362,14 @@ object TacticalEngine {
         //  - under the execute % (20 by default): chase, but never under their tower
         //  - before level 4 only the under-10% kills (no duels yet)
         val safeTargets = s.enemiesWithin(0.9f).filter { !TowerLogic.enemyUnderTower(s, it) }
+        // (never on HP alone: you must be fairly safe, the enemy alone, and no objective to lose)
         val dying = s.enemiesWithin(1.3f).filter { e ->
-            e.hp <= 0.10f && hp > 0.15f && (!TowerLogic.enemyUnderTower(s, e) ||
+            e.hp <= 0.10f && hp > 0.15f && surv >= 35f && !(objectiveOn && bossNow!!.hp < 0.4f) &&
+                s.enemies.none { o -> o.id != e.id && s.dist(o.x, o.y, e.x, e.y) < 0.35f && o.hp > 0.3f } && (!TowerLogic.enemyUnderTower(s, e) ||
                 hp >= 0.4f && (s.distToSelf(e.x, e.y) <= p.attackRange * 1.6f || dashSlot(s, p) != null || s.spell == "Flicker" && CooldownTracker.ready("spell", p)))
         }.minByOrNull { it.hp + s.distToSelf(it.x, it.y) * 0.3f }
         val low = dying ?: if (s.level < 4) null else
-            safeTargets.filter { it.hp * 100 <= Cfg.executeHpPct }.minByOrNull { it.hp + s.distToSelf(it.x, it.y) * 0.3f }
+            safeTargets.filter { it.hp * 100 <= Cfg.executeHpPct + (if (kit.has(Passive.EXECUTE_BONUS)) 10 else 0) }.minByOrNull { it.hp + s.distToSelf(it.x, it.y) * 0.3f }
         if (low != null && (hp > retreatHp || low === dying)) {
             val d = s.distToSelf(low.x, low.y)
             val casts = ArrayList<String>()
@@ -366,7 +387,7 @@ object TacticalEngine {
         }
 
         // ---- 2d. ambush from a bush: hide while an enemy walks towards us (3 s at most) ----
-        if (Cfg.useBushes && hp > 0.55f && (s.lane == Lane.ROAM || s.lane == Lane.JUNGLE || alliesNear > 0)) {
+        if (Cfg.useBushes && hp > 0.55f && (s.lane == Lane.ROAM || s.lane == Lane.JUNGLE || alliesNear > 0 || kit.has(Passive.BUSH_BONUS))) {
             val e = safeTargets.minByOrNull { s.distToSelf(it.x, it.y) }
             val de = e?.let { s.distToSelf(it.x, it.y) } ?: 9f
             // only while the enemy is actually coming towards us, and 3 s at most (no long waits)
@@ -401,16 +422,24 @@ object TacticalEngine {
         }
 
         // ---- 3. engage an enemy hero (the brain's choice first; never one under their tower) ----
-        val target = if (noDuel) null else pickTarget(s, if (option == null) threat.filter { it in safeTargets } else safeTargets, plan)
+        // the target is the best one for the role (not simply the nearest); the fight needs an
+        // engagement score of 50+ (35+ to keep going) - and an objective the team is taking
+        // comes first unless the fight is very good (70+)
+        val target = if (noDuel) null else cand?.takeIf { option != null || it in safeTargets }
         if (target != null && option != null && !rules) {
-            brainFight(s, p, option, target, hp, alliesNear)?.let { return hold(now, it, force = true) }
+            brainFight(s, p, option, target, hp, alliesNear)?.let { lastTargetId = target.id; return hold(now, it, force = true) }
         }
-        if (target != null && (rules || option == FightOption.ALL_IN) && s.distToSelf(target.x, target.y) <= 0.55f) {
+        val fightOk = fstate == Utility.State.ENGAGING && !(objectiveOn && eng < 70f) || option == FightOption.ALL_IN
+        if (target != null && (rules || option == FightOption.ALL_IN) && s.distToSelf(target.x, target.y) <= 0.55f && fightOk) {
             val d = s.distToSelf(target.x, target.y)
-            val winnable = target.hp <= hp + 0.1f + (aggression - 0.5f) * 0.4f ||
-                target.hp < 0.35f ||
-                (alliesNear + 1 >= threat.size && aggression >= 0.5f)
-            if (d <= p.engageRange && winnable) {
+            lastTargetId = target.id
+            if (d > p.engageRange) {
+                // out of reach: reposition first (walk in), skills wait
+                val (mx, my) = toward(s, target.x, target.y)
+                return hold(now, TacticalDecision(Intent.ENGAGE, mx, my, emptyList(), target.x, target.y, "enemy #${target.id}",
+                    target.hp, target.id, "closing in on enemy #${target.id} (engage ${eng.toInt()})"))
+            }
+            run {
                 val casts = ArrayList<String>()
                 if (d <= p.attackRange * 1.3f) casts.add("attack")
                 for (sk in p.combo) {
@@ -422,7 +451,17 @@ object TacticalEngine {
                 val (mx, my) = heroSpacing(s, p, target, d)
                 return hold(now, TacticalDecision(Intent.ENGAGE, mx, my, casts, target.x, target.y,
                     "enemy #${target.id}", target.hp, target.id,
-                    "target HP ${(target.hp * 100).toInt()}%, ${(d * 100).toInt()} away"))
+                    "target HP ${(target.hp * 100).toInt()}%, ${(d * 100).toInt()} away, engage ${eng.toInt()}, survival ${surv.toInt()}"))
+            }
+        }
+        // 25-49: not good enough yet - keep a safe distance and wait for a better moment
+        // (farming goes on below when there is something to farm)
+        if (fstate == Utility.State.POSITIONING && target != null && minions.isEmpty() && s.creeps.isEmpty()) {
+            val d = s.distToSelf(target.x, target.y)
+            if (d < 0.42f) {
+                val (mx, my) = retreatDir(s, listOf(target))
+                return hold(now, TacticalDecision(Intent.GROUP, mx, my, emptyList(), target.x, target.y, "enemy #${target.id}", target.hp, -1,
+                    "positioning: engage ${eng.toInt()} is not enough, keeping distance"))
             }
         }
 
