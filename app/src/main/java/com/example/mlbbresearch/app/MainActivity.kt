@@ -1089,7 +1089,7 @@ class MainActivity : Activity() {
             "  - Gemma 3n E2B model: the  .litertlm  file\n" +
             "  - minimap detector:  mlbb_detector.tflite  +  labels.txt\n" +
             "  - screen detector:  mlbb_screen_detector.tflite  +  screen_labels.txt\n" +
-            "  - tactical network:  policy.tflite\n" +
+            "  - tactical network:  policy.tflite  +  policy_info.json\n" +
             "  - Groq API key:  groq_key.txt  (the key on the first line)", 13f)
         val c = card()
         val st = cardText(c, 14f, true)
@@ -1108,6 +1108,7 @@ class MainActivity : Activity() {
                     com.example.mlbbresearch.vision.ScreenIntel.added else "") +
                 "\n${mark(pn.ready)} Tactical network: ${pn.state}" +
                 (if (pn.ready && pn.agreeRate >= 0f) ", agrees with the rules ${(pn.agreeRate * 100).toInt()}%" else "") +
+                (if (pn.ready) "\n     ${pn.qualityText}" else "") +
                 "\n${mark(Cfg.groqKey.isNotBlank())} Groq key: " + (if (Cfg.groqKey.isBlank()) "not found" else "set") +
                 "\n\nMinimap: " + com.example.mlbbresearch.game.MapIntel.status
         }

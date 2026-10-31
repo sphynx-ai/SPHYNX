@@ -23,6 +23,7 @@ import java.io.InputStream
 //   mlbb_screen_detector.tflite / *screen*.tflite   whole-screen detector -> copied in, loaded
 //   screen_labels.txt               its class names           -> applied
 //   policy*.tflite / *tactical*.tflite          tactical network -> copied in, loaded
+//   policy_info.json                how reliable the network is -> only its reliable parts used
 //   groq_key.txt / groq.txt         Groq API key (first line)  -> applied
 //   groq_model.txt                  Groq model name (optional) -> applied
 // A file is only copied again when it changed (size or date), so big files are not copied
@@ -150,6 +151,15 @@ object AutoFolder {
                                         copy(e, dst); remember("screen", e)
                                         found.add("screen detector " + (com.example.mlbbresearch.vision.ScreenDetector.load(app) ?: "loaded"))
                                     } else if (!com.example.mlbbresearch.vision.ScreenDetector.ready) com.example.mlbbresearch.vision.ScreenDetector.load(app)
+                                }
+                                n == "policy_info.json" -> {
+                                    // how reliable the tactical network is: the app then only uses the reliable parts
+                                    val txt = text(e)
+                                    if (txt != Cfg.raw("policy_info")) {
+                                        Cfg.setRaw("policy_info", txt)
+                                        com.example.mlbbresearch.learning.PolicyNet.applyInfo(txt)
+                                        found.add("tactical network quality: " + com.example.mlbbresearch.learning.PolicyNet.qualityText)
+                                    }
                                 }
                                 n == "screen_labels.txt" -> {
                                     val labels = text(e).lines().flatMap { it.split(",") }.map { it.trim() }.filter { it.isNotEmpty() }.joinToString(",")

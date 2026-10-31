@@ -42,6 +42,41 @@ object PolicyNet {
 
     val ready: Boolean get() = interpreter != null
 
+    // ---- what is reliable (policy_info.json from the notebook, read from the MLBB-Research folder) ----
+    // joystick: 40%+ with every move counted equally, on 300+ checked moments with 15+ of each move;
+    // a button: 20+ presses checked and 40%+ of its presses right. Without the file: all used.
+    @Volatile var moveTrusted = true
+        private set
+    @Volatile var trustedButtons: Set<String> = setOf("attack", "s1", "s2", "ult", "spell", "recall")
+        private set
+    @Volatile var qualityText = "no policy_info.json: everything it suggests is used"
+        private set
+
+    fun applyInfo(json: String?) {
+        if (json == null) {
+            moveTrusted = true; trustedButtons = setOf("attack", "s1", "s2", "ult", "spell", "recall")
+            qualityText = "no policy_info.json: everything it suggests is used"
+            return
+        }
+        try {
+            val o = org.json.JSONObject(json)
+            val bal = o.optDouble("move_balanced", 0.0); val checked = o.optInt("move_checked", 0); val fewest = o.optInt("move_fewest", 0)
+            moveTrusted = bal >= 0.40 && checked >= 300 && fewest >= 15
+            val b = o.optJSONObject("buttons")
+            val ok = HashSet<String>()
+            if (b != null) for (k in b.keys()) {
+                val q = b.getJSONObject(k)
+                if (q.optInt("checked", 0) >= 20 && q.optDouble("right", 0.0) >= 0.4) ok.add(k)
+            }
+            trustedButtons = ok
+            qualityText = "joystick " + (if (moveTrusted) "used" else "not yet (${(bal * 100).toInt()}% on $checked moments)") +
+                "; buttons used: " + (if (ok.isEmpty()) "none yet" else ok.joinToString())
+        } catch (t: Throwable) {
+            Diag.error("policy_info.json", t)
+            qualityText = "policy_info.json could not be read"
+        }
+    }
+
     fun modelFile(ctx: Context) = File(ctx.applicationContext.filesDir, "policy.tflite")
 
     @Synchronized
@@ -118,7 +153,7 @@ object PolicyNet {
         if (safety) return d
 
         var mx = d.moveX; var my = d.moveY
-        val moveOk = o.moveP >= Cfg.policyMinConf && when (d.intent) {
+        val moveOk = moveTrusted && o.moveP >= Cfg.policyMinConf && when (d.intent) {
             Intent.ENGAGE, Intent.AMBUSH, Intent.GROUP, Intent.IMITATE, Intent.LANE_CLEAR -> true
             else -> false
         }
@@ -131,7 +166,7 @@ object PolicyNet {
         val casts = ArrayList(d.casts)
         for ((k, slot) in SLOTS.withIndex()) {
             val need = when (slot) { "attack" -> 0.5f; "recall" -> 0.85f; else -> 0.6f }
-            if (o.casts[k] < need || slot in casts) continue
+            if (o.casts[k] < need || slot in casts || slot !in trustedButtons) continue
             if (slot == "recall" && s.enemiesWithin(0.9f).isNotEmpty()) continue
             if (slot != "attack" && slot != "recall" && !CooldownTracker.ready(slot, p)) continue
             casts.add(slot)
