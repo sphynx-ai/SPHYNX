@@ -34,7 +34,7 @@ object HeroDetector {
     // off = monsters are not looked for (set by Cfg.detectMonsters)
     @Volatile var neutralOn = true
 
-    private class Blob(val cls: Int, var minX: Int, var maxX: Int, val minY: Int, var maxY: Int, var count: Int)
+    private class Blob(val cls: Int, var minX: Int, var maxX: Int, var minY: Int, var maxY: Int, var count: Int)
 
     fun classify(p: Int): Int {
         val r = (p shr 16) and 0xff
@@ -81,18 +81,32 @@ object HeroDetector {
             for (x in 0..w) {
                 val c = if (x < w) classify(px[base + x]) else NONE
                 if (c != cls) {
-                    if (cls != NONE && x - start >= minRun) rowRuns.add(intArrayOf(start, x - 1, cls))
+                    if (cls != NONE) {
+                        // HP bars have thin dark tick marks every few hundred HP: a gap of up to
+                        // 2 px between two runs of the same colour is one bar, not two
+                        val last = rowRuns.lastOrNull()
+                        if (last != null && last[2] == cls && start - last[1] <= 3) last[1] = x - 1
+                        else rowRuns.add(intArrayOf(start, x - 1, cls))
+                    }
                     cls = c
                     start = x
                 }
             }
-            // attach runs to blobs that touched the previous rows
+            rowRuns.removeAll { it[1] - it[0] + 1 < minRun }
+            // attach runs to blobs that touched the previous rows; a run touching two blobs
+            // joins them (a bar split by tick marks in one row is whole in the next)
             for (run in rowRuns) {
                 var attached: Blob? = null
-                for (bl in active) {
+                val itB = active.iterator()
+                while (itB.hasNext()) {
+                    val bl = itB.next()
                     if (bl.cls == run[2] && bl.maxY >= y - 2 && run[0] <= bl.maxX + 2 && run[1] >= bl.minX - 2) {
-                        attached = bl
-                        break
+                        val a = attached
+                        if (a == null) { attached = bl; continue }
+                        a.minX = min(a.minX, bl.minX); a.maxX = max(a.maxX, bl.maxX)
+                        a.count += bl.count
+                        a.minY = min(a.minY, bl.minY)
+                        itB.remove()
                     }
                 }
                 if (attached != null) {
@@ -127,12 +141,17 @@ object HeroDetector {
             val cy = (bl.minY + bl.maxY) / 2
             if (exclPx.any { cx >= it[0] && cx <= it[2] && cy >= it[1] && cy <= it[3] }) continue
             if (!hasDarkFrame(px, w, h, bl)) continue
+            if (!hasSolidRow(px, w, bl)) continue
 
             // the missing-HP part of the bar is dark grey inside the bar's dark frame:
             // measure it to get HP %. It ends where the frame ends or the colour changes.
             var empty = 0
             var x = bl.maxX + 1
-            val limit = min(w - 1, bl.maxX + bw * 6)
+            // every hero's HP bar has the same full width on screen (about 7.7% of its width): the grey
+            // empty part never reaches past that, so a dark bush or wall right after a full bar
+            // is not read as lost HP
+            val fullMax = (w * 0.079f).toInt()
+            val limit = min(w - 1, if (bw < fullMax) bl.minX + fullMax else bl.maxX + bw * 6)
             // the empty (grey) part's brightness, taken past a tick mark that may sit right at
             // the end of the coloured part (a black tick there used to cut the measurement short)
             // (or a soft blended pixel): use the brightest real grey among the next 5 pixels
@@ -177,6 +196,18 @@ object HeroDetector {
             )
         }
         return out
+    }
+
+    // An HP bar is a solid strip: at least one row is its colour almost end to end (tick marks
+    // are single pixels). Red damage numbers and skill effects have strokes with holes.
+    private fun hasSolidRow(px: IntArray, w: Int, bl: Blob): Boolean {
+        val bw = bl.maxX - bl.minX + 1
+        for (y in bl.minY..bl.maxY) {
+            var n = 0
+            for (x in bl.minX..bl.maxX) if (classify(px[y * w + x]) == bl.cls) n++
+            if (n >= bw * 0.85f) return true
+        }
+        return false
     }
 
     // is there bar frame (dark) just above or below this column?

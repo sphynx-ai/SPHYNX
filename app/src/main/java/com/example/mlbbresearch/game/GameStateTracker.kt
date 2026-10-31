@@ -150,6 +150,7 @@ object GameStateTracker {
             // first look at your hero after hero select / loading: the match clock starts
             matchStartAt = now
             spawnAt = now
+            com.example.mlbbresearch.vision.LevelReader.reset()
         }
         recognise(v)
         if (v.kda[0] > 0) { kills++; lastKillAt = now; Diag.info("Kill (K/D/A)") }
@@ -225,7 +226,10 @@ object GameStateTracker {
             bossHp = v.bossHp,
             bushes = v.bushes,
             inBush = v.inBush,
-            screenWalls = v.screenWalls
+            screenWalls = v.screenWalls,
+            level = v.level,
+            xp = v.xp,
+            enemyLevel = v.enemyLevel
         )
         state = s
         CooldownTracker.observe(v)
@@ -248,6 +252,7 @@ object GameStateTracker {
         matchStartAt = 0L
         kills = 0; deaths = 0; assists = 0
         com.example.mlbbresearch.vision.KdaReader.reset()
+        com.example.mlbbresearch.vision.LevelReader.reset()
         com.example.mlbbresearch.vision.WallMap.reset()
         items = -1
         gold = -1

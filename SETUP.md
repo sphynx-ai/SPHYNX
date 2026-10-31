@@ -335,11 +335,34 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
 
 ## Jungle, turtle and lord
 
-- Monsters are seen by their orange / yellow HP bars. A bar about twice a hero's width is the turtle or the lord.
+- Monsters are seen by their RED HP bars with no level badge next to them (enemy heroes have one). A bar about twice
+  a hero's width is the turtle or the lord. (v17: the old "learned monster colour" is gone and wiped on start: it had
+  learned the teal of grass and leaves, so bushes, walls and your own hero showed up as monsters, the pink boxes,
+  and the AI attacked them and stood at the "camp" forever.)
   It is called the turtle before 8:00 and the lord after, counted from when your hero first appears.
 - The Player helps take the turtle or lord when an ally is on it, when you jungle or roam, or when it is below half HP,
   and only if no enemy hero is near.
 - With Retribution it finishes monsters below the set HP (default: 12% for turtle/lord, 35% for jungle monsters).
+
+## Hero level (v17)
+
+- Your level 1-15 is read from the round badge left of your HP bar. At capture size the digits are about 5 x 6 pixels,
+  so it counts: level 1 at the start, +1 when the badge changes and stays changed, or when a new skill point (+) shows.
+- Every badge seen for a few seconds at a known level is remembered (levels 1, 2, 9 and 12 are built in, measured on
+  your screenshots). A remembered badge gives the level directly and corrects any miscount; two digits = 10 or more.
+  The same remembered badges read the nearest enemy hero's level.
+- The EXP ring (gold arc around the badge) is read as 0-100%.
+- How the level changes play: before level 4 (no ultimate) farm first and fight only easy targets; level 4, 8, 12 and
+  being ahead in level make it fight more; 2+ levels behind it avoids even fights; at 15 it stops farming small camps
+  and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
+- The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
+
+## HP bar fix (v17)
+
+- Your HP bar's tick marks split it into pieces, so it was often missed or read as 3-40% HP at full health. The AI
+  then went back to base (Recall / Regen / retreat) again and again. Pieces are now joined, and the grey empty part
+  is never read past the bar's full width (dark bushes right after a full bar no longer count as lost HP).
+- Red damage numbers are no longer read as HP bars (a bar has at least one solid row).
 
 ## Smart fights: the AI learns from its mistakes (Learn page)
 

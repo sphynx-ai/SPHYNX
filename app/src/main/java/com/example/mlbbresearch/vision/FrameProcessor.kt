@@ -28,6 +28,9 @@ class VisionResult(
     val bushes: List<Bush>,            // bushes on screen (tall grass: hide / ambush)
     val inBush: Boolean,               // you are standing in a bush (hidden from enemies)
     val screenWalls: BooleanArray,     // rock / cliff / tree cells on screen (40 x 20 grid)
+    val level: Int = 1,                // your hero level 1..15 (LevelReader)
+    val xp: Float = -1f,               // how full the EXP ring is, 0..1 (-1 unknown)
+    val enemyLevel: Int = -1,          // nearest enemy hero's level, -1 unknown
     val processMs: Long
 ) {
     val aspect: Float get() = if (frameH == 0) 1.78f else frameW.toFloat() / frameH
@@ -125,6 +128,13 @@ object FrameProcessor {
             BushDetector.detect(px, w, h, hud + ScreenMasks.overlay, self, seen.filter { it.team != Team.SELF }).also { lastBush = it }
         } else if (self != null) lastBush!! else BushDetector.Result(emptyList(), false)
 
+        val hudInfo = if (self != null || trackPlayer) ScreenReader.hud(px, w, h, trackPlayer || trackMotion) else HudInfo.NONE
+        // your level from the badge, and the nearest enemy hero's (from the badges remembered)
+        if (self != null) LevelReader.update(px, w, h, self, hudInfo.upgradeReady.isNotEmpty(), t0)
+        val enemyLevel = if (self == null) -1 else seen.filter { it.team == Team.ENEMY && it.hero }
+            .minByOrNull { kotlin.math.abs(it.x - self.x) + kotlin.math.abs(it.y - self.y) }
+            ?.let { LevelReader.levelOf(px, w, h, it) } ?: -1
+
         val result = VisionResult(
             ts = t0, frameW = w, frameH = h,
             self = self,
@@ -137,7 +147,7 @@ object FrameProcessor {
             saturation = HeroDetector.saturation(px, w, h),
             skillBrightness = brightness,
             hint = hint,
-            hud = if (self != null || trackPlayer) ScreenReader.hud(px, w, h, trackPlayer || trackMotion) else HudInfo.NONE,
+            hud = hudInfo,
             heroSig = if (self != null && frameNo % 12 == 0L) heroSig(px, w, h, self, mini) else null,
             spellIcon = if (self != null && frameNo % 12 == 6L) IconMemory.print(px, w, h, "spell", 0.016f) else null,
             monsters = steadySmall.filter { it.team == Team.NEUTRAL } + seen.filter { it.team == Team.NEUTRAL && it.hero },
@@ -146,6 +156,9 @@ object FrameProcessor {
             bushes = bush.bushes,
             inBush = bush.inBush,
             screenWalls = bush.walls,
+            level = LevelReader.level,
+            xp = LevelReader.xp,
+            enemyLevel = enemyLevel,
             processMs = System.currentTimeMillis() - t0
         )
         latest = result

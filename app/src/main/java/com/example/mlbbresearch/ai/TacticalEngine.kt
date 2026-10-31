@@ -99,6 +99,36 @@ object TacticalEngine {
     @Volatile var nextPlan = "-"
         private set
 
+    // ---- hero level (1..15): higher level = more damage and HP ----
+    //  - before level 4 there is no ultimate: farm first, fight only easy targets
+    //  - level 4 (ultimate), 8 and 12 (ultimate upgrades) are power spikes: fight more willingly
+    //  - ahead of the enemy in level: press the fight; 2+ levels behind: avoid even fights
+    fun levelBias(s: GameState): Float {
+        var b = when {
+            s.level < 4 -> -0.1f
+            s.level >= 12 -> 0.12f
+            s.level >= 8 -> 0.08f
+            else -> 0.05f
+        }
+        if (s.enemyLevel > 0) b += ((s.level - s.enemyLevel).coerceIn(-3, 3)) * 0.07f
+        return b
+    }
+
+    // what to do to raise the level (shown with the plan)
+    fun levelGoal(s: GameState): String {
+        val xp = if (s.xp >= 0f) " (EXP ${(s.xp * 100).toInt()}%)" else ""
+        val vs = if (s.enemyLevel > 0) ", enemy level ${s.enemyLevel}" else ""
+        val next = when {
+            s.level >= 15 -> "max level: push towers and take turtle / lord to end the game"
+            s.level < 4 -> "farm to level 4 for the ultimate: " + if (s.lane == Lane.JUNGLE) "clear camps back to back, buffs first" else "last-hit every minion, take a near camp between waves"
+            s.enemyLevel > 0 && s.enemyLevel > s.level + 1 -> "behind in level: farm safe camps / waves, fight only with allies"
+            s.enemyLevel > 0 && s.level > s.enemyLevel + 1 -> "ahead in level: look for kills and push while stronger"
+            s.lane == Lane.JUNGLE -> "keep the camp route going, kill heroes when they are low (kills give the most EXP)"
+            else -> "clear waves (EXP), kill heroes when they are low, push with minions"
+        }
+        return "level ${s.level}$xp$vs: $next"
+    }
+
     fun planAhead(s: GameState, d: TacticalDecision, p: HeroProfile): String {
         val hp = s.selfHp
         nextPlan = when {
@@ -113,7 +143,7 @@ object TacticalEngine {
             d.intent == Intent.LANE_CLEAR -> "after the wave: a nearby camp or the next tower"
             d.intent == Intent.OBJECTIVE -> "after the objective: push a lane with the buff"
             else -> "keep going: ${d.reason}"
-        }
+        } + " | " + levelGoal(s)
         return nextPlan
     }
 
@@ -196,7 +226,7 @@ object TacticalEngine {
         if (s.phase != Phase.IN_GAME || self == null) return TacticalDecision.IDLE
         val now = s.ts
         val hp = s.selfHp
-        val aggression = (plan.aggression + learnedBias).coerceIn(0f, 1f)
+        val aggression = (plan.aggression + learnedBias + levelBias(s)).coerceIn(0f, 1f)
         val retreatHp = (p.retreatHp + (0.5f - aggression) * 0.15f).coerceIn(0.12f, 0.6f)
 
         val threat = s.enemiesWithin(0.55f)
@@ -260,7 +290,10 @@ object TacticalEngine {
         val safe = s.enemiesWithin(0.9f).isEmpty()
         // early game: walking home costs too much farm, so recall only when really low (Regen covers the rest)
         val recallAt = if (s.matchSec in 0..180) minOf(Cfg.recallHpPct, 20) else Cfg.recallHpPct
-        if (Cfg.useRecall && hp in 0f..recallAt / 100f && safe) {
+        // a level-up is moments away (EXP ring almost full) and not in danger: finish the camp or
+        // wave first, the new level heals a little and makes the walk back worth it
+        val levelSoon = s.xp >= 0.8f && s.level < 15 && hp > 0.15f && (s.creeps.isNotEmpty() || minions.isNotEmpty())
+        if (Cfg.useRecall && hp in 0f..recallAt / 100f && safe && !levelSoon) {
             // Recall channels ~6 s: stand still; an enemy showing up cancels it (step 1 / above)
             regenUntil = 0L
             recallUntil = now + 8000
@@ -378,8 +411,10 @@ object TacticalEngine {
         }
 
         // ---- 6b. jungler: walk the jungle path to the next camp (from the minimap), not the lanes ----
+        // (at level 15 more EXP is useless: the jungler pushes lanes and towers instead,
+        // farming only when a camp is right on the way)
         if (s.lane == Lane.JUNGLE && Cfg.jungleRoute && threat.isEmpty()) {
-            JungleNav.direction(s)?.let { return hold(now, jungleStep(s, p, it)) }
+            JungleNav.direction(s, if (s.level >= 15) 0.15f else 9f)?.let { return hold(now, jungleStep(s, p, it)) }
         }
 
         // ---- 7. kill the minion wave: lowest HP first, so they actually die (gold + EXP) ----
@@ -422,7 +457,7 @@ object TacticalEngine {
         }
 
         // ---- 7d. laners: grab a nearby jungle camp between waves (gold + EXP) ----
-        if (Cfg.lanersTakeCamps && s.lane != Lane.JUNGLE && s.lane != Lane.ROAM && threat.isEmpty()) {
+        if (Cfg.lanersTakeCamps && s.lane != Lane.JUNGLE && s.lane != Lane.ROAM && threat.isEmpty() && s.level < 15) {
             JungleNav.direction(s, if (s.matchSec in 0..360) 0.22f else 0.15f)?.let { return hold(now, jungleStep(s, p, it)) }
         }
 
