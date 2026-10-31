@@ -838,6 +838,34 @@ class MainActivity : Activity() {
         btn("Forget what Coach learned for this hero") {
             com.example.mlbbresearch.learning.Coach.forget(GameStateTracker.ownHero()); toast("Forgotten")
         }
+
+        title("SKILLS & PASSIVE (what each skill does, how to cast it)")
+        text("Each skill's range, target type, crowd control, mobility, shield / heal, damage and cast mode (tap, aim, or " +
+            "hold to charge and release), plus the passive turned into play rules (e.g. a basic attack after every skill " +
+            "when the passive powers it up). Learned online from the skill descriptions (Groq key on the Meta page) - the " +
+            "hero you play is learned by itself. In play it checks every cast: a skill that did not go off twice is tried " +
+            "with the next cast mode, and a missed aimed skill changes how far ahead it aims.", 13f)
+        val skInfo = text("", 13f)
+        upd {
+            val h = GameStateTracker.ownHero()
+            skInfo.text = (if (h == null) "Pick a hero first." else com.example.mlbbresearch.game.SkillBook.describe(h)) +
+                "\nLast cast check: ${ActionExecutor.lastFeedback}" +
+                "\nAll heroes: ${com.example.mlbbresearch.game.SkillBook.learnAllProgress.ifEmpty { "-" }}"
+        }
+        btn("Learn this hero's skills online") {
+            val h = GameStateTracker.ownHero()
+            if (h == null) toast("Pick a hero first") else com.example.mlbbresearch.game.SkillBook.fetch(h) { m -> runOnUiThread { toast(m.take(120)) } }
+        }
+        btn("Learn ALL heroes' skills online (slow, runs in the background)") {
+            com.example.mlbbresearch.game.SkillBook.learnAll { m -> runOnUiThread { toast(m) } }
+            toast("Started")
+        }
+        btn("Stop learning all heroes") { com.example.mlbbresearch.game.SkillBook.stopLearnAll() }
+        val paste = field("Or paste descriptions, one per line: passive: ... / s1: ... / s2: ... / ult: ...", "", false) { }
+        btn("Use the pasted descriptions") {
+            val h = GameStateTracker.ownHero()
+            if (h == null) toast("Pick a hero first") else toast(com.example.mlbbresearch.game.SkillBook.fromText(h, paste.text.toString()).take(120))
+        }
         field("Start copying after this many recorded moments (5 per second of play)", Cfg.imitationMinDemos.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.imitationMinDemos = v.coerceIn(50, 100_000) }
         }
