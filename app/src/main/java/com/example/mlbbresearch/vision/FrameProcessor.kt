@@ -194,6 +194,9 @@ object FrameProcessor {
     // right next to a monster bar (its tick segments) are dropped.
     private fun monstersFromRedBars(all: List<Seen>, px: IntArray, w: Int, h: Int, mini: MinimapInfo): List<Seen> {
         val enemyNearOnMap = enemyNearOnMinimap(mini, w, h)
+        val nearEnemyTower = mini.self?.let { me ->
+            (mini.towers.map { it.x to it.y } + listOfNotNull(mini.enemyBase)).any { kotlin.math.hypot(it.first - me.first, it.second - me.second) < 0.12f }
+        } ?: false
         val out = ArrayList<Seen>(all.size)
         val monsters = ArrayList<Seen>()
         val hasSelf = all.any { it.team == Team.SELF }
@@ -209,6 +212,9 @@ object FrameProcessor {
                 continue
             }
             if (s.team == Team.ENEMY && s.hero && !(badgeDark(px, w, h, s) >= 0.3f && enemyNearOnMap)) {
+                // an enemy TOWER's bar is red without a badge too: near an enemy tower on the
+                // minimap it is the tower (a structure), not a monster
+                if (nearEnemyTower) { out.add(s.copy(hero = false)); continue }
                 val boss = s.barRight - s.barLeft >= 0.09f
                 val m = Seen(Team.NEUTRAL, boss, s.x, s.y, s.hp, s.barLeft, s.barTop, s.barRight, s.barBottom)
                 monsters.add(m); out.add(m)

@@ -58,6 +58,8 @@ object AiRuntime {
     @Volatile private var stdSelectAt = 0L
     @Volatile private var stdSelectTries = 0
     private var lastLearnTry = 0L
+    @Volatile private var lastActive: TacticalDecision? = null
+    @Volatile private var lastActiveAt = 0L
     // stages that were on when the floating icon paused the AI
     private var paused: List<String> = emptyList()
 
@@ -223,6 +225,17 @@ object AiRuntime {
                         }
                     }
                     d = TacticalEngine.filterCasts(d, s, profile)
+                    // no freezing: your HP bar can vanish for a moment (effects, animations); keep the
+                    // last movement going for up to 0.6 s instead of stopping
+                    val tNow = System.currentTimeMillis()
+                    if (d.intent == Intent.IDLE && lastActive != null && tNow - lastActiveAt < 600) {
+                        val l = lastActive!!
+                        d = TacticalDecision(l.intent, l.moveX, l.moveY, emptyList(), -1f, -1f, "-", -1f, -1, l.reason + " (continuing)")
+                    } else if (d.intent != Intent.IDLE) {
+                        lastActive = d; lastActiveAt = tNow
+                    }
+                    // think ahead: the next task is worked out while this one runs
+                    TacticalEngine.planAhead(s, d, profile)
                     ActionExecutor.execute(d)
                     ExperienceRecorder.record(s, d, plan.plan, plan.aggression + bias)
                     ActionExecutor.maybeUpgrade(s)
@@ -322,6 +335,7 @@ object AiRuntime {
         if (playerOn) {
             sb.append("\n\nDecision: ").append(ActionExecutor.lastDecision)
             sb.append("\nTarget: ").append(ActionExecutor.lastTarget)
+            sb.append("\nNext: ").append(TacticalEngine.nextPlan)
             val p = StrategicAdvisor.plan
             sb.append("\nPlan: ").append(p.plan).append(" (").append("%.1f".format(p.aggression)).append(")")
             sb.append("\nLane: ").append(s.lane.label).append(" | spell: ").append(s.spell ?: "?")
