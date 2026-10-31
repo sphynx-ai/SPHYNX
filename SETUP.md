@@ -161,6 +161,14 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
   - Defend your towers.
   - Recall and Regen when safe.
 
+## Skill use (Player page)
+
+- **Reserve the ultimate for heroes** (on by default): the ultimate is only used against enemy heroes, in a fight or
+  to escape them. It is never used on minions, jungle monsters, turtle or lord.
+- **Cast Skill 1 and 2 as soon as ready** (on by default): while fighting minions, a jungle camp, turtle / lord or an
+  enemy hero in reach, Skill 1 and 2 are pressed the moment they are off cooldown.
+- These are the last step before the touches go out, so they also apply to combos and "Play like me".
+
 ## Wall jumps, bushes and speed (Player page)
 
 - **Jumping walls**: when a thin wall (up to 3 minimap cells) blocks the straight way and walking around is much

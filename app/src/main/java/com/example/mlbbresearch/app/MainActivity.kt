@@ -759,6 +759,8 @@ class MainActivity : Activity() {
 
         title("SKILLS & ITEMS")
         switch("Upgrade skills (taps the golden + when it shows)", Cfg.autoUpgradeSkills) { Cfg.autoUpgradeSkills = it }
+        switch("Reserve the ultimate for heroes (never on minions, jungle monsters, turtle, lord)", Cfg.noUltOnCreeps) { Cfg.noUltOnCreeps = it }
+        switch("Cast Skill 1 and 2 as soon as ready when fighting creeps or heroes", Cfg.skillsWhenReady) { Cfg.skillsWhenReady = it }
         field("Upgrade order when several + show (ult,s1,s2)", Cfg.upgradeOrder, false) { v ->
             val parts = v.split(",").map { it.trim().lowercase() }.filter { it in setOf("s1", "s2", "ult") }.distinct()
             if (parts.isNotEmpty()) Cfg.upgradeOrder = parts.joinToString(",")
