@@ -122,7 +122,8 @@ object Cfg {
     var brainLearnsFromYou: Boolean get() = b("brain_you", true); set(v) = put("brain_you", v)
 
     // ---- learn from me (imitation) ----
-    var learnFromMe: Boolean get() = b("learn_me", false); set(v) = put("learn_me", v)
+    // on by default: whenever the AI runs it also learns from you (and from heroes you watch)
+    var learnFromMe: Boolean get() = b("learn_me2", true); set(v) = put("learn_me2", v)
     var playLikeMe: Boolean get() = b("play_like_me", false); set(v) = put("play_like_me", v)
     var imitationMinDemos: Int get() = i("imit_min", 300); set(v) = put("imit_min", v)
 

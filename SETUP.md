@@ -357,6 +357,21 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Walking straight, attacking, learning (v19)
+
+- Joystick: the hero keeps one heading and walks straight. It only turns when the course really changes: more than
+  40 degrees off while walking (a new camp or lane, the path bends round a wall or tower, a stuck detour), more than
+  25 degrees in a chase or an escape. No more small constant corrections or thumb wobble.
+- Attack is pressed while chasing an enemy hero (walking after it), and while standing hidden in a bush.
+- Learn from me is ON by default and starts with the Player. It records you whenever you play yourself, the ally
+  you watch while you are dead (the camera follows them), and enemy heroes moving on screen while your camera is
+  still. Watched heroes count a bit less than you in Play like me.
+- Play like me no longer takes over: it used to replace the AI's whole decision, and a remembered "stand still,
+  press nothing" moment froze the joystick and skills. Now the AI keeps its goal and skills; your way of moving is
+  used while walking / fighting when the moment is clearly like one you played, and your skills are added.
+  Also fixed: with Learn from me on, a button that only looked dark (shop, death screen) was taken as a cast and
+  the AI then thought the skill was cooling down.
+
 ## Jungle camps and the joystick (v18)
 
 - A jungle monster shows no HP bar until it is hit. Standing at a camp the minimap still shows, the AI now presses

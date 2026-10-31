@@ -87,6 +87,14 @@ object AiRuntime {
             }
             else -> return "unknown stage"
         }
+        // "Learn from me" is on by default: it runs alongside whatever else is started (it
+        // records only while you play, and the heroes you watch while dead)
+        if (stage != "learn" && Cfg.learnFromMe && !learnOn) {
+            learnOn = true
+            DemoRecorder.resetSession()
+            DemoRecorder.refreshTotal()
+            FrameProcessor.trackPlayer = true
+        }
         lastError = ""
         svc.overlay?.show()
         ensureLoops()
@@ -181,7 +189,7 @@ object AiRuntime {
                 val v = FrameProcessor.processNext()
                 if (v != null) {
                     GameStateTracker.update(v)
-                    if (learnOn) DemoRecorder.observe(v)
+                    if (learnOn) DemoRecorder.observe(v, aiPlaying = playerOn)
                     kotlinx.coroutines.yield()
                 } else {
                     delay(15)
@@ -213,13 +221,13 @@ object AiRuntime {
                     var d = TacticalEngine.decide(s, profile, plan, bias, option)
                     // fights: play the hero's combo in order instead of pressing everything at once
                     d = ComboRunner.apply(d, s, profile)
-                    // "Play like me": copy your moves, but the survival rules still come first
+                    // "Play like me": your style mixed into the AI's decision (it keeps control of the
+                    // joystick and skills); the survival rules still come first
                     if (Cfg.playLikeMe) {
                         ImitationPolicy.ensureLoaded(hero)
-                        // fights belong to the learning brain when it is on; copying you covers the rest
                         val brainFight = option != null && option != FightOption.RULES
                         if (!brainFight && d.intent != Intent.RETREAT && d.intent != Intent.RECALL && d.intent != Intent.REGEN) {
-                            ImitationPolicy.decide(s)?.let { d = it }
+                            d = ImitationPolicy.blend(d, s)
                         }
                     }
                     d = TacticalEngine.filterCasts(d, s, profile)
@@ -242,6 +250,9 @@ object AiRuntime {
                     ActionExecutor.execute(TacticalDecision.IDLE)
                 }
                 if (learnOn && !playerOn && inGame) DemoRecorder.record(s)
+                // learn from other heroes too: the ally you watch while dead, enemies on screen
+                if (learnOn && !stale && s.phase != Phase.SHOP && s.phase != Phase.SCOREBOARD && s.phase != Phase.MAP &&
+                    s.phase != Phase.DRAFT && s.phase != Phase.LOADING) DemoRecorder.recordWatched(s)
                 if (builderOn && inGame) {
                     if (Cfg.qbOn) QuickBuySwap.watch(s)
                     if (Cfg.autonomous && drafterOn && !(playerOn && Cfg.playerQuickBuy)) ActionExecutor.maybeQuickBuy(s, blind = true)
@@ -341,6 +352,7 @@ object AiRuntime {
             sb.append("\n\nLEARNING FROM YOU").append(if (playerOn) " (paused: Player is on)" else "")
             sb.append("\nYou: ").append(DemoRecorder.lastAction)
             sb.append("\nSaved: ").append(DemoRecorder.recorded).append(" this session, ").append(DemoRecorder.total).append(" total")
+            sb.append(" | from watched heroes: ").append(DemoRecorder.watched)
         }
         if (drafterOn && StrategicAdvisor.draftText.isNotEmpty()) sb.append("\n\nDRAFT\n").append(StrategicAdvisor.draftText)
         if (builderOn) {

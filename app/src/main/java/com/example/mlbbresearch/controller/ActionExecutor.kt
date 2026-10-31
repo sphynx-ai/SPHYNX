@@ -87,9 +87,9 @@ object ActionExecutor {
         } else {
             val (mx, my) = holdDirection(d)
             if (mx != 0f || my != 0f) {
-                joystick(mx, my)?.let { acts.add(it) }
+                joystick(mx, my, d.intent)?.let { acts.add(it) }
             } else if (Cfg.smoothJoystick) {
-                joyDirX = 0f; joyDirY = 0f
+                joyDirX = 0f; joyDirY = 0f; headX = 0f; headY = 0f
                 if (AccessibilityController.instance?.joystickHeld() == true) acts.add(Act.JoyRelease)
             }
         }
@@ -186,7 +186,12 @@ object ActionExecutor {
     private var sentDirY = 0f
     private var sentAt = 0L
 
-    private fun joystick(mx0: Float, my0: Float): Act? {
+    // the way the hero is walking: kept until a real change of course is needed
+    private var headX = 0f
+    private var headY = 0f
+    private var headIntent: Intent? = null
+
+    private fun joystick(mx0: Float, my0: Float, intent: Intent = Intent.PUSH): Act? {
         val (jx, jy) = Layout.get("joystick")
         val r = Layout.JOYSTICK_RADIUS
         val aspect = AccessibilityController.screenAspect()
@@ -194,6 +199,20 @@ object ActionExecutor {
         val now = System.currentTimeMillis()
         var mx = mx0
         var my = my0
+        // WALK STRAIGHT: the decision is re-made several times a second and its direction
+        // jitters a little; a player keeps the thumb still and only turns when the course really
+        // changes (a new camp / lane, the path bends round a wall or tower, the target moved
+        // well off to the side). Small differences keep the current heading.
+        val l0 = kotlin.math.hypot(mx, my).coerceAtLeast(1e-4f)
+        mx /= l0; my /= l0
+        val fight = intent == Intent.ENGAGE || intent == Intent.RETREAT
+        val keep = if (fight) 0.906f else 0.766f          // cos 25 deg in fights, cos 40 deg when walking
+        val held0 = AccessibilityController.instance?.joystickHeld() == true
+        if (held0 && (headX != 0f || headY != 0f) && intent == headIntent && mx * headX + my * headY >= keep && now >= detourUntil) {
+            mx = headX; my = headY
+        } else {
+            headX = mx; headY = my; headIntent = intent
+        }
         if (joyDirX == 0f && joyDirY == 0f) walkSince = now
         // stuck on a wall: walking for a while but the camera has not moved for 0.7 s
         if (Cfg.wallAvoid && now - walkSince > 900 && now - GameStateTracker.lastMotionAt > 700 && now > detourUntil + 400) {
@@ -222,11 +241,11 @@ object ActionExecutor {
             val dt = ((now - lastJoyAt).coerceIn(20L, 250L)) / 1000f
             // a reversal (running away, dodging) is a flick to the other side: faster
             val maxTurn = (if (kotlin.math.abs(delta) > 2.1f) 15f else 6.0f) * dt
-            want = cur + delta.coerceIn(-maxTurn, maxTurn) + (rnd.nextFloat() - 0.5f) * 0.03f
+            want = cur + delta.coerceIn(-maxTurn, maxTurn)
             nx = kotlin.math.cos(want); ny = kotlin.math.sin(want)
             // the thumb sits at the ring's edge (full speed), with a little wobble
             // the thumb sits firmly at (just past) the ring's edge: full speed, the stick clamps it
-            pushRadius = (pushRadius * 0.8f + (1.08f + rnd.nextFloat() * 0.04f) * 0.2f)
+            pushRadius = 1.1f
         } else {
             val l = kotlin.math.hypot(mx, my).coerceAtLeast(1e-4f)
             nx = mx / l; ny = my / l
@@ -246,6 +265,7 @@ object ActionExecutor {
     // Lift the joystick finger (AI paused or stopped)
     fun release() {
         joyDirX = 0f; joyDirY = 0f
+        headX = 0f; headY = 0f
         val svc = AccessibilityController.instance ?: return
         if (svc.joystickHeld()) main.post { try { svc.releaseJoystick() } catch (e: Exception) { } }
     }

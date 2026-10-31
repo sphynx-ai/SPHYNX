@@ -415,6 +415,7 @@ class MainActivity : Activity() {
         var syncing = false
         val sw = switch(label, isOn()) { on ->
             if (!syncing) {
+                if (stage == "learn") Cfg.learnFromMe = on
                 if (on) startStage(stage) else AiRuntime.stop(stage)
             }
         }
@@ -837,7 +838,11 @@ class MainActivity : Activity() {
         val learnInfo = text("", 13f)
         DemoRecorder.refreshTotal()
         upd {
-            learnInfo.text = "Recorded moments: ${DemoRecorder.total} (${DemoRecorder.recorded} this session)\n" +
+            learnInfo.text = "Recorded moments: ${DemoRecorder.total} (${DemoRecorder.recorded} of you, " +
+                "${DemoRecorder.watched} from heroes you watched this session)\n" +
+                "Learn from me is on by default: it runs with the Player, records you whenever you play yourself, " +
+                "the ally you watch while dead, and enemy heroes on screen. Play like me mixes your style into the " +
+                "AI's moves and skills (the AI keeps control).\n" +
                 "Last seen from you: ${DemoRecorder.lastAction}\nPlay like me: ${ImitationPolicy.status}" +
                 (if (Cfg.playLikeMe && ImitationPolicy.size > 0) ", similarity now ${(ImitationPolicy.lastMatch * 100).toInt()}%" else "")
         }
