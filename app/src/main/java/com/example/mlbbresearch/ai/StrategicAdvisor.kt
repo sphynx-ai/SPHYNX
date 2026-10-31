@@ -14,6 +14,7 @@ import com.example.mlbbresearch.game.Role
 import com.example.mlbbresearch.game.SpellDb
 import com.example.mlbbresearch.game.Lane
 import com.example.mlbbresearch.game.MetaStore
+import com.example.mlbbresearch.vision.ObjectDetector
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -116,7 +117,7 @@ object StrategicAdvisor {
             "Current meta tips for $hero: " + (meta.laning.take(2) + meta.rotation.take(2) + if (s.lane == Lane.JUNGLE) meta.jungle.take(2) else emptyList())
                 .joinToString("; ") + ". "
         val prompt = "You are the strategic brain of a Mobile Legends bot playing $hero ($role). " +
-            "Situation: ${s.summary()}. " + tips +
+            "Situation: ${s.summary()}${ObjectDetector.summary().let { if (it.isEmpty()) "" else "; minimap $it" }}. " + tips +
             "Reply with ONLY one JSON object, no other words: " +
             "{\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 8 words\"}"
         val reply = ask("strategy ($why)", prompt, if (Cfg.strategyWithImage) FrameHub.bitmap() else null) ?: return

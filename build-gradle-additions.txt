@@ -14,4 +14,6 @@ dependencies {
     implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
     // Kotlin coroutines for the background loops
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    // LiteRT Interpreter for the optional trained vision detector (.tflite)
+    implementation("com.google.ai.edge.litert:litert:1.4.2")
 }
