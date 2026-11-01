@@ -296,19 +296,113 @@ object FrameProcessor {
                 // an enemy TOWER's bar is red without a badge too: near an enemy tower on the
                 // minimap it is the tower (a structure), not a monster
                 if (nearEnemyTower) { out.add(s.copy(hero = false)); continue }
-                // the lord's / turtle's bar is longer than a hero's (heroes: 7.7-7.9% of the width;
-                // the lord's measured 8.4% in a live match)
-                val boss = s.barRight - s.barLeft >= 0.082f
-                val m = Seen(Team.NEUTRAL, boss, s.x, s.y, s.hp, s.barLeft, s.barTop, s.barRight, s.barBottom)
+                // what kind of monster: the bar's FULL width (its orange frame, measured past the
+                // hero-width cap) and thickness; then the body's colour (see JungleDb)
+                // a turret's bar has a RED emblem on its left (lord / turtle: a purple skull): not a monster
+                val icon = iconLeft(px, w, h, s)
+                if (icon[0] >= 0.04f && icon[1] < 0.03f) { out.add(s.copy(hero = false)); continue }
+                val full = monsterBarWidth(px, w, h, s)
+                val thick = (s.barBottom - s.barTop) * h >= 3.5f          // lord / turtle bars: 5 rows
+                val col = bodyColour(px, w, h, s.barLeft, s.barBottom, minOf(full, 0.095f))
+                // a buff-coloured body on a thin bar is a buff even if dark ground made the bar look long
+                val buffBody = com.example.mlbbresearch.game.JungleDb.buff(col[0], col[1]) != null
+                val kind = if (!thick && buffBody && full >= com.example.mlbbresearch.game.JungleDb.BUFF_WIDTH) com.example.mlbbresearch.game.MonsterKind.BUFF
+                    else com.example.mlbbresearch.game.JungleDb.kindOf(full, thick)
+                // lord / turtle bars always carry the purple skull (measured 0.08): a long red bar
+                // without it is something else (a skill bar, an effect) - not a monster
+                if (kind == com.example.mlbbresearch.game.MonsterKind.BOSS && icon[1] < 0.03f) continue
+                val boss = kind == com.example.mlbbresearch.game.MonsterKind.BOSS
+                val fullW = if (kind == com.example.mlbbresearch.game.MonsterKind.BUFF) minOf(full, 0.095f) else full
+                // HP = the red part over the FULL bar (the hero-width cap cut long bars short)
+                val hp = (s.hp * (s.barRight - s.barLeft) / fullW).coerceIn(0f, 1f)
+                val species = when (kind) {
+                    com.example.mlbbresearch.game.MonsterKind.BOSS -> com.example.mlbbresearch.game.JungleDb.boss(mini, com.example.mlbbresearch.game.GameStateTracker.state.matchSec).id
+                    com.example.mlbbresearch.game.MonsterKind.BUFF -> (com.example.mlbbresearch.game.JungleDb.buff(col[0], col[1]) ?: com.example.mlbbresearch.game.JungleDb.CREEP).id
+                    else -> com.example.mlbbresearch.game.JungleDb.camp(col[0], col[1], col[2]).id
+                }
+                val m = Seen(Team.NEUTRAL, boss, s.x, s.y, hp, s.barLeft, s.barTop, s.barLeft + fullW, s.barBottom, species)
                 monsters.add(m); out.add(m)
             } else out.add(s)
         }
         if (monsters.isEmpty()) return out
+        // the Thunder Fenrir's cub: a small blue monster right next to the big one is the same camp
+        val fenrir = monsters.filter { it.species == com.example.mlbbresearch.game.JungleDb.THUNDER_FENRIR.id }
+        if (fenrir.isNotEmpty()) for (i in out.indices) {
+            val u = out[i]
+            if (u.team == Team.NEUTRAL && !u.hero && u.species != com.example.mlbbresearch.game.JungleDb.THUNDER_FENRIR.id &&
+                fenrir.any { f -> kotlin.math.abs(f.x - u.x) < 0.15f && kotlin.math.abs(f.y - u.y) < 0.3f })
+                out[i] = u.copy(species = com.example.mlbbresearch.game.JungleDb.THUNDER_FENRIR.id)
+        }
         return out.filter { u ->
             !(u.team == Team.ENEMY && !u.hero && monsters.any { m ->
                 u.barLeft >= m.barLeft - 0.03f && u.barRight <= m.barRight + 0.03f && kotlin.math.abs(u.barTop - m.barTop) < 0.06f
             })
         }
+    }
+
+    // A monster bar's full width: from its left end along the middle row, red (HP) then the grey
+    // empty part (thin tick marks stepped over), up to 14% of the screen width.
+    private fun monsterBarWidth(px: IntArray, w: Int, h: Int, s: Seen): Float {
+        val y = (((s.barTop + s.barBottom) / 2) * h).toInt().coerceIn(0, h - 1)
+        val x0 = (s.barLeft * w).toInt().coerceIn(0, w - 1)
+        val x1 = minOf(w - 1, x0 + (0.14f * w).toInt())
+        // stops at the orange frame's end, at 3 odd pixels in a row, or where the grey changes shade
+        // (dark ground right after the bar is not "missing HP")
+        var end = x0; var gap = 0; var x = x0; var grey = -1
+        while (x <= x1) {
+            val p = px[y * w + x]
+            val r = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val b = p and 0xff
+            val mx = maxOf(r, g, b); val mn = minOf(r, g, b)
+            val lum = (r * 3 + g * 6 + b) / 10
+            val red = r >= 150 && g <= 100 && b <= 100
+            val orange = r >= 170 && g in 90..200 && b <= 130 && r - b >= 70
+            if (orange && x > x0 + 4) break
+            val empty = mx < 95 && mx - mn < 35 && (grey < 0 || kotlin.math.abs(lum - grey) <= 18)
+            if (red) { end = x; gap = 0 }
+            else if (empty) { if (grey < 0) grey = lum; end = x; gap = 0 }
+            else if (++gap > 2) break
+            x++
+        }
+        return maxOf(s.barRight - s.barLeft, (end - x0 + 1).toFloat() / w)
+    }
+
+    // colour shares of the icon just left of a bar: [red (turret emblem), purple (boss skull / buff dot)]
+    // measured: turret 0.07 / 0; lord, turtle 0 / 0.08
+    private fun iconLeft(px: IntArray, w: Int, h: Int, s: Seen): FloatArray {
+        val cy = (s.barTop + s.barBottom) / 2
+        val x0 = ((s.barLeft - 0.03f) * w).toInt().coerceIn(0, w - 1); val x1 = ((s.barLeft - 0.003f) * w).toInt().coerceIn(0, w - 1)
+        val y0 = ((cy - 0.03f) * h).toInt().coerceIn(0, h - 1); val y1 = ((cy + 0.03f) * h).toInt().coerceIn(0, h - 1)
+        var n = 0; var red = 0; var pur = 0
+        for (y in y0..y1) for (x in x0..x1) {
+            val p = px[y * w + x]
+            val r = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val b = p and 0xff
+            n++
+            if (r > 150 && g < 90 && b < 110) red++
+            if (r > 110 && b > 140 && g < 110) pur++
+        }
+        return if (n == 0) floatArrayOf(0f, 0f) else floatArrayOf(red.toFloat() / n, pur.toFloat() / n)
+    }
+
+    // colour shares of the body under a monster bar: [orange, blue / lavender, green]
+    private fun bodyColour(px: IntArray, w: Int, h: Int, left: Float, bottom: Float, width: Float): FloatArray {
+        val x0 = (left * w).toInt().coerceIn(0, w - 1); val x1 = ((left + width) * w).toInt().coerceIn(0, w - 1)
+        val y0 = ((bottom + 0.03f) * h).toInt().coerceIn(0, h - 1); val y1 = ((bottom + 0.22f) * h).toInt().coerceIn(0, h - 1)
+        var n = 0; var o = 0; var bl = 0; var gr = 0
+        var y = y0
+        while (y <= y1) {
+            var x = x0
+            while (x <= x1) {
+                val p = px[y * w + x]
+                val r = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val b = p and 0xff
+                n++
+                if (r > 180 && g in 81..189 && b < 110 && r - b > 90) o++
+                if ((b > r + 60 && b > g + 20 && b > 140) || (b > 170 && r > 140 && g > 120 && b >= g)) bl++
+                if (g > r + 40 && g > b + 15 && g > 120) gr++
+                x += 2
+            }
+            y += 2
+        }
+        return if (n == 0) floatArrayOf(0f, 0f, 0f) else floatArrayOf(o.toFloat() / n, bl.toFloat() / n, gr.toFloat() / n)
     }
 
     // dark level badge just left of a bar

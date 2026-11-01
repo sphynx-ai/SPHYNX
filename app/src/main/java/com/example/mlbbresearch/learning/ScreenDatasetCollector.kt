@@ -19,9 +19,10 @@ import java.util.concurrent.Executors
 // Training pictures for the WHOLE-SCREEN detector: every 10 s in a match (200 a day at most) the
 // whole picture is saved with boxes ALREADY DRAWN from what the app's colour vision found:
 //   heroes (yours / ally / enemy) and minions (ally / enemy)  - from their HP bars
-//   creeps, buffs, turtle, lord                                - monster bars (+ the camp type,
-//                                                                the minimap pit icons, match time)
-//   enemy towers                                               - the range circle around them
+//   monsters BY NAME (JungleDb)                                - monster bars: lord / turtle by the
+//     pit you stand by, the orange / purple buff (fiery_hound / thunder_fenrir) by body colour,
+//     horned_lizard by colour; other small ones as jungle_creep (rename them in Roboflow)
+//   enemy towers (tower_enemy_plated before 5:00)             - the range circle around them
 //   bushes and walls                                           - the bush / wall finder's cells
 // in Download/MLBB-Research/screen_dataset (images/*.jpg, labels/*.txt, classes.txt), YOLO format.
 // These boxes are the app's guesses: checking / fixing them in Roboflow is what makes the trained
@@ -66,19 +67,18 @@ object ScreenDatasetCollector {
         for (m in monsters) {
             // an enemy tower's own red bar is not a monster
             if (ring.zone != TowerRing.Zone.NONE && kotlin.math.abs((m.barLeft + m.barRight) / 2 - ring.cx) < 0.08f && m.barTop < ring.cy - 0.15f) continue
-            if (m.hero) {
-                // the big monster: lord or turtle (the icon on the minimap, else the match time)
-                val name = when {
-                    mini.lordIcon != null && mini.turtleIcon == null -> "lord"
-                    mini.turtleIcon != null && mini.lordIcon == null -> "turtle"
-                    matchSec >= 480 -> "lord"
-                    else -> "turtle"
-                }
-                unit(name, m, 1.4f, 0.38f)
-            } else unit(if (atBuff) "buff" else "creep", m, 1.7f, if (atBuff) 0.32f else 0.22f)
+            val sp = com.example.mlbbresearch.game.JungleDb.byId(m.species) ?: if (m.hero) com.example.mlbbresearch.game.JungleDb.boss(mini, matchSec)
+                else com.example.mlbbresearch.game.JungleDb.CREEP
+            when (sp.kind) {
+                com.example.mlbbresearch.game.MonsterKind.BOSS -> unit(sp.id, m, 1.4f, 0.38f)
+                com.example.mlbbresearch.game.MonsterKind.BUFF -> unit(sp.id, m, 1.6f, 0.32f)
+                else -> unit(sp.id, m, 1.7f, 0.22f)
+            }
         }
         // an enemy tower: its base is the centre of the range circle, the tower stands above it
-        if (ring.zone != TowerRing.Zone.NONE && ring.cx in 0f..1f) add("tower_enemy", ring.cx - 0.05f, ring.cy - 0.32f, ring.cx + 0.05f, ring.cy + 0.04f)
+        // (outer turrets keep a gold energy shield until 5:00)
+        val towerName = if (matchSec in 0 until com.example.mlbbresearch.game.JungleDb.OUTER_SHIELD_ENDS_SEC) "tower_enemy_plated" else "tower_enemy"
+        if (ring.zone != TowerRing.Zone.NONE && ring.cx in 0f..1f) add(towerName, ring.cx - 0.05f, ring.cy - 0.32f, ring.cx + 0.05f, ring.cy + 0.04f)
         // bushes and walls: groups of the finder's cells
         groups(BushDetector.lastCells, 3).forEach { add("bush", it[0], it[1], it[2], it[3]) }
         groups(BushDetector.lastWalls, 4).forEach { add("wall", it[0], it[1], it[2], it[3]) }

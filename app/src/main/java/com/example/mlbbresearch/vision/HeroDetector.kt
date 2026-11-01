@@ -17,7 +17,8 @@ data class Seen(
     val barLeft: Float,
     val barTop: Float,
     val barRight: Float,
-    val barBottom: Float
+    val barBottom: Float,
+    val species: String = ""  // NEUTRAL only: JungleDb id (lord, turtle, fiery_hound, thunder_fenrir, ...)
 )
 
 // Finds HP bars by colour: green = you, blue = allies, red = enemies, orange/yellow = monsters.
