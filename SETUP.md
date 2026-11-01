@@ -779,6 +779,32 @@ Floating icon: its X hides the icon; the AI, screen capture and recording keep r
 Bring it back with "Show the floating icon" on the Home page. To stop the AI: STOP ALL in the floating status
 window, the ⏻ button on the icon, STOP AI in the notification, or EMERGENCY STOP on the Home page.
 
+## Learning from live matches (v36)
+
+Watch another player's live match in MLBB while learning is on (start the AI or Learn). The app sees the
+live screen (its info panel along the bottom) and reads it like a match of yours, without ever playing on it:
+
+| What | Where it comes from |
+|---|---|
+| Their hero | the blue HP bar in the middle (the camera follows them); HP from the green line in their panel |
+| Enemies, minions, monsters, bushes, tower circles | their screen, as in your matches |
+| Enemies on the map | the minimap (all enemies show in a live match): red portrait rings, not tower icons |
+| Their position on the map | the centre of the cyan camera circles on the minimap |
+| Walking | the camera's motion (no joystick on screen) |
+| Skills / battle spell | the panel's skill and spell icons going dark (cooldown started); ready / cooling from the same icons |
+| Attack | standing still next to an enemy, minion or monster (basic attacks cannot be seen) |
+| Match time | the timer at the top, read by Gemma about once a minute (-1 without Gemma) |
+
+Masked (never read as units): the right column of buttons, streamer name / likes, chat bar, their panel,
+the scoreboard and the "ready in ..." notices.
+
+Learn page, LEARN FROM LIVE MATCHES: type the hero you are watching and their role, see what it reads now,
+and export `mlbb-live-*.csv` (same columns as `mlbb-my-play-*.csv` plus source, lane, match_sec). Train with
+the tactical notebook: upload it (with or without your own play) and set HERO to that hero.
+
+Not read: their items and gold (shown in the panel, not used by the tactical network), basic attacks directly,
+and aiming (no indicators on the live screen).
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |

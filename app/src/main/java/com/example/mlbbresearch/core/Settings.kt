@@ -120,6 +120,17 @@ object Cfg {
     // save minimap pictures with pre-drawn boxes to train the detector (Download/MLBB-Research/dataset)
     var collectDataset: Boolean get() = b("collect_ds", true); set(v) = put("collect_ds", v)
 
+    // ---- learning from live matches (watching another player) ----
+    var liveLearn: Boolean get() = b("live_learn", true); set(v) = put("live_learn", v)
+    var liveHero: String get() = s("live_hero", ""); set(v) = put("live_hero", v)
+    // the watched player's role: exp | gold | mid | roam | jungle
+    var liveLaneName: String get() = s("live_lane", "exp"); set(v) = put("live_lane", v)
+    val liveLane: com.example.mlbbresearch.game.Lane get() = when (liveLaneName) {
+        "gold" -> com.example.mlbbresearch.game.Lane.GOLD; "mid" -> com.example.mlbbresearch.game.Lane.MID
+        "roam" -> com.example.mlbbresearch.game.Lane.ROAM; "jungle" -> com.example.mlbbresearch.game.Lane.JUNGLE
+        else -> com.example.mlbbresearch.game.Lane.EXP
+    }
+
     // ---- trained tactical network (policy.tflite) ----
     var policyOn: Boolean get() = b("policy_on", true); set(v) = put("policy_on", v)
     var policyMinConf: Float get() = f("policy_conf", 0.55f); set(v) = put("policy_conf", v)
