@@ -296,8 +296,12 @@ object TacticalEngine {
         if (s.phase != Phase.IN_GAME || self == null) return TacticalDecision.IDLE
         val now = s.ts
         val hp = s.selfHp
-        val aggression = (plan.aggression + learnedBias + levelBias(s)).coerceIn(0f, 1f)
-        val retreatHp = (p.retreatHp + (0.5f - aggression) * 0.15f).coerceIn(0.12f, 0.6f)
+        // the big picture (game state engine) and the role's style (role profile)
+        val roleP = com.example.mlbbresearch.game.RoleProfile.of(s.lane)
+        val advantage = com.example.mlbbresearch.game.MatchSense.advantage(s)
+        val gamePhase = com.example.mlbbresearch.game.MatchSense.phase(s)
+        val aggression = (plan.aggression + learnedBias + levelBias(s) + advantage * 0.15f).coerceIn(0f, 1f)
+        val retreatHp = (p.retreatHp + roleP.retreatBonus + (0.5f - aggression) * 0.15f).coerceIn(0.12f, 0.6f)
 
         val threat = s.enemiesWithin(0.55f)
         val alliesNear = s.alliesWithin(0.5f).size
@@ -590,6 +594,31 @@ object TacticalEngine {
             if (minions.isEmpty() || plan.plan == "group") return null
             val mx0 = minions.map { it.x }.average().toFloat()
             val my0 = minions.map { it.y }.average().toFloat()
+            // WAVE MANAGEMENT: PUSH (clear fast with skills: mid before rotating, anyone ahead or with
+            // an objective / teamfight to go to), FREEZE (only last hits, no skills, wave stays near our
+            // tower: gold lane early or when behind, or enemies hidden near), else CLEAR
+            val hiddenNear = (com.example.mlbbresearch.game.MapIntel.enemiesNear(s, 0.18f) - s.enemies.size) > 0
+            val wave = when {
+                s.lane == Lane.MID || advantage > 0.2f || s.map.objective != null -> "push"
+                (s.lane == Lane.GOLD && gamePhase == com.example.mlbbresearch.game.MatchSense.GamePhase.EARLY && advantage <= 0f) ||
+                    advantage < -0.25f || hiddenNear -> "freeze"
+                else -> "clear"
+            }
+            if (wave == "freeze") {
+                val lh = minions.filter { it.hp <= 0.35f }.minByOrNull { it.hp }
+                if (lh == null) {
+                    // nothing to last-hit yet: stay a little back and let the minions fight
+                    val (bx, by) = norm(-pushVector().first, -pushVector().second)
+                    val near = minions.minOf { s.distToSelf(it.x, it.y) }
+                    val (mx, my) = if (near < p.attackRange * 0.9f) (bx to by) else (0f to 0f)
+                    return TacticalDecision(Intent.LANE_CLEAR, mx, my, emptyList(), -1f, -1f, "${minions.size} minions", -1f, -1,
+                        "freezing the wave: waiting for last hits")
+                }
+                val d = s.distToSelf(lh.x, lh.y)
+                val (mx, my) = if (d > p.attackRange) toward(s, lh.x, lh.y) else (0f to 0f)
+                return TacticalDecision(Intent.LANE_CLEAR, mx, my, if (d <= p.attackRange * 1.4f) listOf("attack") else emptyList(),
+                    lh.x, lh.y, "minion", lh.hp, -1, "freezing the wave: last hit at ${(lh.hp * 100).toInt()}%")
+            }
             val tgt = minions.minByOrNull { it.hp * 0.6f + s.distToSelf(it.x, it.y) }!!
             val d = s.distToSelf(tgt.x, tgt.y)
             val casts = ArrayList<String>()
@@ -598,14 +627,15 @@ object TacticalEngine {
             val wc = p.waveClearSkill
             // early game: clear waves fast with skills (no enemy hero close), later only on big waves
             val earlyClear = s.matchSec in 0..360 && threat.isEmpty()
-            if (wc != null && clustered >= (if (earlyClear) 2 else 3) && s.distToSelf(mx0, my0) <= p.attackRange * 1.8f && CooldownTracker.ready(wc, p)) casts.add(wc)
-            if (earlyClear && clustered >= 3 && s.distToSelf(mx0, my0) <= p.attackRange * 1.8f) {
+            val pushing = wave == "push"
+            if (wc != null && clustered >= (if (earlyClear || pushing) 2 else 3) && s.distToSelf(mx0, my0) <= p.attackRange * 1.8f && CooldownTracker.ready(wc, p)) casts.add(wc)
+            if ((earlyClear || pushing) && clustered >= 3 && s.distToSelf(mx0, my0) <= p.attackRange * 1.8f) {
                 for (sk in p.combo) if (sk != "ult" && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
             }
             val (mx, my) = if (d > p.attackRange) toward(s, tgt.x, tgt.y) else (0f to 0f)
             return TacticalDecision(Intent.LANE_CLEAR, mx, my, casts, tgt.x, tgt.y,
                 "${minions.size} minions", tgt.hp, -1,
-                "${minions.size} minions, hitting one at ${(tgt.hp * 100).toInt()}%")
+                "${if (pushing) "pushing" else "clearing"} the wave (${minions.size}), hitting one at ${(tgt.hp * 100).toInt()}%")
         }
 
         // ---- push the enemy tower: only with your minions in its range and no enemy hero ----
@@ -707,25 +737,59 @@ object TacticalEngine {
                 "positioning: engage ${eng.toInt()} is not enough, keeping distance")
         }
 
-        // ---- the order per role ----
-        //  Jungle: Lord > Turtle > monsters (own buffs first) > enemy heroes > minions > tower
-        //  EXP / Mid: minions (last hits) > Lord > Turtle > tower > enemy heroes; rotate to fights,
-        //             above all early-game turtle fights, then back to the lane
-        //  Gold: minions (last hits) and camps for gold + levels; rotations early only when close
-        //  Roam: Lord > Turtle > enemy heroes > minions > tower; walks with mid / jungler, checks bushes
-        // A very good fight (engagement 70+) comes before farming for everyone.
-        val order: List<() -> TacticalDecision?> = when (s.lane) {
-            Lane.JUNGLE -> listOf({ fight(70f) }, ::bossOnScreen, { objectiveOnMap(0.45f, s.level < 6) }, ::monstersOnScreen,
-                { fight() }, ::positioning, ::jungleRoute, ::minionWave, ::tower, ::safety)
-            Lane.ROAM -> listOf(::bossOnScreen, { objectiveOnMap(0.45f, false) }, { fight() }, ::positioning, ::minionWave, ::tower,
-                ::defendTower, { teamfight(0.5f) }, ::roam, ::safety)
-            Lane.GOLD -> listOf({ fight(70f) }, ::minionWave, ::bossOnScreen, { objectiveOnMap(if (early) 0.15f else 0.35f, true) }, ::tower,
-                { fight() }, ::positioning, ::defendTower, { laneCamps(if (early) 0.25f else 0.18f) },
-                { teamfight(if (early) 0.15f else 0.4f) }, ::safety)
-            else -> listOf({ fight(70f) }, ::minionWave, ::bossOnScreen,
-                // EXP and Mid are needed in early fights, turtle fights most of all
-                { objectiveOnMap(if (early) 0.5f else 0.35f, !early) }, ::tower, { fight() }, ::positioning,
-                { teamfight(if (early) 0.5f else 0.35f) }, ::defendTower, { laneCamps(if (s.matchSec in 0..360) 0.22f else 0.15f) }, ::safety)
+        // ---- jungle GANK: an enemy in a lane on the minimap, close to us, alone (and better near our
+        // laner or our tower), while we are healthy, level 4+ with the ultimate or 2 skills ready ----
+        fun gank(): TacticalDecision? {
+            if (me == null || threat.isNotEmpty() || hp < 0.6f || s.level < 4) return null
+            val ready = listOf("s1", "s2", "ult").count { CooldownTracker.ready(it, p) }
+            if (!CooldownTracker.ready("ult", p) && ready < 2) return null
+            fun d(a: Pair<Float, Float>, b: Pair<Float, Float>) = kotlin.math.hypot(a.first - b.first, a.second - b.second)
+            val prey = s.map.enemies.filter { e ->
+                val onLane = e.first < 0.14f || e.second > 0.86f || e.first > 0.86f || e.second < 0.14f || kotlin.math.abs(e.first + e.second - 1f) < 0.12f
+                onLane && d(e, me) in 0.08f..0.35f && s.map.enemies.none { o -> o !== e && d(o, e) < 0.15f }
+            }.maxByOrNull { e ->
+                (if (s.map.allies.any { d(it, e) < 0.15f }) 1f else 0f) + (if (s.allyTowers.any { d(it, e) < 0.15f }) 1f else 0f) - d(e, me)
+            } ?: return null
+            val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, prey) ?: mapDir(me, prey)
+            return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "ganking: an enemy alone in a lane (minimap)")
+        }
+
+        // ---- EXP SPLIT PUSH: mid / late game, nobody near on the map, healthy: push the side lane ----
+        fun splitPush(): TacticalDecision? {
+            if (me == null || gamePhase == com.example.mlbbresearch.game.MatchSense.GamePhase.EARLY || threat.isNotEmpty() || hp < 0.6f) return null
+            // only when the enemies are really SEEN elsewhere (2+ on the minimap), not just unknown
+            if (s.map.enemies.size < 2 || com.example.mlbbresearch.game.MapIntel.enemiesNear(s, 0.3f) > 0) return null
+            val (px, py, where) = laneVector(s)
+            return TacticalDecision(Intent.PUSH, px, py, emptyList(), -1f, -1f, "-", -1f, -1, "split pushing: $where (enemies are elsewhere)")
+        }
+
+        // ---- the role's order (RoleProfile): the same jobs for everyone, in the role's order ----
+        //  EXP: lane pressure, engage, split push    JUNGLE: farm, gank, objectives
+        //  MID: wave clear, rotate, control           GOLD: farm, positioning, survival
+        //  ROAM: vision, initiation, protection
+        val rotate = if (early) roleP.rotateEarly else roleP.rotateLate
+        val needAlly = roleP.objectiveNeedsAlly || (s.lane == Lane.JUNGLE && s.level < 6) ||
+            (!early && (s.lane == Lane.EXP || s.lane == Lane.MID))
+        val campR = if (s.matchSec in 0..360) roleP.campRadiusEarly else roleP.campRadiusLate
+        val order: List<() -> TacticalDecision?> = roleP.order.map { job ->
+            when (job) {
+                com.example.mlbbresearch.game.Job.STRONG_FIGHT -> { -> fight(70f) }
+                com.example.mlbbresearch.game.Job.BOSS -> ::bossOnScreen
+                com.example.mlbbresearch.game.Job.OBJECTIVE_MAP -> { -> objectiveOnMap(rotate, needAlly) }
+                com.example.mlbbresearch.game.Job.MONSTERS -> ::monstersOnScreen
+                com.example.mlbbresearch.game.Job.FIGHT -> { -> fight() }
+                com.example.mlbbresearch.game.Job.POSITIONING -> ::positioning
+                com.example.mlbbresearch.game.Job.GANK -> ::gank
+                com.example.mlbbresearch.game.Job.JUNGLE_ROUTE -> ::jungleRoute
+                com.example.mlbbresearch.game.Job.MINIONS -> ::minionWave
+                com.example.mlbbresearch.game.Job.TOWER -> ::tower
+                com.example.mlbbresearch.game.Job.DEFEND -> ::defendTower
+                com.example.mlbbresearch.game.Job.TEAMFIGHT -> { -> teamfight(rotate) }
+                com.example.mlbbresearch.game.Job.LANE_CAMPS -> { -> laneCamps(campR) }
+                com.example.mlbbresearch.game.Job.SPLIT_PUSH -> ::splitPush
+                com.example.mlbbresearch.game.Job.ROAM -> ::roam
+                com.example.mlbbresearch.game.Job.SAFETY -> ::safety
+            }
         }
         for (step in order) step()?.let { return hold(now, it) }
 
@@ -738,7 +802,7 @@ object TacticalEngine {
         }
         val (px, py, where) = laneVector(s)
         return hold(now, TacticalDecision(Intent.PUSH, px, py, emptyList(), -1f, -1f, "-", -1f, -1,
-            "${s.lane.label}: $where (${plan.plan})"))
+            "${s.lane.label} (${roleP.focus}): $where (${plan.plan})"))
     }
 
     // Walking the jungle path, or standing at a camp: attack (MLBB's attack button locks on to

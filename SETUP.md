@@ -712,6 +712,41 @@ need a few matches per hero.
 
 The app works without it; the colour-based detector stays on either way.
 
+## Universal tactical engine: all five roles, any hero (v35)
+
+One engine plays every role. A role is data (`game/RoleProfile.kt`), not separate code, and the hero on
+top of it comes from the hero adapter. It is built from five parts:
+
+| Part | Code | What it does |
+|---|---|---|
+| Perception | vision/* (HP bars, tower circle, level, minimap, YOLO detectors) | what is on the screen and the map |
+| Game state | GameStateTracker, MatchSense, MapIntel | phase (early < 8:00, mid < 15:00, late), team advantage (towers, levels, K/D/A), ganks |
+| Universal tactical engine | TacticalEngine + RoleProfile + Utility | the same jobs for everyone, tried in the role's order |
+| Hero adapter | HeroProfile, SkillBook (seeds), ComboBook | range, mobility, crowd control, combos, cast modes, passive |
+| Execution | ActionExecutor, ComboRunner | joystick, casts, aiming, verification |
+
+Role profiles (the order the jobs are tried, plus a few style numbers):
+- **EXP**: lane pressure, engage, split push. In mid / late game it pushes a side lane alone, but only when
+  2+ enemies are seen elsewhere on the minimap.
+- **Jungle**: farm, gank, objectives. From level 4 with the ultimate (or 2 skills) ready and 60%+ HP, it walks
+  to an enemy who is alone in a lane on the minimap (0.08-0.35 map units away), preferring one near our allies or towers.
+- **Mid**: wave clear, rotate, control. It pushes the wave with skills, then rotates to fights and turtle.
+- **Gold**: farm, positioning, survival. It freezes the wave (last hits only) in the early game, retreats a bit
+  earlier (+6% HP), and only rotates when an objective is very close before 8:00.
+- **Roam**: vision, initiation, protection. A tank starts fights with an ally; a support does not fight alone.
+
+Team advantage makes it braver when ahead and more careful when behind. The status line shows
+"Game: early game, ahead (+0.21: towers 9 vs 8, ...) | role: ...".
+
+Heroes seeded first (skills, cast modes, passive, combo): Ruby, Yu Zhong, Chou, Balmond, Fredrinn, Hayabusa, Eudora,
+Lylia, Kagura, Miya, Brody, Claude, Tigreal, Minotaur, Mathilda. Other heroes use the Groq lookup (Player page)
+or the defaults, and every hero keeps learning cast modes and aiming from play. The seeds are general knowledge:
+a patch can change a skill, so a Groq fetch or a learned result replaces them.
+
+Evaluation: at the end of each match (2+ minutes) the app saves the hero, role, K/D/A, level, length, and whether
+the AI or you played. The Learn page "HOW THE AI DOES PER HERO AND ROLE" shows the averages per role and per hero,
+so you can see which heroes and roles it plays well. Wins and losses are not read from the screen yet.
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |

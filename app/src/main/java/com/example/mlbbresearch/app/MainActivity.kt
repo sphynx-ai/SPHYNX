@@ -1210,6 +1210,13 @@ class MainActivity : Activity() {
             DatasetManager.exportDemos(this) { msg -> runOnUiThread { toast(msg) } }
         }
 
+        title("HOW THE AI DOES PER HERO AND ROLE")
+        text("Every match is logged (hero, role, who played, K/D/A, level, length) - to see where the AI plays well and " +
+            "which heroes / roles need work. Win / loss is not read yet.", 13f)
+        val ml = text("", 12f)
+        upd { ml.text = com.example.mlbbresearch.game.MatchLog.summary() }
+        btn("Clear the match log") { com.example.mlbbresearch.game.MatchLog.clear(); toast("Cleared") }
+
         title("DETECTOR TRAINING PICTURES")
         text("While you play, pictures are saved with boxes already drawn from what the app sees:\n" +
             "  - the minimap every 6 s (hero icons, towers, turtle / lord) -> Download/MLBB-Research/dataset, for " +

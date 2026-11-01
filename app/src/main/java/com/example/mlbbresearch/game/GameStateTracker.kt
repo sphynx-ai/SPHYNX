@@ -148,6 +148,8 @@ object GameStateTracker {
         val before = state.phase
         if (v.self != null && !wasInMatch) {
             // first look at your hero after hero select / loading: the match clock starts
+            logMatch()                      // a match without a hero-select screen in between
+            kills = 0; deaths = 0; assists = 0
             matchStartAt = now
             spawnAt = now
             com.example.mlbbresearch.vision.LevelReader.reset()
@@ -242,7 +244,15 @@ object GameStateTracker {
     @Volatile var onNewMatch: (() -> Unit)? = null
 
     // New match: forget the previous one
+    // the match that just ended goes into the evaluation log
+    private fun logMatch() {
+        if (matchStartAt == 0L) return
+        MatchLog.save(ownHero(), lane().first, kills, deaths, assists, com.example.mlbbresearch.vision.LevelReader.level,
+            ((lastInGame - matchStartAt) / 1000).toInt(), com.example.mlbbresearch.ai.AiRuntime.playerOn)
+    }
+
     fun newMatch() {
+        logMatch()
         onNewMatch?.invoke()
         myTeam = emptyList()
         enemyTeam = emptyList()
