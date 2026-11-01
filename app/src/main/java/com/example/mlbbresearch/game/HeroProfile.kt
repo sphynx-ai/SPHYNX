@@ -90,7 +90,8 @@ object HeroDb {
         "Miya" to "ult", "Benedetta" to "s2", "Paquito" to "s1", "Aldous" to "ult", "Martis" to "s2",
         "Ruby" to "s2", "Yu Zhong" to "s2", "Khufra" to "s1", "Franco" to "none", "Layla" to "none",
         "Eudora" to "none", "Nana" to "none", "Vexana" to "none", "Badang" to "none", "Sun" to "none",
-        "Masha" to "s2", "Kagura" to "s2", "Harley" to "s2", "Wanwan" to "s1", "Beatrix" to "none"
+        "Masha" to "s2", "Kagura" to "s2", "Harley" to "s2", "Wanwan" to "s1", "Beatrix" to "none",
+        "Fredrinn" to "s1", "Claude" to "s1", "Minotaur" to "s1", "Mathilda" to "ult", "Lylia" to "ult"
     )
 
     fun dashSlot(hero: String?): String? {
