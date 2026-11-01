@@ -1249,7 +1249,7 @@ class MainActivity : Activity() {
             com.example.mlbbresearch.learning.LiveRecorder.let { r ->
                 val st = GameStateTracker.state
                 val watching = st.phase == com.example.mlbbresearch.game.Phase.LIVE
-                liveInfo.text = (if (watching) "Watching a live match now" + (if (st.self == null) " (their hero not found on screen)" else ", their HP ${(st.selfHp * 100).toInt()}%") +
+                liveInfo.text = (if (watching) "Watching a live match now" + (if (st.self == null) " (their hero is dead or not found on screen: not recording)" else ", their HP ${(st.selfHp * 100).toInt()}%") +
                     "\nMatch time: " + (if (st.matchSec >= 0) "%d:%02d".format(st.matchSec / 60, st.matchSec % 60) else "not read yet (needs Gemma)") +
                     "\nPanel: ${r.panel}\nLast seen: ${r.lastAction}\n" else "Not watching a live match\n") +
                     "Live moments: ${r.recorded} this session, ${r.total} saved"

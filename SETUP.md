@@ -795,6 +795,10 @@ live screen (its info panel along the bottom) and reads it like a match of yours
 | Attack | standing still next to an enemy, minion or monster (basic attacks cannot be seen) |
 | Match time | the timer at the top, read by Gemma about once a minute (-1 without Gemma) |
 
+The live screen is recognised by its panel, or by its own buttons on the right (gift, like, ranking) when the
+panel is gone: that happens while the watched hero is dead (the camera then follows another hero, whose bar is red).
+Nothing is recorded until they are back.
+
 Masked (never read as units): the right column of buttons, streamer name / likes, chat bar, their panel,
 the scoreboard and the "ready in ..." notices.
 

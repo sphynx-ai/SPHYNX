@@ -146,8 +146,10 @@ object GameStateTracker {
     fun update(v: VisionResult): GameState {
         val now = v.ts
         // watching someone's live match (and up to 4 s after its last frame)
-        if (v.hint == ScreenHint.LIVE) lastLiveAt = now
-        if (v.hint == ScreenHint.LIVE || (now - lastLiveAt in 0..4000 && v.hint == ScreenHint.NONE)) return liveState(v, now, v.hint == ScreenHint.LIVE)
+        // (LIVE_DEAD: the watched hero is dead, nothing on screen is theirs)
+        if (v.hint == ScreenHint.LIVE || v.hint == ScreenHint.LIVE_DEAD) lastLiveAt = now
+        if (v.hint == ScreenHint.LIVE || v.hint == ScreenHint.LIVE_DEAD || (now - lastLiveAt in 0..4000 && v.hint == ScreenHint.NONE))
+            return liveState(v, now, v.hint == ScreenHint.LIVE)
         val wasInMatch = now - lastInGame < 120_000
         val before = state.phase
         if (v.self != null && !wasInMatch) {
