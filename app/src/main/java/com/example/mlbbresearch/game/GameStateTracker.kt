@@ -157,6 +157,7 @@ object GameStateTracker {
             logMatch()                      // a match without a hero-select screen in between
             kills = 0; deaths = 0; assists = 0
             matchStartAt = now
+            com.example.mlbbresearch.vision.ScreenReader.clearResult()
             spawnAt = now
             com.example.mlbbresearch.vision.LevelReader.reset()
         }
@@ -196,10 +197,11 @@ object GameStateTracker {
         // match end (Victory / Defeat, MVP, final scoreboard): log the match once, with the result
         val endScreen = hint == ScreenHint.RESULT_SPLASH || hint == ScreenHint.RESULT_STATS || hint == ScreenHint.RESULT_BOARD
         if (endScreen && phase == Phase.RESULT && matchStartAt != 0L) {
-            lastResultWin = com.example.mlbbresearch.vision.ScreenReader.lastResultWin
-            logMatch()
+            val result = com.example.mlbbresearch.vision.ScreenReader.lastResultWin
+            lastResultWin = result
+            logMatch()                       // (it clears lastResultWin: the message uses the copy)
             matchStartAt = 0L
-            Diag.info("Match end: " + when (lastResultWin) { true -> "victory"; false -> "defeat"; null -> "result not read" })
+            Diag.info("Match end: " + when (result) { true -> "victory"; false -> "defeat"; null -> "result not read" })
         }
         if (phase == Phase.DRAFT || phase == Phase.HERO_LOCKED) {
             // first hero-select screen in 5 minutes = a new match: forget the old one

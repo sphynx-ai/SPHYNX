@@ -151,13 +151,26 @@ object ScreenDatasetCollector {
     }
 
     private fun write(c: Context, sub: String, name: String, mime: String, body: (java.io.OutputStream) -> Unit) {
+        val rel = Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research/screen_dataset" + if (sub.isEmpty()) "" else "/$sub"
+        // a file of that name may already be there (classes.txt from an earlier run, a re-install):
+        // overwrite it instead of failing on the duplicate name
+        val existing = try {
+            c.contentResolver.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.Downloads._ID),
+                MediaStore.Downloads.DISPLAY_NAME + "=? AND " + MediaStore.Downloads.RELATIVE_PATH + " LIKE ?",
+                arrayOf(name, "$rel%"), null)?.use { cur ->
+                if (cur.moveToFirst()) android.content.ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cur.getLong(0)) else null
+            }
+        } catch (e: Exception) { null }
+        if (existing != null) {
+            try { c.contentResolver.openOutputStream(existing, "wt")?.use(body); return } catch (e: Exception) { }
+        }
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, name)
             put(MediaStore.Downloads.MIME_TYPE, mime)
-            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research/screen_dataset" + if (sub.isEmpty()) "" else "/$sub")
+            put(MediaStore.Downloads.RELATIVE_PATH, rel)
         }
-        val uri = c.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            ?: throw IllegalStateException("could not create $name")
+        val uri = try { c.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) } catch (e: android.database.sqlite.SQLiteConstraintException) { null }
+            ?: return    // the name is taken by a file this app cannot see (e.g. left from a re-install): skip it
         c.contentResolver.openOutputStream(uri)?.use(body)
     }
 }

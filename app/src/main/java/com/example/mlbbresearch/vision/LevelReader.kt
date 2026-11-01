@@ -117,6 +117,9 @@ object LevelReader {
 
     private fun setLevel(l: Int, now: Long, why: String) {
         val v = l.coerceIn(1, 15)
+        // a hero's level never goes down in a match: a lower reading is a misread (e.g. the badge
+        // "11" is two thin digits and looked like one digit -> "9"). reset() starts each match at 1.
+        if (v < level) return
         known = why == "remembered badge"
         if (v == level) return
         if (v > level) lastUpAt = now
