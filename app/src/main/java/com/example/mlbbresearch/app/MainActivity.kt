@@ -748,7 +748,11 @@ class MainActivity : Activity() {
         val moveInfo = text("", 13f)
         upd {
             val gs = GameStateTracker.state
-            moveInfo.text = "Wall map: ${if (com.example.mlbbresearch.vision.WallMap.ready) "ready" else "building (needs a few seconds in a match)"}\n" +
+            val wm = com.example.mlbbresearch.vision.WallMap
+            moveInfo.text = "Wall map: ${if (wm.ready) "ready" else "building (needs a few seconds in a match)"}\n" +
+                (if (wm.ready) "Minimap terrain (40x40 cells): walls ${wm.count(com.example.mlbbresearch.vision.Terrain.WALL)}, " +
+                    "bushes ${wm.count(com.example.mlbbresearch.vision.Terrain.BUSH)}, lane paths ${wm.count(com.example.mlbbresearch.vision.Terrain.LANE)}, " +
+                    "jungle ${wm.count(com.example.mlbbresearch.vision.Terrain.JUNGLE)}, river ${wm.count(com.example.mlbbresearch.vision.Terrain.RIVER)}\n" else "") +
                 "K/D/A seen this match: ${GameStateTracker.kills} / ${GameStateTracker.deaths} / ${GameStateTracker.assists}" +
                 "  (jungle camps killed: ${com.example.mlbbresearch.game.JungleNav.campsKilled})\n" +
                 "Monsters on screen: ${gs.monsters.size}   Bushes on screen: ${gs.bushes.size}" + (if (gs.inBush) "   (you are in a bush)" else "") +

@@ -265,7 +265,8 @@ object GameStateTracker {
             enemyWaves = if (onMap) emptyList() else v.minimap.enemyWaves,
             bossHp = v.bossHp,
             bushes = v.bushes,
-            inBush = v.inBush,
+            // on screen, or (alongside) the minimap shows your spot is bush ground
+            inBush = v.inBush || !onMap && com.example.mlbbresearch.vision.WallMap.inBush(v.minimap.self),
             screenWalls = v.screenWalls,
             level = v.level,
             xp = v.xp,

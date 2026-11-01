@@ -927,6 +927,23 @@ Rules:
 - Player page: the switches for behaviour that should always be on (joystick, combos, aiming, walls, dash, bushes,
   recall, Regen, objectives, monsters, upgrades, fastest mode...) are gone; natural thumb variation removed
 
+## Walls and bushes from the minimap (v36.14)
+
+Alongside the screen detection (bushes / walls seen on screen and the trained screen detector), the minimap ground is
+now read by its shade, 40 x 40 cells, each cell keeping the class it shows most often (icons passing over are ignored):
+
+| Minimap shade | Terrain | Used for |
+|---|---|---|
+| lightest grey (a little green) | bush | hiding when hurt, recalling hidden, "in a bush" even when the screen misses it |
+| light grey | lane / tower paths | walking routes prefer them a little (open ground) |
+| grey | jungle | normal ground |
+| dark grey | wall | paths go around them (as before); a wall the hero gets stuck on is added |
+| aquamarine blue | river | normal ground (no longer mistaken for an icon) |
+
+- retreating hurt: no bush on screen -> a minimap bush close by and on the way out
+- recall: no bush on screen -> walks into a minimap bush a few steps away first
+- Player page: the terrain counts (walls, bushes, lane paths, jungle, river) show once the map is ready
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |
