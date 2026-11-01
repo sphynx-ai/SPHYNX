@@ -179,7 +179,9 @@ object ActionExecutor {
                     val n = (misfires[key] ?: 0) + 1
                     misfires[key] = n
                     if (n >= 2) {
-                        val next = CastMode.values()[(c.mode.ordinal + 1) % CastMode.values().size]
+                        // only tap <-> aim: "hold" (which blocks every other touch while it charges)
+                        // comes from the skill's description alone, never from a guess
+                        val next = if (c.mode == CastMode.TAP) CastMode.AIM else CastMode.TAP
                         SkillBook.setCastMode(c.hero, c.slot, next)
                         misfires[key] = 0
                         lastFeedback = "${c.slot} did not go off twice with ${c.mode.name.lowercase()}: now ${next.name.lowercase()}"
@@ -244,10 +246,12 @@ object ActionExecutor {
     private fun holdDirection(d: TacticalDecision): Pair<Float, Float> {
         val now = System.currentTimeMillis()
         if (d.moveX != 0f || d.moveY != 0f) { lastMoveAt = now; return d.moveX to d.moveY }
+        // the thumb is lifted only to stand and hit something (the joystick would override the
+        // attack), to recall / regen, or to hide in a bush; never just to stand around
         val stay = when (d.intent) {
-            Intent.LANE_CLEAR, Intent.JUNGLE, Intent.OBJECTIVE, Intent.PUSH, Intent.RECALL, Intent.REGEN,
-            Intent.AMBUSH, Intent.IDLE -> true
+            Intent.RECALL, Intent.REGEN, Intent.AMBUSH -> true
             Intent.RETREAT -> d.reason.contains("hiding")
+            Intent.LANE_CLEAR, Intent.JUNGLE, Intent.OBJECTIVE, Intent.PUSH -> "attack" in d.casts || d.targetX >= 0f
             else -> false
         }
         if (stay || !Cfg.smoothJoystick) return 0f to 0f
@@ -265,7 +269,7 @@ object ActionExecutor {
             }
         }
         // otherwise keep walking the same way rather than lifting and pressing again
-        if ((joyDirX != 0f || joyDirY != 0f) && now - lastMoveAt < 1500) return joyDirX to joyDirY
+        if ((joyDirX != 0f || joyDirY != 0f) && now - lastMoveAt < 3000) return joyDirX to joyDirY
         return 0f to 0f
     }
     private var lastMoveAt = 0L

@@ -71,9 +71,66 @@ class AccessibilityController : AccessibilityService() {
         return if (nudgeRight) x + 0.5f else x - 0.5f
     }
 
-    // All actions go out as ONE gesture, so moving and casting happen at the same time
-    @Synchronized
+    // ---- one gesture at a time ----
+    // Android CANCELS a gesture still in progress when a new one is dispatched: a skill tap cut
+    // off by the next joystick turn never fires, and a cancelled joystick stroke lifts the thumb
+    // (the hero stops). So touches never overlap: while one gesture is on the screen (35-90 ms),
+    // new touches wait and are MERGED (the newest joystick direction, every tap / skill), and go
+    // out the moment the screen is free. Callbacks run on their own thread (not the busy UI one).
+    private val touchLock = Any()
+    private var inFlight = false
+    private var inFlightAt = 0L
+    private var pendingActs: ArrayList<Act>? = null
+    private var pendingShow = false
+    private var pendingSince = 0L
+    private val touchThread = android.os.HandlerThread("touches").apply { start() }
+    private val touchHandler = android.os.Handler(touchThread.looper)
+
     fun dispatch(acts: List<Act>, showTouches: Boolean) {
+        synchronized(touchLock) {
+            val now = System.currentTimeMillis()
+            // (a lost callback never blocks the touches for more than 1.5 s)
+            if (inFlight && now - inFlightAt < 1500) {
+                val q = pendingActs ?: ArrayList<Act>().also { pendingActs = it }
+                for (a in acts) {
+                    when (a) {
+                        is Act.Joy -> { q.removeAll { it is Act.Joy || it is Act.JoyRelease }; q.add(a) }
+                        is Act.JoyRelease -> { q.removeAll { it is Act.Joy || it is Act.JoyRelease }; q.add(a) }
+                        is Act.Tap -> if (q.none { it is Act.Tap && it.x == a.x && it.y == a.y }) q.add(a)
+                        else -> q.add(a)
+                    }
+                }
+                pendingShow = pendingShow || showTouches
+                if (pendingSince == 0L) pendingSince = now
+                return
+            }
+            inFlight = true
+            inFlightAt = now
+            com.example.mlbbresearch.core.Speed.touch(0L)
+        }
+        if (!send(acts, showTouches)) next()
+    }
+
+    // the screen is free: send what waited, if anything
+    private fun next() {
+        val q: List<Act>
+        val show: Boolean
+        synchronized(touchLock) {
+            val p = pendingActs
+            if (p.isNullOrEmpty()) { inFlight = false; pendingActs = null; return }
+            q = p; show = pendingShow
+            pendingActs = null; pendingShow = false
+            inFlightAt = System.currentTimeMillis()
+            if (pendingSince > 0L) com.example.mlbbresearch.core.Speed.touch(inFlightAt - pendingSince)
+            pendingSince = 0L
+        }
+        if (!send(q, show)) next()
+    }
+
+    // All actions go out as ONE gesture, so moving and casting happen at the same time.
+    // false = nothing was sent
+    @Synchronized
+    private fun send(acts: List<Act>, showTouches: Boolean): Boolean {
         // touches are in whole-screen pixels (camera cut-out included), like the capture
         val (rw, rh) = com.example.mlbbresearch.core.ScreenGeom.size(this)
         val w = rw.toFloat()
@@ -84,8 +141,8 @@ class AccessibilityController : AccessibilityService() {
         var release = false
         for (a in acts) {
             when (a) {
-                is Act.Joy -> joyAct = a
-                is Act.JoyRelease -> release = true
+                is Act.Joy -> { joyAct = a; release = false }
+                is Act.JoyRelease -> { release = true; joyAct = null }
                 else -> {}
             }
         }
@@ -99,43 +156,34 @@ class AccessibilityController : AccessibilityService() {
                 val tx = if (held != null && joyAct.x * w == joyX && ty == joyY) nudge(joyX) else joyAct.x * w
                 val p = Path()
                 if (held == null) {
-                    // like a thumb: press the joystick's CENTRE, hold, then swipe one way to the edge
-                    // (the swipe follows a moment later as a continuation of this press)
+                    // like a thumb: press the joystick's CENTRE and swipe out to the edge in one
+                    // quick stroke; the finger stays down
                     val cx = joyAct.cx * w; val cy = joyAct.cy * h
                     p.moveTo(cx, cy)
-                    p.lineTo(cx + 0.5f, cy)
-                    newJoy = GestureDescription.StrokeDescription(p, 0, 40, true)
-                    g.addStroke(newJoy)
-                    n++
-                    joyX = cx + 0.5f
-                    joyY = cy
-                    joyStroke = newJoy
-                    val swipe = joyAct
-                    mainHandler.postDelayed({ try { if (joyStroke != null) dispatch(listOf(swipe), false) } catch (_: Exception) {} }, 55)
-                    if (showTouches) overlay?.showTouch(Act.Drag(joyAct.cx, joyAct.cy, joyAct.x, joyAct.y, joyAct.ms))
+                    p.lineTo(tx, ty)
+                    newJoy = GestureDescription.StrokeDescription(p, 0, 50, true)
                 } else {
-                    // a continuation must start exactly where the last stroke ended; a turn
-                    // slides through the in-between directions along the ring
+                    // a continuation must start exactly where the last stroke ended
                     p.moveTo(joyX, joyY)
                     for ((vx, vy) in joyAct.via) p.lineTo(vx * w, vy * h)
                     p.lineTo(tx, ty)
                     newJoy = held.continueStroke(p, 0, joyAct.ms, true)
-                    g.addStroke(newJoy)
-                    n++
-                    joyX = tx
-                    joyY = ty
-                    if (showTouches) overlay?.showTouch(Act.Drag(joyAct.cx, joyAct.cy, joyAct.x, joyAct.y, joyAct.ms))
                 }
+                g.addStroke(newJoy)
+                n++
+                joyX = tx
+                joyY = ty
+                if (showTouches) overlay?.showTouch(Act.Drag(joyAct.cx, joyAct.cy, joyAct.x, joyAct.y, joyAct.ms))
             } else if (held != null) {
                 val p = Path()
                 p.moveTo(joyX, joyY)
                 val ex = nudge(joyX)
                 p.lineTo(ex, joyY)
                 if (release) {
-                    g.addStroke(held.continueStroke(p, 0, 40, false))
+                    g.addStroke(held.continueStroke(p, 0, 30, false))
                 } else {
                     // another touch is going out: keep the finger where it is
-                    newJoy = held.continueStroke(p, 0, 60, true)
+                    newJoy = held.continueStroke(p, 0, 30, true)
                     g.addStroke(newJoy)
                     joyX = ex
                 }
@@ -153,7 +201,7 @@ class AccessibilityController : AccessibilityService() {
             if (n >= GestureDescription.getMaxStrokeCount()) break
             val p = Path()
             val dur: Long = when (a) {
-                is Act.Tap -> { p.moveTo(a.x * w, a.y * h); p.lineTo(a.x * w + 1, a.y * h); if (Cfg.fastMode) 35L else 60L }
+                is Act.Tap -> { p.moveTo(a.x * w, a.y * h); p.lineTo(a.x * w + 1, a.y * h); 30L }
                 is Act.Drag -> { p.moveTo(a.x1 * w, a.y1 * h); p.lineTo(a.x2 * w, a.y2 * h); a.ms }
                 else -> continue
             }
@@ -161,23 +209,25 @@ class AccessibilityController : AccessibilityService() {
             n++
             if (showTouches) overlay?.showTouch(a)
         }
-        if (n == 0) return
+        if (n == 0) return false
         val mine = newJoy
-        val seq = ++dispatchSeq
-        val ok = dispatchGesture(g.build(), object : GestureResultCallback() {
-            override fun onCancelled(gestureDescription: GestureDescription?) {
-                // interrupted (e.g. the user touched the screen): the finger is lifted
-                if (mine != null && joyStroke === mine) joyStroke = null
-                // not replaced by a newer gesture of ours = YOUR finger touched the screen
-                if (seq == dispatchSeq) userTouchAt = System.currentTimeMillis()
-            }
-        }, null)
+        val ok = try {
+            dispatchGesture(g.build(), object : GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) { next() }
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    // ours never overlap now: a cancel means YOUR finger touched the screen (or the
+                    // system took it); the joystick finger is lifted
+                    if (mine != null && joyStroke === mine) joyStroke = null
+                    userTouchAt = System.currentTimeMillis()
+                    next()
+                }
+            }, touchHandler)
+        } catch (e: Exception) { Diag.error("Touch", e); false }
         if (!ok && joyStroke === mine) joyStroke = null
+        return ok
     }
 
     fun joystickHeld() = joyStroke != null
-    @Volatile private var dispatchSeq = 0
-    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     // Lifts the joystick finger at once (emergency stop, AI off)
     fun releaseJoystick() {

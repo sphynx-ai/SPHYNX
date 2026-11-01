@@ -310,10 +310,10 @@ object TacticalEngine {
         val now = s.ts
         val c = committed
         val urgent = !travelling(d) || s.enemiesWithin(0.9f).isNotEmpty() || GameStateTracker.hurtRecently(now)
-        if (urgent) { committed = if (travelling(d)) d else null; commitUntil = now + 2500; return d }
+        if (urgent) { committed = if (travelling(d)) d else null; commitUntil = now + 1200; return d }
         if (c == null || now > commitUntil || c.intent == d.intent && c.reason.substringBefore(':') == d.reason.substringBefore(':') ||
             d.intent == Intent.IDLE) {
-            if (c == null || now > commitUntil || c.intent != d.intent || c.reason.substringBefore(':') != d.reason.substringBefore(':')) commitUntil = now + 2500
+            if (c == null || now > commitUntil || c.intent != d.intent || c.reason.substringBefore(':') != d.reason.substringBefore(':')) commitUntil = now + 1200
             committed = d
             return d
         }
@@ -1162,6 +1162,16 @@ object TacticalEngine {
     }
 
     // Direction towards the enemy base, set on the Player page
+    // Nothing to decide (your HP bar hidden for a moment): never stand still - walk towards the
+    // enemy base (around walls, by the minimap), else the push direction, else towards the middle
+    fun fallbackMove(s: GameState): TacticalDecision {
+        val me = s.minimapSelf
+        val goal = (if (me != null) s.towers.minByOrNull { hypot(it.x - me.first, it.y - me.second) } else null)?.let { it.x to it.y } ?: s.enemyBase
+        val dir = if (me != null && goal != null) com.example.mlbbresearch.vision.WallMap.direction(me, goal) ?: mapDir(me, goal)
+            else pushVector().takeIf { it.first != 0f || it.second != 0f } ?: me?.let { norm(0.5f - it.first, 0.5f - it.second) } ?: norm(1f, -1f)
+        return TacticalDecision(Intent.PUSH, dir.first, dir.second, emptyList(), -1f, -1f, "-", -1f, -1, "keep moving (nothing seen this moment)")
+    }
+
     fun pushVector(): Pair<Float, Float> = when (Cfg.pushDir) {
         "up-right" -> norm(1f, -1f)
         "down-left" -> norm(-1f, 1f)
