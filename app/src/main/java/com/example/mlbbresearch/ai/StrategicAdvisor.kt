@@ -127,6 +127,8 @@ object StrategicAdvisor {
                 .joinToString("; ") + ". "
         val prompt = "You are the strategic brain of a Mobile Legends bot playing $hero ($role). " +
             "Situation: ${s.summary()}${ObjectDetector.summary().let { if (it.isEmpty()) "" else "; minimap $it" }}. " + tips +
+            (if (s.matchSec >= 0) "Match ${s.matchSec / 60}:%02d; ${com.example.mlbbresearch.game.MatchEvents.status(s.matchSec)}. ".format(s.matchSec % 60) else "") +
+            "Role (${s.lane.label}) tip: ${com.example.mlbbresearch.game.RoleTips.of(s.lane, s.matchSec.coerceAtLeast(0))}. " +
             "Reply with ONLY one JSON object, no other words: " +
             "{\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 8 words\"}"
         val reply = ask("strategy ($why)", prompt, if (Cfg.strategyWithImage) FrameHub.bitmap() else null) ?: return

@@ -195,20 +195,24 @@ object HeroDb {
     }
 }
 
-// Primary builds per role. Editable on the Build page; check them against the current patch.
+// Primary builds per role. Editable on the Build page. Every item is in the wiki's current list
+// (ItemDb); a typed item that is not is shown as outdated and left out (names are corrected).
 object BuildBook {
     val defaults: Map<Role, String> = mapOf(
         Role.FIGHTER to "Warrior Boots, War Axe, Hunter Strike, Queen's Wings, Brute Force Breastplate, Immortality",
-        Role.TANK to "Tough Boots, Dominance Ice, Antique Cuirass, Athena's Shield, Radiant Armor, Immortality",
+        Role.TANK to "Tough Boots, Dominance Ice, Antique Cuirass, Guardian Helmet, Radiant Armor, Immortality",
         Role.ASSASSIN to "Warrior Boots, Hunter Strike, Blade of Despair, Malefic Roar, Queen's Wings, Immortality",
         Role.MAGE to "Arcane Boots, Enchanted Talisman, Lightning Truncheon, Holy Crystal, Divine Glaive, Blood Wings",
-        Role.MARKSMAN to "Swift Boots, Windtalker, Berserker's Fury, Haas's Claws, Blade of Despair, Malefic Roar",
-        Role.SUPPORT to "Tough Boots, Fleeting Time, Oracle, Dominance Ice, Athena's Shield, Immortality",
-        Role.UNKNOWN to "Warrior Boots, War Axe, Dominance Ice, Athena's Shield, Brute Force Breastplate, Immortality"
+        Role.MARKSMAN to "Swift Boots, Windtalker, Berserker's Fury, Haas' Claws, Blade of Despair, Malefic Roar",
+        Role.SUPPORT to "Tough Boots, Fleeting Time, Oracle, Dominance Ice, Radiant Armor, Immortality",
+        Role.UNKNOWN to "Warrior Boots, War Axe, Dominance Ice, Radiant Armor, Brute Force Breastplate, Immortality"
     )
 
     fun primary(role: Role): List<String> =
         Cfg.roleBuild(role.name, defaults[role] ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            .mapNotNull { ItemDb.canonical(it) }
+    fun outdated(role: Role): List<String> =
+        ItemDb.outdated(Cfg.roleBuild(role.name, defaults[role] ?: "").split(",").map { it.trim() })
 }
 
 // Secondary (counter) items picked from the enemy team's make-up
@@ -226,20 +230,20 @@ object CounterRules {
         val healers = enemies.filter { it in HeroDb.sustain }
         val out = ArrayList<Pick>()
         if (magic >= 2) {
-            out.add(Pick("Athena's Shield", "$magic magic-damage enemies (burst)"))
-            out.add(Pick("Radiant Armor", "sustained magic damage"))
+            out.add(Pick("Radiant Armor", "$magic magic-damage enemies"))
         }
         if (physical >= 3) {
             out.add(Pick("Antique Cuirass", "$physical physical-damage enemies"))
             out.add(Pick("Dominance Ice", "armour and slows their attack speed"))
         }
+        // anti-heal (only items in the current list; magic damage has no listed anti-heal item)
         if (healers.isNotEmpty()) {
             val anti = when {
                 myRole == Role.TANK || myRole == Role.SUPPORT -> "Dominance Ice"
-                myDmg == Damage.MAGIC -> "Necklace of Durance"
+                myDmg == Damage.MAGIC -> null
                 else -> "Sea Halberd"
             }
-            out.add(Pick(anti, "anti-heal vs ${healers.joinToString()}"))
+            if (anti != null) out.add(Pick(anti, "anti-heal vs ${healers.joinToString()}"))
         }
         if (tanks >= 2 && myRole != Role.TANK && myRole != Role.SUPPORT) {
             out.add(Pick(if (myDmg == Damage.MAGIC) "Divine Glaive" else "Malefic Roar", "$tanks tanks: penetration"))
@@ -248,6 +252,6 @@ object CounterRules {
             out.add(Pick("Immortality", "$burst assassins: second life"))
             out.add(Pick("Winter Crown", "freeze to survive burst (if it fits your build)"))
         }
-        return out.distinctBy { it.item }
+        return out.filter { ItemDb.isCurrent(it.item) }.distinctBy { it.item }
     }
 }

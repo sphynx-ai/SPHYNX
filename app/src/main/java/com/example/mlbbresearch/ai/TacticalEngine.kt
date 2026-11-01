@@ -449,7 +449,9 @@ object TacticalEngine {
             chaseDash(s, p, d)?.let { casts.add(it) }
             for (sk in p.combo) if (sk != "ult" && sk !in casts && d <= p.engageRange && CooldownTracker.ready(sk, p)) casts.add(sk)
             if (d <= p.engageRange && CooldownTracker.ready("ult", p) && (p.ult == UltRule.EXECUTE || p.ult == UltRule.ENGAGE)) casts.add("ult")
-            if (s.spell in setOf("Execute", "Flameshot") && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
+            // Execute: true damage that grows with the target's LOST HP - a finisher (wiki), not an opener
+            if (s.spell == "Execute" && low.hp <= com.example.mlbbresearch.game.SpellInfo.EXECUTE_BELOW && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
+            if (s.spell == "Flameshot" && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
             // Flicker onto a fleeing enemy under 10% that is just out of reach
             if (low === dying && s.spell == "Flicker" && d > p.attackRange * 1.5f && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
             // chasing: straight after it (no keeping distance)
@@ -594,6 +596,9 @@ object TacticalEngine {
         // ---- the minion wave: last hits first (the minion that dies to the next hit), lowest HP ----
         fun minionWave(): TacticalDecision? {
             if (minions.isEmpty() || plan.plan == "group") return null
+            // jungler with Retribution: lane minions give 70% less until 5:00 and feed the laners less (wiki)
+            if (s.lane == Lane.JUNGLE && s.spell == "Retribution" && s.matchSec in 0 until 300 &&
+                TowerLogic.towerToDefend(s) == null) return null
             val mx0 = minions.map { it.x }.average().toFloat()
             val my0 = minions.map { it.y }.average().toFloat()
             // WAVE MANAGEMENT: PUSH (clear fast with skills: mid before rotating, anyone ahead or with

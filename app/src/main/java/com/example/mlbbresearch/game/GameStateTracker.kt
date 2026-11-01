@@ -365,7 +365,9 @@ object CooldownTracker {
             val base = baseline[slot]
             if (b != null && base != null && base > 40f) return since > 400 && b >= base * 0.72f
         }
-        val cd = ((p.cooldownSec[slot] ?: 8f) * 1000 * cdFactor).toLong()
+        // the battle spell's real cooldown (wiki), whatever the hero profile says
+        val base = if (slot == "spell") SpellInfo.cooldown[GameStateTracker.spell()] ?: p.cooldownSec[slot] ?: 100f else p.cooldownSec[slot] ?: 8f
+        val cd = (base * 1000 * cdFactor).toLong()
         return since >= cd
     }
 

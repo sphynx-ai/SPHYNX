@@ -821,17 +821,18 @@ and aiming (no indicators on the live screen).
 ## Jungle monsters by name (v36.4)
 
 There is no "blue buff" / "red buff": the buffs are the **purple buff (Thunder Fenrir)** and the **orange buff
-(Fiery Hound)**. The app's monster list (game/JungleDb.kt):
+(Molten Fiend** - the wiki's name; this app first called it Fiery Hound)**. The app's monster list (game/JungleDb.kt):
 
 | Name | Kind | Looks like |
 |---|---|---|
 | Lord | objective | a human-like giant holding a trident |
 | Turtle | objective | a giant turtle |
-| Fiery Hound (orange buff) | buff | a fire monster with orange flames |
+| Molten Fiend (orange buff) | buff | a fire monster with orange flames |
 | Thunder Fenrir (purple buff) | buff | a purple monster with a cub beside it |
 | Lava Golem | camp | a human-like rock |
 | Horned Lizard | camp | a lizard |
-| Fire Beetle, Lithowanderer, Crab, Cyclone Eye | camp / river | (see the wiki) |
+| Fire Beetle (+ its little Crammer), Lithowanderer, Scavenger Crab | camp / river | see Game knowledge below |
+| Cyclone Eye | terrain (blink pad), not a monster | blue diamond on the minimap |
 
 How the colour vision names them (measured on 20 screenshots): the HP bar's full width inside its orange frame
 (Lord / Turtle 0.10+ and 5 rows thick with a purple skull icon; buffs 0.078-0.095; small camps less), then Lord or
@@ -843,8 +844,29 @@ detector names them: rename those boxes in Roboflow.
 Turrets: outer turrets have a gold energy shield (yellow HP bar) until 5:00 (`tower_enemy_plated` /
 `tower_ally_plated`), then `tower_enemy` / `tower_ally`; the base is `base_enemy` / `base_ally`.
 
-The fandom wiki (HP, gold, spawn times) could not be read from the build environment (network blocked): those numbers
-are not in the app yet.
+
+## Game knowledge from the wiki (v36.5)
+
+From the wiki pages you saved (Battlefield Guide, Jungle, Battle spells, Equipment, EXP / Gold / Mid Laner, Roamer);
+only what is current (removed items, spells and monsters left out). Code: game/JungleDb.kt and game/WikiData.kt.
+The Player page shows it under GAME KNOWLEDGE.
+
+- **Jungle**: names, gold (Molten Fiend 120, Thunder Fenrir 100 + cub 22, Lithowanderer 92, Horned Lizard 92, Lava Golem 81,
+  Crab 36), what each gives (Orange / Purple / Healing / Gold / EXP buffs, Walkie Grass, Turtle Buff, Lord push), buffs at
+  0:30 with 2:00 respawns, what the minimap dots mean.
+- **Timeline**: 0:30 buffs; 2:00 Turtle, Crab upgraded; 5:00 outer turret shields drop, jungler's minion penalty ends;
+  8:00 Lord, inner turrets lose their damage reduction; 12:00 Lord enhanced; 18:00 Lord evolved. Shown in the status
+  ("Timeline: next at ...") and given to Gemma's strategy prompt with a role tip for the moment.
+- **Battle spells**: the real cooldown of each spell (Flicker 120 s, Retribution 35 s, Execute 90 s, ...) instead of one
+  default; Execute is now used as a finisher (target at 25% HP or less) - it scales with the target's lost HP.
+- **Equipment**: the 105 current items. Builds are checked against them: names corrected (Haas' Claws), items no longer
+  in the game left out and shown on the Build page. Athena's Shield and Necklace of Durance are not in the list:
+  replaced by Guardian Helmet / Radiant Armor; there is no listed magic anti-heal item, so none is suggested for mages.
+- **Laning**: the wiki's lists (EXP utility / hybrid / damage, gold late / burst / magic, mid utility / hybrid / damage /
+  high dive, roamer setter / initiator / utility / damage) pick the lane automatically when no online meta is known;
+  setter / initiator heroes start fights with an ally near, utility roamers do not fight alone, late-game carries are
+  more patient before 10:00, early-game heroes press before 8:00.
+- **Jungler**: with Retribution it leaves lane minions alone until 5:00 (70% less reward) unless a tower needs defending.
 
 ## How it is organised (matches your note)
 
