@@ -34,7 +34,14 @@ object GroqClient {
     // tool): Groq then answers 400 with the raw output in "failed_generation". In that case the
     // JSON is taken from the raw output; if there is none it retries once, then asks once more
     // WITHOUT web search (the answer then comes from the model's own knowledge).
-    suspend fun ask(prompt: String): Pair<String, List<String>> = withContext(Dispatchers.IO) {
+    @Volatile var lastMs = 0L      // the last answer, start to end (Speed page)
+
+    suspend fun ask(prompt: String): Pair<String, List<String>> {
+        val t0 = System.currentTimeMillis()
+        try { return askRaw(prompt) } finally { lastMs = System.currentTimeMillis() - t0 }
+    }
+
+    private suspend fun askRaw(prompt: String): Pair<String, List<String>> = withContext(Dispatchers.IO) {
         val key = Cfg.groqKey.trim()
         if (key.isEmpty()) throw IllegalStateException("No Groq API key (put groq_key.txt in the MLBB-Research folder)")
         val model = Cfg.groqModel.trim().ifEmpty { Cfg.DEFAULT_GROQ_MODEL }

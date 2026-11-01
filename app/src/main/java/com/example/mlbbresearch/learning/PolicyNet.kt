@@ -210,6 +210,8 @@ object PolicyNet {
     // move: 0..7 = the 8 directions (0 right, 2 down, 4 left, 6 up), 8 = stand still
     class Out(val move: Int, val moveP: Float, val casts: FloatArray)
 
+    @Volatile var lastMs = 0f      // one run of the network (Speed page)
+
     @Synchronized
     fun predict(s: GameState): Out? {
         val it = interpreter ?: return null
@@ -236,7 +238,9 @@ object PolicyNet {
     fun blend(d: TacticalDecision, s: GameState, p: HeroProfile): TacticalDecision {
         if (!Cfg.policyOn || s.self == null) return d
         if (!ensure(s.ownHero)) { last = "no network for ${s.ownHero ?: "this hero"}: rules only"; return d }
+        val t0 = System.nanoTime()
         val o = try { predict(s) } catch (t: Throwable) { Diag.error("Tactical network run", t); null } ?: return d
+        lastMs = (System.nanoTime() - t0) / 1e6f
         last = "${dirName(o.move)} ${(o.moveP * 100).toInt()}%" +
             SLOTS.indices.filter { o.casts[it] >= 0.5f }.joinToString("") { " + " + SLOTS[it] }
         // how often it agrees with the rules' joystick (one of the 8, or both standing)

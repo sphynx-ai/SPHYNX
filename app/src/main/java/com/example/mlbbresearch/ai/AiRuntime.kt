@@ -192,6 +192,7 @@ object AiRuntime {
                     }
                 }
                 val v = FrameProcessor.processNext()
+                com.example.mlbbresearch.core.SpeedLog.tick()
                 if (v != null) {
                     GameStateTracker.update(v)
                     // a live match you watch is not yours: its casts are not your cooldowns or combos
