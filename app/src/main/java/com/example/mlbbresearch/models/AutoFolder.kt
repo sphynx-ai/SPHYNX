@@ -17,7 +17,8 @@ import java.io.InputStream
 // MLBB-Research is read too (no choosing needed, e.g. when copying from a computer).
 //
 // What it looks for (names are not case sensitive):
-//   *.litertlm                      Gemma 3n E2B model        -> copied in, loaded
+//   *.litertlm (big: Gemma 4 E2B / 3n E2B)  strategic model   -> copied in, loaded (Gemma 4 preferred)
+//   *.litertlm (small: 270m / 1b / tactic in the name, or under 1 GB)  tactical model -> copied in
 //   mlbb_detector*.tflite / *detector*.tflite   YOLO detector -> copied in, loaded
 //   labels.txt / mlbb_labels.txt    detector class names      -> applied
 //   mlbb_screen_detector.tflite / *screen*.tflite   whole-screen detector -> copied in, loaded
@@ -158,18 +159,40 @@ object AutoFolder {
                 if (treeUri == null && files.isEmpty()) {
                     status = "folder not chosen yet (Model page: Choose the folder)"
                 } else {
-                    for (e in files) {
+                    // the strategic model: the newest kind when several big .litertlm files are there
+                val bigModel = files.filter { it.name.lowercase().endsWith(".litertlm") && !ModelManager.isTactical(it.name, it.size) }
+                    .maxWithOrNull(compareBy({ ModelManager.strategicRank(it.name) }, { it.modified }))
+                for (e in files) {
                         val n = e.name.lowercase()
                         try {
                             when {
+                                n.endsWith(".litertlm") && ModelManager.isTactical(e.name, e.size) -> {
+                                    val dst = ModelManager.tacticalFile(app)
+                                    if (changed("gemma_tactical", e, dst)) {
+                                        status = "copying the small model..."
+                                        copy(e, dst) { b -> status = "copying the small model... ${b / 1048576} MB" }
+                                        remember("gemma_tactical", e)
+                                        Cfg.setRaw("llm_name_tactical", ModelManager.prettyName(e.name))
+                                        found.add("small tactical model copied (${ModelManager.prettyName(e.name)})")
+                                        if (com.example.mlbbresearch.ai.TacticalLlmEngine.ready) ModelManager.unloadTactical()
+                                    }
+                                    if (Cfg.tacticalLlmOn && !com.example.mlbbresearch.ai.TacticalLlmEngine.ready)
+                                        ModelManager.loadTactical(app) { err -> Diag.info(if (err == null) "Small tactical model loaded" else "Small model load: $err") }
+                                }
+                                n.endsWith(".litertlm") && e !== bigModel -> found.add("${e.name} skipped (a newer model is used)")
                                 n.endsWith(".litertlm") -> {
                                     val dst = ModelManager.modelFile(app)
+                                    var fresh = false
                                     if (changed("gemma", e, dst)) {
                                         status = "copying the Gemma model..."
                                         copy(e, dst) { b -> status = "copying the Gemma model... ${b / 1048576} MB" }
                                         remember("gemma", e)
-                                        found.add("Gemma model copied")
+                                        Cfg.setRaw("llm_name_strategic", ModelManager.prettyName(e.name))
+                                        found.add("${ModelManager.prettyName(e.name)} copied")
+                                        fresh = true
                                     }
+                                    // a new model replaces the loaded one
+                                    if (fresh && com.example.mlbbresearch.ai.GemmaEngine.ready) kotlinx.coroutines.runBlocking { com.example.mlbbresearch.ai.GemmaEngine.unload() }
                                     if (!com.example.mlbbresearch.ai.GemmaEngine.ready) {
                                         ModelManager.load(app) { err -> Diag.info(if (err == null) "Gemma loaded from the folder" else "Gemma load: $err") }
                                         found.add("Gemma loading")

@@ -150,6 +150,18 @@ object Brain {
         queue(s, option, context(s), true)
     }
 
+    // another adviser (the small tactical model) picked this option and the checks allowed it:
+    // play it, and learn from how it goes like any other choice
+    @Synchronized
+    fun adopt(s: GameState, o: FightOption) {
+        if (current == o) return
+        if (pending.lastOrNull()?.at == s.ts) pending.removeAt(pending.size - 1)
+        current = o
+        currentUntil = s.ts + HOLD_MS
+        lastChoice = "${o.label} (small tactical model)"
+        queue(s, o, context(s), false)
+    }
+
     private fun queue(s: GameState, o: FightOption, x: FloatArray, byYou: Boolean) {
         pending.add(Pending(s.ts, s.ownHero ?: "unknown", o, x, byYou, s.selfHp,
             s.enemiesWithin(1.2f).associate { it.id to it.hp }, s.enemyMinions.size))
