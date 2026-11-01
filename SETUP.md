@@ -751,6 +751,31 @@ Evaluation: at the end of each match (2+ minutes) the app saves the hero, role, 
 the AI or you played. The Learn page "HOW THE AI DOES PER HERO AND ROLE" shows the averages per role and per hero,
 so you can see which heroes and roles it plays well. Wins and losses are not read from the screen yet.
 
+## Screen / game phase detection (v35.2)
+
+The app reads which MLBB screen is up from colours alone (no Gemma needed), on every frame:
+
+| Screen | What it looks for | App phase |
+|---|---|---|
+| Home | the big gold CLASSIC / RANKED button (bottom right) | home screen |
+| Lobby | the gold Start Game button | lobby |
+| Match found | the gold Enter button (bottom middle) | match found |
+| Hero select, choosing | the Confirm button (grey, or gold with a hero chosen), Hero tab lit | hero select / draft |
+| Hero select, locked in | the same, with the Skins tab lit | hero locked in |
+| Loading | blue progress bars under your team's cards, red under the enemies' | loading |
+| Death | the orange-red V around the respawn countdown | dead |
+| Shop / in-game scoreboard / big map | dark shop panel / blue-red VS header / enemy portrait column | shop / scoreboard / big map |
+| Victory | the big gold VICTORY letters on a dark screen | match end |
+| MVP / ratings | the light-blue Confirm button | match end |
+| Match-end scoreboard | the light-blue Data and Quit buttons | match end |
+
+A screen must show on 2 frames in a row before the phase changes. Menus darken the middle of the screen;
+the match view does not, so skill effects cannot look like a menu (tested on 1,000+ gameplay frames).
+
+At the match end the app logs the match once, with the result: gold VICTORY letters = win. The Learn page
+then shows "won X of Y" per role and per hero. A Defeat screen has not been measured yet: it is counted as
+a loss when the end screens show no gold letters.
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |

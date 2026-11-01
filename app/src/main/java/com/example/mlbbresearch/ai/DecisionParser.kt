@@ -63,7 +63,8 @@ object DecisionParser {
     fun screen(s: String?): Phase = when (s?.lowercase()?.trim()) {
         "draft", "ban", "pick", "hero select", "selection" -> Phase.DRAFT
         "loading" -> Phase.LOADING
-        "lobby", "menu", "home" -> Phase.LOBBY
+        "home" -> Phase.HOME
+        "lobby", "menu" -> Phase.LOBBY
         "game", "in game", "ingame", "battle" -> Phase.IN_GAME
         "shop", "equipment" -> Phase.SHOP
         "map", "minimap", "big map" -> Phase.MAP
