@@ -99,7 +99,11 @@ object SkillBook {
     // ---- what the execution learned (per hero and skill) ----
     fun castMode(hero: String?, slot: String): CastMode {
         val learned = hero?.let { Cfg.raw("castmode_${key(it)}_$slot") }?.let { runCatching { CastMode.valueOf(it) }.getOrNull() }
-        return learned ?: get(hero)[slot]?.mode ?: CastMode.TAP
+        val own = get(hero)[slot]?.mode ?: CastMode.TAP
+        // an old guess of "hold" (it blocked every other touch while charging) is ignored unless the
+        // skill's description says hold
+        if (learned == CastMode.HOLD && own != CastMode.HOLD) return own
+        return learned ?: own
     }
     fun setCastMode(hero: String?, slot: String, m: CastMode) { if (hero != null) Cfg.setRaw("castmode_${key(hero)}_$slot", m.name) }
     fun aimLead(hero: String?, slot: String): Float = hero?.let { Cfg.raw("aimlead_${key(it)}_$slot")?.toFloatOrNull() } ?: 1f

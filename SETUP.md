@@ -944,6 +944,24 @@ now read by its shade, 40 x 40 cells, each cell keeping the class it shows most 
 - recall: no bush on screen -> walks into a minimap bush a few steps away first
 - Player page: the terrain counts (walls, bushes, lane paths, jungle, river) show once the map is ready
 
+## Smooth touches, no idle (v36.15)
+
+- touches never cut each other off: Android cancels a gesture still on the screen when a new one is sent, so a skill
+  tap could be erased by the next joystick turn (skill never cast) and a cancelled joystick stroke lifted the thumb
+  (hero stops). Now one gesture is on the screen at a time (30-90 ms); new touches wait, are merged (newest joystick
+  direction + every tap / skill) and go out the moment it ends. Touch callbacks run on their own thread, not the UI one
+- the joystick press is one quick stroke from the centre to the edge (no second delayed swipe)
+- a cancelled gesture now really means your finger (Coach mode no longer pauses the AI by mistake)
+- skill cast-mode learning only switches tap <-> aim; "hold" (which blocked every touch while charging) comes only from
+  the skill's description, and old wrong "hold" guesses are ignored
+- no idle in a match: when nothing is decided (your HP bar hidden a moment) the hero keeps walking the last way for up
+  to 3 s, then heads for the nearest enemy tower / base (around walls); a late frame keeps the thumb down instead of
+  lifting it. The thumb is lifted only to attack, recall, Regen or hide
+- a walk is finished for up to 1.2 s (was 2.5 s) before switching, so the direction stays fresh
+- wall paths are cached for 0.4 s (decisions ask for the same path many times a second)
+- Player page "Speed" line (and the Logs every 15 s): frame to touch in ms, split into vision / waiting / deciding /
+  touch queue - send it if it still feels slow, it shows which part is
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |

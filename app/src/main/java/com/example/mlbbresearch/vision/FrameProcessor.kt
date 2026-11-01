@@ -197,6 +197,7 @@ object FrameProcessor {
             com.example.mlbbresearch.game.JungleNav.atBuff, com.example.mlbbresearch.game.GameStateTracker.state.matchSec,
             steadySmall.filter { it.team == Team.NEUTRAL } + seen.filter { it.team == Team.NEUTRAL && it.hero }, ring)
         latest = result
+        com.example.mlbbresearch.core.Speed.vision(result.processMs)
         fpsCount++
         if (fpsStart == 0L) fpsStart = t0
         if (t0 - fpsStart >= 1000) {

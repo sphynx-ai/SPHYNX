@@ -228,6 +228,7 @@ object AiRuntime {
                 // the hero still plays with the big map open; shop / scoreboard pause it
                 val inGame = !stale && (s.phase == Phase.IN_GAME || s.phase == Phase.MAP)
                 if (playerOn && inGame) {
+                    val tDecide = System.currentTimeMillis()
                     val hero = s.ownHero
                     // what Coach learned from you (e.g. your wave-clear skill) on top of the hero's profile
                     val profile = com.example.mlbbresearch.learning.Coach.adjust(HeroDb.profile(hero), hero)
@@ -257,20 +258,29 @@ object AiRuntime {
                     // no freezing: your HP bar can vanish for a moment (effects, animations); keep the
                     // last movement going for up to 0.6 s instead of stopping
                     val tNow = System.currentTimeMillis()
-                    if (d.intent == Intent.IDLE && lastActive != null && tNow - lastActiveAt < 600) {
-                        val l = lastActive!!
-                        d = TacticalDecision(l.intent, l.moveX, l.moveY, emptyList(), -1f, -1f, "-", -1f, -1, l.reason + " (continuing)")
-                    } else if (d.intent != Intent.IDLE) {
+                    // NO IDLE in a match: when the engine has nothing (your bar hidden for a moment),
+                    // the hero keeps walking the last way for up to 3 s, then heads for the enemy base
+                    if (d.intent == Intent.IDLE) {
+                        val l = lastActive
+                        d = if (l != null && tNow - lastActiveAt < 3000 && (l.moveX != 0f || l.moveY != 0f))
+                            TacticalDecision(l.intent, l.moveX, l.moveY, emptyList(), -1f, -1f, "-", -1f, -1, l.reason + " (continuing)")
+                        else TacticalEngine.fallbackMove(s)
+                    } else {
                         lastActive = d; lastActiveAt = tNow
                     }
                     // think ahead: the next task is worked out while this one runs
                     TacticalEngine.planAhead(s, d, profile)
                     ActionExecutor.execute(d)
+                    com.example.mlbbresearch.core.Speed.decided((tDecide - s.ts - com.example.mlbbresearch.core.Speed.vision.toLong()).coerceAtLeast(0L), System.currentTimeMillis() - tDecide)
                     ExperienceRecorder.record(s, d, plan.plan, plan.aggression + bias)
                     ActionExecutor.maybeUpgrade(s)
                     if (Cfg.playerQuickBuy) ActionExecutor.maybeQuickBuy(s)
-                } else if (playerOn) {
+                } else if (playerOn && !stale && !s.phase.inMatch) {
+                    // out of the match only (lobby, result): lift the thumb. Shop / scoreboard /
+                    // dead / a late frame: nothing is sent, the thumb stays where it is
                     ActionExecutor.execute(TacticalDecision.IDLE)
+                } else if (playerOn && !stale && (s.phase == Phase.SHOP || s.phase == Phase.SCOREBOARD || s.phase == Phase.DEAD)) {
+                    ActionExecutor.release()
                 }
                 // Player off and you play: everything you do is yours (combos, cast distance, joystick)
                 if (!playerOn && learnOn && inGame) com.example.mlbbresearch.learning.Coach.tick(s, youPlay = true)

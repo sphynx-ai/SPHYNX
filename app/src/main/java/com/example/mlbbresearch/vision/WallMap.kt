@@ -190,8 +190,26 @@ object WallMap {
         return if (l < 1e-4f) null else (ax / l) to (ay / l)
     }
 
-    // A*: the path (goal first) and its length in cells, or null
+    // the same walk is asked many times a second (each decision, each camp): answers are kept
+    // for 0.4 s per start / goal cell, until the wall map changes
+    private class Cached(val at: Long, val map: BooleanArray, val r: Pair<List<Int>, Float>?)
+    private val cache = java.util.concurrent.ConcurrentHashMap<Long, Cached>()
+
     private fun search(from: Pair<Float, Float>, to: Pair<Float, Float>): Pair<List<Int>, Float>? {
+        val sx = (from.first * G).toInt().coerceIn(0, G - 1); val sy = (from.second * G).toInt().coerceIn(0, G - 1)
+        val tx = (to.first * G).toInt().coerceIn(0, G - 1); val ty = (to.second * G).toInt().coerceIn(0, G - 1)
+        val key = ((sy * G + sx).toLong() shl 16) or (ty * G + tx).toLong()
+        val now = System.currentTimeMillis()
+        val w = wall
+        cache[key]?.let { if (it.map === w && now - it.at < 400) return it.r }
+        val r = searchRaw(from, to)
+        if (cache.size > 400) cache.clear()
+        cache[key] = Cached(now, w, r)
+        return r
+    }
+
+    // A*: the path (goal first) and its length in cells, or null
+    private fun searchRaw(from: Pair<Float, Float>, to: Pair<Float, Float>): Pair<List<Int>, Float>? {
         val w = wall
         val ter = terrain
         fun cell(p: Pair<Float, Float>) = (p.first * G).toInt().coerceIn(0, G - 1) to (p.second * G).toInt().coerceIn(0, G - 1)
