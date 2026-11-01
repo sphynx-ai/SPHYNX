@@ -889,6 +889,14 @@ No daily limit any more. Each collector (Learn page, two switches) saves picture
 3. switches that collector OFF. Turn the switch on again to collect the next batch.
 "Zip ... now" buttons zip early. Each zip holds only pictures not zipped before, so several zips can be uploaded together.
 
+## Retraining keeps what was learned (v36.12)
+
+- Tactical networks: each notebook run continues from the last networks (trainable copies `policy_models/*.keras`, saved
+  in My Drive/MLBB-Research/policy_models and inside mlbb_policies.zip) and trains on ALL your moments (every export holds
+  everything recorded since the start), so it refines instead of starting over. A network whose inputs changed starts fresh.
+- Detectors: each run continues from `minimap_detector_best.pt` / `screen_detector_best.pt` in My Drive/MLBB-Research
+  and uses every dataset zip there. Keep the zips and those files in Drive.
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |
