@@ -194,7 +194,7 @@ object AiRuntime {
                 if (v != null) {
                     GameStateTracker.update(v)
                     // a live match you watch is not yours: its casts are not your cooldowns or combos
-                    if (learnOn && v.hint != com.example.mlbbresearch.vision.ScreenHint.LIVE) DemoRecorder.observe(v, aiPlaying = playerOn, s = GameStateTracker.state)
+                    if (learnOn && v.hint != com.example.mlbbresearch.vision.ScreenHint.LIVE && v.hint != com.example.mlbbresearch.vision.ScreenHint.LIVE_DEAD) DemoRecorder.observe(v, aiPlaying = playerOn, s = GameStateTracker.state)
                     if (learnOn && Cfg.liveLearn) com.example.mlbbresearch.learning.LiveRecorder.observe(v)
                     kotlinx.coroutines.yield()
                 } else {

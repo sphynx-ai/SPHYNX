@@ -11,6 +11,7 @@ import kotlin.math.min
 enum class ScreenHint(val label: String) {
     NONE("match view / unknown"),
     LIVE("live match (watching another player)"),
+    LIVE_DEAD("live match: the watched hero is dead (no panel, camera on another hero)"),
     HOME("home screen"),
     LOBBY("lobby (Start Game)"),
     QUEUE("match found (Enter)"),
@@ -185,8 +186,11 @@ object ScreenReader {
     fun classify(px: IntArray, w: Int, h: Int): ScreenHint {
         fun f(l: Float, t: Float, r: Float, b: Float, test: (Int) -> Boolean) = fraction(px, w, h, l, t, r, b, 2, test)
 
-        // watching someone's live match: their info panel along the bottom
+        // watching someone's live match: their info panel along the bottom. While the watched
+        // hero is dead the panel is gone and the camera follows another hero, but the live
+        // screen's own buttons (gift, like, ranking...) stay on the right
         if (livePanel(px, w, h)) return ScreenHint.LIVE
+        if (liveButtons(px, w, h)) return ScreenHint.LIVE_DEAD
 
         // menus darken the middle of the screen (76%+ measured); the match view does not (41-59%):
         // keeps skill effects and blue / red ground from looking like a menu
@@ -306,6 +310,18 @@ object ScreenReader {
             if (fraction(px, w, h, l, 0.848f, l + 0.0499f, 0.858f, 2) { isPanelNavy(it) } >= 0.6f) good++
         }
         return good >= 6
+    }
+
+    // the live screen's right column: purple gift, red heart, pink like box, blue ranking podium.
+    // Measured: 0.39 / 0.33 / 0.32 / 0.27+ on 16 live screens; at most 0.07 / 0 / 0 / 0.04 on
+    // 1,050 other screens and gameplay frames. 3 of the 4 must show.
+    fun liveButtons(px: IntArray, w: Int, h: Int): Boolean {
+        var n = 0
+        if (fraction(px, w, h, 0.91f, 0.45f, 0.955f, 0.52f, 2) { r(it) >= 170 && b(it) >= 200 && g(it) <= 170 && r(it) - g(it) >= 40 } >= 0.2f) n++
+        if (fraction(px, w, h, 0.915f, 0.33f, 0.95f, 0.39f, 2) { r(it) >= 200 && g(it) <= 80 && b(it) <= 100 } >= 0.15f) n++
+        if (fraction(px, w, h, 0.89f, 0.02f, 0.912f, 0.07f, 2) { r(it) >= 200 && b(it) >= 170 && g(it) <= 150 } >= 0.15f) n++
+        if (fraction(px, w, h, 0.915f, 0.56f, 0.945f, 0.63f, 2) { b(it) >= 200 && r(it) <= 120 && g(it) >= 120 } >= 0.12f) n++
+        return n >= 3
     }
 
     // their HP: the green share of the line (0..1), -1 when it cannot be read

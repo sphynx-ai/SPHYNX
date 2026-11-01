@@ -94,10 +94,10 @@ object FrameProcessor {
         val banner = ScreenReader.announcement(px, w, h)
         val hint = ScreenReader.classify(px, w, h)
         // watching someone's live match: their screen has no buttons of yours, but its own overlays
-        val live = hint == ScreenHint.LIVE
+        val live = hint == ScreenHint.LIVE || hint == ScreenHint.LIVE_DEAD
         val mini = MinimapAnalyzer.analyze(px, w, h, live)
         val masks = if (live) ScreenReader.LIVE_MASKS else hud
-        val seen = if (live) liveUnits(px, w, h, mini, banner) else monstersFromRedBars(withoutAttachedBars(ownBars(hint, HeroDetector.scan(
+        val seen = if (live) liveUnits(px, w, h, mini, banner, hint == ScreenHint.LIVE) else monstersFromRedBars(withoutAttachedBars(ownBars(hint, HeroDetector.scan(
             px, w, h, hud + ScreenMasks.overlay + (if (banner) listOf(ScreenReader.bannerRect) else emptyList()),
             Cfg.heroBarMinWidthPct / 100f, Cfg.bodyBelowBarPct / 100f
         ), px, w, h)), px, w, h, mini)
@@ -120,7 +120,7 @@ object FrameProcessor {
         val tracks = enemyTracker.update(seen.filter { it.team == Team.ENEMY && it.hero }, t0, aspect)
 
         val brightness = HashMap<String, Float>()
-        if (live) {
+        if (hint == ScreenHint.LIVE) {
             // their skill / spell icons in the panel (they darken while cooling down)
             for ((k, c) in ScreenReader.LIVE_ICONS) brightness[k] = ScreenReader.iconColour(px, w, h, c.first, c.second)
         } else if (Cfg.readCooldownsFromScreen || trackPlayer) {
@@ -206,11 +206,13 @@ object FrameProcessor {
     // LIVE MATCH: the units on the watched player's screen. Their own HP bar is BLUE (they are
     // an ally of themselves here) and the camera follows them, so the watched hero is the blue
     // hero bar at the centre; its HP comes from the panel's green line. A green bar is never them.
-    private fun liveUnits(px: IntArray, w: Int, h: Int, mini: MinimapInfo, banner: Boolean): List<Seen> {
+    // panel = false: the watched hero is dead (the camera follows someone else): no "self"
+    private fun liveUnits(px: IntArray, w: Int, h: Int, mini: MinimapInfo, banner: Boolean, panel: Boolean = true): List<Seen> {
         val raw = HeroDetector.scan(px, w, h, ScreenReader.LIVE_MASKS + ScreenMasks.overlay +
             (if (banner) listOf(ScreenReader.bannerRect) else emptyList()), Cfg.heroBarMinWidthPct / 100f, Cfg.bodyBelowBarPct / 100f)
             .filter { it.team != Team.SELF }
         val units = monstersFromRedBars(withoutAttachedBars(raw), px, w, h, mini)
+        if (!panel) return units
         val me = units.filter { it.team == Team.ALLY && it.hero && kotlin.math.abs(it.barLeft - 0.47f) < 0.045f && it.barTop in 0.33f..0.45f }
             .minByOrNull { (it.x - 0.5f) * (it.x - 0.5f) + (it.y - 0.47f) * (it.y - 0.47f) } ?: return units
         val panelHp = ScreenReader.liveHp(px, w, h)
