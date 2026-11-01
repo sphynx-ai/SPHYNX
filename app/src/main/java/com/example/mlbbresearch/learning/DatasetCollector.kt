@@ -24,7 +24,7 @@ import kotlin.math.hypot
 //   Download/MLBB-Research/dataset/classes.txt
 // Upload the folder to Roboflow to check / fix the boxes (much faster than drawing them), or
 // zip it and give it straight to notebooks/train_mlbb_detector.ipynb.
-// At most one picture every 6 s and 300 a day, only in a match with your hero on screen.
+// At most one picture every 6 s (zipped at 1500, see DatasetZipper), only in a match with your hero on screen.
 object DatasetCollector {
 
     class Box(val cls: Int, val x: Float, val y: Float, val w: Float, val h: Float)
@@ -173,7 +173,6 @@ object DatasetCollector {
         val day = (now / 86_400_000L).toString()
         if (Cfg.raw("ds_day") != day) { Cfg.setRaw("ds_day", day); Cfg.setRaw("ds_count", "0") }
         savedToday = Cfg.raw("ds_count")?.toIntOrNull() ?: 0
-        if (savedToday >= 300) { status = "300 pictures saved today (limit)"; return }
         lastAt = now
         val labels = classes()
         val boxes = boxes(w, h, mini, labels, px)
@@ -197,7 +196,9 @@ object DatasetCollector {
                 }
                 savedToday++
                 Cfg.setRaw("ds_count", savedToday.toString())
-                status = "$savedToday pictures saved today (last: ${boxes.size} boxes)"
+                DatasetZipper.saved(c, DatasetZipper.Kind.MINIMAP)
+                status = "${DatasetZipper.count(DatasetZipper.Kind.MINIMAP)} of ${DatasetZipper.Kind.MINIMAP.capacity} pictures " +
+                    "(zipped at ${DatasetZipper.Kind.MINIMAP.capacity}; last: ${boxes.size} boxes)"
             } catch (t: Throwable) {
                 Diag.error("Dataset picture", t)
                 status = "saving failed (see Logs)"

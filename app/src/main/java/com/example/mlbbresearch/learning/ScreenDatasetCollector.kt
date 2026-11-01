@@ -16,7 +16,7 @@ import com.example.mlbbresearch.vision.TowerRing
 import com.example.mlbbresearch.vision.VisionResult
 import java.util.concurrent.Executors
 
-// Training pictures for the WHOLE-SCREEN detector: every 10 s in a match (200 a day at most) the
+// Training pictures for the WHOLE-SCREEN detector: every 10 s in a match (zipped at 1000, see DatasetZipper) the
 // whole picture is saved with boxes ALREADY DRAWN from what the app's colour vision found:
 //   heroes (yours / ally / enemy) and minions (ally / enemy)  - from their HP bars
 //   monsters BY NAME (JungleDb)                                - monster bars: lord / turtle by the
@@ -113,14 +113,13 @@ object ScreenDatasetCollector {
 
     fun maybeSave(px: IntArray, w: Int, h: Int, v: VisionResult, mini: MinimapInfo, inMatch: Boolean, atBuff: Boolean, matchSec: Int,
                   colourMonsters: List<Seen>, colourRing: TowerRing.Ring) {
-        if (!Cfg.collectDataset || !inMatch) return
+        if (!Cfg.collectScreenDataset || !inMatch) return
         val c = ctx ?: return
         val now = System.currentTimeMillis()
         if (now - lastAt < 10_000) return
         val day = (now / 86_400_000L).toString()
         if (Cfg.raw("sds_day") != day) { Cfg.setRaw("sds_day", day); Cfg.setRaw("sds_count", "0") }
         var saved = Cfg.raw("sds_count")?.toIntOrNull() ?: 0
-        if (saved >= 200) { status = "200 screen pictures saved today (limit)"; return }
         lastAt = now
         val boxes = boxes(v, mini, atBuff, matchSec, colourMonsters, colourRing)
         // mostly pictures with units / monsters / towers in them; now and then a quiet one
@@ -142,7 +141,9 @@ object ScreenDatasetCollector {
                 }
                 saved++
                 Cfg.setRaw("sds_count", saved.toString())
-                status = "$saved screen pictures saved today (last: ${boxes.size} boxes)"
+                DatasetZipper.saved(c, DatasetZipper.Kind.SCREEN)
+                status = "${DatasetZipper.count(DatasetZipper.Kind.SCREEN)} of ${DatasetZipper.Kind.SCREEN.capacity} pictures " +
+                    "(zipped at ${DatasetZipper.Kind.SCREEN.capacity}; last: ${boxes.size} boxes)"
             } catch (t: Throwable) {
                 Diag.error("Screen dataset picture", t)
                 status = "saving failed (see Logs)"

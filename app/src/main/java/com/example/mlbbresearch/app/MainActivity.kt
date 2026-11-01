@@ -1297,11 +1297,31 @@ class MainActivity : Activity() {
             "train_mlbb_detector.ipynb\n" +
             "  - the whole screen every 10 s (heroes, minions, creeps, buffs, turtle, lord, enemy towers, bushes, walls) -> " +
             "Download/MLBB-Research/screen_dataset, for train_screen_detector.ipynb\n" +
-            "Fixing the boxes in Roboflow before training makes the detectors much better than the app's own guesses.", 13f)
-        switch("Collect detector training pictures", Cfg.collectDataset) { Cfg.collectDataset = it }
+            "Fixing the boxes in Roboflow before training makes the detectors much better than the app's own guesses.\n" +
+            "No daily limit: each collector saves until its capacity (minimap 1500, screen 1000 pictures), then the app " +
+            "ZIPS that batch into Download/MLBB-Research (mlbb-minimap-dataset-*.zip / mlbb-screen-dataset-*.zip - upload " +
+            "it to the notebook), removes the zipped pictures from the folder, and switches that collector OFF. Turn it " +
+            "on again to collect the next batch.", 13f)
+        val zk = com.example.mlbbresearch.learning.DatasetZipper
+        val swMini = switch("Collect minimap training pictures", Cfg.collectDataset) { Cfg.collectDataset = it }
+        val swScreen = switch("Collect whole-screen training pictures", Cfg.collectScreenDataset) { Cfg.collectScreenDataset = it }
         val dsInfo = text("", 12f, color = "#9AA0A6")
-        upd { dsInfo.text = "Minimap: " + com.example.mlbbresearch.learning.DatasetCollector.status +
-            "\nScreen: " + com.example.mlbbresearch.learning.ScreenDatasetCollector.status }
+        upd {
+            // the switches follow the app turning a full collector off
+            if (swMini.isChecked != Cfg.collectDataset) swMini.isChecked = Cfg.collectDataset
+            if (swScreen.isChecked != Cfg.collectScreenDataset) swScreen.isChecked = Cfg.collectScreenDataset
+            fun line(k: com.example.mlbbresearch.learning.DatasetZipper.Kind) = "${zk.count(k)} of ${k.capacity} pictures since the last zip" +
+                if (!zk.switchOn(k)) " - switched off" else ""
+            dsInfo.text = "Minimap: " + line(com.example.mlbbresearch.learning.DatasetZipper.Kind.MINIMAP) +
+                "\nScreen: " + line(com.example.mlbbresearch.learning.DatasetZipper.Kind.SCREEN) +
+                "\nLast zip: " + zk.status
+        }
+        btn("Zip the minimap pictures now") {
+            zk.zipNew(this, com.example.mlbbresearch.learning.DatasetZipper.Kind.MINIMAP, "zipped by hand") { m -> runOnUiThread { toast(m) } }
+        }
+        btn("Zip the screen pictures now") {
+            zk.zipNew(this, com.example.mlbbresearch.learning.DatasetZipper.Kind.SCREEN, "zipped by hand") { m -> runOnUiThread { toast(m) } }
+        }
         btn("Delete saved decisions") {
             AlertDialog.Builder(this).setTitle("Delete saved decisions?")
                 .setPositiveButton("Delete") { _, _ -> DatasetManager.clear { runOnUiThread { toast("Deleted") } } }

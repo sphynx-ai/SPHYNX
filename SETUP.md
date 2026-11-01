@@ -879,6 +879,16 @@ The Player page shows it under GAME KNOWLEDGE.
   the Purple Buff (take the Thunder Fenrir first, careful before 2:00). Heroes only in the jungler lists go jungle
   automatically.
 
+## Detector training pictures: zipped automatically (v36.10)
+
+No daily limit any more. Each collector (Learn page, two switches) saves pictures until its capacity: **minimap 1500**,
+**whole screen 1000** pictures since the last zip. Then the app:
+1. zips the batch into Download/MLBB-Research (`mlbb-minimap-dataset-<date>.zip` for train_mlbb_detector.ipynb,
+   `mlbb-screen-dataset-<date>.zip` for train_screen_detector.ipynb; inside: images/, labels/, classes.txt),
+2. removes the zipped pictures from the dataset folder (the zip holds them; the phone keeps its space),
+3. switches that collector OFF. Turn the switch on again to collect the next batch.
+"Zip ... now" buttons zip early. Each zip holds only pictures not zipped before, so several zips can be uploaded together.
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |
