@@ -5,7 +5,7 @@ import kotlin.math.hypot
 
 // Merges the whole-screen detector's finds into what the colour vision saw (only fills gaps,
 // never removes anything):
-//  - monster boxes (lord, turtle, fiery_hound, thunder_fenrir, small camps...) with no HP bar near them = monsters nobody has hit yet:
+//  - monster boxes (lord, turtle, molten_fiend, thunder_fenrir, small camps...) with no HP bar near them = monsters nobody has hit yet:
 //    added at full HP, so the AI walks up and starts the fight instead of waiting for a bar
 //  - bush boxes = extra bushes (for hiding / ambush); wall boxes = wall cells (to steer around)
 //  - an enemy tower box when no range circle is on screen = a circle of the usual size around its

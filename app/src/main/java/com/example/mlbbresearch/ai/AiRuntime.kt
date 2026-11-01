@@ -372,6 +372,7 @@ object AiRuntime {
             sb.append("\nNext: ").append(TacticalEngine.nextPlan)
             sb.append("\nGame: ").append(com.example.mlbbresearch.game.MatchSense.status).append(" | role: ")
                 .append(s.lane.label).append(" - ").append(com.example.mlbbresearch.game.RoleProfile.of(s.lane).focus)
+            sb.append("\nTimeline: ").append(com.example.mlbbresearch.game.MatchEvents.status(s.matchSec))
             sb.append("\nMap: ").append(com.example.mlbbresearch.game.MapIntel.status)
             if (com.example.mlbbresearch.learning.PolicyNet.ready) sb.append("\nNetwork: ").append(com.example.mlbbresearch.learning.PolicyNet.last)
                 .append(" | agrees with the rules ").append((com.example.mlbbresearch.learning.PolicyNet.agreeRate * 100).toInt()).append('%')

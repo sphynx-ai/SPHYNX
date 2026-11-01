@@ -20,7 +20,7 @@ import java.util.concurrent.Executors
 // whole picture is saved with boxes ALREADY DRAWN from what the app's colour vision found:
 //   heroes (yours / ally / enemy) and minions (ally / enemy)  - from their HP bars
 //   monsters BY NAME (JungleDb)                                - monster bars: lord / turtle by the
-//     pit you stand by, the orange / purple buff (fiery_hound / thunder_fenrir) by body colour,
+//     pit you stand by, the orange / purple buff (molten_fiend / thunder_fenrir) by body colour,
 //     horned_lizard by colour; other small ones as jungle_creep (rename them in Roboflow)
 //   enemy towers (tower_enemy_plated before 5:00)             - the range circle around them
 //   bushes and walls                                           - the bush / wall finder's cells

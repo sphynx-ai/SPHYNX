@@ -852,6 +852,18 @@ class MainActivity : Activity() {
             com.example.mlbbresearch.learning.Coach.forget(GameStateTracker.ownHero()); toast("Forgotten")
         }
 
+        title("GAME KNOWLEDGE (from the Mobile Legends wiki)")
+        val know = text("", 12f)
+        upd {
+            val st = GameStateTracker.state
+            val hero = GameStateTracker.ownHero()
+            know.text = "Your hero ($hero) in the wiki's laning lists: ${com.example.mlbbresearch.game.WikiLanes.describe(hero)}\n" +
+                "Timeline: " + com.example.mlbbresearch.game.MatchEvents.ALL.joinToString("; ") { "%d:%02d %s".format(it.sec / 60, it.sec % 60, it.what) } + "\n" +
+                "Role tip now (${st.lane.label}): " + com.example.mlbbresearch.game.RoleTips.of(st.lane, st.matchSec.coerceAtLeast(0)) + "\n" +
+                (st.spell?.let { sp -> "Battle spell $sp: ${com.example.mlbbresearch.game.SpellInfo.effect[sp] ?: "-"} (cooldown ${com.example.mlbbresearch.game.SpellInfo.cooldown[sp]?.toInt() ?: "?"} s)\n" } ?: "") +
+                "Jungle:\n" + com.example.mlbbresearch.game.JungleDb.describe()
+        }
+
         title("SKILLS & PASSIVE (what each skill does, how to cast it)")
         text("Each skill's range, target type, crowd control, mobility, shield / heal, damage and cast mode (tap, aim, or " +
             "hold to charge and release), plus the passive turned into play rules (e.g. a basic attack after every skill " +
@@ -1010,9 +1022,13 @@ class MainActivity : Activity() {
         }
 
         title("EDIT PRIMARY BUILDS PER ROLE (comma separated)")
+        text("Item names are checked against the wiki's current equipment list (${com.example.mlbbresearch.game.ItemDb.current.size} items): " +
+            "names are corrected, and items no longer in the game are left out of the build.", 12f, color = "#9AA0A6")
         for (r in Role.values()) {
             if (r == Role.UNKNOWN) continue
             field(r.name.lowercase(), Cfg.roleBuild(r.name, BuildBook.defaults[r] ?: ""), false) { Cfg.setRoleBuild(r.name, it) }
+            val warn = text("", 12f, color = "#F28B82")
+            upd { warn.text = BuildBook.outdated(r).let { if (it.isEmpty()) "" else "Not in the current item list (left out): " + it.joinToString() } }
         }
     }
 

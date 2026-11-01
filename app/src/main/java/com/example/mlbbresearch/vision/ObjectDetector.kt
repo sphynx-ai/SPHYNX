@@ -286,10 +286,10 @@ object ObjectDetector : YoloDetector("mlbb_detector.tflite", { Cfg.detectorLabel
 
 // the whole-screen detector (notebooks/train_screen_detector.ipynb)
 object ScreenDetector : YoloDetector("mlbb_screen_detector.tflite", { Cfg.screenLabels }, true, "screen detector") {
-    // monsters by name (JungleDb): purple buff = thunder_fenrir, orange buff = fiery_hound;
+    // monsters by name (JungleDb): purple buff = thunder_fenrir, orange buff = molten_fiend;
     // jungle_creep = a small monster not named yet. Turrets: plated = gold energy shield (early game)
     val CLASSES = listOf("hero_ally", "hero_enemy", "hero_self", "minion_ally", "minion_enemy",
-        "lord", "turtle", "fiery_hound", "thunder_fenrir", "lava_golem", "horned_lizard", "fire_beetle", "lithowanderer", "crab",
+        "lord", "turtle", "molten_fiend", "thunder_fenrir", "lava_golem", "horned_lizard", "fire_beetle", "lithowanderer", "crab",
         "cyclone_eye", "jungle_creep",
         "tower_ally", "tower_ally_plated", "tower_enemy", "tower_enemy_plated", "base_ally", "base_enemy", "bush", "wall")
 }
