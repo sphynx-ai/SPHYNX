@@ -11,7 +11,7 @@ import java.util.concurrent.Executors
 
 // Saves what the AI saw and did (one row about twice a second) into a local SQLite
 // database. PerformanceEvaluator later scores each row: did it help or hurt?
-class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "experiences.db", null, 4) {
+class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "experiences.db", null, 5) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE experiences (" +
@@ -28,7 +28,7 @@ class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "exp
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS live_demos (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, hero TEXT, features TEXT, " +
-                "move_x REAL, move_y REAL, casts INTEGER, features2 TEXT, source TEXT, lane TEXT, match_sec INTEGER)"
+                "move_x REAL, move_y REAL, casts INTEGER, features2 TEXT, source TEXT, lane TEXT, match_sec INTEGER, died INTEGER DEFAULT 0)"
         )
     }
 
@@ -37,7 +37,7 @@ class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "exp
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS demos (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, hero TEXT, features TEXT, " +
-                "move_x REAL, move_y REAL, casts INTEGER, features2 TEXT)"
+                "move_x REAL, move_y REAL, casts INTEGER, features2 TEXT, died INTEGER DEFAULT 0)"
         )
     }
 
@@ -46,6 +46,9 @@ class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "exp
         // v3: the richer situation (32 numbers, Features2) for the trained tactical network
         else if (oldVersion < 3) db.execSQL("ALTER TABLE demos ADD COLUMN features2 TEXT")
         if (oldVersion < 4) createLive(db)
+        // v5: died = 1 on the moments of the 6 s before the hero died
+        if (oldVersion in 2..4) try { db.execSQL("ALTER TABLE demos ADD COLUMN died INTEGER DEFAULT 0") } catch (e: Exception) { }
+        if (oldVersion == 4) try { db.execSQL("ALTER TABLE live_demos ADD COLUMN died INTEGER DEFAULT 0") } catch (e: Exception) { }
     }
 }
 

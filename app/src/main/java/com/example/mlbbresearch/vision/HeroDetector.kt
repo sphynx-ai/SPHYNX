@@ -67,6 +67,7 @@ object HeroDetector {
     fun scan(px: IntArray, w: Int, h: Int, excl: List<FloatArray>, heroMinWidthFrac: Float, bodyBelowFrac: Float): List<Seen> {
         val minRun = max(4, (w * 0.008f).toInt())
         val maxBarH = max(3, (h * 0.024f).toInt())
+        val longPiece = (w * 0.02f).toInt()
         val exclPx = excl.map { intArrayOf((it[0] * w).toInt(), (it[1] * h).toInt(), (it[2] * w).toInt(), (it[3] * h).toInt()) }
 
         val active = ArrayList<Blob>()
@@ -102,7 +103,15 @@ object HeroDetector {
                 val itB = active.iterator()
                 while (itB.hasNext()) {
                     val bl = itB.next()
-                    if (bl.cls == run[2] && bl.maxY >= y - 2 && run[0] <= bl.maxX + 2 && run[1] >= bl.minX - 2) {
+                    // the same bar continues: most of the shorter piece lies under the other. Two
+                    // different bars in a crowded fight only touch at their ends (a hero's bar under
+                    // the lord's, two heroes side by side) and must stay apart.
+                    // (only between two long, bar-sized pieces: small effect pieces keep joining, so
+                    // clutter still forms one shapeless blob that is thrown away)
+                    val ov = min(run[1], bl.maxX) - max(run[0], bl.minX) + 1 + 2
+                    val shorter = min(run[1] - run[0] + 1, bl.maxX - bl.minX + 1)
+                    val separate = shorter >= longPiece && ov < shorter * 0.6f
+                    if (bl.cls == run[2] && bl.maxY >= y - 2 && run[0] <= bl.maxX + 2 && run[1] >= bl.minX - 2 && !separate) {
                         val a = attached
                         if (a == null) { attached = bl; continue }
                         a.minX = min(a.minX, bl.minX); a.maxX = max(a.maxX, bl.maxX)

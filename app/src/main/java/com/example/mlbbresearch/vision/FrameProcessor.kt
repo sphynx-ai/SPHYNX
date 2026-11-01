@@ -296,7 +296,9 @@ object FrameProcessor {
                 // an enemy TOWER's bar is red without a badge too: near an enemy tower on the
                 // minimap it is the tower (a structure), not a monster
                 if (nearEnemyTower) { out.add(s.copy(hero = false)); continue }
-                val boss = s.barRight - s.barLeft >= 0.09f
+                // the lord's / turtle's bar is longer than a hero's (heroes: 7.7-7.9% of the width;
+                // the lord's measured 8.4% in a live match)
+                val boss = s.barRight - s.barLeft >= 0.082f
                 val m = Seen(Team.NEUTRAL, boss, s.x, s.y, s.hp, s.barLeft, s.barTop, s.barRight, s.barBottom)
                 monsters.add(m); out.add(m)
             } else out.add(s)

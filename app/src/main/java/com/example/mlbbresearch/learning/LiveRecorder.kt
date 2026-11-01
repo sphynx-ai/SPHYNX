@@ -1,13 +1,16 @@
 package com.example.mlbbresearch.learning
 
 import android.content.ContentValues
+import com.example.mlbbresearch.core.Cfg
 import com.example.mlbbresearch.game.GameState
 import com.example.mlbbresearch.game.HeroDb
 import com.example.mlbbresearch.game.Phase
 import com.example.mlbbresearch.vision.ScreenHint
+import com.example.mlbbresearch.vision.ScreenReader
 import com.example.mlbbresearch.vision.VisionResult
 import java.util.Locale
 import kotlin.math.hypot
+import kotlin.math.min
 
 // LEARNING FROM LIVE MATCHES: while you watch another player's live match in MLBB, their
 // screen is read like one of your own matches and saved as training moments for the tactical
@@ -50,18 +53,61 @@ object LiveRecorder {
         }) { n -> if (n != null) total = n }
     }
 
+    // ---- the icons' "ready" colour, remembered per watched hero (so a skill that is already
+    // cooling when you start watching is read right from the first frame) ----
+    private var baseHero = ""
+    private val savedAt = HashMap<String, Float>()
+
+    private fun loadBaselines() {
+        val hero = Cfg.liveHero.trim().lowercase()
+        if (hero == baseHero) return
+        baseHero = hero
+        baseline.clear(); previous.clear(); ready.clear(); savedAt.clear()
+        if (hero.isEmpty()) return
+        for (k in ScreenReader.LIVE_ICONS.keys) Cfg.raw("live_icon_${hero}_$k")?.toFloatOrNull()?.let { baseline[k] = it; savedAt[k] = it }
+    }
+
+    private fun saveBaseline(k: String, v: Float) {
+        if (baseHero.isEmpty()) return
+        val last = savedAt[k]
+        if (last == null || kotlin.math.abs(v - last) > last * 0.03f) { savedAt[k] = v; Cfg.setRaw("live_icon_${baseHero}_$k", "%.1f".format(Locale.US, v)) }
+    }
+
+    // ---- deaths of the watched hero: the panel disappears (LIVE_DEAD) ----
+    private var lastAliveAt = 0L
+    private var deadSince = 0L
+    private var deathMarked = false
+    @Volatile var deaths = 0
+        private set
+
     // every frame of the live screen: camera motion and the moment an icon goes dark
     @Synchronized
     fun observe(v: VisionResult) {
+        if (v.hint == ScreenHint.LIVE_DEAD) {
+            // dead for 2 s in a row (not one odd frame): the moments before it led to the death
+            if (deadSince == 0L) deadSince = v.ts
+            if (!deathMarked && lastAliveAt > 0 && v.ts - deadSince >= 2000 && deadSince - lastAliveAt < 3000) {
+                deathMarked = true; deaths++
+                markDeath(lastAliveAt)
+            }
+            sumMx = 0f; sumMy = 0f; frames = 0
+            return
+        }
         if (v.hint != ScreenHint.LIVE) return
+        if (v.self != null) { lastAliveAt = v.ts; deadSince = 0L; deathMarked = false }
+        loadBaselines()
         sumMx += v.hud.motionX
         sumMy += v.hud.motionY
         frames++
         val sb = StringBuilder()
         for ((k, b) in v.skillBrightness) {
             val base = baseline[k] ?: b
-            baseline[k] = if (b > base) b else base * 0.995f + b * 0.005f
             val prev = previous[k] ?: b
+            // the ready colour: rises when two frames in a row are more colourful (not on one
+            // flash), sinks only very slowly (a 2-minute cooldown must not become "normal")
+            val nb = if (b > base && prev > base) min(b, prev) else base * 0.99995f + b * 0.00005f
+            baseline[k] = nb
+            if (nb > base) saveBaseline(k, nb)
             previous[k] = b
             // colour strength of the icon: below 88% of its usual = cooling, 94%+ = ready
             ready[k] = b >= base * 0.94f || (ready[k] == true && b >= base * 0.88f)
@@ -129,6 +175,15 @@ object LiveRecorder {
         baseline.clear(); previous.clear(); ready.clear()
         pendingCasts = 0
         sumMx = 0f; sumMy = 0f; frames = 0
+    }
+
+    // the watched hero died at (about) time t: the moments of the 6 s before were the ones that
+    // led to it (the notebook can learn less from them)
+    private fun markDeath(t: Long) {
+        ExperienceRecorder.onDb({ db ->
+            db.execSQL("UPDATE live_demos SET died = 1 WHERE ts BETWEEN ? AND ?", arrayOf<Any>(t - 6000, t + 500))
+        }) { }
+        com.example.mlbbresearch.core.Diag.info("Live match: the watched hero died (moments before it marked)")
     }
 
     fun clear(done: () -> Unit) {

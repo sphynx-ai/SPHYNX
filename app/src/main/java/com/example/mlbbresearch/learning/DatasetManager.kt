@@ -22,13 +22,13 @@ object DatasetManager {
     // Features2.of (empty in rows recorded before v25), casts a bit mask. Train the tactical
     // network on it with notebooks/train_tactical_policy.ipynb.
     fun exportDemos(ctx: Context, done: (String) -> Unit) = exportTable(
-        ctx, "demos", "mlbb-my-play", "id,ts,hero,features,move_x,move_y,casts,features2", done
+        ctx, "demos", "mlbb-my-play", "id,ts,hero,features,move_x,move_y,casts,features2,died", done
     )
 
     // live matches you watched: the same columns as mlbb-my-play (the notebook reads both), plus
     // source = live, the watched player's role and the match time (-1 = clock not read)
     fun exportLive(ctx: Context, done: (String) -> Unit) = exportTable(
-        ctx, "live_demos", "mlbb-live", "id,ts,hero,features,move_x,move_y,casts,features2,source,lane,match_sec", done
+        ctx, "live_demos", "mlbb-live", "id,ts,hero,features,move_x,move_y,casts,features2,source,lane,match_sec,died", done
     )
 
     private fun exportTable(ctx: Context, table: String, prefix: String, cols: String, done: (String) -> Unit) {
