@@ -107,11 +107,12 @@ object ActionExecutor {
         val casts = d.casts
         val nowMs = System.currentTimeMillis()
         for (c in casts) {
-            // basic attack at a human rhythm (your recording: about every 330 ms); skills go out at once
+            // basic attack every 150 ms (the game queues it: no attack is lost between skills);
+            // skills go out at once
             if (c == "attack") {
                 if (nowMs - lastAttackTap < attackGap) continue
                 lastAttackTap = nowMs
-                attackGap = 250L + rnd.nextInt(80)
+                attackGap = 150L
             }
             val (x, y) = Layout.get(c)
             if (c in AIMED && self != null) {
@@ -125,7 +126,12 @@ object ActionExecutor {
                         holdUntil = nowMs + hold + 60          // nothing else may touch until it is released
                         aimDrag(c, x, y, self.x, self.y, d, gs, hold)
                     }
-                    mode == CastMode.AIM && Cfg.aimSkills -> aimDrag(c, x, y, self.x, self.y, d, gs, 220L + rnd.nextInt(80))
+                    // a quick 90 ms flick (a longer drag was often cut off by the next touch, and the
+                    // skill had to be cast again); nothing else is sent until it is done
+                    mode == CastMode.AIM && Cfg.aimSkills -> {
+                        holdUntil = maxOf(holdUntil, nowMs + 100)
+                        aimDrag(c, x, y, self.x, self.y, d, gs, 90L)
+                    }
                     else -> Act.Tap(x, y)
                 }
                 acts.add(act)
@@ -345,13 +351,13 @@ object ActionExecutor {
         val held = AccessibilityController.instance?.joystickHeld() == true
         if (held && nx * sentDirX + ny * sentDirY > 0.995f && now - sentAt < 500 && now >= detourUntil) return null
         sentDirX = nx; sentDirY = ny; sentAt = now
-        val ms = if (Cfg.fastMode) 45L + rnd.nextInt(15) else if (Cfg.naturalMove) 140L + rnd.nextInt(35) else 150L
+        val ms = 40L                       // no random "human" variation: the turn goes out at once
         // a turn of 90 deg or more slides the thumb ALONG the ring through the directions in
         // between (E -> NE -> N), so the hero curves round smoothly instead of snapping
         val via = ArrayList<Pair<Float, Float>>()
         val from = fromOct
         val to = (Math.round(kotlin.math.atan2(ny, nx) / OCT).toInt() + 8) % 8
-        if (held && from >= 0 && from != to) {
+        if (held && from >= 0 && from != to && false) {   // (the slide along the ring cost 35 ms per step: straight to the new heading)
             var steps = (to - from + 8) % 8
             val dirStep = if (steps <= 4) 1 else { steps = 8 - steps; -1 }
             for (k in 1 until steps) {
@@ -390,7 +396,8 @@ object ActionExecutor {
         val now = System.currentTimeMillis()
         if (now - lastUpgradeTap < 700) return
         if (now < QuickBuySwap.busyUntil) return
-        val order = Cfg.upgradeOrder.split(",").map { it.trim() }.filter { it in setOf("s1", "s2", "ult") } + listOf("ult", "s1", "s2")
+        // the hero's priority (online meta / guides, else its skill data) - no setting needed
+        val order = com.example.mlbbresearch.game.SkillOrder.of(s.ownHero)
         val slot = order.firstOrNull { it in ready } ?: return
         lastUpgradeTap = now
         val (x, y) = Layout.get(slot + "Up")

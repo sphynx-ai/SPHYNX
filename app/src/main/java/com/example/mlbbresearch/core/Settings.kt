@@ -38,49 +38,50 @@ object Cfg {
     var strategyEverySec: Int get() = i("strat_sec", 8); set(v) = put("strat_sec", v)
     var strategyWithImage: Boolean get() = b("strat_img", false); set(v) = put("strat_img", v)
     var pushDir: String get() = s("push_dir", "up-right"); set(v) = put("push_dir", v)
-    var spellIsDefensive: Boolean get() = b("spell_def", true); set(v) = put("spell_def", v)
+    // (v36.13: these are always on / off - the Player page switches were removed)
+    var spellIsDefensive: Boolean get() = false; set(v) {}
     // read skill availability from the buttons (dark + countdown = cooling down); on by default
-    var readCooldownsFromScreen: Boolean get() = b("cd_vision2", true); set(v) = put("cd_vision2", v)
+    var readCooldownsFromScreen: Boolean get() = true; set(v) {}
 
-    var autoUpgradeSkills: Boolean get() = b("auto_upgrade", true); set(v) = put("auto_upgrade", v)
+    var autoUpgradeSkills: Boolean get() = true; set(v) {}
     // ult first, then the others in this order (comma separated: ult,s1,s2)
     var upgradeOrder: String get() = s("upgrade_order", "ult,s1,s2"); set(v) = put("upgrade_order", v)
-    var useRecall: Boolean get() = b("use_recall", true); set(v) = put("use_recall", v)
+    var useRecall: Boolean get() = true; set(v) {}
     var recallHpPct: Int get() = i("recall_hp", 35); set(v) = put("recall_hp", v)
-    var useRegen: Boolean get() = b("use_regen", true); set(v) = put("use_regen", v)
+    var useRegen: Boolean get() = true; set(v) {}
     var regenHpPct: Int get() = i("regen_hp", 60); set(v) = put("regen_hp", v)
-    var jungleRoute: Boolean get() = b("jungle_route", true); set(v) = put("jungle_route", v)
+    var jungleRoute: Boolean get() = true; set(v) {}
     var playerQuickBuy: Boolean get() = b("player_qb", true); set(v) = put("player_qb", v)
     // reserve the ultimate for enemy heroes: never on minions, jungle monsters, turtle or lord
-    var noUltOnCreeps: Boolean get() = b("no_ult_creeps", true); set(v) = put("no_ult_creeps", v)
+    var noUltOnCreeps: Boolean get() = true; set(v) {}
     // Skill 1 / 2 go out as soon as they are ready while fighting creeps or heroes (target in reach)
-    var skillsWhenReady: Boolean get() = b("skills_ready", true); set(v) = put("skills_ready", v)
-    var wallHop: Boolean get() = b("wall_hop", true); set(v) = put("wall_hop", v)     // dash / Flicker over thin walls
-    var useBushes: Boolean get() = b("bushes", true); set(v) = put("bushes", v)      // hide and ambush in bushes
-    var fastMode: Boolean get() = b("fast_mode", true); set(v) = put("fast_mode", v)  // fastest decisions and combos
-    var naturalMove: Boolean get() = b("natural_move", true); set(v) = put("natural_move", v)
-    var wallAvoid: Boolean get() = b("wall_avoid", true); set(v) = put("wall_avoid", v)
+    var skillsWhenReady: Boolean get() = true; set(v) {}
+    var wallHop: Boolean get() = true; set(v) {}     // dash / Flicker over thin walls
+    var useBushes: Boolean get() = true; set(v) {}      // hide and ambush in bushes
+    var fastMode: Boolean get() = true; set(v) {}  // fastest decisions and combos
+    var naturalMove: Boolean get() = false; set(v) {}
+    var wallAvoid: Boolean get() = true; set(v) {}
     // coach: the AI plays, YOU can take over the joystick or skills at any moment; it steps back
     // while you touch, and learns your combos, when / how far you cast, and how you walk
     var coachMode: Boolean get() = b("coach", true); set(v) = put("coach", v)
-    var smoothJoystick: Boolean get() = b("smooth_joy", true); set(v) = put("smooth_joy", v)
+    var smoothJoystick: Boolean get() = true; set(v) {}
 
     // ---- hero, spell, lane, combos, objectives ----
     // battle spell: "auto" = recognise it, or a spell name you chose
     var mySpell: String get() = s("my_spell", "auto"); set(v) = put("my_spell", v)
     // lane: auto | exp | gold | mid | roam | jungle
     var lane: String get() = s("lane", "auto"); set(v) = put("lane", v)
-    var retriMeansJungle: Boolean get() = b("retri_jungle", true); set(v) = put("retri_jungle", v)
+    var retriMeansJungle: Boolean get() = true; set(v) {}
     var laneTravelSec: Int get() = i("lane_travel", 12); set(v) = put("lane_travel", v)
-    var useCombos: Boolean get() = b("combos", true); set(v) = put("combos", v)
-    var aimSkills: Boolean get() = b("aim_skills", true); set(v) = put("aim_skills", v)
+    var useCombos: Boolean get() = true; set(v) {}
+    var aimSkills: Boolean get() = true; set(v) {}
     var comboUrl: String get() = s("combo_url", "https://mobile-legends.fandom.com/wiki/{hero}"); set(v) = put("combo_url", v)
     fun heroCombo(hero: String): String? = prefs.getString("combo_" + hero.lowercase(), null)
     fun setHeroCombo(hero: String, v: String?) {
         if (v == null) prefs.edit().remove("combo_" + hero.lowercase()).apply() else put("combo_" + hero.lowercase(), v)
     }
-    var detectMonsters: Boolean get() = b("monsters", true); set(v) = put("monsters", v)
-    var takeObjectives: Boolean get() = b("objectives", true); set(v) = put("objectives", v)
+    var detectMonsters: Boolean get() = true; set(v) {}
+    var takeObjectives: Boolean get() = true; set(v) {}
     // Retribution on a monster when its HP is below this (%), turtle / lord and small creeps
     var retriBossPct: Int get() = i("retri_boss", 12); set(v) = put("retri_boss", v)
     var retriCreepPct: Int get() = i("retri_creep", 35); set(v) = put("retri_creep", v)
@@ -108,10 +109,10 @@ object Cfg {
 
     // ---- kills, towers, farming ----
     var executeHpPct: Int get() = i("exec_hp", 20); set(v) = put("exec_hp", v)       // chase enemies below this
-    var towerGuard: Boolean get() = b("tower_guard", true); set(v) = put("tower_guard", v)
+    var towerGuard: Boolean get() = true; set(v) {}
     var towerRangePct: Int get() = i("tower_range", 8); set(v) = put("tower_range", v) // % of the minimap
-    var useDash: Boolean get() = b("use_dash", true); set(v) = put("use_dash", v)
-    var lanersTakeCamps: Boolean get() = b("laner_camps", true); set(v) = put("laner_camps", v)
+    var useDash: Boolean get() = true; set(v) {}
+    var lanersTakeCamps: Boolean get() = true; set(v) {}
     fun heroRange(hero: String): String = s("range_" + hero.lowercase(), "auto")     // auto | ranged | melee
     fun setHeroRange(hero: String, v: String) = put("range_" + hero.lowercase(), v)
     fun heroDash(hero: String): String = s("dash_" + hero.lowercase(), "auto")

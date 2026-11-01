@@ -38,6 +38,7 @@ object MetaAdvisor {
                     "\"emblem\":\"emblem set and talents\",\"spell\":\"best battle spell\"," +
                     "\"lane\":\"exp|gold|mid|roam|jungle\",\"combo\":\"skill order using s1, s2, ult and a (basic attack), e.g. s2 > s1 > a > ult\"," +
                     "\"dash\":\"s1|s2|ult|none - the skill that dashes, leaps or blinks\"," +
+                    "\"skill_order\":\"skill upgrade priority from the guides, e.g. ult > s1 > s2\"," +
                     "\"laning\":[\"3 short early-game laning / farming tips\"],\"jungle\":[\"3 short jungle clear route tips\"]," +
                     "\"rotation\":[\"3 short rotation and objective timing tips (turtle, lord, towers)\"]," +
                     "\"counters\":[\"heroes strong against $hero\"],\"recent_changes\":\"its buffs / nerfs in recent patches, one sentence\"}"

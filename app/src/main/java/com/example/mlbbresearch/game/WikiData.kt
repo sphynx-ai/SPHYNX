@@ -218,3 +218,23 @@ object RoleTips {
         }
     }
 }
+
+// ---- skill upgrade priority: the online meta (guides) first, else worked out from the hero's
+// skill data. The ultimate is always taken when it can be (levels 4, 8, 12); then the main
+// damage skill (the one that takes most HP, crowd control counts a little), then the other.
+object SkillOrder {
+    fun of(hero: String?): List<String> {
+        MetaStore.hero(hero)?.skillOrder?.takeIf { it.size >= 2 }?.let { o ->
+            return (listOf("ult") + o + listOf("s1", "s2")).distinct()
+        }
+        val kit = SkillBook.get(hero)
+        fun score(slot: String): Float {
+            val k = kit[slot] ?: return 0f
+            return k.damage + (if (k.hardCc) 0.08f else 0f) + (if (k.slow) 0.03f else 0f) - (if (k.mobility && k.damage < 0.1f) 0.05f else 0f)
+        }
+        val two = listOf("s1", "s2").sortedByDescending { score(it) }
+        return listOf("ult") + two
+    }
+    fun source(hero: String?): String =
+        if (MetaStore.hero(hero)?.skillOrder?.size ?: 0 >= 2) "from the online meta / guides" else "from the hero's skill data"
+}

@@ -21,7 +21,8 @@ class HeroMeta(
     val rotation: List<String>,
     val counters: List<String>,
     val changes: String,
-    val sources: List<String>
+    val sources: List<String>,
+    val skillOrder: List<String> = emptyList()    // upgrade priority from the guides (s1 / s2 / ult)
 )
 
 class GeneralMeta(
@@ -63,7 +64,9 @@ object MetaStore {
             HeroMeta(hero, o.optString("patch", "?"), o.optLong("at"), list(o, "build"), o.optString("emblem", ""),
                 SpellDb.match(o.optString("spell", "")), Lane.of(o.optString("lane", "").lowercase().trim()),
                 combo, dash, list(o, "laning"), list(o, "jungle"), list(o, "rotation"),
-                list(o, "counters").mapNotNull { HeroDb.match(it) }, o.optString("recent_changes", ""), list(o, "sources"))
+                list(o, "counters").mapNotNull { HeroDb.match(it) }, o.optString("recent_changes", ""), list(o, "sources"),
+                skillOrder = Regex("ult|s1|s2").findAll(o.optString("skill_order", "").lowercase().replace("skill 1", "s1").replace("skill 2", "s2")
+                    .replace("ultimate", "ult")).map { it.value }.distinct().toList())
         } catch (e: Exception) {
             null
         }

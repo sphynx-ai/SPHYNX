@@ -100,10 +100,10 @@ object ComboRunner {
         if (now >= nextAt) {
             // did the last skill really go off? (its button goes dark) - one more try if not
             val ls = lastSlot
-            if (ls != null && ls != "a" && now - lastSlotAt in 450..1500 && CooldownTracker.lookReady(ls) && !retried) {
+            if (ls != null && ls != "a" && now - lastSlotAt in 300..1500 && CooldownTracker.lookReady(ls) && !retried) {
                 retried = true
                 casts.add(ls); lastSlotAt = now
-                nextAt = now + 300
+                nextAt = now + 150
                 status = "combo: $ls did not go off, again"
             } else {
                 retried = false
@@ -126,14 +126,15 @@ object ComboRunner {
                     casts.add(if (st.slot == "a") "attack" else st.slot)
                     used.add(st.slot)
                     lastSlot = st.slot; lastSlotAt = now
-                    nextAt = now + if (Cfg.fastMode) (st.waitMs * 0.6f).toLong() else st.waitMs
+                    // the next step as soon as the game takes it (its cast animation), not a fixed pause
+                    nextAt = now + (st.waitMs * 0.4f).toLong().coerceIn(80L, 350L)
                     break
                 }
                 status = "combo ${idx}/${steps.size}: ${ComboBook.format(steps)}" + if (!ultOk && steps.any { it.slot == "ult" }) " (ultimate saved)" else ""
             }
         }
-        // keep hitting between skills when the target is in reach
-        if (casts.isEmpty() && "attack" in d.casts) casts.add("attack")
+        // keep hitting between skills (and while they cool down) whenever the target is in reach
+        if ("attack" !in casts && ("attack" in d.casts || dist <= p.attackRange * 1.3f)) casts.add("attack")
         if (!running) { status = "combo done: reassessing"; reset() }
         return TacticalDecision(d.intent, d.moveX, d.moveY, casts, d.targetX, d.targetY, d.targetLabel,
             d.targetHp, d.targetId, d.reason + if (running) " | combo ${idx}/${steps.size}" else "")
