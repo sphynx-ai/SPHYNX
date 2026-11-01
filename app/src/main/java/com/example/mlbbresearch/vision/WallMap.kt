@@ -14,6 +14,17 @@ import kotlin.math.min
 //  - spots where the hero got stuck while walking are added as walls for this match
 //  - paths keep a little distance from walls, so the hero does not scrape along them
 // Paths are planned around the walls (A*), so the hero walks around rocks instead of into them.
+//
+// Terrain (v36.14): the minimap ground has 5 shades, measured on a real minimap:
+//   lightest grey (about 125-140 brightness, a little green)  = BUSH   (hide, ambush, recall)
+//   light grey (about 96-121)                                  = LANE   (lane / tower paths)
+//   grey (about 62-95)                                         = JUNGLE
+//   dark grey (under 62)                                       = WALL
+//   aquamarine blue (green and blue well above red)            = RIVER
+// Every cell keeps the class it showed most often; icons passing over it are ignored.
+// This works alongside the screen detection (bushes / walls seen on screen).
+enum class Terrain { UNKNOWN, WALL, BUSH, LANE, JUNGLE, RIVER }
+
 object WallMap {
 
     const val G = 40
@@ -21,11 +32,30 @@ object WallMap {
     private val seen = IntArray(G * G)
     private val blocked = IntArray(G * G)      // times the hero got stuck walking into this cell
     @Volatile private var wall = BooleanArray(G * G)
+    private val bushN = IntArray(G * G)
+    private val laneN = IntArray(G * G)
+    private val riverN = IntArray(G * G)
+    @Volatile private var terrain = Array(G * G) { Terrain.UNKNOWN }
     @Volatile var samples = 0
         private set
 
     fun reset() {
         dark.fill(0); seen.fill(0); blocked.fill(0); wall = BooleanArray(G * G); samples = 0
+        bushN.fill(0); laneN.fill(0); riverN.fill(0); terrain = Array(G * G) { Terrain.UNKNOWN }
+    }
+
+    // one minimap pixel -> its terrain shade (null = an icon / text covers the ground there)
+    fun classify(p: Int): Terrain? {
+        val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
+        val mx = max(rr, max(g, bb)); val mn = min(rr, min(g, bb))
+        val lum = (rr * 3 + g * 6 + bb) / 10
+        val sat = if (mx < 20) 0f else (mx - mn).toFloat() / mx
+        if (g in 80..150 && rr * 100 < g * 62 && bb * 100 in g * 85..g * 120) return Terrain.RIVER
+        if (sat > 0.45f && lum > 80) return null
+        if (lum < 62 && sat < 0.6f || MinimapColors.matches(MinimapColors.Kind.WALL, p)) return Terrain.WALL
+        if (lum >= 122) return if (sat < 0.45f && lum <= 175) Terrain.BUSH else null   // brighter = white text / icons
+        if (lum >= 96) return Terrain.LANE
+        return Terrain.JUNGLE
     }
 
     // called now and then with a frame where the minimap is the normal (small) one
@@ -36,23 +66,26 @@ object WallMap {
         if (r - l < 0.03f || b - t < 0.05f) return
         val next = BooleanArray(G * G)
         for (gy in 0 until G) for (gx in 0 until G) {
-            var d = 0
-            var icon = 0
+            var d = 0; var icon = 0; var bu = 0; var la = 0; var ri = 0
             for (sy in 0 until 2) for (sx in 0 until 2) {
                 val x = ((l + (r - l) * (gx + (sx + 0.5f) / 2f) / G) * w).toInt().coerceIn(0, w - 1)
                 val y = ((t + (b - t) * (gy + (sy + 0.5f) / 2f) / G) * h).toInt().coerceIn(0, h - 1)
-                val p = px[y * w + x]
-                val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
-                val mx = max(rr, max(g, bb)); val mn = min(rr, min(g, bb))
-                val lum = (rr * 3 + g * 6 + bb) / 10
-                val sat = if (mx < 20) 0f else (mx - mn).toFloat() / mx
-                if (lum < 62 && sat < 0.6f || MinimapColors.matches(MinimapColors.Kind.WALL, p)) d++
-                if (sat > 0.45f && lum > 80) icon++                 // a coloured icon covers this spot
+                when (classify(px[y * w + x])) {
+                    null -> icon++                                   // an icon covers this spot
+                    Terrain.WALL -> d++
+                    Terrain.BUSH -> bu++
+                    Terrain.LANE -> la++
+                    Terrain.RIVER -> ri++
+                    else -> {}
+                }
             }
             val i = gy * G + gx
             if (icon >= 2) continue                                  // cannot see the ground here now
             seen[i]++
             if (d >= 2) dark[i]++
+            if (bu >= 2) bushN[i]++
+            if (la >= 2) laneN[i]++
+            if (ri >= 2) riverN[i]++
         }
         for (gy in 0 until G) for (gx in 0 until G) {
             val i = gy * G + gx
@@ -72,6 +105,48 @@ object WallMap {
         }
         samples++
         wall = next
+        terrain = Array(G * G) { i ->
+            val n = seen[i]
+            when {
+                next[i] -> Terrain.WALL
+                n < 3 -> Terrain.UNKNOWN
+                bushN[i] * 2 >= n -> Terrain.BUSH
+                riverN[i] * 2 >= n -> Terrain.RIVER
+                laneN[i] * 2 >= n -> Terrain.LANE
+                else -> Terrain.JUNGLE
+            }
+        }
+    }
+
+    fun terrainAt(x: Float, y: Float): Terrain {
+        val gx = (x * G).toInt(); val gy = (y * G).toInt()
+        if (gx !in 0 until G || gy !in 0 until G) return Terrain.UNKNOWN
+        return terrain[gy * G + gx]
+    }
+
+    // standing in a bush, by the minimap (the screen check may miss it)
+    fun inBush(p: Pair<Float, Float>?): Boolean = p != null && ready && terrainAt(p.first, p.second) == Terrain.BUSH
+
+    fun count(k: Terrain): Int = terrain.count { it == k }
+
+    // The nearest minimap bush (cell centre) within `maxDist` of `from`; with `dirX/dirY` only bushes
+    // in that general direction (e.g. the way out when retreating).
+    fun nearestBush(from: Pair<Float, Float>, maxDist: Float, dirX: Float = 0f, dirY: Float = 0f): Pair<Float, Float>? {
+        if (!ready) return null
+        val t = terrain
+        var best: Pair<Float, Float>? = null
+        var bd = maxDist
+        val anyDir = dirX == 0f && dirY == 0f
+        for (i in 0 until G * G) {
+            if (t[i] != Terrain.BUSH) continue
+            val cx = (i % G + 0.5f) / G; val cy = (i / G + 0.5f) / G
+            val dx = cx - from.first; val dy = cy - from.second
+            val d = hypot(dx, dy)
+            if (d >= bd) continue
+            if (!anyDir && d > 0.5f / G && (dx * dirX + dy * dirY) / d < 0.3f) continue
+            bd = d; best = cx to cy
+        }
+        return best
     }
 
     val ready: Boolean get() = samples >= 3
@@ -118,6 +193,7 @@ object WallMap {
     // A*: the path (goal first) and its length in cells, or null
     private fun search(from: Pair<Float, Float>, to: Pair<Float, Float>): Pair<List<Int>, Float>? {
         val w = wall
+        val ter = terrain
         fun cell(p: Pair<Float, Float>) = (p.first * G).toInt().coerceIn(0, G - 1) to (p.second * G).toInt().coerceIn(0, G - 1)
         val (sx, sy) = cell(from)
         val (tx, ty) = free(w, cell(to)) ?: return null
@@ -141,7 +217,7 @@ object WallMap {
                 if (w[n] && n != goal) continue
                 // no cutting corners between two walls
                 if (dx != 0 && dy != 0 && (w[cy * G + nx] || w[ny * G + cx])) continue
-                val step = if (dx != 0 && dy != 0) 1.414f else 1f
+                val step = (if (dx != 0 && dy != 0) 1.414f else 1f) * (if (ter[n] == Terrain.LANE) 0.9f else 1f)
                 // keep a little distance from walls (no scraping along rocks)
                 var near = 0f
                 for (ky in -1..1) for (kx in -1..1) {
@@ -152,7 +228,7 @@ object WallMap {
                 if (nc < cost[n]) {
                     cost[n] = nc
                     prev[n] = c
-                    open.add(nc + hypot((tx - nx).toFloat(), (ty - ny).toFloat()) to n)
+                    open.add(nc + 0.9f * hypot((tx - nx).toFloat(), (ty - ny).toFloat()) to n)
                 }
             }
         }

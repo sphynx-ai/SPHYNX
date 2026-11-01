@@ -418,6 +418,13 @@ object TacticalEngine {
                     bx * mx + by * my > 0.3f
                 }
                 if (b != null) { val t = toward(s, b.x, b.y); mx = t.first; my = t.second }
+                else s.minimapSelf?.let { me ->
+                    // none on screen: a bush on the minimap, close and on the way out
+                    val wm = com.example.mlbbresearch.vision.WallMap
+                    wm.nearestBush(me, 0.08f, mx, my)?.let { mb ->
+                        val t = wm.direction(me, mb) ?: mapDir(me, mb); mx = t.first; my = t.second
+                    }
+                }
             }
             val casts = ArrayList<String>()
             p.escapeSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
@@ -488,6 +495,14 @@ object TacticalEngine {
             s.bushes.filter { s.distToSelf(it.x, it.y) < 0.3f }.minByOrNull { s.distToSelf(it.x, it.y) }?.let { b ->
                 val (bx, by) = toward(s, b.x, b.y)
                 return TacticalDecision(Intent.RECALL, bx, by, emptyList(), -1f, -1f, "-", -1f, -1, "into the bush to recall hidden")
+            }
+            // none on screen: the nearest bush on the minimap (a few steps away)
+            s.minimapSelf?.let { me ->
+                val wm = com.example.mlbbresearch.vision.WallMap
+                wm.nearestBush(me, 0.06f)?.let { mb ->
+                    val (bx, by) = wm.direction(me, mb) ?: mapDir(me, mb)
+                    return TacticalDecision(Intent.RECALL, bx, by, emptyList(), -1f, -1f, "-", -1f, -1, "into the bush (minimap) to recall hidden")
+                }
             }
         }
         if (Cfg.useRecall && hp in 0f..recallAt / 100f && safe && !levelSoon) {
