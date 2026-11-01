@@ -356,6 +356,31 @@ width (default 8%). It is drawn on the minimap when "Show what the AI sees" is o
   and pushes towers; it does not recall while a level-up is moments away (EXP ring 80%+) and a camp / wave is there.
 - The Player page shows "Next: ... | level 5 (EXP 40%): ..." with the plan to raise the level.
 
+## Priorities per role (v34)
+
+Shared first (every role): survive -> finish an almost dead monster -> recall / Regen -> kill low enemy heroes ->
+bush ambush -> no duels before level 4 -> LAST HITS (turtle / lord at 15% or less, a monster at 20%, a minion at 18%
+in reach: secured first unless a good fight is on) -> then the role's own order:
+
+| Jungle | EXP / Mid | Gold | Roam |
+|---|---|---|---|
+| a very good fight (70+) | a very good fight (70+) | a very good fight (70+) | turtle / lord on screen |
+| turtle / lord on screen | minion wave (last hits) | minion wave (last hits) | turtle / lord up on the minimap |
+| turtle / lord up on the minimap | turtle / lord on screen | turtle / lord on screen | enemy heroes (tanks start fights, supports protect) |
+| monsters on screen (own buffs first) | turtle / lord on the minimap (early game: always rotate) | turtle / lord on the minimap (early: only very close) | minion wave |
+| enemy heroes | push the tower (green circle) | push the tower | push the tower |
+| next camp (buffs first) | enemy heroes | enemy heroes | defend a tower, join a teamfight |
+| minions, tower | join a teamfight (early: from far), defend a tower | defend a tower, nearby camps (gold + levels) | roam with the mid / jungler, check bushes ahead |
+| | nearby camp between waves | teamfight (early: only very close) | |
+
+- Rotations: defend a tower under attack, join a teamfight seen on the minimap (2 allies + an enemy together), go to
+  a turtle / lord that is up - then the lane route brings it back to its lane.
+- Fighting an enemy hero inside its tower range: the tower shoots you first even with our minions there. A green
+  circle counts as red / yellow for hero fights, and the engagement score drops by 30.
+- Tank: +15 to start a fight when an ally is near. Support: -20 alone; in a fight it stays between its ally and the
+  enemy.
+- Jungle: own blue / red buff always counts as closer when choosing the next camp.
+
 ## Tactical network: only the reliable parts are used (v33)
 
 - The notebook writes `policy_info.json` next to `policy.tflite`: how well the joystick and each button did on your
