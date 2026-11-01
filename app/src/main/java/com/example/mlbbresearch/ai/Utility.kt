@@ -96,7 +96,15 @@ object Utility {
         if (extra > 0) add(-25f * extra, "$extra more enemies")
         val esc = k.escape
         if (HeroDb.role(s.ownHero) != Role.TANK && (esc == null || !ready(esc.slot, p))) add(-15f, "no escape ready")
-        if (TowerLogic.enemyUnderTower(s, t)) add(-25f, "under their tower")
+        // under its tower the tower shoots YOU first (even with our minions there)
+        val ring = s.towerRing
+        val inRing = ring.zone != com.example.mlbbresearch.vision.TowerRing.Zone.NONE &&
+            ((t.x - ring.cx) / ring.rx).let { it * it } + ((t.y - ring.cy) / ring.ry).let { it * it } < 1f
+        if (inRing || TowerLogic.enemyUnderTower(s, t)) add(-30f, "under their tower (it shoots me first)")
+        // tank roamers start fights for the team; supports do not fight alone (they protect)
+        val myRole = HeroDb.role(s.ownHero)
+        if (myRole == Role.TANK && s.alliesWithin(0.5f).isNotEmpty()) add(15f, "tank: starting the fight for the team")
+        if (myRole == Role.SUPPORT && s.alliesWithin(0.5f).isEmpty()) add(-20f, "support: not without allies")
         if (s.enemyLevel > 0) add((s.level - s.enemyLevel).coerceIn(-3, 3) * 5f, "level difference")
         else if (s.level < 4) add(-10f, "no ultimate yet")
         if (k.has(Passive.LOW_HP_POWER) && hp < 0.5f) add(10f, "passive: stronger when hurt")
