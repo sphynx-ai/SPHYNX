@@ -14,7 +14,7 @@ enum class Phase(val label: String) {
     UNKNOWN("unknown"), HOME("home screen"), LOBBY("lobby"), QUEUE("match found (Enter)"),
     DRAFT("hero select / draft"), HERO_LOCKED("hero select: hero locked in"), LOADING("loading"), IN_GAME("in game"),
     DEAD("dead (respawning)"), SHOP("equipment shop open"), SCOREBOARD("scoreboard open"), MAP("big map open"),
-    RESULT("match end");
+    RESULT("match end"), LIVE("watching a live match (learning)");
 
     // anything that happens during a match
     val inMatch: Boolean get() = this == IN_GAME || this == DEAD || this == SHOP || this == SCOREBOARD || this == MAP

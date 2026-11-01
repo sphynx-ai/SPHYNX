@@ -92,9 +92,12 @@ object FrameProcessor {
         HeroDetector.neutralOn = Cfg.detectMonsters
         // a kill / first blood banner is up: ignore that area (its red lines are not enemies)
         val banner = ScreenReader.announcement(px, w, h)
-        val mini = MinimapAnalyzer.analyze(px, w, h)
         val hint = ScreenReader.classify(px, w, h)
-        val seen = monstersFromRedBars(withoutAttachedBars(ownBars(hint, HeroDetector.scan(
+        // watching someone's live match: their screen has no buttons of yours, but its own overlays
+        val live = hint == ScreenHint.LIVE
+        val mini = MinimapAnalyzer.analyze(px, w, h, live)
+        val masks = if (live) ScreenReader.LIVE_MASKS else hud
+        val seen = if (live) liveUnits(px, w, h, mini, banner) else monstersFromRedBars(withoutAttachedBars(ownBars(hint, HeroDetector.scan(
             px, w, h, hud + ScreenMasks.overlay + (if (banner) listOf(ScreenReader.bannerRect) else emptyList()),
             Cfg.heroBarMinWidthPct / 100f, Cfg.bodyBelowBarPct / 100f
         ), px, w, h)), px, w, h, mini)
@@ -117,7 +120,10 @@ object FrameProcessor {
         val tracks = enemyTracker.update(seen.filter { it.team == Team.ENEMY && it.hero }, t0, aspect)
 
         val brightness = HashMap<String, Float>()
-        if (Cfg.readCooldownsFromScreen || trackPlayer) {
+        if (live) {
+            // their skill / spell icons in the panel (they darken while cooling down)
+            for ((k, c) in ScreenReader.LIVE_ICONS) brightness[k] = ScreenReader.iconBrightness(px, w, h, c.first, c.second)
+        } else if (Cfg.readCooldownsFromScreen || trackPlayer) {
             for (k in listOf("s1", "s2", "ult", "spell", "recall", "regen")) {
                 val (fx, fy) = Layout.get(k)
                 brightness[k] = ringBrightness(px, w, h, fx, fy)
@@ -125,14 +131,15 @@ object FrameProcessor {
         }
 
         // walls from the minimap, every couple of seconds while the normal minimap shows
-        if (self != null && hint == ScreenHint.NONE && frameNo % 25 == 3L) WallMap.update(px, w, h)
+        if (self != null && (hint == ScreenHint.NONE || live) && frameNo % 25 == 3L) WallMap.update(px, w, h)
 
         // bushes every 3rd frame (they do not move; the camera does, slowly)
         val bush = if (self != null && (frameNo % 3 == 0L || lastBush == null)) {
-            BushDetector.detect(px, w, h, hud + ScreenMasks.overlay, self, seen.filter { it.team != Team.SELF }).also { lastBush = it }
+            BushDetector.detect(px, w, h, masks + ScreenMasks.overlay, self, seen.filter { it.team != Team.SELF }).also { lastBush = it }
         } else if (self != null) lastBush!! else BushDetector.Result(emptyList(), false)
 
-        val hudInfo = if (self != null || trackPlayer) ScreenReader.hud(px, w, h, trackPlayer || trackMotion) else HudInfo.NONE
+        val hudInfo = if (live) ScreenReader.liveHud(px, w, h)
+            else if (self != null || trackPlayer) ScreenReader.hud(px, w, h, trackPlayer || trackMotion) else HudInfo.NONE
         // your level from the badge, and the nearest enemy hero's (from the badges remembered)
         if (self != null) LevelReader.update(px, w, h, self, hudInfo.upgradeReady.isNotEmpty(), t0)
         val enemyLevel = if (self == null) -1 else seen.filter { it.team == Team.ENEMY && it.hero }
@@ -143,11 +150,11 @@ object FrameProcessor {
         com.example.mlbbresearch.learning.DatasetCollector.maybeSave(px, w, h, mini, self != null && hint == ScreenHint.NONE)
 
         // an enemy tower's range circle (every 2nd frame; must show the same colour twice in a row)
-        if (self != null && hint == ScreenHint.NONE && frameNo % 2 == 0L) {
-            val r = TowerRing.detect(px, w, h, hud + ScreenMasks.overlay, seen, self.x, self.y)
+        if (self != null && (hint == ScreenHint.NONE || live) && frameNo % 2 == 0L) {
+            val r = TowerRing.detect(px, w, h, masks + ScreenMasks.overlay, seen, self.x, self.y)
             ring = if (r.zone == lastRingRaw.zone) r else ring
             lastRingRaw = r
-        } else if (self == null || hint != ScreenHint.NONE) ring = TowerRing.NONE
+        } else if (self == null || (hint != ScreenHint.NONE && !live)) ring = TowerRing.NONE
 
         // what the whole-screen detector adds (when loaded): monsters nobody has hit yet (no HP
         // bar), bushes and walls the colour finder missed, an enemy tower when its circle is not shown
@@ -167,11 +174,11 @@ object FrameProcessor {
             skillBrightness = brightness,
             hint = hint,
             hud = hudInfo,
-            heroSig = if (self != null && frameNo % 12 == 0L) heroSig(px, w, h, self, mini) else null,
-            spellIcon = if (self != null && frameNo % 12 == 6L) IconMemory.print(px, w, h, "spell", 0.016f) else null,
+            heroSig = if (!live && self != null && frameNo % 12 == 0L) heroSig(px, w, h, self, mini) else null,
+            spellIcon = if (!live && self != null && frameNo % 12 == 6L) IconMemory.print(px, w, h, "spell", 0.016f) else null,
             monsters = scr.monsters,
-            bossHp = if (self != null) ScreenReader.bossBar(px, w, h) else -1f,
-            kda = if (self != null) KdaReader.read(px, w, h) else IntArray(3),
+            bossHp = if (self != null && !live) ScreenReader.bossBar(px, w, h) else -1f,
+            kda = if (self != null && !live) KdaReader.read(px, w, h) else IntArray(3),
             bushes = scr.bushes,
             inBush = bush.inBush,
             screenWalls = scr.walls,
@@ -194,6 +201,20 @@ object FrameProcessor {
             fpsStart = t0
         }
         return result
+    }
+
+    // LIVE MATCH: the units on the watched player's screen. Their own HP bar is BLUE (they are
+    // an ally of themselves here) and the camera follows them, so the watched hero is the blue
+    // hero bar at the centre; its HP comes from the panel's green line. A green bar is never them.
+    private fun liveUnits(px: IntArray, w: Int, h: Int, mini: MinimapInfo, banner: Boolean): List<Seen> {
+        val raw = HeroDetector.scan(px, w, h, ScreenReader.LIVE_MASKS + ScreenMasks.overlay +
+            (if (banner) listOf(ScreenReader.bannerRect) else emptyList()), Cfg.heroBarMinWidthPct / 100f, Cfg.bodyBelowBarPct / 100f)
+            .filter { it.team != Team.SELF }
+        val units = monstersFromRedBars(withoutAttachedBars(raw), px, w, h, mini)
+        val me = units.filter { it.team == Team.ALLY && it.hero && kotlin.math.abs(it.barLeft - 0.47f) < 0.045f && it.barTop in 0.33f..0.45f }
+            .minByOrNull { (it.x - 0.5f) * (it.x - 0.5f) + (it.y - 0.47f) * (it.y - 0.47f) } ?: return units
+        val panelHp = ScreenReader.liveHp(px, w, h)
+        return units.map { if (it === me) it.copy(team = Team.SELF, hp = if (panelHp >= 0f) panelHp else it.hp) else it }
     }
 
     // YOUR bars. The camera keeps your hero in the middle, so your HP bar always sits at about

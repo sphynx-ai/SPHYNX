@@ -25,6 +25,12 @@ object DatasetManager {
         ctx, "demos", "mlbb-my-play", "id,ts,hero,features,move_x,move_y,casts,features2", done
     )
 
+    // live matches you watched: the same columns as mlbb-my-play (the notebook reads both), plus
+    // source = live, the watched player's role and the match time (-1 = clock not read)
+    fun exportLive(ctx: Context, done: (String) -> Unit) = exportTable(
+        ctx, "live_demos", "mlbb-live", "id,ts,hero,features,move_x,move_y,casts,features2,source,lane,match_sec", done
+    )
+
     private fun exportTable(ctx: Context, table: String, prefix: String, cols: String, done: (String) -> Unit) {
         ExperienceRecorder.onDb({ db ->
             val sb = StringBuilder(cols).append('\n')

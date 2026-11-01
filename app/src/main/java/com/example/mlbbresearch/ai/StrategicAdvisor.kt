@@ -39,6 +39,7 @@ object StrategicAdvisor {
     private var lastDraft = 0L
     private var lastBuildRead = 0L
     private var lastIdentify = 0L
+    private var lastClockAsk = 0L
     private var lastEnemyCount = 0
     private var lastHpBand = 2
     private var buildAdviceKey = ""
@@ -60,6 +61,14 @@ object StrategicAdvisor {
     suspend fun tick(s: GameState, playerOn: Boolean, drafterOn: Boolean, builderOn: Boolean) {
         if (!GemmaEngine.ready) return
         val now = System.currentTimeMillis()
+        // watching a live match: only read its clock (every minute or so), nothing else is ours
+        if (s.phase == Phase.LIVE) {
+            if (Cfg.liveLearn && GemmaEngine.visionOk && GameStateTracker.liveClockAge() > 60_000 && now - lastClockAsk > 30_000) {
+                lastClockAsk = now
+                readLiveClock()
+            }
+            return
+        }
         val inGame = s.phase.inMatch
 
         // 1. Draft (outside the match)
@@ -280,6 +289,19 @@ object StrategicAdvisor {
         if (r.hero != null && GameStateTracker.ownHero() == null) {
             GameStateTracker.guessedHero = r.hero
             Diag.info("Gemma recognised your hero: ${r.hero}")
+        }
+    }
+
+    // the match timer of the live match (top centre, mm:ss)
+    private suspend fun readLiveClock() {
+        val img = FrameHub.bitmap() ?: return
+        val reply = ask("live match clock", "Mobile Legends: Bang Bang screenshot of a live match. Read the match timer at the " +
+            "top centre of the screen, between the two teams' kill counts. Reply with ONLY the time as mm:ss, for example 07:00.", img, 0.0) ?: return
+        val m = Regex("(\\d{1,2})\\s*[:.]\\s*(\\d{2})").find(reply) ?: return
+        val sec = m.groupValues[1].toInt() * 60 + m.groupValues[2].toInt()
+        if (sec in 0..3600 && m.groupValues[2].toInt() < 60) {
+            GameStateTracker.setLiveClock(sec)
+            Diag.info("Live match clock: ${m.value}")
         }
     }
 

@@ -1160,6 +1160,7 @@ class MainActivity : Activity() {
 
     private fun learnPage() {
         DemoRecorder.refreshTotal()
+        com.example.mlbbresearch.learning.LiveRecorder.refreshTotal()
         title("SMART FIGHTS - the AI learns from its mistakes")
         text("When an enemy is close, the AI chooses how to handle it: all in, poke from range, back off, fall back to " +
             "allies, keep farming, or the normal rules. 4 seconds later it scores the result: damage dealt, kills, HP kept, " +
@@ -1227,9 +1228,45 @@ class MainActivity : Activity() {
             DatasetManager.exportDemos(this) { msg -> runOnUiThread { toast(msg) } }
         }
 
+        title("LEARN FROM LIVE MATCHES (watching another player)")
+        text("Open a player's live match in MLBB while learning is on (start the AI or Learn). Their screen is read like a " +
+            "match of yours: their hero (the blue bar in the middle), its HP from the green line in their panel, enemies, " +
+            "minions, monsters and the minimap (all enemies show there). Their walking comes from the camera, their skills " +
+            "from the panel icons going dark, attacks from standing next to a target. The AI never plays on this screen. " +
+            "Export gives mlbb-live-*.csv: the same columns as your recorded play, so the notebook trains on it " +
+            "(set HERO to the hero you watched).", 13f)
+        switch("Learn from live matches", Cfg.liveLearn) { Cfg.liveLearn = it }
+        field("Hero you are watching (e.g. Balmond)", Cfg.liveHero, false) { v ->
+            val m = com.example.mlbbresearch.game.HeroDb.match(v)
+            Cfg.liveHero = m ?: v.trim()
+            if (v.isNotBlank() && m == null) toast("Hero not recognised: saved as typed")
+        }
+        val lanes = listOf("exp", "gold", "mid", "roam", "jungle")
+        val laneBtn = btn("") { Cfg.liveLaneName = lanes[(lanes.indexOf(Cfg.liveLaneName) + 1) % lanes.size] }
+        upd { laneBtn.text = "Their role: ${Cfg.liveLane.label}  (tap to change)" }
+        val liveInfo = text("", 12f, color = "#9AA0A6")
+        upd {
+            com.example.mlbbresearch.learning.LiveRecorder.let { r ->
+                val st = GameStateTracker.state
+                val watching = st.phase == com.example.mlbbresearch.game.Phase.LIVE
+                liveInfo.text = (if (watching) "Watching a live match now" + (if (st.self == null) " (their hero not found on screen)" else ", their HP ${(st.selfHp * 100).toInt()}%") +
+                    "\nMatch time: " + (if (st.matchSec >= 0) "%d:%02d".format(st.matchSec / 60, st.matchSec % 60) else "not read yet (needs Gemma)") +
+                    "\nPanel: ${r.panel}\nLast seen: ${r.lastAction}\n" else "Not watching a live match\n") +
+                    "Live moments: ${r.recorded} this session, ${r.total} saved"
+            }
+        }
+        btn("Export live matches (CSV) - trains the tactical network") {
+            DatasetManager.exportLive(this) { msg -> runOnUiThread { toast(msg) } }
+        }
+        btn("Delete the live match moments") {
+            AlertDialog.Builder(this).setTitle("Delete all live match moments?")
+                .setPositiveButton("Delete") { _, _ -> com.example.mlbbresearch.learning.LiveRecorder.clear { runOnUiThread { toast("Deleted") } } }
+                .setNegativeButton("Cancel", null).show()
+        }
+
         title("HOW THE AI DOES PER HERO AND ROLE")
         text("Every match is logged (hero, role, who played, K/D/A, level, length) - to see where the AI plays well and " +
-            "which heroes / roles need work. Win / loss is not read yet.", 13f)
+            "which heroes / roles need work. Win / loss is read from the Victory / Defeat screens.", 13f)
         val ml = text("", 12f)
         upd { ml.text = com.example.mlbbresearch.game.MatchLog.summary() }
         btn("Clear the match log") { com.example.mlbbresearch.game.MatchLog.clear(); toast("Cleared") }

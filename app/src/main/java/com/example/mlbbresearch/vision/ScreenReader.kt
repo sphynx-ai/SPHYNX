@@ -10,6 +10,7 @@ import kotlin.math.min
 // Measured on screenshots of every screen from the home screen to the match-end scoreboard.
 enum class ScreenHint(val label: String) {
     NONE("match view / unknown"),
+    LIVE("live match (watching another player)"),
     HOME("home screen"),
     LOBBY("lobby (Start Game)"),
     QUEUE("match found (Enter)"),
@@ -184,6 +185,9 @@ object ScreenReader {
     fun classify(px: IntArray, w: Int, h: Int): ScreenHint {
         fun f(l: Float, t: Float, r: Float, b: Float, test: (Int) -> Boolean) = fraction(px, w, h, l, t, r, b, 2, test)
 
+        // watching someone's live match: their info panel along the bottom
+        if (livePanel(px, w, h)) return ScreenHint.LIVE
+
         // menus darken the middle of the screen (76%+ measured); the match view does not (41-59%):
         // keeps skill effects and blue / red ground from looking like a menu
         val midDark = f(0.10f, 0.25f, 0.90f, 0.85f) { isDark(it) } > 0.7f
@@ -281,6 +285,68 @@ object ScreenReader {
         // of the match view reached 3 rings but only 7-8 points
         if (rings >= 3 && hitsAll >= 12) return ScreenHint.MAP
         return ScreenHint.NONE
+    }
+
+    // ---------------- live match (watching another player's game) ----------------
+    // The bottom panel: navy, with their portrait, level, a green HP line, K/D/A, skill and spell
+    // icons (they darken while cooling down), items and gold. Measured on a 2712 x 1220 screen.
+    private fun isPanelNavy(p: Int) = r(p) in 12..55 && g(p) in 32..85 && b(p) in 45..110 && b(p) - r(p) >= 18
+    private fun isHpGreen(p: Int) = g(p) >= 140 && g(p) - max(r(p), b(p)) >= 40
+    private fun isHpEmpty(p: Int) = max(r(p), max(g(p), b(p))) < 75 && max(r(p), max(g(p), b(p))) - min(r(p), min(g(p), b(p))) < 20
+
+    fun livePanel(px: IntArray, w: Int, h: Int): Boolean =
+        fraction(px, w, h, 0.36f, 0.848f, 0.80f, 0.858f, 2) { isPanelNavy(it) } > 0.9f &&
+            fraction(px, w, h, 0.43f, 0.869f, 0.61f, 0.876f, 2) { isHpGreen(it) || isHpEmpty(it) } > 0.85f
+
+    // their HP: the green share of the line (0..1), -1 when it cannot be read
+    fun liveHp(px: IntArray, w: Int, h: Int): Float {
+        val y = (0.872f * h).toInt().coerceIn(0, h - 1)
+        val x0 = (0.421f * w).toInt(); val x1 = (0.616f * w).toInt()
+        var green = 0; var empty = 0
+        for (x in x0..x1) {
+            val p = px[y * w + x]
+            if (isHpGreen(p)) green++ else if (isHpEmpty(p)) empty++
+        }
+        val n = x1 - x0 + 1
+        return if (green + empty < n * 0.8f) -1f else green.toFloat() / n
+    }
+
+    // skill / spell icons of the panel (centre x, y)
+    val LIVE_ICONS = linkedMapOf("s1" to (0.417f to 0.946f), "s2" to (0.462f to 0.946f), "ult" to (0.505f to 0.946f),
+        "spell" to (0.564f to 0.946f))
+
+    // average brightness of an icon (a disc around its centre): drops when it starts cooling down
+    fun iconBrightness(px: IntArray, w: Int, h: Int, fx: Float, fy: Float): Float {
+        val rad = 0.012f * w
+        var sum = 0L; var n = 0
+        val cx = fx * w; val cy = fy * h
+        var y = (cy - rad).toInt()
+        while (y <= cy + rad) {
+            var x = (cx - rad).toInt()
+            while (x <= cx + rad) {
+                if (x in 0 until w && y in 0 until h && hypot(x - cx, y - cy) <= rad) { sum += lum(px[y * w + x]); n++ }
+                x += 2
+            }
+            y += 2
+        }
+        return if (n == 0) 0f else sum.toFloat() / n
+    }
+
+    // what is NOT the field on the live screen (no unit is ever read there)
+    val LIVE_MASKS = listOf(
+        floatArrayOf(0.28f, 0.00f, 1.00f, 0.085f),  // scoreboard, hero portraits, streamer name / likes
+        floatArrayOf(0.895f, 0.00f, 1.00f, 0.80f),  // the right column of buttons (shop, like, gift, ranking...)
+        floatArrayOf(0.32f, 0.835f, 0.875f, 1.00f), // their info panel
+        floatArrayOf(0.00f, 0.83f, 0.35f, 1.00f),   // chat bar and its buttons
+        floatArrayOf(0.18f, 0.00f, 0.28f, 0.06f),   // battery / ping
+        floatArrayOf(0.36f, 0.085f, 0.58f, 0.18f),  // "Lord / Turtle ready in ..." notice under the scoreboard
+        MinimapAnalyzer.rect
+    )
+
+    // camera motion only (the live screen has no skill buttons or quick-buy icon)
+    fun liveHud(px: IntArray, w: Int, h: Int): HudInfo {
+        val (mx, my) = motion(px, w, h)
+        return HudInfo(emptySet(), false, mx, my)
     }
 
     // ---------------- HUD ----------------

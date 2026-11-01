@@ -37,7 +37,10 @@ object MinimapAnalyzer {
 
     private const val STEP = 2
 
-    fun analyze(px: IntArray, w: Int, h: Int): MinimapInfo {
+    // live: the minimap of a live match you watch. Its reds are pinker (enemy rings about
+    // 210, 85, 100) and the watched player's camera range is drawn over it as big cyan circles,
+    // which must not count as ally rings.
+    fun analyze(px: IntArray, w: Int, h: Int, live: Boolean = false): MinimapInfo {
         val x0 = (rect[0] * w).toInt()
         val y0 = (rect[1] * h).toInt()
         val x1 = (rect[2] * w).toInt().coerceAtMost(w - 1)
@@ -52,7 +55,11 @@ object MinimapAnalyzer {
                 val r = (p shr 16) and 0xff
                 val g = (p shr 8) and 0xff
                 val b = p and 0xff
-                grid[gy * gw + gx] = when {
+                grid[gy * gw + gx] = if (live) when {
+                    r > 170 && g < 110 && r - b > 60 && r - g > 80 -> 1
+                    b > 170 && r < 100 && b - r > 80 && g < 190 -> 2
+                    else -> 0
+                } else when {
                     r > 170 && g < 90 && b < 90 -> 1
                     b > 170 && r < 100 && b - r > 80 -> 2
                     else -> 0
@@ -97,12 +104,113 @@ object MinimapAnalyzer {
         val icon = lastIcon
         val st = structures(px, w, h)
         // enemy towers are red too: do not count them as enemy heroes
+        if (live) {
+            // live: enemy heroes are found by their RING shape (towers / base icons are small and solid)
+            val rings = liveRings(px, w, h) { r, g, b -> r > 170 && g < 110 && r - b > 60 && r - g > 80 }
+            // ally rings are blue; the camera circles are cyan and far bigger than a portrait
+            val allyRings = liveRings(px, w, h) { r, g, b -> b > 170 && r < 120 && b - r > 70 }
+            val (lord, turtle) = pits(px, w, h)
+            // the watched hero: the camera circles are drawn around them
+            val me = liveSelf(px, w, h, allyRings)
+            return MinimapInfo(rings.size, allyRings.size, rings, me, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves, icon, allyRings, lord, turtle)
+        }
         val heroDots = dots.filter { d -> CLOUDS.none { kotlin.math.hypot(it.first - d.first, it.second - d.second) < 0.06f } &&
             st.towers.none { kotlin.math.hypot(it.x - d.first, it.y - d.second) < 0.05f } &&
                 st.enemyWaves.none { kotlin.math.hypot(it.first - d.first, it.second - d.second) < 0.02f }
         }
         val (lord, turtle) = pits(px, w, h)
         return MinimapInfo(heroDots.size, allies, heroDots, self, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves, icon, blue, lord, turtle)
+    }
+
+    // The watched hero on a live match's minimap: the cyan camera circles are centred on them.
+    // A circle fit that drops the points far from the circle (the blue lane highlight, the part
+    // cut off at the map edge), then the portrait ring nearest to that centre if one is close.
+    private fun liveSelf(px: IntArray, w: Int, h: Int, rings: List<Pair<Float, Float>>): Pair<Float, Float>? {
+        val x1 = (rect[2] * w).toInt().coerceAtMost(w - 1); val y1 = (rect[3] * h).toInt().coerceAtMost(h - 1)
+        var xs = ArrayList<Float>(); var ys = ArrayList<Float>()
+        for (y in 0..y1) for (x in 0..x1) {
+            val p = px[y * w + x]
+            val r = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val b = p and 0xff
+            if (r < 150 && g > 190 && b > 210) { xs.add(x.toFloat()); ys.add(y.toFloat()) }
+        }
+        if (xs.size < 60) return null
+        var cx = 0.0; var cy = 0.0; var rad = 0.0
+        repeat(6) {
+            // least squares circle: x^2 + y^2 = 2ax + 2by + c
+            var sxx = 0.0; var sxy = 0.0; var syy = 0.0; var sx = 0.0; var sy = 0.0; val n = xs.size.toDouble()
+            var sxz = 0.0; var syz = 0.0; var sz = 0.0
+            for (i in xs.indices) {
+                val x = xs[i].toDouble(); val y = ys[i].toDouble(); val z = x * x + y * y
+                sxx += x * x; sxy += x * y; syy += y * y; sx += x; sy += y; sxz += x * z; syz += y * z; sz += z
+            }
+            // normal equations for [2a, 2b, c]
+            val m = arrayOf(doubleArrayOf(sxx, sxy, sx), doubleArrayOf(sxy, syy, sy), doubleArrayOf(sx, sy, n))
+            val v = doubleArrayOf(sxz, syz, sz)
+            val sol = solve3(m, v) ?: return null
+            cx = sol[0] / 2; cy = sol[1] / 2
+            rad = kotlin.math.sqrt((sol[2] + cx * cx + cy * cy).coerceAtLeast(0.0))
+            val res = xs.indices.map { kotlin.math.abs(kotlin.math.hypot(xs[it] - cx, ys[it] - cy) - rad) }
+            val cut = maxOf(2.0, res.sorted()[(res.size * 0.6).toInt().coerceAtMost(res.size - 1)])
+            val nx = ArrayList<Float>(); val ny = ArrayList<Float>()
+            for (i in xs.indices) if (res[i] < cut) { nx.add(xs[i]); ny.add(ys[i]) }
+            if (nx.size < 30) return@repeat
+            xs = nx; ys = ny
+        }
+        val fx = (cx / (x1 + 1)).toFloat(); val fy = (cy / (y1 + 1)).toFloat()
+        if (fx !in 0f..1f || fy !in 0f..1f) return null
+        val near = rings.minByOrNull { kotlin.math.hypot(it.first - fx, it.second - fy) }
+        return if (near != null && kotlin.math.hypot(near.first - fx, near.second - fy) < 0.1f) near else fx to fy
+    }
+
+    private fun solve3(m: Array<DoubleArray>, v: DoubleArray): DoubleArray? {
+        fun det(a: Array<DoubleArray>) = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) -
+            a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0])
+        val d = det(m)
+        if (kotlin.math.abs(d) < 1e-9) return null
+        return DoubleArray(3) { k -> det(Array(3) { r -> DoubleArray(3) { c -> if (c == k) v[r] else m[r][c] } }) / d }
+    }
+
+    // Enemy portrait rings on a live match's minimap: a pink-red outline at least ~1.2% of the
+    // screen width across and mostly hollow (measured: rings 12-16 px wide at 800 px, 20-26%
+    // filled; tower and base icons 2-8 px and 45-100% filled). Two overlapping portraits give
+    // two arcs, so they still count as two.
+    private fun liveRings(px: IntArray, w: Int, h: Int, test: (Int, Int, Int) -> Boolean): List<Pair<Float, Float>> {
+        val x0 = (rect[0] * w).toInt(); val y0 = (rect[1] * h).toInt()
+        val x1 = (rect[2] * w).toInt().coerceAtMost(w - 1); val y1 = (rect[3] * h).toInt().coerceAtMost(h - 1)
+        val gw = x1 - x0 + 1; val gh = y1 - y0 + 1
+        val m = BooleanArray(gw * gh)
+        for (y in 0 until gh) for (x in 0 until gw) {
+            val p = px[(y0 + y) * w + x0 + x]
+            val r = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val b = p and 0xff
+            m[y * gw + x] = test(r, g, b)
+        }
+        val minSide = (0.0125f * w).toInt().coerceAtLeast(4)
+        val maxSide = (0.032f * w).toInt()
+        val seen = BooleanArray(m.size)
+        val stack = IntArray(m.size)
+        val out = ArrayList<Pair<Float, Float>>()
+        for (i in m.indices) {
+            if (!m[i] || seen[i]) continue
+            var sp = 0; stack[sp++] = i; seen[i] = true
+            var n = 0; var sx = 0; var sy = 0
+            var minX = gw; var maxX = 0; var minY = gh; var maxY = 0
+            while (sp > 0) {
+                val c = stack[--sp]
+                val cx = c % gw; val cy = c / gw
+                n++; sx += cx; sy += cy
+                if (cx < minX) minX = cx; if (cx > maxX) maxX = cx; if (cy < minY) minY = cy; if (cy > maxY) maxY = cy
+                for (dy in -1..1) for (dx in -1..1) {
+                    val nx = cx + dx; val ny = cy + dy
+                    if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue
+                    val q = ny * gw + nx
+                    if (m[q] && !seen[q]) { seen[q] = true; stack[sp++] = q }
+                }
+            }
+            val bw = maxX - minX + 1; val bh = maxY - minY + 1
+            if (maxOf(bw, bh) < minSide || maxOf(bw, bh) > maxSide || n.toFloat() / (bw * bh) > 0.35f) continue
+            out.add((sx.toFloat() / n / gw) to (sy.toFloat() / n / gh))
+        }
+        return out
     }
 
     // MLBB always draws YOUR base bottom-left and the river from top-left to bottom-right,

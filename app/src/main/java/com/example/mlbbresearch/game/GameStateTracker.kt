@@ -3,6 +3,7 @@ package com.example.mlbbresearch.game
 import com.example.mlbbresearch.core.Cfg
 import com.example.mlbbresearch.core.Diag
 import com.example.mlbbresearch.vision.IconMemory
+import com.example.mlbbresearch.vision.HudInfo
 import com.example.mlbbresearch.vision.ScreenHint
 import com.example.mlbbresearch.vision.VisionResult
 
@@ -144,6 +145,9 @@ object GameStateTracker {
 
     fun update(v: VisionResult): GameState {
         val now = v.ts
+        // watching someone's live match (and up to 4 s after its last frame)
+        if (v.hint == ScreenHint.LIVE) lastLiveAt = now
+        if (v.hint == ScreenHint.LIVE || (now - lastLiveAt in 0..4000 && v.hint == ScreenHint.NONE)) return liveState(v, now, v.hint == ScreenHint.LIVE)
         val wasInMatch = now - lastInGame < 120_000
         val before = state.phase
         if (v.self != null && !wasInMatch) {
@@ -207,9 +211,19 @@ object GameStateTracker {
 
         // big map open: its portraits and icons are not units on the field
         val onMap = phase == Phase.MAP
-        fun field(x: Float, y: Float) = !onMap || !(x < 0.45f && y < 0.85f)
 
-        val s = GameState(
+        val s = makeState(v, now, phase, onMap, ownHero(), spell(), lane().first,
+            if (matchStartAt == 0L) -1 else ((now - matchStartAt) / 1000).toInt(),
+            if (spawnAt == 0L) Long.MAX_VALUE else now - spawnAt)
+        state = s
+        CooldownTracker.observe(v)
+        return s
+    }
+
+    private fun makeState(v: VisionResult, now: Long, phase: Phase, onMap: Boolean, hero: String?, spell: String?, lane: Lane,
+                          matchSec: Int, sinceSpawnMs: Long): GameState {
+        fun field(x: Float, y: Float) = !onMap || !(x < 0.45f && y < 0.85f)
+        return GameState(
             ts = now,
             phase = phase,
             self = v.self,
@@ -220,7 +234,7 @@ object GameStateTracker {
             allyMinions = v.allyMinions.filter { field(it.x, it.y) },
             minimapEnemies = v.minimap.enemies,
             aspect = v.aspect,
-            ownHero = ownHero(),
+            ownHero = hero,
             myTeam = myTeam,
             enemyTeam = enemyTeam,
             items = items,
@@ -228,10 +242,10 @@ object GameStateTracker {
             itemsGoldAgeMs = if (itemsGoldAt == 0L) Long.MAX_VALUE else now - itemsGoldAt,
             hud = v.hud,
             monsters = v.monsters.filter { field(it.x, it.y) },
-            spell = spell(),
-            lane = lane().first,
-            matchSec = if (matchStartAt == 0L) -1 else ((now - matchStartAt) / 1000).toInt(),
-            sinceSpawnMs = if (spawnAt == 0L) Long.MAX_VALUE else now - spawnAt,
+            spell = spell,
+            lane = lane,
+            matchSec = matchSec,
+            sinceSpawnMs = sinceSpawnMs,
             minimapSelf = if (onMap) null else v.minimap.self,
             camps = if (onMap) emptyList() else v.minimap.camps,
             towers = if (onMap) emptyList() else v.minimap.towers,
@@ -249,8 +263,33 @@ object GameStateTracker {
             towerRing = v.towerRing,
             map = if (onMap) MapIntel.Info.NONE else MapIntel.read(v.minimap, now)
         )
+    }
+
+    // ---------------- live match (watching another player) ----------------
+    // Their screen is read like a match of yours, but it never touches YOUR match: no match
+    // start, no K/D/A, no cooldowns, and the AI never plays (the phase is LIVE, not IN_GAME).
+    // The hero and role being watched come from the Learn page; the match clock from Gemma.
+    @Volatile private var lastLiveAt = 0L
+    @Volatile private var liveClockSec = -1
+    @Volatile private var liveClockAt = 0L
+
+    // the clock read from their screen (mm:ss, by Gemma): counted on from there
+    fun setLiveClock(sec: Int) { liveClockSec = sec; liveClockAt = System.currentTimeMillis() }
+    fun liveClockAge(): Long = if (liveClockAt == 0L) Long.MAX_VALUE else System.currentTimeMillis() - liveClockAt
+
+    private fun liveState(v: VisionResult, now: Long, seenLive: Boolean): GameState {
+        val wall = System.currentTimeMillis()        // the clock is stamped with this time too
+        if (liveClockAt != 0L && wall - liveClockAt > 40 * 60_000L) { liveClockAt = 0L; liveClockSec = -1 }
+        val sec = if (liveClockAt == 0L) -1 else liveClockSec + ((wall - liveClockAt) / 1000).toInt()
+        // a frame right after a live one that was not recognised (a popup over the panel):
+        // still the live screen, but nothing on it is trusted
+        val vv = if (seenLive) v else VisionResult(v.ts, v.frameW, v.frameH, null, emptyList(), emptyList(), emptyList(), emptyList(),
+            emptyList(), v.minimap, v.saturation, emptyMap(), v.hint, HudInfo.NONE, null, null, emptyList(), IntArray(3), -1f,
+            emptyList(), false, v.screenWalls, processMs = v.processMs)
+        val hero = HeroDb.match(Cfg.liveHero)
+        val s = makeState(vv, now, Phase.LIVE, false, hero, null, Cfg.liveLane, sec, Long.MAX_VALUE)
+        if (state.phase != Phase.LIVE) phaseSince = now
         state = s
-        CooldownTracker.observe(v)
         return s
     }
 

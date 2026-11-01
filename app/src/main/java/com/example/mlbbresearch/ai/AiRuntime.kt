@@ -85,6 +85,7 @@ object AiRuntime {
                 learnOn = true
                 DemoRecorder.resetSession()
                 DemoRecorder.refreshTotal()
+                com.example.mlbbresearch.learning.LiveRecorder.resetSession(); com.example.mlbbresearch.learning.LiveRecorder.refreshTotal()
                 FrameProcessor.trackPlayer = true
             }
             else -> return "unknown stage"
@@ -95,6 +96,7 @@ object AiRuntime {
             learnOn = true
             DemoRecorder.resetSession()
             DemoRecorder.refreshTotal()
+            com.example.mlbbresearch.learning.LiveRecorder.resetSession(); com.example.mlbbresearch.learning.LiveRecorder.refreshTotal()
             FrameProcessor.trackPlayer = true
         }
         lastError = ""
@@ -191,7 +193,9 @@ object AiRuntime {
                 val v = FrameProcessor.processNext()
                 if (v != null) {
                     GameStateTracker.update(v)
-                    if (learnOn) DemoRecorder.observe(v, aiPlaying = playerOn, s = GameStateTracker.state)
+                    // a live match you watch is not yours: its casts are not your cooldowns or combos
+                    if (learnOn && v.hint != com.example.mlbbresearch.vision.ScreenHint.LIVE) DemoRecorder.observe(v, aiPlaying = playerOn, s = GameStateTracker.state)
+                    if (learnOn && Cfg.liveLearn) com.example.mlbbresearch.learning.LiveRecorder.observe(v)
                     kotlinx.coroutines.yield()
                 } else {
                     delay(15)
@@ -265,7 +269,9 @@ object AiRuntime {
                 if (learnOn && inGame && (!playerOn || com.example.mlbbresearch.learning.Coach.userActive())) DemoRecorder.record(s)
                 // learn from other heroes too: the ally you watch while dead, enemies on screen
                 if (learnOn && !stale && s.phase != Phase.SHOP && s.phase != Phase.SCOREBOARD && s.phase != Phase.MAP &&
-                    s.phase != Phase.DRAFT && s.phase != Phase.LOADING) DemoRecorder.recordWatched(s)
+                    s.phase != Phase.DRAFT && s.phase != Phase.LOADING && s.phase != Phase.LIVE) DemoRecorder.recordWatched(s)
+                // watching another player's live match: their play, recorded like a match of yours
+                if (learnOn && Cfg.liveLearn && !stale && s.phase == Phase.LIVE) com.example.mlbbresearch.learning.LiveRecorder.record(s)
                 if (builderOn && inGame) {
                     if (Cfg.qbOn) QuickBuySwap.watch(s)
                     if (Cfg.autonomous && drafterOn && !(playerOn && Cfg.playerQuickBuy)) ActionExecutor.maybeQuickBuy(s, blind = true)
