@@ -68,6 +68,25 @@ object TacticalEngine {
     fun decide(s: GameState, p: HeroProfile, plan: StrategyPlan, learnedBias: Float, option: FightOption? = null): TacticalDecision {
         pendingHop = false
         var d = decideRaw(s, p, plan, learnedBias, option)
+        // game sense: remember enemies that left the map; weigh the options (the "why")
+        com.example.mlbbresearch.game.GameMemory.update(s, d.reason.substringBefore(" |").take(60), plan.plan)
+        if (s.self != null && s.phase == Phase.IN_GAME) {
+            val sc = Deliberation.score(s, p)
+            val brainFight = option != null && option != FightOption.RULES
+            if (!brainFight) Deliberation.vetoFight(s, d, sc)?.let { why ->
+                val (mx, my) = retreatDir(s, s.enemiesWithin(0.9f))
+                d = TacticalDecision(Intent.RETREAT, mx, my, d.casts.filter { it != "ult" && it != "attack" }, -1f, -1f, "-", -1f, -1, why)
+            }
+            if (!brainFight) Deliberation.takeKill(s, p, d, sc)?.let { t ->
+                val casts = arrayListOf("attack")
+                for (sk in p.combo) if (CooldownTracker.ready(sk, p)) casts.add(sk)
+                if (CooldownTracker.ready("ult", p) && "ult" !in casts) casts.add("ult")
+                val (mx, my) = toward(s, t.x, t.y)
+                d = TacticalDecision(Intent.ENGAGE, mx, my, casts, t.x, t.y, "enemy #${t.id}", t.hp, t.id,
+                    "the scores say take the kill: attack %.2f > retreat %.2f, enemy at %d%%".format(sc.attack, sc.retreat, (t.hp * 100).toInt()))
+            }
+            Deliberation.observe(s, d, sc)
+        }
         // (a chase for a kill on an enemy under 10% may follow it into tower range)
         val killChase = d.intent == Intent.ENGAGE && d.targetHp in 0f..0.10f
         if (d.intent != Intent.RETREAT && d.intent != Intent.RECALL && d.intent != Intent.IDLE && !killChase) {

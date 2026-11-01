@@ -340,6 +340,7 @@ object GameStateTracker {
         com.example.mlbbresearch.vision.KdaReader.reset()
         com.example.mlbbresearch.vision.LevelReader.reset()
         com.example.mlbbresearch.vision.WallMap.reset()
+        GameMemory.reset()
         items = -1
         gold = -1
         itemsGoldAt = 0L
