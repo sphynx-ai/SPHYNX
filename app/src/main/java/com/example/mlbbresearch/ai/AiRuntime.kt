@@ -296,12 +296,10 @@ object AiRuntime {
             }
             // Fast mode: decide again as soon as vision has a new frame (up to ~25 per second),
             // instead of every 200 ms. Balanced mode keeps 5 per second (less battery).
-            if (Cfg.fastMode) {
-                val seenTs = GameStateTracker.state.ts
-                val start = System.currentTimeMillis()
-                delay(40)
-                while (GameStateTracker.state.ts == seenTs && System.currentTimeMillis() - start < 150) delay(5)
-            } else delay(200)
+            // decide again the moment vision has a new frame (no fixed pause; 100 ms at most)
+            val seenTs = GameStateTracker.state.ts
+            val start = System.currentTimeMillis()
+            while (GameStateTracker.state.ts == seenTs && System.currentTimeMillis() - start < 100) delay(4)
         }
     }
 

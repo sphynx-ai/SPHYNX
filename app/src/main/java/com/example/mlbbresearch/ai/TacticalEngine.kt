@@ -77,7 +77,8 @@ object TacticalEngine {
                 d.reason + " (keeping out of enemy tower range)")
         }
         d = towerRingRule(s, d)
-        return wallHop(s, p, steerAroundWalls(s, d))
+        d = commit(s, d)
+        return travelDash(s, p, wallHop(s, p, steerAroundWalls(s, d)))
     }
 
     // The enemy tower's circle on screen:
@@ -201,7 +202,7 @@ object TacticalEngine {
             d.targetId >= 0 || d.intent == Intent.RETREAT
         var casts = d.casts
         // a wall jump may use the ultimate when that is the hero's dash: keep it
-        val hop = if (d.reason.contains("jumping the wall")) HeroDb.dashSlot(s.ownHero) else null
+        val hop = if (d.reason.contains("passing the wall") || d.reason.contains("to get there faster")) HeroDb.dashSlot(s.ownHero) else null
         if (Cfg.noUltOnCreeps && !vsHero) casts = casts.filter { it != "ult" || it == hop }
         // Coach: you cast this skill at enemies about this close; wait until the target is that
         // close (a far-away cast mostly misses) - only for skills seen at least 3 times
@@ -216,6 +217,8 @@ object TacticalEngine {
             val extra = listOf("s1", "s2").filter { it !in casts && CooldownTracker.ready(it, p) }
             if (extra.isNotEmpty()) casts = casts + extra
         }
+        // only basic attacks damage turrets: no skills thrown at a tower
+        if (d.targetLabel == "tower") casts = casts.filter { it == "attack" || it == "regen" || it == "recall" }
         // Nothing to hit = no attack, no skills (escape skills, wall jumps, Regen, Recall stay).
         // Something in reach and no skill ready = keep pressing attack.
         // A jungle monster shows NO HP bar until it is hit: standing at a camp the minimap still
@@ -245,13 +248,45 @@ object TacticalEngine {
         // (never while recalling or regenerating: attacking cancels the channel)
         // (nor while backing off to wait for a better moment: stopping to hit would undo it)
         if (d.intent == Intent.RECALL || d.intent == Intent.REGEN || d.reason.startsWith("positioning")) casts = casts.filter { it != "attack" }
-        else if ((hitRange && (d.intent != Intent.RETREAT || hiding) || chasing) &&
-            casts.none { it == "s1" || it == "s2" || it == "ult" } && "attack" !in casts
-        ) {
+        else if ((hitRange && (d.intent != Intent.RETREAT || hiding) || chasing) && "attack" !in casts) {
+            // basic attacks keep going between and alongside skills (and while they cool down)
             casts = casts + "attack"
         }
+        casts = spellCasts(s, p, d, casts)
         if (casts == d.casts) return d
         return TacticalDecision(d.intent, d.moveX, d.moveY, casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId, d.reason)
+    }
+
+    // THE BATTLE SPELL, by what it does (wiki descriptions) - not only at very low HP.
+    // Retribution: only buffs (Molten Fiend / Thunder Fenrir), Turtle, Lord (see hitMonster) and in a
+    // fight against a hero for the edge (slow / burn), never on minions or common creeps.
+    private fun spellCasts(s: GameState, p: HeroProfile, d: TacticalDecision, casts0: List<String>): List<String> {
+        val sp = s.spell ?: return casts0
+        if ("spell" in casts0 || !CooldownTracker.ready("spell", p)) return casts0
+        val hp = s.selfHp
+        val fight = d.intent == Intent.ENGAGE || d.intent == Intent.AMBUSH
+        val running = d.intent == Intent.RETREAT && d.moveX != 0f || d.intent == Intent.RETREAT && d.moveY != 0f
+        val tDist = if (d.targetX >= 0f) s.distToSelf(d.targetX, d.targetY) else 9f
+        val close = s.enemiesWithin(0.15f).size
+        val near = s.enemiesWithin(0.5f).size
+        val hurt = GameStateTracker.hurtRecently(s.ts)
+        val use = when (sp) {
+            "Execute" -> fight && d.targetHp in 0f..com.example.mlbbresearch.game.SpellInfo.EXECUTE_BELOW && tDist <= p.engageRange
+            "Flameshot" -> fight && d.targetHp in 0f..0.3f && tDist <= 0.8f || running && close > 0
+            "Petrify" -> (fight && (close >= 2 || close >= 1 && d.targetHp in 0f..0.6f)) || running && close > 0
+            "Inspire" -> fight && tDist <= p.attackRange * 1.3f && d.targetHp > 0.15f
+            "Sprint" -> running && near > 0 || fight && d.targetHp in 0f..0.2f && tDist > p.attackRange * 1.5f && tDist <= p.engageRange * 1.6f
+            "Aegis" -> (fight || running) && near > 0 && hp in 0f..0.45f
+            "Revitalize" -> (fight || running) && near > 0 && hp in 0f..0.5f
+            "Purify" -> (fight || running) && hurt && close > 0 && hp in 0f..0.45f
+            "Vengeance" -> fight && close >= 1 && hurt && hp in 0f..0.75f
+            // Retribution on a hero: in a close fight that is going on (slow / burn / drain = the edge),
+            // only when no buff, Turtle or Lord is on screen to save it for
+            "Retribution" -> fight && tDist <= 0.3f && d.targetHp in 0f..0.6f && s.boss == null &&
+                s.creeps.none { com.example.mlbbresearch.game.JungleDb.isBuff(it.species) }
+            else -> false      // Flicker (chase / escape / walls) and Arrival are handled elsewhere
+        }
+        return if (use) casts0 + "spell" else casts0
     }
 
     // fighting something right now: an enemy hero, minions, a jungle camp or turtle / lord, in reach
@@ -262,6 +297,47 @@ object TacticalEngine {
             Intent.JUNGLE -> JungleNav.atCamp && s.creeps.isNotEmpty() || d.targetX >= 0f && s.distToSelf(d.targetX, d.targetY) <= p.attackRange * 1.8f
             else -> false
         }
+    }
+
+    // ---- FINISH THE CURRENT PLAN: a walk to a camp / an objective / a lane / a fight on the map
+    // is kept for up to 2.5 s instead of switching to another walk every frame (no back-and-forth,
+    // no standing around). Anything urgent (danger, a fight, something to hit) takes over at once.
+    private var committed: TacticalDecision? = null
+    private var commitUntil = 0L
+    private fun travelling(d: TacticalDecision) = (d.moveX != 0f || d.moveY != 0f) && d.casts.isEmpty() && d.targetX < 0f &&
+        (d.intent == Intent.PUSH || d.intent == Intent.GROUP || d.intent == Intent.JUNGLE || d.intent == Intent.OBJECTIVE)
+    private fun commit(s: GameState, d: TacticalDecision): TacticalDecision {
+        val now = s.ts
+        val c = committed
+        val urgent = !travelling(d) || s.enemiesWithin(0.9f).isNotEmpty() || GameStateTracker.hurtRecently(now)
+        if (urgent) { committed = if (travelling(d)) d else null; commitUntil = now + 2500; return d }
+        if (c == null || now > commitUntil || c.intent == d.intent && c.reason.substringBefore(':') == d.reason.substringBefore(':') ||
+            d.intent == Intent.IDLE) {
+            if (c == null || now > commitUntil || c.intent != d.intent || c.reason.substringBefore(':') != d.reason.substringBefore(':')) commitUntil = now + 2500
+            committed = d
+            return d
+        }
+        // a different walk while the current one is not finished: carry on with the current one
+        return TacticalDecision(c.intent, c.moveX, c.moveY, d.casts, c.targetX, c.targetY, c.targetLabel, c.targetHp, c.targetId,
+            c.reason + " (finishing this first)")
+    }
+
+    // ---- DASH TO TRAVEL: on a long walk (to a camp, a lane, an objective, roaming) with nobody
+    // around, the dash skill speeds the trip up (aimed the way the hero walks). Not the ultimate,
+    // not while low, at most every 6 s.
+    private var lastTravelDash = 0L
+    private var travelSince = 0L
+    private fun travelDash(s: GameState, p: HeroProfile, d: TacticalDecision): TacticalDecision {
+        val now = s.ts
+        if (!travelling(d)) { travelSince = 0L; return d }
+        if (travelSince == 0L) travelSince = now
+        val slot = HeroDb.dashSlot(s.ownHero) ?: return d
+        if (slot == "ult" || slot in d.casts || now - lastTravelDash < 6000 || now - travelSince < 800) return d
+        if (s.selfHp in 0f..0.5f || s.enemiesWithin(1.0f).isNotEmpty() || s.creeps.isNotEmpty() || s.boss != null || JungleNav.atCamp) return d
+        if (!CooldownTracker.ready(slot, p)) return d
+        lastTravelDash = now
+        return TacticalDecision(d.intent, d.moveX, d.moveY, d.casts + slot, -1f, -1f, d.targetLabel, d.targetHp, d.targetId,
+            d.reason + " | dash ($slot) to get there faster")
     }
 
     // ---- passing walls with a dash, a mobility skill or Flicker ----
@@ -289,7 +365,7 @@ object TacticalEngine {
         val ty = if (d.targetX >= 0f && d.intent == Intent.ENGAGE) d.targetY else self.y + d.moveY * 0.3f
         movingSince = now
         return TacticalDecision(d.intent, d.moveX, d.moveY, d.casts + slot, tx, ty, d.targetLabel, d.targetHp, d.targetId,
-            d.reason + " | jumping the wall (${if (slot == "spell") "Flicker" else slot})")
+            d.reason + " | passing the wall with ${if (slot == "spell") "Flicker" else slot}")
     }
 
     private fun decideRaw(s: GameState, p: HeroProfile, plan: StrategyPlan, learnedBias: Float, option: FightOption?): TacticalDecision {
@@ -346,7 +422,7 @@ object TacticalEngine {
             val casts = ArrayList<String>()
             p.escapeSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
             if (p.ult == UltRule.DEFENSIVE && hp < 0.35f && CooldownTracker.ready("ult", p)) casts.add("ult")
-            if (Cfg.spellIsDefensive && s.spell != "Retribution" && hp < 0.2f && CooldownTracker.ready("spell", p)) casts.add("spell")
+            // (the battle spell is chosen by what it does: spellCasts)
             // dash away when an enemy is right on you (aimed away from them)
             val dash = dashSlot(s, p)
             if (dash != null && dash !in casts && s.enemiesWithin(0.35f).isNotEmpty()) casts.add(dash)
@@ -368,7 +444,7 @@ object TacticalEngine {
             lastMonHp <= 0.2f && s.distToSelf(lastMonX, lastMonY) <= p.attackRange * 2f
         ) {
             val casts = arrayListOf("attack")
-            if (s.spell == "Retribution" && CooldownTracker.ready("spell", p)) casts.add("spell")
+            if (s.spell == "Retribution" && retriWorthy(lastMonSpecies, lastMonBoss) && CooldownTracker.ready("spell", p)) casts.add("spell")
             return TacticalDecision(Intent.JUNGLE, 0f, 0f, casts, lastMonX, lastMonY, "monster", lastMonHp, -1,
                 "finishing the monster (last seen at ${(lastMonHp * 100).toInt()}% HP)")
         }
@@ -407,6 +483,13 @@ object TacticalEngine {
         // a level-up is moments away (EXP ring almost full) and not in danger: finish the camp or
         // wave first, the new level heals a little and makes the walk back worth it
         val levelSoon = s.xp >= 0.8f && s.level < 15 && hp > 0.15f && (s.creeps.isNotEmpty() || minions.isNotEmpty())
+        if (Cfg.useRecall && hp in 0f..recallAt / 100f && safe && !levelSoon && !s.inBush && Cfg.useBushes) {
+            // a bush close by: recall from inside it (enemies cannot see you channel)
+            s.bushes.filter { s.distToSelf(it.x, it.y) < 0.3f }.minByOrNull { s.distToSelf(it.x, it.y) }?.let { b ->
+                val (bx, by) = toward(s, b.x, b.y)
+                return TacticalDecision(Intent.RECALL, bx, by, emptyList(), -1f, -1f, "-", -1f, -1, "into the bush to recall hidden")
+            }
+        }
         if (Cfg.useRecall && hp in 0f..recallAt / 100f && safe && !levelSoon) {
             // Recall channels ~6 s: stand still; an enemy showing up cancels it (step 1 / above)
             regenUntil = 0L
@@ -837,8 +920,8 @@ object TacticalEngine {
         for (sk in p.combo) if (sk != "ult" && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
         val m = s.creeps.minByOrNull { s.distToSelf(it.x, it.y) }
         // no HP bar to read: Retribution once the camp has taken a few seconds of hits
-        val retriAfter = if (JungleNav.atBuff) 5000L else 2500L
-        if (s.spell == "Retribution" && JungleNav.atCampMs > retriAfter && CooldownTracker.ready("spell", p)) casts.add("spell")
+        // Retribution only at the buffs (never on common creeps)
+        if (s.spell == "Retribution" && JungleNav.atBuff && JungleNav.atCampMs > 5000L && CooldownTracker.ready("spell", p)) casts.add("spell")
         if (m != null) {
             // a monster is seen: stand in reach of it and aim at it
             val d = s.distToSelf(m.x, m.y)
@@ -864,9 +947,13 @@ object TacticalEngine {
     // Attack a jungle monster / turtle / lord; Retribution (if you have it) to finish it
     // the monster last fought: its bar at the last 1-3% can flicker out of sight
     private var lastMonX = -1f; private var lastMonY = -1f; private var lastMonHp = 1f; private var lastMonAt = 0L
+    private var lastMonSpecies = ""; private var lastMonBoss = false
+    // Retribution is kept for the Purple / Orange Buffs, the Turtle and the Lord (and hero fights)
+    private fun retriWorthy(species: String, boss: Boolean) = boss || com.example.mlbbresearch.game.JungleDb.isBuff(species) ||
+        species.isEmpty() && JungleNav.atBuff
 
     private fun hitMonster(s: GameState, p: HeroProfile, m: Seen, retriPct: Int, intent: Intent, why: String): TacticalDecision {
-        lastMonX = m.x; lastMonY = m.y; lastMonHp = m.hp; lastMonAt = s.ts
+        lastMonX = m.x; lastMonY = m.y; lastMonHp = m.hp; lastMonAt = s.ts; lastMonSpecies = m.species; lastMonBoss = m.hero
         val d = s.distToSelf(m.x, m.y)
         val casts = ArrayList<String>()
         if (d <= p.attackRange * 1.4f) casts.add("attack")
@@ -876,7 +963,7 @@ object TacticalEngine {
         }
         // turtle / lord: the HP bar under the scoreboard is exact
         val mhp = if (m.hero && s.bossHp >= 0f) s.bossHp else m.hp
-        if (s.spell == "Retribution" && mhp * 100 <= retriPct && d <= 0.45f && CooldownTracker.ready("spell", p)) casts.add("spell")
+        if (s.spell == "Retribution" && retriWorthy(m.species, m.hero) && mhp * 100 <= retriPct && d <= 0.45f && CooldownTracker.ready("spell", p)) casts.add("spell")
         // no poking monsters: walk into reach, and never leave its aggro circle (it would reset)
         val (mx, my) = if (d > p.attackRange || !inLeash(s, m)) toward(s, m.x, m.y) else (0f to 0f)
         return TacticalDecision(intent, mx, my, casts, m.x, m.y, if (m.hero) "objective" else "monster", mhp, -1, why)
@@ -974,9 +1061,11 @@ object TacticalEngine {
         val (ax, ay) = away(s, from)
         val me = s.minimapSelf ?: return ax to ay
         val home = s.allyTowers.minByOrNull { kotlin.math.hypot(it.first - me.first, it.second - me.second) } ?: (0.1f to 0.9f)
-        val (tx, ty) = mapDir(me, home)
+        // to the nearest allied tower (around walls), unless that way runs into the enemies
+        val (tx, ty) = com.example.mlbbresearch.vision.WallMap.direction(me, home) ?: mapDir(me, home)
+        if (from.isEmpty()) return tx to ty
         if (tx * ax + ty * ay < -0.2f) return ax to ay
-        return norm(ax * 0.5f + tx * 0.5f, ay * 0.5f + ty * 0.5f)
+        return norm(ax * 0.25f + tx * 0.75f, ay * 0.25f + ty * 0.75f)
     }
 
     // How each brain option is played. null = nothing special, carry on with the normal steps.

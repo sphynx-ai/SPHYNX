@@ -60,6 +60,8 @@ object FrameProcessor {
     )
 
     private val enemyTracker = EnemyDetector()
+    @Volatile private var lastMini: MinimapInfo? = null
+    @Volatile private var lastMiniLive = false
     private var lastId = 0L
     private var frameNo = 0L
     private var prevSmall: List<Seen> = emptyList()
@@ -95,7 +97,9 @@ object FrameProcessor {
         val hint = ScreenReader.classify(px, w, h)
         // watching someone's live match: their screen has no buttons of yours, but its own overlays
         val live = hint == ScreenHint.LIVE || hint == ScreenHint.LIVE_DEAD
-        val mini = MinimapAnalyzer.analyze(px, w, h, live)
+        // the minimap changes slowly: its full analysis every 3rd frame is enough (faster frames)
+        val mini = lastMini.takeIf { it != null && frameNo % 3 != 0L && live == lastMiniLive } ?: MinimapAnalyzer.analyze(px, w, h, live)
+        lastMini = mini; lastMiniLive = live
         val masks = if (live) ScreenReader.LIVE_MASKS else hud
         val seen = if (live) liveUnits(px, w, h, mini, banner, hint == ScreenHint.LIVE) else monstersFromRedBars(withoutAttachedBars(ownBars(hint, HeroDetector.scan(
             px, w, h, hud + ScreenMasks.overlay + (if (banner) listOf(ScreenReader.bannerRect) else emptyList()),
@@ -178,7 +182,7 @@ object FrameProcessor {
             spellIcon = if (!live && self != null && frameNo % 12 == 6L) IconMemory.print(px, w, h, "spell", 0.016f) else null,
             monsters = scr.monsters,
             bossHp = if (self != null && !live) ScreenReader.bossBar(px, w, h) else -1f,
-            kda = if (self != null && !live) KdaReader.read(px, w, h) else IntArray(3),
+            kda = if (self != null && !live && frameNo % 2 == 0L) KdaReader.read(px, w, h) else IntArray(3),
             bushes = scr.bushes,
             inBush = bush.inBush,
             screenWalls = scr.walls,

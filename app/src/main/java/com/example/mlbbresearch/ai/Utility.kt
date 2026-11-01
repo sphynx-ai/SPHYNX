@@ -173,7 +173,9 @@ object Utility {
             else -> State.FARMING
         }
         // small switches wait 0.6 s (no flip-flopping); retreating is at once
-        if (want != state && (want == State.RETREATING || now - since > 600 || now < since)) { state = want; since = now }
+        // (being hit right now: no waiting - fight back or get out at once)
+        if (want != state && (want == State.RETREATING || now - since > 600 || now < since ||
+                GameStateTracker.hurtRecently(now))) { state = want; since = now }
         return state
     }
 }

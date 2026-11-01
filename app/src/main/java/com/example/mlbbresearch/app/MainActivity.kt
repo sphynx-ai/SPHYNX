@@ -635,8 +635,6 @@ class MainActivity : Activity() {
             "exp" to "EXP lane (top)", "gold" to "Gold lane (bottom)", "mid" to "Mid lane",
             "roam" to "Roam (stay with the team)", "jungle" to "Jungle"
         ), Cfg.lane) { Cfg.lane = it }
-        switch("Retribution equipped = always jungle", Cfg.retriMeansJungle) { Cfg.retriMeansJungle = it }
-        switch("Jungler walks the jungle path (camp to camp, from the minimap)", Cfg.jungleRoute) { Cfg.jungleRoute = it }
         val jungleInfo = text("", 13f)
         upd {
             val st = GameStateTracker.state
@@ -653,8 +651,6 @@ class MainActivity : Activity() {
         }
 
         title("SKILL COMBOS")
-        switch("Use the hero's combo when fighting", Cfg.useCombos) { Cfg.useCombos = it }
-        switch("Aim skills at the target (drag the skill button)", Cfg.aimSkills) { Cfg.aimSkills = it }
         val comboInfo = text("", 13f)
         upd {
             val h = GameStateTracker.ownHero()
@@ -711,7 +707,6 @@ class MainActivity : Activity() {
         }
 
         title("JUNGLE, TURTLE & LORD")
-        switch("Neutral monster detector (jungle monsters, turtle, lord)", Cfg.detectMonsters) { Cfg.detectMonsters = it }
         val monInfo = text("", 13f)
         upd { monInfo.text = "Only the Lord shows its red HP bar before it is attacked. Every other monster (Turtle, buffs, " +
             "small camps) shows its bar only after it takes damage - from you, your teammates or the enemies. So: a monster " +
@@ -728,7 +723,6 @@ class MainActivity : Activity() {
         upd { lvInfo.text = "Badges remembered: ${com.example.mlbbresearch.vision.LevelReader.templatesKnown} of 15 (levels 1, 2, 9 and 12 are built in)" }
         btn("Forget the remembered level badges") { com.example.mlbbresearch.vision.LevelReader.forgetTemplates(); toast("Forgotten") }
         title("TURTLE & LORD")
-        switch("Help the team take turtle and lord", Cfg.takeObjectives) { Cfg.takeObjectives = it }
         field("Retribution on turtle / lord below HP (%)", Cfg.retriBossPct.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.retriBossPct = v.coerceIn(1, 60) }
         }
@@ -751,13 +745,6 @@ class MainActivity : Activity() {
             Cfg.pushDir = dirs[(i + 1) % dirs.size]
         }
         upd { dirBtn.text = "Push towards enemy base: ${Cfg.pushDir}  (tap to change)" }
-        switch("Battle spell is defensive (use it at very low HP)", Cfg.spellIsDefensive) { Cfg.spellIsDefensive = it }
-        switch("Smooth joystick (keeps the finger down and turns gradually)", Cfg.smoothJoystick) { Cfg.smoothJoystick = it }
-        switch("Natural movement (human turning speed, small thumb variation)", Cfg.naturalMove) { Cfg.naturalMove = it }
-        switch("Walk around walls (minimap paths, and step aside when stuck)", Cfg.wallAvoid) { Cfg.wallAvoid = it }
-        switch("Jump thin walls with the dash skill (Flicker only to escape or chase)", Cfg.wallHop) { Cfg.wallHop = it }
-        switch("Use bushes: hide when hurt, ambush enemies walking in", Cfg.useBushes) { Cfg.useBushes = it }
-        switch("Fastest mode (30 fps capture, decide on every frame, quick combos; more battery)", Cfg.fastMode) { Cfg.fastMode = it }
         val moveInfo = text("", 13f)
         upd {
             val gs = GameStateTracker.state
@@ -769,12 +756,11 @@ class MainActivity : Activity() {
         }
 
         title("SKILLS & ITEMS")
-        switch("Upgrade skills (taps the golden + when it shows)", Cfg.autoUpgradeSkills) { Cfg.autoUpgradeSkills = it }
-        switch("Reserve the ultimate for heroes (never on minions, jungle monsters, turtle, lord)", Cfg.noUltOnCreeps) { Cfg.noUltOnCreeps = it }
-        switch("Cast Skill 1 and 2 as soon as ready when fighting creeps or heroes", Cfg.skillsWhenReady) { Cfg.skillsWhenReady = it }
-        field("Upgrade order when several + show (ult,s1,s2)", Cfg.upgradeOrder, false) { v ->
-            val parts = v.split(",").map { it.trim().lowercase() }.filter { it in setOf("s1", "s2", "ult") }.distinct()
-            if (parts.isNotEmpty()) Cfg.upgradeOrder = parts.joinToString(",")
+        val upInfo = text("", 12f, color = "#9AA0A6")
+        upd {
+            val h = GameStateTracker.ownHero()
+            upInfo.text = "Skill upgrades are automatic: " + com.example.mlbbresearch.game.SkillOrder.of(h).joinToString(" > ") +
+                " for ${h ?: "your hero"} (${com.example.mlbbresearch.game.SkillOrder.source(h)})"
         }
         switch("Buy items (taps the quick-buy item top right when it shows)", Cfg.playerQuickBuy) { Cfg.playerQuickBuy = it }
 
@@ -785,12 +771,9 @@ class MainActivity : Activity() {
         field("Chase and finish enemy heroes below HP (%)", Cfg.executeHpPct.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.executeHpPct = v.coerceIn(5, 60) }
         }
-        switch("Never enter enemy tower range without my minions", Cfg.towerGuard) { Cfg.towerGuard = it }
         field("Enemy tower range (% of the minimap width)", Cfg.towerRangePct.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.towerRangePct = v.coerceIn(3, 20) }
         }
-        switch("Laners also take jungle camps next to them between waves", Cfg.lanersTakeCamps) { Cfg.lanersTakeCamps = it }
-        switch("Use the dash skill to chase and to escape", Cfg.useDash) { Cfg.useDash = it }
         val rangeBtn = btn("") {
             val h = GameStateTracker.ownHero() ?: HeroDb.match(heroBox.text.toString())
             if (h == null) toast("Your hero is not known yet") else {
@@ -825,9 +808,7 @@ class MainActivity : Activity() {
         }
 
         title("REGEN & RECALL")
-        switch("Use Regen when hurt and no enemy is near", Cfg.useRegen) { Cfg.useRegen = it }
         field("Regen below HP (%)", Cfg.regenHpPct.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.regenHpPct = v.coerceIn(10, 95) } }
-        switch("Recall to base when low and no enemy is near", Cfg.useRecall) { Cfg.useRecall = it }
         field("Recall below HP (%)", Cfg.recallHpPct.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.recallHpPct = v.coerceIn(5, 80) } }
         text("The hero stands still while Regen / Recall channel; an enemy coming close cancels them. " +
             "Calibrate the Regen and Recall buttons on the Setup page.", 12f, color = "#9AA0A6")
@@ -910,7 +891,6 @@ class MainActivity : Activity() {
                 .setPositiveButton("Delete") { _, _ -> DemoRecorder.clear { runOnUiThread { toast("Deleted") } } }
                 .setNegativeButton("Cancel", null).show()
         }
-        switch("Read skill cooldowns from the screen (dark button = cooling down)", Cfg.readCooldownsFromScreen) { Cfg.readCooldownsFromScreen = it }
         val cdInfo = text("", 12f, color = "#9AA0A6")
         upd { cdInfo.text = "Buttons now: " + com.example.mlbbresearch.game.CooldownTracker.screenState() }
         field("Ask Gemma for a new plan every (seconds)", Cfg.strategyEverySec.toString(), true) {

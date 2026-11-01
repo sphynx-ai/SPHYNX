@@ -162,6 +162,12 @@ object GameStateTracker {
             com.example.mlbbresearch.vision.LevelReader.reset()
         }
         recognise(v)
+        // being hit: your HP fell 6%+ within half a second -> the AI reacts on this very frame
+        v.self?.let { me ->
+            hpHist.addLast(now to me.hp)
+            while (hpHist.size > 1 && now - hpHist.first().first > 500) hpHist.removeFirst()
+            if (hpHist.first().second - me.hp >= 0.06f) hurtAt = now
+        }
         if (v.kda[0] > 0) { kills++; lastKillAt = now; Diag.info("Kill (K/D/A)") }
         if (v.kda[1] > 0) { deaths++; lastDeathAt = now }
         if (v.kda[2] > 0) { assists++; lastAssistAt = now }
@@ -296,6 +302,11 @@ object GameStateTracker {
         state = s
         return s
     }
+
+    private val hpHist = ArrayDeque<Pair<Long, Float>>()
+    @Volatile var hurtAt = 0L
+        private set
+    fun hurtRecently(now: Long) = now - hurtAt in 0..700
 
     // set by the drafter so it can reset its once-per-match steps
     @Volatile var onNewMatch: (() -> Unit)? = null

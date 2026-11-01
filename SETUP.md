@@ -897,6 +897,36 @@ No daily limit any more. Each collector (Learn page, two switches) saves picture
 - Detectors: each run continues from `minimap_detector_best.pt` / `screen_detector_best.pt` in My Drive/MLBB-Research
   and uses every dataset zip there. Keep the zips and those files in Drive.
 
+## Faster, and the rules you asked for (v36.13)
+
+Speed (think -> touch):
+- the AI decides again the moment a new frame is seen (no fixed 40 ms pause); the minimap is fully analysed every 3rd
+  frame and the K/D/A every 2nd (the minimap changes slowly), so frames come faster
+- aimed skills are a quick 90 ms flick (the old 220-300 ms drag was often cut off by the next touch and had to be
+  cast again - the "decision right, skill late" lag); combo steps follow 80-350 ms apart; a skill that did not go off is
+  re-cast after 0.3 s
+- basic attack every 150 ms, also between and alongside skills and while they cool down
+- no random "human" variation in touches; joystick turns go straight to the new heading (no slide through the ring)
+- being hit (6%+ HP in half a second): the fight state switches on that frame (no 0.6 s wait)
+
+Rules:
+- retreating goes to the nearest allied tower (around walls), unless that way runs into the enemies
+- turrets: basic attacks only (skills do not damage them)
+- Retribution only on the Purple / Orange Buff, the Turtle, the Lord, and in a close fight with a hero (when no buff /
+  boss is on screen to save it for); never on minions or common creeps
+- the battle spell is used by what it does: Execute to finish, Petrify when enemies are on you, Inspire in a melee duel,
+  Sprint to escape / catch, Aegis / Revitalize when low in a fight, Purify when hit hard up close, Vengeance in a brawl,
+  Flameshot to finish or knock back, Retribution as above, Flicker to chase / escape / pass walls
+- the dash skill (not the ultimate) speeds up long walks: to camps, lanes, objectives, roaming (nobody near, 6 s apart)
+- passing walls with a skill (dash / Flicker) when stuck against one
+- recall from inside a nearby bush; hide in bushes when hurt
+- finish the current walk (to a camp, an objective, a lane, a fight) before switching to another - up to 2.5 s; anything
+  urgent takes over at once
+- skill upgrades automatic: the online meta's skill order (guides), else from the hero's skill data (ult first, then the
+  main damage skill)
+- Player page: the switches for behaviour that should always be on (joystick, combos, aiming, walls, dash, bushes,
+  recall, Regen, objectives, monsters, upgrades, fastest mode...) are gone; natural thumb variation removed
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |
