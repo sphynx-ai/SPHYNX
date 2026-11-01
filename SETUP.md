@@ -1035,6 +1035,26 @@ How the small model plays (Model page switch "Small tactical model in fights", o
   .litertlm, and running that file with the LiteRT-LM runtime. Not tested: the real Gemma 3 270M download and how well
   it learns (that needs your fights). Versions that work together: litert-torch 0.10.0 + litert-lm-builder 0.18.1
 
+## Cleaner app, icons, Speed page (v36.19)
+
+- one dark theme: rounded cards, accent section headers, pill page tabs, styled buttons / switches / text boxes; the
+  header shows a live status line and the only STOP button (the second emergency stop at the bottom of Home is gone;
+  the floating icon and the notification still have theirs)
+- long explanations replaced by one-line summaries; long labels shortened
+- icons from the Mobile Legends wiki, downloaded once on the phone and kept (files/icons); until then (or offline) a
+  coloured circle with initials shows: 132 heroes (from the wiki's role pages) and all 105 current items
+  - Build: your build (online meta build when there is one, else your role's build) as item icons with emblem / spell,
+    counter items as icons with the reason, recommended picks and bans as hero icons, an icon preview under every role
+    build you type
+  - Draft: picks and bans as hero icons (from the draft screen, else the patch meta for your role)
+  - Meta: patch card (top bans and best picks per role as hero icons, how old it is) and hero card (portrait, build as
+    item icons, emblem / spell / lane / combo / dash / skill order, laning / jungle / rotation tips, counters as icons)
+  - Home: your hero's portrait
+- new Speed page: frame to touch (big number, what it is made of as a stacked bar, the last 2 minutes as a chart) and a
+  card per engine and model with its current value, a bar against its target and a 2-minute chart: screen reading,
+  waiting, deciding, touch queue, capture and read frame rates, tactical network, minimap / screen detectors, small
+  tactical model, strategic model (Gemma), online meta (Groq). Green = fast, amber = ok, red = slow
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |

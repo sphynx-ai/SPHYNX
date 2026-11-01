@@ -84,11 +84,13 @@ class MainActivity : Activity() {
     private var swipeBlocked = false
     private var pendingStage: String? = null
     private val ui = Handler(Looper.getMainLooper())
+    private var headerStatus: TextView? = null
+    private var navScroll: HorizontalScrollView? = null
 
-    private val pages = listOf("home", "player", "draft", "build", "meta", "model", "learn", "logs", "setup")
+    private val pages = listOf("home", "player", "draft", "build", "meta", "model", "learn", "speed", "logs", "setup")
     private val labels = mapOf(
         "home" to "Home", "player" to "Player", "draft" to "Draft", "build" to "Build", "meta" to "Meta",
-        "model" to "Model", "learn" to "Learn", "logs" to "Logs", "setup" to "Setup"
+        "model" to "Model", "learn" to "Learn", "speed" to "Speed", "logs" to "Logs", "setup" to "Setup"
     )
 
     private val reqCapture = 42
@@ -97,6 +99,11 @@ class MainActivity : Activity() {
 
     private val refresher = object : Runnable {
         override fun run() {
+            headerStatus?.let { h ->
+                val on = AiRuntime.anyOn()
+                h.text = if (on) "● " + AiRuntime.statusLine() else "○ AI off"
+                h.setTextColor(Color.parseColor(if (on) T.GREEN else T.MUTED))
+            }
             for (u in updaters.toList()) u()
             ui.postDelayed(this, 500)
         }
@@ -114,7 +121,7 @@ class MainActivity : Activity() {
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#0F1115"))
+            setBackgroundColor(Color.parseColor(T.BG))
         }
 
         // header with the app logo
@@ -124,20 +131,29 @@ class MainActivity : Activity() {
             setPadding(dp(16), dp(10), dp(16), dp(6))
         }
         header.addView(ImageView(this).apply { setImageResource(R.mipmap.ic_mlbb) }, LinearLayout.LayoutParams(dp(40), dp(40)))
-        header.addView(TextView(this).apply {
+        val names = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
+        names.addView(TextView(this).apply {
             text = "MLBB Research"
-            textSize = 20f
+            textSize = 19f
             setTextColor(Color.WHITE)
             setTypeface(null, Typeface.BOLD)
-            setPadding(dp(12), 0, 0, 0)
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        })
+        headerStatus = TextView(this).apply { textSize = 12f; setTextColor(Color.parseColor(T.MUTED)) }
+        names.addView(headerStatus)
+        header.addView(names, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        // the one emergency stop in the app (also: the floating icon and the notification)
         val stopTop = Button(this).apply {
-            text = "■ STOP"
+            text = "■  STOP"
+            isAllCaps = false
+            textSize = 14f
+            stateListAnimator = null
+            setTypeface(null, Typeface.BOLD)
             setTextColor(Color.WHITE)
-            backgroundTintList = ColorStateList.valueOf(Color.parseColor("#C62828"))
+            background = ripple(T.RED, 22)
+            setPadding(dp(18), 0, dp(18), 0)
             setOnClickListener { AiRuntime.emergencyStop("app header") }
         }
-        header.addView(stopTop)
+        header.addView(stopTop, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(42)))
         root.addView(header)
 
         content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(24)) }
@@ -145,18 +161,23 @@ class MainActivity : Activity() {
         root.addView(scroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
         // page tabs (scroll sideways if they do not fit)
-        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(4), dp(4), dp(4), dp(10)) }
+        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(8), dp(8), dp(8), dp(10)) }
         for (k in pages) {
             val b = Button(this).apply {
                 text = labels[k]
-                textSize = 12f
+                textSize = 13f
                 isAllCaps = false
+                stateListAnimator = null
+                minHeight = 0; minimumHeight = 0; minWidth = 0; minimumWidth = 0
+                setPadding(dp(16), 0, dp(16), 0)
                 setOnClickListener { go(k) }
             }
             navButtons[k] = b
-            nav.addView(b, LinearLayout.LayoutParams(dp(84), LinearLayout.LayoutParams.WRAP_CONTENT))
+            nav.addView(b, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(38)).apply { marginEnd = dp(6) })
         }
-        root.addView(HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(nav) })
+        root.addView(View(this).apply { setBackgroundColor(Color.parseColor(T.STROKE)) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)))
+        root.addView(HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(nav); setBackgroundColor(Color.parseColor(T.SURF)) })
+        navScroll = root.getChildAt(root.childCount - 1) as HorizontalScrollView
 
         // keep everything clear of the status bar and the phone's own Home/Back/Recent buttons
         root.setOnApplyWindowInsetsListener { v, insets ->
@@ -261,33 +282,81 @@ class MainActivity : Activity() {
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
     private fun upd(f: () -> Unit) { updaters.add(f); f() }
 
-    private fun text(t: String, size: Float = 14f, bold: Boolean = false, color: String = "#E6E6E6"): TextView {
+    // ---- look: one dark theme, used by every page ----
+    private object T {
+        const val BG = "#0B0E14"; const val SURF = "#151A24"; const val SURF2 = "#1E2533"; const val STROKE = "#283247"
+        const val TEXT = "#E9ECF2"; const val MUTED = "#8D96AA"; const val ACCENT = "#6D8BFF"; const val GOLD = "#F4C25B"
+        const val GREEN = "#3DD68C"; const val RED = "#FF5A6A"
+    }
+    private fun c(hex: String) = Color.parseColor(hex)
+    private fun shape(fill: String, radiusDp: Int, stroke: String? = null) = GradientDrawable().apply {
+        setColor(c(fill)); cornerRadius = dp(radiusDp).toFloat(); if (stroke != null) setStroke(dp(1), c(stroke))
+    }
+    private fun ripple(fill: String, radiusDp: Int, stroke: String? = null) =
+        android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(c("#33FFFFFF")), shape(fill, radiusDp, stroke), shape("#FFFFFF", radiusDp))
+    // older colour names used on the pages map onto the theme
+    private fun themed(hex: String) = when (hex.uppercase()) {
+        "#E6E6E6", "#C8C8C8" -> T.TEXT; "#9AA0A6" -> T.MUTED; "#8AB4F8" -> T.ACCENT
+        "#EF9A9A", "#F28B82" -> T.RED; "#66BB6A" -> T.GREEN; else -> hex
+    }
+
+    private fun text(t: String, size: Float = 14f, bold: Boolean = false, color: String = T.TEXT): TextView {
         val v = TextView(this).apply {
             text = t
             textSize = size
-            setTextColor(Color.parseColor(color))
+            setTextColor(c(themed(color)))
             if (bold) setTypeface(null, Typeface.BOLD)
-            setPadding(0, dp(8), 0, dp(2))
+            setLineSpacing(0f, 1.12f)
+            setPadding(0, dp(6), 0, dp(2))
         }
         content.addView(v)
         return v
     }
 
-    private fun title(t: String) = text(t, 13f, true, "#8AB4F8")
+    // a section header: accent bar + small capitals
+    private fun title(t: String): TextView {
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        row.addView(View(this).apply { background = shape(T.ACCENT, 2) }, LinearLayout.LayoutParams(dp(3), dp(14)))
+        val v = TextView(this).apply {
+            text = t.uppercase(); textSize = 12f; letterSpacing = 0.08f
+            setTextColor(c(T.MUTED)); setTypeface(null, Typeface.BOLD); setPadding(dp(8), 0, 0, 0)
+        }
+        row.addView(v)
+        content.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(22); bottomMargin = dp(4)
+        })
+        return v
+    }
+
+    private fun styleButton(b: Button, primary: Boolean = false) {
+        b.isAllCaps = false
+        b.textSize = 14f
+        b.stateListAnimator = null
+        b.minHeight = dp(46)
+        b.setTextColor(c(if (primary) "#FFFFFF" else T.TEXT))
+        b.background = if (primary) ripple(T.ACCENT, 12) else ripple(T.SURF2, 12, T.STROKE)
+        b.setPadding(dp(14), dp(8), dp(14), dp(8))
+    }
 
     private fun btn(t: String, onClick: () -> Unit): Button {
-        val b = Button(this).apply { text = t; isAllCaps = false; setOnClickListener { onClick() } }
-        content.addView(b)
+        val b = Button(this).apply { text = t; setOnClickListener { onClick() } }
+        styleButton(b)
+        content.addView(b, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(6)
+        })
         if (defaultText == null) defaultText = b.textColors
         return b
     }
 
     private fun switch(label: String, initial: Boolean, onChange: (Boolean) -> Unit): Switch {
+        val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
         val sw = Switch(this).apply {
             text = label
             textSize = 15f
-            setTextColor(Color.parseColor("#E6E6E6"))
+            setTextColor(c(T.TEXT))
             isChecked = initial
+            thumbTintList = ColorStateList(states, intArrayOf(c("#FFFFFF"), c("#AEB6C6")))
+            trackTintList = ColorStateList(states, intArrayOf(c(T.ACCENT), c("#3A4357")))
             setPadding(0, dp(10), 0, dp(10))
             setOnCheckedChangeListener { _, on -> onChange(on) }
         }
@@ -296,48 +365,110 @@ class MainActivity : Activity() {
     }
 
     private fun field(hint: String, value: String, numeric: Boolean, save: (String) -> Unit): EditText {
-        text(hint, 12f, color = "#9AA0A6")
+        text(hint, 12f, color = T.MUTED)
         val e = EditText(this).apply {
             inputType = if (numeric) InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL else InputType.TYPE_CLASS_TEXT
             setText(value)
-            setTextColor(Color.WHITE)
+            setTextColor(c(T.TEXT))
+            setHintTextColor(c(T.MUTED))
+            background = shape(T.SURF2, 10, T.STROKE)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
         }
-        content.addView(e)
+        content.addView(e, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(2) })
         leaveHooks.add { save(e.text.toString().trim()) }
         return e
     }
 
     private fun card(): LinearLayout {
-        val c = LinearLayout(this).apply {
+        val cd = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(8), dp(12), dp(10))
-            background = GradientDrawable().apply { setColor(Color.parseColor("#1A1D23")); cornerRadius = dp(12).toFloat() }
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = shape(T.SURF, 16, T.STROKE)
         }
-        content.addView(c, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+        content.addView(cd, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
             topMargin = dp(10)
         })
-        return c
+        return cd
     }
 
-    private fun cardText(c: LinearLayout, size: Float = 14f, bold: Boolean = false): TextView {
+    private fun cardText(cd: LinearLayout, size: Float = 14f, bold: Boolean = false): TextView {
         val v = TextView(this).apply {
             textSize = size
-            setTextColor(Color.parseColor("#E6E6E6"))
+            setTextColor(c(T.TEXT))
             if (bold) setTypeface(null, Typeface.BOLD)
+            setLineSpacing(0f, 1.12f)
             setPadding(0, dp(3), 0, dp(3))
         }
-        c.addView(v)
+        cd.addView(v)
         return v
     }
 
-    private fun mark(b: Button, on: Boolean, color: String = "#2E7D32") {
+    private fun mark(b: Button, on: Boolean, color: String = T.GREEN) {
         if (on) {
-            b.backgroundTintList = ColorStateList.valueOf(Color.parseColor(color))
+            b.background = ripple(color, 12)
             b.setTextColor(Color.WHITE)
         } else {
-            b.backgroundTintList = null
-            defaultText?.let { b.setTextColor(it) }
+            b.background = ripple(T.SURF2, 12, T.STROKE)
+            b.setTextColor(c(T.TEXT))
         }
+    }
+
+    // ---- small building blocks for the richer pages ----
+
+    // a small rounded label
+    private fun chip(t: String, color: String = T.ACCENT): TextView = TextView(this).apply {
+        text = t; textSize = 11f; setTextColor(c(color)); setTypeface(null, Typeface.BOLD)
+        background = shape("#1A" + color.removePrefix("#"), 20, null)
+        setPadding(dp(9), dp(3), dp(9), dp(3))
+    }
+
+    // a heading inside a card (with an optional chip on the right)
+    private fun cardHeader(cd: LinearLayout, t: String, chipText: String? = null, chipColor: String = T.ACCENT): TextView {
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val tv = TextView(this).apply { text = t; textSize = 15f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD) }
+        row.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        if (chipText != null) row.addView(chip(chipText, chipColor))
+        cd.addView(row)
+        return tv
+    }
+
+    // A wrapping grid of hero (round) or item (rounded square) pictures with their names.
+    // set() rebuilds it only when the list changed (pages refresh twice a second).
+    private inner class IconGrid(val parent: LinearLayout, val hero: Boolean, val sizeDp: Int = 46) {
+        private var shown: List<String>? = null
+        private val box = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
+        init { parent.addView(box) }
+        fun set(names: List<String>, captions: List<String>? = null) {
+            if (names == shown) return
+            shown = names
+            box.removeAllViews()
+            if (names.isEmpty()) return
+            val cellW = dp(sizeDp + 22)
+            val avail = (resources.displayMetrics.widthPixels - dp(64)).coerceAtLeast(cellW)
+            val perRow = (avail / cellW).coerceIn(1, 8)
+            var row: LinearLayout? = null
+            names.forEachIndexed { i, n ->
+                if (i % perRow == 0) {
+                    row = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.HORIZONTAL }
+                    box.addView(row)
+                }
+                val cell = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(0, dp(6), 0, dp(4)) }
+                val px = dp(sizeDp)
+                val iv = com.example.mlbbresearch.app.IconCache.view(this@MainActivity, n, hero, px)
+                cell.addView(iv, LinearLayout.LayoutParams(px, px))
+                cell.addView(TextView(this@MainActivity).apply {
+                    text = captions?.getOrNull(i) ?: n; textSize = 10f; setTextColor(c(T.MUTED)); gravity = Gravity.CENTER
+                    maxLines = 2; ellipsize = android.text.TextUtils.TruncateAt.END; setPadding(dp(2), dp(3), dp(2), 0)
+                }, LinearLayout.LayoutParams(cellW, LinearLayout.LayoutParams.WRAP_CONTENT))
+                row!!.addView(cell, LinearLayout.LayoutParams(cellW, LinearLayout.LayoutParams.WRAP_CONTENT))
+            }
+        }
+    }
+
+    // a small muted line inside a card
+    private fun cardNote(cd: LinearLayout, t: String = ""): TextView = TextView(this).apply {
+        text = t; textSize = 12f; setTextColor(c(T.MUTED)); setLineSpacing(0f, 1.1f); setPadding(0, dp(4), 0, dp(2))
+        cd.addView(this)
     }
 
     private fun go(k: String) {
@@ -359,10 +490,17 @@ class MainActivity : Activity() {
             "meta" -> metaPage()
             "model" -> modelPage()
             "learn" -> learnPage()
+            "speed" -> speedPage()
             "logs" -> logsPage()
             "setup" -> setupPage()
         }
-        for ((k, b) in navButtons) mark(b, k == p, "#1565C0")
+        for ((k, b) in navButtons) {
+            val on = k == p
+            b.background = if (on) ripple(T.ACCENT, 19) else ripple(T.SURF2, 19)
+            b.setTextColor(Color.parseColor(if (on) "#FFFFFF" else T.MUTED))
+            b.setTypeface(null, if (on) Typeface.BOLD else Typeface.NORMAL)
+            if (on) b.post { navScroll?.smoothScrollTo((b.left - dp(40)).coerceAtLeast(0), 0) }
+        }
         scroll.scrollTo(0, 0)
         if (dir != 0) {
             content.translationX = dir * dp(60).toFloat()
@@ -473,37 +611,40 @@ class MainActivity : Activity() {
 
     private fun homePage() {
         val c1 = card()
-        val status = cardText(c1, 18f, true)
-        val gemma = cardText(c1)
-        val capture = cardText(c1)
+        val status = cardHeader(c1, "", "", T.GREEN)
+        val sChip = (status.parent as LinearLayout).getChildAt(1) as TextView
+        val gemma = cardNote(c1)
+        val capture = cardNote(c1)
         upd {
-            status.text = "AI status: " + AiRuntime.statusLine()
-            status.setTextColor(Color.parseColor(if (AiRuntime.anyOn()) "#66BB6A" else "#9AA0A6"))
-            gemma.text = com.example.mlbbresearch.models.ModelManager.strategicName() + ": " + GemmaEngine.state +
-                (if (GemmaEngine.calls > 0) "  (last answer ${GemmaEngine.lastLatencyMs / 100 / 10.0}s)" else "") +
-                (if (Cfg.tacticalLlmOn) "\n" + com.example.mlbbresearch.models.ModelManager.tacticalName() + ": " + TacticalLlmEngine.state +
-                    (if (TacticalLlmEngine.calls > 0) "  (last answer ${TacticalLlmEngine.lastLatencyMs} ms)" else "") else "")
-            capture.text = "Screen capture: " + (if (FrameHub.isLive()) FrameHub.source else "off") +
-                "  |  vision ${"%.0f".format(FrameProcessor.processedFps)} fps"
+            val on = AiRuntime.anyOn()
+            status.text = if (on) AiRuntime.statusLine() else "AI is off"
+            sChip.text = if (on) "running" else "stopped"
+            sChip.setTextColor(c(if (on) T.GREEN else T.MUTED))
+            gemma.text = "Strategy: " + ModelManager.strategicName() + " – " + GemmaEngine.state +
+                (if (GemmaEngine.calls > 0) " (${GemmaEngine.lastLatencyMs / 100 / 10.0} s)" else "") +
+                (if (Cfg.tacticalLlmOn) "\nFights: " + ModelManager.tacticalName() + " – " + TacticalLlmEngine.state +
+                    (if (TacticalLlmEngine.calls > 0) " (${TacticalLlmEngine.lastLatencyMs} ms)" else "") else "")
+            capture.text = "Screen: " + (if (FrameHub.isLive()) FrameHub.source else "not captured") +
+                " · ${"%.0f".format(FrameProcessor.processedFps)} fps · frame→touch ${"%.0f".format(com.example.mlbbresearch.core.Speed.total())} ms"
         }
         val capBtn = btn("") {
             if (ScreenCaptureService.running) {
                 startService(Intent(this, ScreenCaptureService::class.java).setAction(ScreenCaptureService.ACTION_STOP))
             } else askScreenCapture()
         }
-        upd { capBtn.text = if (ScreenCaptureService.running) "Stop screen capture" else "Start screen capture (10-15 fps)" }
+        upd {
+            capBtn.text = if (ScreenCaptureService.running) "Stop screen capture" else "Start screen capture"
+            styleButton(capBtn, primary = !ScreenCaptureService.running)
+        }
 
         title("RUN")
         stageSwitch("Player (plays the hero)", "player") { AiRuntime.playerOn }
         stageSwitch("Drafter (ban & pick)", "draft") { AiRuntime.drafterOn }
         stageSwitch("Builder (items)", "build") { AiRuntime.builderOn }
-        switch("Autonomous: Drafter + Builder act on their own", Cfg.autonomous) { Cfg.autonomous = it }
+        switch("Autonomous Drafter + Builder", Cfg.autonomous) { Cfg.autonomous = it }
         switch("Dry run: only show where it would tap", Cfg.dryRun) { Cfg.dryRun = it }
-        val mode = text("", 13f, color = "#9AA0A6")
-        upd {
-            mode.text = "Match type: ${if (Cfg.ranked) "Ranked (ban & pick)" else "Standard (hero, spell, emblem)"} - change it on the Draft page.\n" +
-                "Tip: the ⏻ button on the floating icon turns the AI on and off from inside the game."
-        }
+        val mode = text("", 12f, color = T.MUTED)
+        upd { mode.text = "Match: ${if (Cfg.ranked) "Ranked" else "Standard"} (Draft page) · ⏻ on the floating icon toggles the AI in game" }
 
         title("WHAT THE AI SEES")
         val preview = PreviewView(this)
@@ -511,18 +652,28 @@ class MainActivity : Activity() {
         upd { preview.refresh() }
 
         val c2 = card()
-        val detected = cardText(c2)
+        val meRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        c2.addView(meRow)
+        var meIconFor: String? = "?"
         val decision = cardText(c2, 14f, true)
-        val target = cardText(c2)
+        val detected = cardNote(c2)
+        val target = cardNote(c2)
+        upd {
+            val h = GameStateTracker.ownHero()
+            if (h != meIconFor) {
+                meIconFor = h
+                meRow.removeAllViews()
+                meRow.addView(com.example.mlbbresearch.app.IconCache.view(this, h ?: "?", true, dp(44)), LinearLayout.LayoutParams(dp(44), dp(44)))
+                meRow.addView(TextView(this).apply { text = h ?: "Hero not known yet"; textSize = 17f; setTextColor(Color.WHITE); setTypeface(null, Typeface.BOLD); setPadding(dp(12), 0, 0, 0) })
+            }
+        }
         upd {
             val s = GameStateTracker.state
             val hero = GameStateTracker.ownHero()
             detected.text = buildString {
-                append("My hero: ").append(hero ?: "unknown")
-                if (s.selfHp >= 0) append("  (HP ").append((s.selfHp * 100).toInt()).append("%)")
-                if (s.self != null) append("  Level ").append(s.level).append(if (s.enemyLevel > 0) " (nearest enemy ${s.enemyLevel})" else "")
-                append("  [${GameStateTracker.ownHeroSource()}]")
-                append("\nLane: ").append(s.lane.label).append("   Spell: ").append(s.spell ?: "unknown")
+                if (s.selfHp >= 0) append("HP ").append((s.selfHp * 100).toInt()).append("%  ·  ")
+                if (s.self != null) append("Level ").append(s.level).append(if (s.enemyLevel > 0) " (enemy ${s.enemyLevel})" else "").append("  ·  ")
+                append(s.lane.label).append("  ·  Spell ").append(s.spell ?: "?")
                 if (s.monsters.isNotEmpty()) append("   Monsters: ").append(s.monsters.size)
                 append("\nPhase: ").append(s.phase.label)
                 if (s.hud.upgradeReady.isNotEmpty()) append("   (can upgrade ").append(s.hud.upgradeReady.joinToString()).append(")")
@@ -533,41 +684,33 @@ class MainActivity : Activity() {
                 append("   On minimap: ").append(s.minimapEnemies)
                 if (s.enemyTeam.isNotEmpty()) append("\nEnemy team: ").append(s.enemyTeam.joinToString())
             }
-            decision.text = "Current decision: " + ActionExecutor.lastDecision
-            target.text = "Current target: " + ActionExecutor.lastTarget +
-                "\nGemma plan: ${StrategicAdvisor.plan.plan} (aggression ${"%.1f".format(StrategicAdvisor.plan.aggression)})"
+            decision.text = "▶ " + ActionExecutor.lastDecision
+            target.text = "Target: " + ActionExecutor.lastTarget +
+                "  ·  Plan: ${StrategicAdvisor.plan.plan} (aggression ${"%.1f".format(StrategicAdvisor.plan.aggression)})"
         }
 
-        title("ACTION HISTORY")
-        val hist = TextView(this).apply { textSize = 12f; typeface = Typeface.MONOSPACE; setTextColor(Color.parseColor("#C8C8C8")) }
-        content.addView(hist)
+        title("Recent actions")
+        val hc = card()
+        val hist = TextView(this).apply { textSize = 12f; typeface = Typeface.MONOSPACE; setTextColor(c(T.TEXT)); setLineSpacing(0f, 1.15f) }
+        hc.addView(hist)
         upd {
             val h = ActionExecutor.history(12)
             hist.text = if (h.isEmpty()) "(nothing yet)" else h.joinToString("\n")
         }
 
-        val learn = text("", 14f, true, "#8AB4F8")
-        upd { learn.text = "Learning data: ${ExperienceRecorder.count} examples (${PerformanceEvaluator.evaluated} scored this session)" }
+        val learn = text("", 12f, color = T.MUTED)
+        upd { learn.text = "Learning: ${ExperienceRecorder.count} examples (${PerformanceEvaluator.evaluated} scored this session)" }
 
-        val stop = Button(this).apply {
-            text = "■  EMERGENCY STOP"
-            textSize = 18f
-            setTextColor(Color.WHITE)
-            backgroundTintList = ColorStateList.valueOf(Color.parseColor("#C62828"))
-            setOnClickListener { AiRuntime.emergencyStop("home button") }
-        }
-        content.addView(stop, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(64)).apply { topMargin = dp(16) })
-        text("Also: STOP ALL in the floating status window, the ⏻ button on the floating icon, and STOP AI in the notification.", 12f, color = "#9AA0A6")
 
         // the X on the floating icon only hides it; bring it back here
         val iconStatus = text("", 12f, color = "#9AA0A6")
         upd {
             val o = AccessibilityController.instance?.overlay
             iconStatus.text = when {
-                o == null -> "Floating icon: needs the accessibility service"
-                o.shown -> "Floating icon: showing (its X hides it; the AI keeps running)"
-                o.userHidden -> "Floating icon: hidden (the AI keeps running in the background)"
-                else -> "Floating icon: shows when you start the AI"
+                o == null -> "Floating icon: needs accessibility"
+                o.shown -> "Floating icon: showing"
+                o.userHidden -> "Floating icon: hidden (AI still runs)"
+                else -> "Floating icon: shows when the AI starts"
             }
         }
         btn("Show the floating icon") {
@@ -591,9 +734,8 @@ class MainActivity : Activity() {
 
 
         title("YOUR HERO")
-        text("The app finds the hero you really play: from its portrait on the minimap and its in-game model (learned once per hero), from the pick " +
-            "(the AI's own standard pick, or Gemma reading the hero select / loading screen), then from the name below.", 12f, color = "#9AA0A6")
-        val heroBox = field("Hero name (used for the standard pick; leave empty to detect)", Cfg.myHero, false) { Cfg.myHero = it }
+        text("Your hero is recognised from the minimap portrait, the pick screen, or the name below.", 12f, color = "#9AA0A6")
+        val heroBox = field("Hero name (empty = detect)", Cfg.myHero, false) { Cfg.myHero = it }
         val heroInfo = text("", 13f)
         upd {
             val h = GameStateTracker.ownHero()
@@ -603,7 +745,7 @@ class MainActivity : Activity() {
                 "Learned aggression adjust: ${"%+.2f".format(Cfg.learnedBias(h ?: "unknown"))}\n" +
                 "Heroes whose icons are learned: ${IconMemory.heroCount()}"
         }
-        btn("This is my hero now (learn its portrait and model from the game)") {
+        btn("This is my hero now (learn its look)") {
             val h = HeroDb.match(heroBox.text.toString())
             when {
                 h == null -> toast("Type the hero's name first")
@@ -624,7 +766,7 @@ class MainActivity : Activity() {
             spellInfo.text = "Detected: ${GameStateTracker.spell() ?: "unknown"} (${GameStateTracker.spellSource()}). " +
                 "Spells whose icon is learned: ${IconMemory.spellCount()}"
         }
-        btn("This is my spell now (learn its icon from the game)") {
+        btn("This is my spell now (learn its icon)") {
             val sp = SpellDb.match(Cfg.mySpell)
             when {
                 sp == null -> toast("Choose the spell with the button above first")
@@ -650,7 +792,7 @@ class MainActivity : Activity() {
             val (lane, why) = GameStateTracker.lane()
             laneInfo.text = "Playing: ${lane.label} ($why)"
         }
-        field("Seconds to walk from base to the lane (EXP: up, Gold: right, then along the lane)", Cfg.laneTravelSec.toString(), true) {
+        field("Seconds from base to your lane", Cfg.laneTravelSec.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.laneTravelSec = v.coerceIn(0, 60) }
         }
 
@@ -661,8 +803,7 @@ class MainActivity : Activity() {
             val (combo, from) = ComboBook.text(h)
             comboInfo.text = "Combo for ${h ?: "unknown hero"}: $combo ($from)\nNow: ${ComboRunner.status}"
         }
-        text("Write it as s1 > s2 > a > ult (a = basic attack). A number in brackets is the pause after that step in ms, " +
-            "e.g. s2(500) > s1 > ult.", 12f, color = "#9AA0A6")
+        text("Format: s1 > s2 > a > ult (a = basic attack). Pause in ms: s2(500) > s1.", 12f, color = "#9AA0A6")
         val comboBox = EditText(this).apply {
             setText(ComboBook.text(GameStateTracker.ownHero()).first)
             setTextColor(Color.WHITE)
@@ -681,10 +822,9 @@ class MainActivity : Activity() {
         btn("Back to the built-in combo") {
             heroForCombo()?.let { Cfg.setHeroCombo(it, null); comboBox.setText(ComboBook.text(it).first); toast("Reset") }
         }
-        text("Get it online: downloads a guide page and copies the combo written there. If the page only describes the " +
-            "skills, Gemma works a combo out of them. Uses the internet only when you tap.", 12f, color = "#9AA0A6")
+        text("Downloads a guide's combo (or Gemma builds one from the skills). Online only when you tap.", 12f, color = "#9AA0A6")
         field("Guide address template ({hero} = hero name)", Cfg.comboUrl, false) { if (it.contains("http")) Cfg.comboUrl = it }
-        val pageBox = field("Or a guide page address for this hero (optional)", "", false) { }
+        val pageBox = field("Guide page address (optional)", "", false) { }
         val fetchBtn = btn("Get my hero's combo online") {
             val h = heroForCombo()
             if (h == null) toast("Your hero is not known yet: type its name above") else {
@@ -718,11 +858,7 @@ class MainActivity : Activity() {
             "colour and pit; at a camp or the Turtle pit with no bar yet, the AI starts with a basic attack so the bar " +
             "appears, then uses its skills. Monsters nobody has hit are only seen by the trained screen detector (if loaded)." }
         title("HERO LEVEL")
-        text("Your level (1-15) is read from the badge left of your HP bar: it starts at 1, goes up when the badge " +
-            "changes or a new skill point (+) shows, and every badge seen at a known level is remembered, so later " +
-            "matches read it directly (also for enemy heroes). Before level 4 the AI farms first; at levels 4, 8 and 12 " +
-            "and when ahead in level it fights more; 2+ levels behind it avoids even fights; at 15 it stops farming " +
-            "small camps and pushes. It does not recall while a level-up is moments away.", 13f)
+        text("Level is read from the badge by your HP bar. Before 4: farm. At 4, 8, 12 or ahead: fight more. 2+ behind: avoid even fights.", 13f)
         val lvInfo = text("", 13f)
         upd { lvInfo.text = "Badges remembered: ${com.example.mlbbresearch.vision.LevelReader.templatesKnown} of 15 (levels 1, 2, 9 and 12 are built in)" }
         btn("Forget the remembered level badges") { com.example.mlbbresearch.vision.LevelReader.forgetTemplates(); toast("Forgotten") }
@@ -772,12 +908,10 @@ class MainActivity : Activity() {
             upInfo.text = "Skill upgrades are automatic: " + com.example.mlbbresearch.game.SkillOrder.of(h).joinToString(" > ") +
                 " for ${h ?: "your hero"} (${com.example.mlbbresearch.game.SkillOrder.source(h)})"
         }
-        switch("Buy items (taps the quick-buy item top right when it shows)", Cfg.playerQuickBuy) { Cfg.playerQuickBuy = it }
+        switch("Buy items (quick buy)", Cfg.playerQuickBuy) { Cfg.playerQuickBuy = it }
 
         title("KILLS, TOWERS & GOLD")
-        text("Priority: finish low-HP enemy heroes (never under their tower), kill jungle camps and minions until they " +
-            "die, push enemy towers only with your minions in range and no enemy hero, defend your towers, and walk your " +
-            "lane to the next enemy tower (yellow bonus towers first). The match is won by destroying the enemy base.", 12f, color = "#9AA0A6")
+        text("Priority: low-HP enemies, then camps and minions, then towers (only with your minions). Defend your towers; destroy the base to win.", 12f, color = "#9AA0A6")
         field("Chase and finish enemy heroes below HP (%)", Cfg.executeHpPct.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.executeHpPct = v.coerceIn(5, 60) }
         }
@@ -820,19 +954,12 @@ class MainActivity : Activity() {
         title("REGEN & RECALL")
         field("Regen below HP (%)", Cfg.regenHpPct.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.regenHpPct = v.coerceIn(10, 95) } }
         field("Recall below HP (%)", Cfg.recallHpPct.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.recallHpPct = v.coerceIn(5, 80) } }
-        text("The hero stands still while Regen / Recall channel; an enemy coming close cancels them. " +
-            "Calibrate the Regen and Recall buttons on the Setup page.", 12f, color = "#9AA0A6")
-        text("Calibrate 'Skill upgrade (+)' and 'Quick-buy item' on the Setup page. Buying waits until no enemy is close.", 12f, color = "#9AA0A6")
+        text("Regen and Recall stand still; a nearby enemy cancels them.", 12f, color = "#9AA0A6")
+        text("Buys only when no enemy is close. Calibrate the buttons on Setup.", 12f, color = "#9AA0A6")
 
         title("COACH: HELP THE AI, IT LEARNS FROM YOU")
-        text("The AI plays; take the joystick or press a skill whenever you want. While your finger is on the screen the " +
-            "AI touches nothing, and it takes over 1.2 s after you let go. It remembers what you did: your skill COMBO " +
-            "(the order you chain skills in fights; seen twice = used), your AIM / timing (how close the enemy was when " +
-            "you cast each skill, and which skill you use on waves and camps), and your JOYSTICK (how long you hold one " +
-            "direction). Every moment you play is saved and your moves are mixed into the AI's when a moment is like one " +
-            "you played. It also learns from the ally you watch while dead and from enemy heroes on screen. " +
-            "(This replaces Assist, Learn from me and Play like me.)", 13f)
-        switch("Coach mode (I can help; the AI learns from me)", Cfg.coachMode) { on ->
+        text("Take over any time: while your finger is on the screen the AI waits, then resumes 1.2 s after you let go. It learns your combos, aim and joystick.", 13f)
+        switch("Coach mode (you can step in; it learns)", Cfg.coachMode) { on ->
             Cfg.coachMode = on
             if (on) ImitationPolicy.ensureLoaded(GameStateTracker.ownHero())
         }
@@ -846,7 +973,7 @@ class MainActivity : Activity() {
             com.example.mlbbresearch.learning.Coach.forget(GameStateTracker.ownHero()); toast("Forgotten")
         }
 
-        title("GAME KNOWLEDGE (from the Mobile Legends wiki)")
+        title("Game knowledge")
         val know = text("", 12f)
         upd {
             val st = GameStateTracker.state
@@ -858,12 +985,8 @@ class MainActivity : Activity() {
                 "Jungle:\n" + com.example.mlbbresearch.game.JungleDb.describe()
         }
 
-        title("SKILLS & PASSIVE (what each skill does, how to cast it)")
-        text("Each skill's range, target type, crowd control, mobility, shield / heal, damage and cast mode (tap, aim, or " +
-            "hold to charge and release), plus the passive turned into play rules (e.g. a basic attack after every skill " +
-            "when the passive powers it up). Learned online from the skill descriptions (Groq key from the MLBB-Research folder) - the " +
-            "hero you play is learned by itself. In play it checks every cast: a skill that did not go off twice is tried " +
-            "with the next cast mode, and a missed aimed skill changes how far ahead it aims.", 13f)
+        title("Skills & passive")
+        text("What each skill does (range, crowd control, dash, cast mode) is learned online. Skills that miss or fail are re-tried and re-aimed.", 13f)
         val skInfo = text("", 13f)
         upd {
             val h = GameStateTracker.ownHero()
@@ -875,17 +998,17 @@ class MainActivity : Activity() {
             val h = GameStateTracker.ownHero()
             if (h == null) toast("Pick a hero first") else com.example.mlbbresearch.game.SkillBook.fetch(h) { m -> runOnUiThread { toast(m.take(120)) } }
         }
-        btn("Learn ALL heroes' skills online (slow, runs in the background)") {
+        btn("Learn all heroes' skills (background)") {
             com.example.mlbbresearch.game.SkillBook.learnAll { m -> runOnUiThread { toast(m) } }
             toast("Started")
         }
         btn("Stop learning all heroes") { com.example.mlbbresearch.game.SkillBook.stopLearnAll() }
-        val paste = field("Or paste descriptions, one per line: passive: ... / s1: ... / s2: ... / ult: ...", "", false) { }
+        val paste = field("Or paste: passive: … / s1: … / s2: … / ult: …", "", false) { }
         btn("Use the pasted descriptions") {
             val h = GameStateTracker.ownHero()
             if (h == null) toast("Pick a hero first") else toast(com.example.mlbbresearch.game.SkillBook.fromText(h, paste.text.toString()).take(120))
         }
-        field("Start copying after this many recorded moments (5 per second of play)", Cfg.imitationMinDemos.toString(), true) {
+        field("Copy your style after this many moments", Cfg.imitationMinDemos.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.imitationMinDemos = v.coerceIn(50, 100_000) }
         }
         val learnInfo = text("", 13f)
@@ -906,14 +1029,14 @@ class MainActivity : Activity() {
         field("Ask Gemma for a new plan every (seconds)", Cfg.strategyEverySec.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.strategyEverySec = v.coerceIn(3, 120) }
         }
-        switch("Send a screenshot with the plan question (slower, smarter)", Cfg.strategyWithImage) { Cfg.strategyWithImage = it }
+        switch("Send a screenshot with plan questions (slower)", Cfg.strategyWithImage) { Cfg.strategyWithImage = it }
 
         title("VISION TUNING")
         switch("Show what the AI sees (boxes on the game)", Cfg.showDetections) { Cfg.showDetections = it }
         switch("Show where the AI touches", Cfg.showTouches) { Cfg.showTouches = it }
-        field("Hero HP bar minimum width (% of screen width). Lower it if heroes show as minions.",
+        field("Hero HP bar min width (% of screen)",
             Cfg.heroBarMinWidthPct.toString(), true) { it.toFloatOrNull()?.let { v -> Cfg.heroBarMinWidthPct = v.coerceIn(1f, 20f) } }
-        field("Hero body below its HP bar (% of screen height)", Cfg.bodyBelowBarPct.toString(), true) {
+        field("Hero body below its bar (% of height)", Cfg.bodyBelowBarPct.toString(), true) {
             it.toFloatOrNull()?.let { v -> Cfg.bodyBelowBarPct = v.coerceIn(0f, 30f) }
         }
         btn("Reset learned aggression for this hero") {
@@ -937,19 +1060,17 @@ class MainActivity : Activity() {
         upd { phase.text = "Screen now: ${GameStateTracker.state.phase.label}" }
 
         title("STANDARD MATCH")
-        text("No bans: when the hero-select screen shows, the AI taps your hero, optionally changes the battle spell and " +
-            "emblem, then taps Confirm. Works without Gemma. Needs Drafter + Autonomous on. Calibrate the 'Hero select' " +
-            "markers on the Setup page (put your hero first in MLBB's list or in favourites so its spot never changes).", 13f)
+        text("Picks your hero (and spell / emblem), then confirms. Needs Drafter + Autonomous.", 13f)
         field("Your hero (also used by the Player)", Cfg.myHero, false) { Cfg.myHero = it }
         switch("Tap my hero", Cfg.stdPickHero) { Cfg.stdPickHero = it }
         switch("Change battle spell", Cfg.stdChangeSpell) { Cfg.stdChangeSpell = it }
         switch("Change emblem set", Cfg.stdChangeEmblem) { Cfg.stdChangeEmblem = it }
-        btn("Test the standard select now (follows Dry run)") {
+        btn("Test the standard pick now") {
             if (AccessibilityController.instance == null) toast("Turn on the accessibility service first")
             else ActionExecutor.standardSelect(HeroDb.match(Cfg.myHero))
         }
 
-        title("RANKED: TEAM OR SOLO (only one can be on)")
+        title("Ranked: team or solo")
         var syncing = false
         lateinit var swTeam: Switch
         lateinit var swSolo: Switch
@@ -970,13 +1091,21 @@ class MainActivity : Activity() {
         field("Check the draft screen every (seconds)", Cfg.draftEverySec.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.draftEverySec = v.coerceIn(5, 120) }
         }
-        title("BAN & PICK RECOMMENDATION")
-        val c = card()
-        val t = cardText(c)
-        upd { t.text = StrategicAdvisor.draftText.ifEmpty { "(waiting for a draft screen)" } }
+        title("Ban & pick")
+        val dcard = card()
+        cardHeader(dcard, "Pick")
+        val pickGrid = IconGrid(dcard, hero = true, sizeDp = 48)
+        dcard.addView(TextView(this).apply { text = "Ban"; textSize = 15f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD); setPadding(0, dp(10), 0, 0) })
+        val banGrid = IconGrid(dcard, hero = true, sizeDp = 48)
+        val t = cardNote(dcard)
+        upd {
+            val (picks, bans, src) = draftLists()
+            pickGrid.set(picks); banGrid.set(bans)
+            t.text = (if (picks.isEmpty() && bans.isEmpty()) "Waiting for a draft screen." else "From $src.") +
+                StrategicAdvisor.draftText.takeIf { it.isNotBlank() }?.let { "\n" + it.lines().filter { l -> l.isNotBlank() }.take(3).joinToString("\n") }.orEmpty()
+        }
         title("AUTONOMOUS RANKED DRAFT")
-        text("Ranked only. With Drafter + Builder + Autonomous on, the AI taps the recommended hero when it is your turn and then taps lock-in. " +
-            "Keep Dry run on until the yellow marker lands on the right portrait. Calibrate 'Draft: confirm / lock-in' on the Setup page.", 13f)
+        text("Ranked: taps the recommended hero and locks in. Keep Dry run on until the marker is right.", 13f)
         val err = text("", 12f, color = "#EF9A9A")
         upd { err.text = StrategicAdvisor.lastError }
     }
@@ -987,42 +1116,107 @@ class MainActivity : Activity() {
 
     private fun buildPage() {
         stageSwitch("Builder running", "build") { AiRuntime.builderOn }
-        val c = card()
-        val t = cardText(c)
-        upd { t.text = StrategicAdvisor.buildSummary() }
+
+        // ---- your build ----
+        val bc = card()
+        val bHead = cardHeader(bc, "", "", T.GOLD)
+        val bChip = (bHead.parent as LinearLayout).getChildAt(1) as TextView
+        val buildGrid = IconGrid(bc, hero = false, sizeDp = 44)
+        val bNote = cardNote(bc)
+        // ---- counter items ----
+        val cc = card()
+        cardHeader(cc, "Counter items")
+        val counterGrid = IconGrid(cc, hero = false, sizeDp = 40)
+        val cNote = cardNote(cc)
+        // ---- draft: picks and bans ----
+        val dc = card()
+        val dSrc = cardHeader(dc, "Recommended picks")
+        val pickGrid = IconGrid(dc, hero = true, sizeDp = 46)
+        dc.addView(TextView(this).apply { text = "Recommended bans"; textSize = 15f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD); setPadding(0, dp(10), 0, 0) })
+        val banGrid = IconGrid(dc, hero = true, sizeDp = 46)
+        val dNote = cardNote(dc)
+        upd {
+            val hero = GameStateTracker.ownHero()
+            val role = HeroDb.role(hero)
+            val meta = if (Cfg.useOnlineMeta) com.example.mlbbresearch.game.MetaStore.hero(hero) else null
+            val items = meta?.build?.takeIf { it.isNotEmpty() } ?: BuildBook.primary(role)
+            bHead.text = (hero ?: "Your hero") + " build"
+            bChip.text = if (meta != null && meta.build.isNotEmpty()) "online meta" else role.name.lowercase()
+            buildGrid.set(items)
+            bNote.text = buildString {
+                if (meta != null) {
+                    if (meta.emblem.isNotBlank()) append("Emblem: ").append(meta.emblem)
+                    if (meta.spell != null) append(if (isEmpty()) "" else "  ·  ").append("Spell: ").append(meta.spell)
+                }
+                if (isEmpty()) append("Set the same build as your in-game preset (quick buy follows it).")
+            }
+            val enemies = GameStateTracker.enemyTeam
+            val counters = com.example.mlbbresearch.game.CounterRules.counters(hero, enemies)
+            counterGrid.set(counters.map { it.item }, counters.map { it.reason })
+            cNote.text = when {
+                enemies.isEmpty() -> "Waiting for the enemy line-up."
+                counters.isEmpty() -> "None needed against " + enemies.joinToString() + "."
+                else -> "Against " + enemies.joinToString() + "."
+            }
+            val (picks, bans, src) = draftLists()
+            dSrc.text = "Recommended picks"
+            pickGrid.set(picks)
+            banGrid.set(bans)
+            dNote.text = if (picks.isEmpty() && bans.isEmpty()) "No draft yet: update the patch meta (Meta page) or start the Drafter." else "From $src."
+        }
+
+        title("Auto quick buy (item swap)")
+        switch("Auto quick buy when about to die", Cfg.qbOn) { Cfg.qbOn = it }
+        switch("Only with a full build", Cfg.qbRequireFull) { Cfg.qbRequireFull = it }
+        switch("Only with enough gold", Cfg.qbRequireGold) { Cfg.qbRequireGold = it }
+        field("Minimum gold", Cfg.qbMinGold.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.qbMinGold = v } }
+        field("Swap when HP is below (%)", Cfg.qbHpPercent.toString(), true) {
+            it.toIntOrNull()?.let { v -> Cfg.qbHpPercent = v.coerceIn(5, 90) }
+        }
+        val live = text("", 13f, color = T.MUTED)
+        upd {
+            val s = GameStateTracker.state
+            live.text = "HP ${if (s.selfHp < 0) "?" else "${(s.selfHp * 100).toInt()}%"}  ·  items ${if (s.items < 0) "?" else s.items}/6  ·  " +
+                "gold ${if (s.gold < 0) "?" else s.gold}  ·  ${QuickBuySwap.status}"
+        }
+        btn("Test the swap now (buys and sells for real)") {
+            if (AccessibilityController.instance == null) toast("Turn on the accessibility service first") else QuickBuySwap.start()
+        }
         field("Read items & gold every (seconds)", Cfg.buildEverySec.toString(), true) {
             it.toIntOrNull()?.let { v -> Cfg.buildEverySec = v.coerceIn(10, 300) }
         }
-        text("Autonomous build taps MLBB's quick-buy item on the left, which follows your in-game build preset. " +
-            "Set that preset to the PRIMARY build above.", 13f)
 
-        title("AUTO QUICK BUY (item swap when about to die)")
-        switch("Auto quick buy", Cfg.qbOn) { Cfg.qbOn = it }
-        switch("Only if the build is already full", Cfg.qbRequireFull) { Cfg.qbRequireFull = it }
-        switch("Only if there is enough gold", Cfg.qbRequireGold) { Cfg.qbRequireGold = it }
-        field("Minimum gold", Cfg.qbMinGold.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.qbMinGold = v } }
-        field("Trigger when HP is below (%)", Cfg.qbHpPercent.toString(), true) {
-            it.toIntOrNull()?.let { v -> Cfg.qbHpPercent = v.coerceIn(5, 90) }
-        }
-        val live = text("", 13f)
-        upd {
-            val s = GameStateTracker.state
-            live.text = "HP ${if (s.selfHp < 0) "?" else "${(s.selfHp * 100).toInt()}%"} | items ${if (s.items < 0) "?" else s.items}/6 | " +
-                "gold ${if (s.gold < 0) "?" else s.gold}\nStatus: ${QuickBuySwap.status}"
-        }
-        btn("Run the swap now (test - buys and sells for real)") {
-            if (AccessibilityController.instance == null) toast("Turn on the accessibility service first") else QuickBuySwap.start()
-        }
-
-        title("EDIT PRIMARY BUILDS PER ROLE (comma separated)")
-        text("Item names are checked against the wiki's current equipment list (${com.example.mlbbresearch.game.ItemDb.current.size} items): " +
-            "names are corrected, and items no longer in the game are left out of the build.", 12f, color = "#9AA0A6")
+        title("Builds per role")
+        text("Comma separated. Names are checked against the current item list.", 12f, color = T.MUTED)
         for (r in Role.values()) {
             if (r == Role.UNKNOWN) continue
-            field(r.name.lowercase(), Cfg.roleBuild(r.name, BuildBook.defaults[r] ?: ""), false) { Cfg.setRoleBuild(r.name, it) }
-            val warn = text("", 12f, color = "#F28B82")
-            upd { warn.text = BuildBook.outdated(r).let { if (it.isEmpty()) "" else "Not in the current item list (left out): " + it.joinToString() } }
+            val box = field(r.name.lowercase().replaceFirstChar { it.uppercase() }, Cfg.roleBuild(r.name, BuildBook.defaults[r] ?: ""), false) { Cfg.setRoleBuild(r.name, it) }
+            val holder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            content.addView(holder)
+            val grid = IconGrid(holder, hero = false, sizeDp = 32)
+            val warn = text("", 12f, color = T.RED)
+            upd {
+                val typed = box.text.toString().split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                grid.set(typed.mapNotNull { com.example.mlbbresearch.game.ItemDb.canonical(it) })
+                val bad = com.example.mlbbresearch.game.ItemDb.outdated(typed)
+                warn.text = if (bad.isEmpty()) "" else "Not in the game now (left out): " + bad.joinToString()
+                warn.visibility = if (bad.isEmpty()) View.GONE else View.VISIBLE
+            }
         }
+    }
+
+    // picks / bans to show: the last draft screen read, else the patch meta for your role
+    private fun draftLists(): Triple<List<String>, List<String>, String> {
+        val d = StrategicAdvisor.draft
+        if (d != null && (d.pick.isNotEmpty() || d.ban.isNotEmpty())) return Triple(d.pick.take(10), d.ban.take(10), "the draft screen")
+        val g = com.example.mlbbresearch.game.MetaStore.general()
+        val role = HeroDb.role(GameStateTracker.ownHero() ?: HeroDb.match(Cfg.myHero))
+        if (g != null) {
+            val picks = (g.picks[role] ?: emptyList()).ifEmpty { g.picks.values.flatten() }
+            return Triple(picks.distinct().take(10), g.bans.distinct().take(10), "the patch meta (${g.patch})")
+        }
+        val fb = HeroDb.fallbackPicks[role] ?: emptyList()
+        return Triple(fb, emptyList(), "the built-in list")
     }
 
     // =====================================================================
@@ -1030,77 +1224,227 @@ class MainActivity : Activity() {
     // =====================================================================
 
     private fun metaPage() {
-        text("Online meta: Groq (model openai/gpt-oss-120b with browser search) searches the web (patch notes, hero adjustments, tier lists, guides) and returns the " +
-            "current build, emblem, battle spell, lane, combo, dash skill, laning / jungle / rotation tips and draft picks. " +
-            "They are saved on the phone: the Player, Builder and Drafter use them offline. Your own settings still win.", 13f)
-        text("The Groq API key is read from  groq_key.txt  in your MLBB-Research folder (Model page).", 12f, color = "#9AA0A6")
-        // one switch: use the online meta everywhere, keep it fresh for the hero I play, use it for drafting
-        switch("Use the online meta (auto-updated, also for drafting)", Cfg.useOnlineMeta && Cfg.onlineAuto) {
+        val mg = com.example.mlbbresearch.game.MetaStore
+        val ma = com.example.mlbbresearch.ai.MetaAdvisor
+        text("Live patch meta from the web (Groq). Saved on the phone; the Player, Builder and Drafter use it.", 13f, color = T.MUTED)
+        switch("Use the online meta", Cfg.useOnlineMeta && Cfg.onlineAuto) {
             Cfg.useOnlineMeta = it; Cfg.onlineAuto = it; Cfg.onlineDraft = it
         }
-        val st = text("", 13f)
+        val st = text("", 13f, color = T.MUTED)
         upd {
-            st.text = "Groq: " + (if (Cfg.groqKey.isBlank()) "no key (put groq_key.txt in the folder)" else "key set, ${com.example.mlbbresearch.ai.GroqClient.calls} answers this session") +
-                (if (com.example.mlbbresearch.ai.MetaAdvisor.busy.isNotEmpty()) "\nWorking: ${com.example.mlbbresearch.ai.MetaAdvisor.busy}..." else "") +
-                (if (com.example.mlbbresearch.ai.MetaAdvisor.lastMessage.isNotEmpty()) "\nLast: ${com.example.mlbbresearch.ai.MetaAdvisor.lastMessage}" else "")
+            st.text = (if (Cfg.groqKey.isBlank()) "No Groq key: put groq_key.txt in the MLBB-Research folder." else "Groq ready · ${com.example.mlbbresearch.ai.GroqClient.calls} answers this session") +
+                (if (ma.busy.isNotEmpty()) "\nWorking: ${ma.busy}…" else "") +
+                (if (ma.lastMessage.isNotEmpty()) "\n${ma.lastMessage}" else "")
         }
-
-        title("UPDATE")
-        btn("Update the patch meta (tier list, bans, picks)") {
+        val upd1 = btn("Update the patch meta") {
             leaveHooks.forEach { it() }
             if (Cfg.groqKey.isBlank()) toast("No Groq key: put groq_key.txt in the MLBB-Research folder") else {
-                toast("Asking Groq (can take 10-30 s)...")
-                com.example.mlbbresearch.ai.MetaAdvisor.updateGeneral { msg -> runOnUiThread { toast(msg) } }
+                toast("Asking Groq (10-30 s)…")
+                ma.updateGeneral { msg -> runOnUiThread { toast(msg) } }
             }
         }
-        val heroBox = field("Hero to update (empty = the hero I play)", "", false) { }
-        btn("Update this hero (build, combo, tips)") {
+        styleButton(upd1, primary = true)
+        val heroBox = field("Hero (empty = the hero you play)", "", false) { }
+        btn("Update this hero") {
             leaveHooks.forEach { it() }
             val h = HeroDb.match(heroBox.text.toString()) ?: GameStateTracker.ownHero() ?: HeroDb.match(Cfg.myHero)
             when {
                 Cfg.groqKey.isBlank() -> toast("No Groq key: put groq_key.txt in the MLBB-Research folder")
                 h == null -> toast("Type a hero name")
-                else -> {
-                    toast("Asking Groq about $h (can take 10-30 s)...")
-                    com.example.mlbbresearch.ai.MetaAdvisor.updateHero(h) { msg -> runOnUiThread { toast(msg) } }
-                }
+                else -> { toast("Asking Groq about $h (10-30 s)…"); ma.updateHero(h) { msg -> runOnUiThread { toast(msg) } } }
             }
         }
 
-        title("PATCH META")
-        val gc = card()
-        val gt = cardText(gc, 13f)
-        title("HERO META")
-        val hc = card()
-        val ht = cardText(hc, 13f)
+        // the two cards are rebuilt only when their data changes
+        val patchBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val heroBox2 = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        content.addView(patchBox); content.addView(heroBox2)
+        var patchKey = ""; var heroKey = ""
+
+        fun sub(parent: LinearLayout, t: String) = parent.addView(TextView(this).apply {
+            text = t.uppercase(); textSize = 11f; letterSpacing = 0.08f; setTextColor(c(T.MUTED)); setTypeface(null, Typeface.BOLD); setPadding(0, dp(12), 0, dp(2))
+        })
+        fun box(): LinearLayout {
+            val cd = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(12), dp(14), dp(12)); background = shape(T.SURF, 16, T.STROKE) }
+            return cd
+        }
+        fun bullets(parent: LinearLayout, items: List<String>) {
+            for (i in items) parent.addView(TextView(this).apply {
+                text = "•  $i"; textSize = 13f; setTextColor(c(T.TEXT)); setLineSpacing(0f, 1.1f); setPadding(0, dp(2), 0, dp(2))
+            })
+        }
+        fun pair(parent: LinearLayout, k: String, v: String?) {
+            if (v.isNullOrBlank()) return
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(3), 0, dp(3)) }
+            row.addView(TextView(this).apply { text = k; textSize = 13f; setTextColor(c(T.MUTED)) }, LinearLayout.LayoutParams(dp(90), LinearLayout.LayoutParams.WRAP_CONTENT))
+            row.addView(TextView(this).apply { text = v; textSize = 13f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD) },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            parent.addView(row)
+        }
+        fun age(t: Long) = "%.0f days old".format(mg.ageDays(t))
+
         upd {
-            val g = com.example.mlbbresearch.game.MetaStore.general()
-            gt.text = if (g == null) "(not downloaded yet)" else buildString {
-                append("Patch: ").append(g.patch).append("  (").append("%.0f".format(com.example.mlbbresearch.game.MetaStore.ageDays(g.updatedAt))).append(" days old)")
-                append("\nTop bans: ").append(g.bans.joinToString())
-                for ((r, l) in g.picks) append("\n").append(r.name.lowercase()).append(": ").append(l.joinToString())
-                if (g.notes.isNotBlank()) append("\n").append(g.notes)
-                if (g.sources.isNotEmpty()) append("\nSources: ").append(g.sources.joinToString())
+            // ---- patch meta ----
+            val g = mg.general()
+            val pk = g?.let { "${it.patch}${it.updatedAt}" } ?: "none"
+            if (pk != patchKey) {
+                patchKey = pk
+                patchBox.removeAllViews()
+                title("Patch meta").let { v -> (v.parent as View).let { r -> content.removeView(r); patchBox.addView(r) } }
+                val cd = box()
+                patchBox.addView(cd, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })
+                if (g == null) {
+                    cardNote(cd, "Not downloaded yet: tap Update the patch meta.")
+                } else {
+                    val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+                    head.addView(TextView(this).apply { text = "Patch " + g.patch; textSize = 17f; setTextColor(Color.WHITE); setTypeface(null, Typeface.BOLD) },
+                        LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                    head.addView(chip(age(g.updatedAt), if (mg.ageDays(g.updatedAt) > 14) T.GOLD else T.GREEN))
+                    cd.addView(head)
+                    if (g.bans.isNotEmpty()) { sub(cd, "Top bans"); IconGrid(cd, true, 44).set(g.bans) }
+                    for ((r, l) in g.picks) if (l.isNotEmpty()) {
+                        sub(cd, "Best " + r.name.lowercase() + " picks")
+                        IconGrid(cd, true, 44).set(l)
+                    }
+                    if (g.notes.isNotBlank()) cardNote(cd, g.notes)
+                    if (g.sources.isNotEmpty()) cardNote(cd, "Sources: " + g.sources.joinToString())
+                }
             }
+            // ---- hero meta ----
             val h = HeroDb.match(heroBox.text.toString()) ?: GameStateTracker.ownHero() ?: HeroDb.match(Cfg.myHero)
-            val m = com.example.mlbbresearch.game.MetaStore.hero(h)
-            ht.text = if (m == null) "${h ?: "No hero"}: not downloaded yet" else buildString {
-                append(m.hero).append(" - ").append(m.patch).append("  (").append("%.0f".format(com.example.mlbbresearch.game.MetaStore.ageDays(m.updatedAt))).append(" days old)")
-                append("\nBuild: ").append(m.build.joinToString())
-                append("\nEmblem: ").append(m.emblem).append("\nSpell: ").append(m.spell ?: "-").append("   Lane: ").append(m.lane?.label ?: "-")
-                append("\nCombo: ").append(m.combo ?: "-").append("   Dash: ").append(m.dash ?: "-")
-                if (m.laning.isNotEmpty()) append("\nLaning: ").append(m.laning.joinToString(" / "))
-                if (m.jungle.isNotEmpty()) append("\nJungle: ").append(m.jungle.joinToString(" / "))
-                if (m.rotation.isNotEmpty()) append("\nRotations: ").append(m.rotation.joinToString(" / "))
-                if (m.counters.isNotEmpty()) append("\nCountered by: ").append(m.counters.joinToString())
-                if (m.changes.isNotBlank()) append("\nRecent changes: ").append(m.changes)
-                if (m.sources.isNotEmpty()) append("\nSources: ").append(m.sources.joinToString())
+            val m = mg.hero(h)
+            val hk = "$h|${m?.updatedAt}"
+            if (hk != heroKey) {
+                heroKey = hk
+                heroBox2.removeAllViews()
+                title("Hero meta").let { v -> (v.parent as View).let { r -> content.removeView(r); heroBox2.addView(r) } }
+                val cd = box()
+                heroBox2.addView(cd, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })
+                val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+                if (h != null) head.addView(com.example.mlbbresearch.app.IconCache.view(this, h, true, dp(58)), LinearLayout.LayoutParams(dp(58), dp(58)))
+                val names = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
+                names.addView(TextView(this).apply { text = h ?: "No hero"; textSize = 19f; setTextColor(Color.WHITE); setTypeface(null, Typeface.BOLD) })
+                names.addView(TextView(this).apply {
+                    text = if (m == null) "not downloaded yet" else "${HeroDb.role(h).name.lowercase()} · ${m.patch} · ${age(m.updatedAt)}"
+                    textSize = 12f; setTextColor(c(T.MUTED))
+                })
+                head.addView(names, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                cd.addView(head)
+                if (m == null) {
+                    cardNote(cd, "Tap Update this hero.")
+                } else {
+                    if (m.build.isNotEmpty()) { sub(cd, "Build"); IconGrid(cd, false, 42).set(m.build) }
+                    sub(cd, "Setup")
+                    pair(cd, "Emblem", m.emblem); pair(cd, "Spell", m.spell); pair(cd, "Lane", m.lane?.label)
+                    pair(cd, "Combo", m.combo); pair(cd, "Dash", m.dash)
+                    if (m.skillOrder.isNotEmpty()) pair(cd, "Skill order", m.skillOrder.joinToString(" › "))
+                    if (m.laning.isNotEmpty()) { sub(cd, "Laning"); bullets(cd, m.laning) }
+                    if (m.jungle.isNotEmpty()) { sub(cd, "Jungle"); bullets(cd, m.jungle) }
+                    if (m.rotation.isNotEmpty()) { sub(cd, "Rotations"); bullets(cd, m.rotation) }
+                    if (m.counters.isNotEmpty()) { sub(cd, "Countered by"); IconGrid(cd, true, 40).set(m.counters) }
+                    if (m.changes.isNotBlank()) { sub(cd, "Recent changes"); cardNote(cd, m.changes) }
+                    if (m.sources.isNotEmpty()) cardNote(cd, "Sources: " + m.sources.joinToString())
+                }
             }
         }
-        btn("Delete all downloaded meta") {
+        val del = btn("Delete all downloaded meta") {
             AlertDialog.Builder(this).setTitle("Delete the downloaded meta?")
-                .setPositiveButton("Delete") { _, _ -> com.example.mlbbresearch.game.MetaStore.clear(); toast("Deleted") }
+                .setPositiveButton("Delete") { _, _ -> mg.clear(); toast("Deleted") }
                 .setNegativeButton("Cancel", null).show()
+        }
+        // keep the delete button at the very bottom, under the cards
+        content.removeView(del); content.addView(del)
+        del.setTextColor(c(T.RED))
+    }
+
+    // =====================================================================
+    //  SPEED: every engine and model, live, with the last 2 minutes
+    // =====================================================================
+
+    private fun speedPage() {
+        val log = com.example.mlbbresearch.core.SpeedLog
+        fun fmt(v: Float, unit: String) = when (unit) {
+            "ms" -> if (v < 10f) "%.1f ms".format(v) else "%.0f ms".format(v)
+            "s" -> "%.1f s".format(v)
+            else -> "%.0f %s".format(v, unit)
+        }
+        fun gradeColor(g: Int) = c(when (g) { 0 -> T.GREEN; 1 -> T.GOLD; else -> T.RED })
+        text("Live speed of every part of the AI. Dashed line = target.", 13f, color = T.MUTED)
+
+        // ---- the headline: frame to touch, and what it is made of ----
+        val total = log.series[0]
+        val parts = log.series.subList(1, 5)
+        val hc = card()
+        val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.BOTTOM }
+        val big = TextView(this).apply { textSize = 40f; setTypeface(null, Typeface.BOLD); setTextColor(Color.WHITE) }
+        head.addView(big)
+        val gradeChip = chip("")
+        head.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+        head.addView(gradeChip)
+        hc.addView(TextView(this).apply { text = "FRAME → TOUCH"; textSize = 11f; letterSpacing = 0.08f; setTextColor(c(T.MUTED)); setTypeface(null, Typeface.BOLD) })
+        hc.addView(head)
+        val stack = com.example.mlbbresearch.app.StackBar(this)
+        hc.addView(stack, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(14)).apply { topMargin = dp(10); bottomMargin = dp(8) })
+        val legend = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        hc.addView(legend)
+        val legendRows = parts.map { sr ->
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(3), 0, dp(3)) }
+            row.addView(View(this).apply { background = shape(sr.color, 5) }, LinearLayout.LayoutParams(dp(10), dp(10)))
+            row.addView(TextView(this).apply { text = sr.name; textSize = 13f; setTextColor(c(T.TEXT)); setPadding(dp(8), 0, 0, 0) },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            val v = TextView(this).apply { textSize = 13f; setTextColor(c(T.MUTED)) }
+            row.addView(v)
+            legend.addView(row)
+            v
+        }
+        val totalSpark = com.example.mlbbresearch.app.Sparkline(this)
+        hc.addView(totalSpark, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(70)).apply { topMargin = dp(8) })
+        val totalNote = cardNote(hc)
+
+        // ---- every other measure, grouped ----
+        class Row(val sr: com.example.mlbbresearch.core.SpeedLog.Series, val value: TextView, val bar: com.example.mlbbresearch.app.BudgetBar,
+                  val spark: com.example.mlbbresearch.app.Sparkline, val note: TextView)
+        val rows = ArrayList<Row>()
+        var group = ""
+        for (sr in log.series.drop(5)) {
+            if (sr.group != group) { group = sr.group; title(group) }
+            val cd = card()
+            val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            top.addView(View(this).apply { background = shape(sr.color, 5) }, LinearLayout.LayoutParams(dp(10), dp(10)))
+            top.addView(TextView(this).apply { text = sr.name; textSize = 14f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD); setPadding(dp(8), 0, 0, 0) },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            val value = TextView(this).apply { textSize = 18f; setTypeface(null, Typeface.BOLD) }
+            top.addView(value)
+            cd.addView(top)
+            val bar = com.example.mlbbresearch.app.BudgetBar(this)
+            cd.addView(bar, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(6)).apply { topMargin = dp(8) })
+            val spark = com.example.mlbbresearch.app.Sparkline(this)
+            cd.addView(spark, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(46)).apply { topMargin = dp(6) })
+            rows.add(Row(sr, value, bar, spark, cardNote(cd)))
+        }
+
+        upd {
+            log.tick()
+            val t = total.last()
+            big.text = if (total.count == 0 || t <= 0f) "–" else fmt(t, "ms")
+            big.setTextColor(if (t <= 0f) c(T.MUTED) else gradeColor(total.grade()))
+            gradeChip.text = when { t <= 0f -> "waiting for a match"; total.grade() == 0 -> "fast"; total.grade() == 1 -> "ok"; else -> "slow" }
+            gradeChip.setTextColor(if (t <= 0f) c(T.MUTED) else gradeColor(total.grade()))
+            stack.set(parts.map { it.last() to c(it.color) })
+            parts.forEachIndexed { i, sr -> legendRows[i].text = fmt(sr.last(), sr.unit) }
+            totalSpark.set(total.history(), total.budget, c(total.color))
+            totalNote.text = if (total.count == 0) "No samples yet: start the AI in a match." else
+                "2 min: average ${fmt(total.avg(), "ms")}, worst ${fmt(total.max(), "ms")}, target under ${fmt(total.budget, "ms")}"
+            for (r in rows) {
+                val v = r.sr.last()
+                val used = r.sr.history().any { it > 0f }
+                r.value.text = if (!used) "not used" else fmt(v, r.sr.unit)
+                r.value.setTextColor(if (!used) c(T.MUTED) else gradeColor(r.sr.grade()))
+                r.bar.set(if (r.sr.higherIsBetter) v / r.sr.budget else v / r.sr.budget, if (!used) c(T.STROKE) else gradeColor(r.sr.grade()))
+                r.spark.set(r.sr.history(), r.sr.budget, c(r.sr.color))
+                r.note.text = if (!used) "No runs yet (loaded and used only when on)." else
+                    "average ${fmt(r.sr.avg(), r.sr.unit)} · " + (if (r.sr.higherIsBetter) "target ${fmt(r.sr.budget, r.sr.unit)}+" else "target under ${fmt(r.sr.budget, r.sr.unit)}")
+            }
         }
     }
 
@@ -1110,15 +1454,7 @@ class MainActivity : Activity() {
 
     private fun modelPage() {
         title("FILES")
-        text("Put the downloaded files in  Download/MLBB-Research  and choose that folder once. The app copies, loads and " +
-            "applies them by itself every time it starts:\n" +
-            "  - strategic model: Gemma 4 E2B (or Gemma 3n E2B), the big  .litertlm  file (Gemma 4 is used when both are there)\n" +
-            "  - small tactical model (optional): Gemma 3 270M, a small  .litertlm  file (270m / 1b in the name, or under 1 GB);\n" +
-            "    trained on your fights: notebooks/train_tactical_llm.ipynb -> gemma3-270m-mlbb-tactical.litertlm\n" +
-            "  - minimap detector:  mlbb_detector.tflite  +  labels.txt\n" +
-            "  - screen detector:  mlbb_screen_detector.tflite  +  screen_labels.txt\n" +
-            "  - tactical networks:  mlbb_policies.zip from the notebook (one per hero + all heroes; older policy.tflite works too)\n" +
-            "  - Groq API key:  groq_key.txt  (the key on the first line)", 13f)
+        text("Put files in Download/MLBB-Research; the app loads them by itself:\n• Gemma 4 E2B (.litertlm) – strategy\n• Gemma 3 270M (.litertlm) – fight advice (optional)\n• mlbb_policies.zip – tactical networks\n• detectors (.tflite + labels) – minimap and screen\n• groq_key.txt – online meta", 13f)
         val c = card()
         val st = cardText(c, 14f, true)
         upd {
@@ -1154,22 +1490,22 @@ class MainActivity : Activity() {
         }
 
         title("WHERE TO GET THEM")
-        btn("Gemma 4 E2B, strategic model (Hugging Face, about 2.6 GB)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.MODEL_PAGE))) }
-        btn("Gemma 3 270M, small tactical model (Hugging Face)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.SMALL_MODEL_PAGE))) }
-        btn("Training notebooks: detector and tactical network (GitHub)") {
+        btn("Get Gemma 4 E2B (2.6 GB)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.MODEL_PAGE))) }
+        btn("Get Gemma 3 270M") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.SMALL_MODEL_PAGE))) }
+        btn("Training notebooks (GitHub)") {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/georgenaval1-blip/Ai-App/tree/main/notebooks")))
         }
         btn("Groq API key (free)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) }
 
         title("SETTINGS")
-        switch("Run the strategic model on the GPU (faster; falls back to the CPU)", Cfg.useGpu) { Cfg.useGpu = it }
-        switch("Small tactical model in fights (CPU, ~3 answers a second; its advice is checked by the rules)", Cfg.tacticalLlmOn) { on ->
+        switch("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it }
+        switch("Small tactical model in fights", Cfg.tacticalLlmOn) { on ->
             Cfg.tacticalLlmOn = on
             if (on) ModelManager.loadTactical(this) { err -> runOnUiThread { toast(err ?: "Small tactical model loaded") } }
             else ModelManager.unloadTactical()
         }
         // the detector and the tactical network are used together: one switch
-        switch("Use the trained models (detectors + tactical network)", Cfg.detectorOn && Cfg.policyOn) {
+        switch("Use the trained models", Cfg.detectorOn && Cfg.policyOn) {
             Cfg.detectorOn = it; Cfg.policyOn = it
         }
     }
@@ -1182,20 +1518,17 @@ class MainActivity : Activity() {
     private fun learnPage() {
         DemoRecorder.refreshTotal()
         com.example.mlbbresearch.learning.LiveRecorder.refreshTotal()
-        title("SMART FIGHTS - the AI learns from its mistakes")
-        text("When an enemy is close, the AI chooses how to handle it: all in, poke from range, back off, fall back to " +
-            "allies, keep farming, or the normal rules. 4 seconds later it scores the result: damage dealt, kills, HP kept, " +
-            "dying. It learns which choice works best in which situation (your HP vs theirs, how many on each side, skills " +
-            "ready...) for each hero, and sometimes tries something new to keep learning. Low HP always retreats.", 13f)
+        title("Smart fights")
+        text("Near an enemy the AI picks: all in, poke, back off, group or farm, scores the result 4 s later and learns what works.", 13f)
         switch("Smart fights (learning AI)", Cfg.smartFights) { Cfg.smartFights = it }
         val levels = listOf("Low (mostly uses what it knows)", "Normal", "High (tries new things more)")
         val explore = btn("") { Cfg.exploreLevel = (Cfg.exploreLevel + 1) % 3 }
         upd { explore.text = "Curiosity: ${levels[Cfg.exploreLevel.coerceIn(0, 2)]}  (tap to change)" }
-        switch("Also learn from my own fights (needs 'Learn from me' on)", Cfg.brainLearnsFromYou) { Cfg.brainLearnsFromYou = it }
+        switch("Also learn from my fights", Cfg.brainLearnsFromYou) { Cfg.brainLearnsFromYou = it }
 
         val c = card()
         val head = cardText(c, 15f, true)
-        val table = TextView(this).apply { typeface = Typeface.MONOSPACE; textSize = 12f; setTextColor(Color.parseColor("#E6E6E6")) }
+        val table = TextView(this).apply { typeface = Typeface.MONOSPACE; textSize = 12f; setTextColor(c(T.TEXT)) }
         c.addView(table)
         val now = cardText(c, 13f)
         upd {
@@ -1215,7 +1548,7 @@ class MainActivity : Activity() {
         }
 
         title("RECENT LESSONS")
-        val lessons = TextView(this).apply { typeface = Typeface.MONOSPACE; textSize = 12f; setTextColor(Color.parseColor("#C8C8C8")) }
+        val lessons = TextView(this).apply { typeface = Typeface.MONOSPACE; textSize = 12f; setTextColor(c(T.TEXT)) }
         content.addView(lessons)
         upd {
             val r = Brain.recent(12)
@@ -1245,24 +1578,19 @@ class MainActivity : Activity() {
         btn("Export decisions to Downloads (CSV)") {
             DatasetManager.export(this) { msg -> runOnUiThread { toast(msg) } }
         }
-        btn("Export my recorded play (CSV) - trains the tactical network") {
+        btn("Export my play (CSV)") {
             DatasetManager.exportDemos(this) { msg -> runOnUiThread { toast(msg) } }
         }
         ExperienceRecorder.refreshFights()
         val fightInfo = text("", 12f, color = "#9AA0A6")
         upd { fightInfo.text = "Fight moments for the small tactical model: " + (if (ExperienceRecorder.fights < 0) "counting..." else "${ExperienceRecorder.fights}") +
             " (each fight choice - the AI's, the small model's or yours - with how it went 4 s later)" }
-        btn("Export fight moments (CSV) - trains the small tactical model") {
+        btn("Export fight moments (CSV)") {
             DatasetManager.exportFights(this) { msg -> runOnUiThread { toast(msg) } }
         }
 
-        title("LEARN FROM LIVE MATCHES (watching another player)")
-        text("Open a player's live match in MLBB while learning is on (start the AI or Learn). Their screen is read like a " +
-            "match of yours: their hero (the blue bar in the middle), its HP from the green line in their panel, enemies, " +
-            "minions, monsters and the minimap (all enemies show there). Their walking comes from the camera, their skills " +
-            "from the panel icons going dark, attacks from standing next to a target. The AI never plays on this screen. " +
-            "Export gives mlbb-live-*.csv: the same columns as your recorded play, so the notebook trains on it " +
-            "(upload it with your own play; nothing to set).", 13f)
+        title("Live matches")
+        text("Watch someone's live match with learning on: their play is recorded like yours. Export it for the notebook.", 13f)
         switch("Learn from live matches", Cfg.liveLearn) { Cfg.liveLearn = it }
         field("Hero you are watching (e.g. Balmond)", Cfg.liveHero, false) { v ->
             val m = com.example.mlbbresearch.game.HeroDb.match(v)
@@ -1283,7 +1611,7 @@ class MainActivity : Activity() {
                     "Live moments: ${r.recorded} this session, ${r.total} saved; deaths seen: ${r.deaths} (the 6 s before each are marked)"
             }
         }
-        btn("Export live matches (CSV) - trains the tactical network") {
+        btn("Export live matches (CSV)") {
             DatasetManager.exportLive(this) { msg -> runOnUiThread { toast(msg) } }
         }
         btn("Delete the live match moments") {
@@ -1293,23 +1621,13 @@ class MainActivity : Activity() {
         }
 
         title("HOW THE AI DOES PER HERO AND ROLE")
-        text("Every match is logged (hero, role, who played, K/D/A, level, length) - to see where the AI plays well and " +
-            "which heroes / roles need work. Win / loss is read from the Victory / Defeat screens.", 13f)
+        text("Every match: hero, role, K/D/A, result.", 13f)
         val ml = text("", 12f)
         upd { ml.text = com.example.mlbbresearch.game.MatchLog.summary() }
         btn("Clear the match log") { com.example.mlbbresearch.game.MatchLog.clear(); toast("Cleared") }
 
         title("DETECTOR TRAINING PICTURES")
-        text("While you play, pictures are saved with boxes already drawn from what the app sees:\n" +
-            "  - the minimap every 6 s (hero icons, towers, turtle / lord) -> Download/MLBB-Research/dataset, for " +
-            "train_mlbb_detector.ipynb\n" +
-            "  - the whole screen every 10 s (heroes, minions, creeps, buffs, turtle, lord, enemy towers, bushes, walls) -> " +
-            "Download/MLBB-Research/screen_dataset, for train_screen_detector.ipynb\n" +
-            "Fixing the boxes in Roboflow before training makes the detectors much better than the app's own guesses.\n" +
-            "No daily limit: each collector saves until its capacity (minimap 1500, screen 1000 pictures), then the app " +
-            "ZIPS that batch into Download/MLBB-Research (mlbb-minimap-dataset-*.zip / mlbb-screen-dataset-*.zip - upload " +
-            "it to the notebook), removes the zipped pictures from the folder, and switches that collector OFF. Turn it " +
-            "on again to collect the next batch.", 13f)
+        text("Saves labelled pictures while you play (minimap 1500, screen 1000). At capacity it zips them in Download/MLBB-Research and turns the switch off.", 13f)
         val zk = com.example.mlbbresearch.learning.DatasetZipper
         val swMini = switch("Collect minimap training pictures", Cfg.collectDataset) { Cfg.collectDataset = it }
         val swScreen = switch("Collect whole-screen training pictures", Cfg.collectScreenDataset) { Cfg.collectScreenDataset = it }
@@ -1361,7 +1679,7 @@ class MainActivity : Activity() {
         }
         title("HISTORY (newest first)")
         val log = TextView(this).apply {
-            typeface = Typeface.MONOSPACE; textSize = 11f; setTextIsSelectable(true); setTextColor(Color.parseColor("#C8C8C8"))
+            typeface = Typeface.MONOSPACE; textSize = 11f; setTextIsSelectable(true); setTextColor(c(T.TEXT))
         }
         content.addView(log)
         upd {
@@ -1387,15 +1705,15 @@ class MainActivity : Activity() {
             startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         }
         upd { mark(ov, Settings.canDrawOverlays(this)) }
-        val nt = btn("3. Notifications (capture notice + STOP button)") {
+        val nt = btn("3. Notifications") {
             if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), reqNotify)
         }
         upd {
             mark(nt, Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
         }
-        val cap = btn("4. Screen capture (asked each time it starts)") { askScreenCapture() }
+        val cap = btn("4. Screen capture") { askScreenCapture() }
         upd { mark(cap, ScreenCaptureService.running) }
-        text("On POCO/Xiaomi also allow: Settings > Apps > MLBB Research > Other permissions > 'Display pop-up windows while running in the background', and turn off 'Manage app if unused'.", 12f, color = "#9AA0A6")
+        text("POCO/Xiaomi: also allow 'pop-up windows while running in the background' and turn off 'Manage app if unused'.", 12f, color = "#9AA0A6")
 
         title("SCREEN")
         val scr = text("", 12f, color = "#9AA0A6")
@@ -1405,9 +1723,7 @@ class MainActivity : Activity() {
         }
 
         title("CALIBRATE BUTTON POSITIONS")
-        text("Easiest: open MLBB in a match, then come back and tap a calibrate button. After 5 seconds yellow markers " +
-            "appear over the game: drag each one onto its button, or tap Auto-detect to let the app find them, then Save. " +
-            "'Next screen' moves on to the shop and hero-select markers.", 12f, color = "#9AA0A6")
+        text("Open a match, come back, tap Calibrate: drag the yellow markers onto the buttons (or Auto-detect), then Save.", 12f, color = "#9AA0A6")
         fun calibrateLater(group: Int) {
             val o = AccessibilityController.instance?.overlay
             if (o == null) { toast("Turn on the accessibility service first"); return }
@@ -1420,10 +1736,7 @@ class MainActivity : Activity() {
         btn("Calibrate hero-select buttons on the game") { calibrateLater(2) }
 
         title("MINIMAP ICON CALIBRATION")
-        text("If the AI misreads the minimap (your icon, towers, camps, walls), teach it the colours: choose the icon " +
-            "type, tap 'Pick it on the game', switch to MLBB, then tap that icon on the minimap within 5 seconds. " +
-            "Up to 4 samples per type. Also set the minimap corners (in-game buttons calibration). " +
-            "With 'Show what the AI sees' on, your icon, camps and enemy towers (with range) are drawn on the minimap.", 12f, color = "#9AA0A6")
+        text("Minimap misread? Pick an icon type, tap 'Pick it on the game', then tap that icon on the minimap within 5 s.", 12f, color = "#9AA0A6")
         val kinds = com.example.mlbbresearch.vision.MinimapColors.Kind.values()
         var kindIdx = 0
         val kindBtn = btn("") { kindIdx = (kindIdx + 1) % kinds.size }
@@ -1449,10 +1762,13 @@ class MainActivity : Activity() {
         }
         btn("Clear the samples of this icon type") { com.example.mlbbresearch.vision.MinimapColors.clear(kinds[kindIdx]); toast("Cleared") }
 
-        title("PRESETS (one per phone or MLBB button layout)")
+        title("Presets")
         val active = text("", 13f)
         upd { active.text = "Active preset: " + Cfg.activePreset.ifEmpty { "none (current positions)" } }
-        val nameBox = EditText(this).apply { hint = "Preset name"; setTextColor(Color.WHITE); setHintTextColor(Color.GRAY) }
+        val nameBox = EditText(this).apply {
+            hint = "Preset name"; setTextColor(c(T.TEXT)); setHintTextColor(c(T.MUTED))
+            background = shape(T.SURF2, 10, T.STROKE); setPadding(dp(12), dp(10), dp(12), dp(10))
+        }
         content.addView(nameBox)
         btn("Save current positions as a preset") {
             if (Layout.savePreset(nameBox.text.toString())) { toast("Preset saved"); show("setup") } else toast("Type a name first")
@@ -1462,11 +1778,11 @@ class MainActivity : Activity() {
             row.addView(TextView(this).apply { text = name; setTextColor(Color.WHITE); textSize = 14f },
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             row.addView(Button(this).apply {
-                text = "Load"; isAllCaps = false
+                text = "Load"; styleButton(this)
                 setOnClickListener { if (Layout.loadPreset(name)) { toast("Loaded $name"); show("setup") } }
             })
             row.addView(Button(this).apply {
-                text = "Delete"; isAllCaps = false
+                text = "Delete"; styleButton(this); setTextColor(c(T.RED))
                 setOnClickListener {
                     AlertDialog.Builder(this@MainActivity).setTitle("Delete preset $name?")
                         .setPositiveButton("Delete") { _, _ -> Layout.deletePreset(name); show("setup") }
@@ -1477,7 +1793,7 @@ class MainActivity : Activity() {
         }
 
         title("TYPE POSITIONS BY HAND")
-        text("Values are x,y in % of the screen (landscape). 'Show markers' draws them on the game without blocking it.", 12f, color = "#9AA0A6")
+        text("x,y in % of the screen. 'Show markers' draws them on the game.", 12f, color = "#9AA0A6")
         switch("Show markers on the game", AccessibilityController.instance?.overlay?.markersOn == true) { on ->
             val o = AccessibilityController.instance?.overlay
             if (o == null) toast("Turn on the accessibility service first") else {
