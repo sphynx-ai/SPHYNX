@@ -5,7 +5,7 @@ import kotlin.math.hypot
 
 // Merges the whole-screen detector's finds into what the colour vision saw (only fills gaps,
 // never removes anything):
-//  - creep / buff / turtle / lord boxes with no HP bar near them = monsters nobody has hit yet:
+//  - monster boxes (lord, turtle, fiery_hound, thunder_fenrir, small camps...) with no HP bar near them = monsters nobody has hit yet:
 //    added at full HP, so the AI walks up and starts the fight instead of waiting for a bar
 //  - bush boxes = extra bushes (for hiding / ambush); wall boxes = wall cells (to steer around)
 //  - an enemy tower box when no range circle is on screen = a circle of the usual size around its
@@ -28,12 +28,19 @@ object ScreenIntel {
         var nm = 0; var nb = 0; var nw = 0
         for (d in det) {
             when (d.label) {
-                "creep", "buff", "turtle", "lord" -> {
-                    // the body's middle; a monster bar of the colour vision sits above it
-                    if (mons.any { abs(it.x - d.cx) < (d.right - d.left) * 0.7f && abs(it.y - d.cy) < (d.bottom - d.top) * 0.8f }) continue
-                    val boss = d.label == "turtle" || d.label == "lord"
+                in com.example.mlbbresearch.game.JungleDb.IDS, "creep", "buff" -> {
+                    // the body's middle; a monster bar of the colour vision sits above it: the
+                    // detector's name for it is kept when the colour vision could not tell
+                    val near = mons.indexOfFirst { abs(it.x - d.cx) < (d.right - d.left) * 0.7f && abs(it.y - d.cy) < (d.bottom - d.top) * 0.8f }
+                    val named = d.label in com.example.mlbbresearch.game.JungleDb.IDS && d.label != com.example.mlbbresearch.game.JungleDb.CREEP.id
+                    if (near >= 0) {
+                        if (named && (mons[near].species.isEmpty() || mons[near].species == com.example.mlbbresearch.game.JungleDb.CREEP.id))
+                            mons[near] = mons[near].copy(species = d.label)
+                        continue
+                    }
+                    val boss = com.example.mlbbresearch.game.JungleDb.isBoss(d.label)
                     val top = d.top
-                    mons.add(Seen(Team.NEUTRAL, boss, d.cx, d.cy, 1f, d.left, top, d.right, top + 0.01f)); nm++
+                    mons.add(Seen(Team.NEUTRAL, boss, d.cx, d.cy, 1f, d.left, top, d.right, top + 0.01f, if (named) d.label else "")); nm++
                 }
                 "bush" -> if (bs.none { hypot(it.x - d.cx, it.y - d.cy) < 0.06f }) { bs.add(Bush(d.cx, d.cy, 4)); nb++ }
                 "wall" -> {
@@ -43,7 +50,7 @@ object ScreenIntel {
                             if (!ws[gy * 40 + gx]) { ws[gy * 40 + gx] = true; nw++ }
                         }
                 }
-                "tower_enemy" -> if (r.zone == TowerRing.Zone.NONE) {
+                "tower_enemy", "tower_enemy_plated" -> if (r.zone == TowerRing.Zone.NONE) {
                     // its base: the bottom of the box; the range circle about as big as measured on screen
                     val cx = d.cx; val cy = d.bottom - 0.03f
                     val rx = 0.22f; val ry = 0.34f

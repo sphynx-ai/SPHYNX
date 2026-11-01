@@ -379,7 +379,7 @@ in reach: secured first unless a good fight is on) -> then the role's own order:
   circle counts as red / yellow for hero fights, and the engagement score drops by 30.
 - Tank: +15 to start a fight when an ally is near. Support: -20 alone; in a fight it stays between its ally and the
   enemy.
-- Jungle: own blue / red buff always counts as closer when choosing the next camp.
+- Jungle: own purple buff (Thunder Fenrir) / orange buff (Fiery Hound) always counts as closer when choosing the next camp.
 
 ## Tactical network: only the reliable parts are used (v33)
 
@@ -405,11 +405,12 @@ in reach: secured first unless a good fight is on) -> then the role's own order:
 ## Whole-screen detector (v31)
 
 A second trained detector looks at the WHOLE screen (the first one only reads the minimap). Classes: hero_ally,
-hero_enemy, hero_self, minion_ally, minion_enemy, creep, buff, turtle, lord, tower_enemy, tower_ally, bush, wall.
+hero_enemy, hero_self, minion_ally, minion_enemy, lord, turtle, fiery_hound, thunder_fenrir, lava_golem, horned_lizard, fire_beetle,
+lithowanderer, crab, cyclone_eye, jungle_creep, tower_ally, tower_ally_plated, tower_enemy, tower_enemy_plated, base_ally, base_enemy, bush, wall.
 
 1. Play with *Collect detector training pictures* on (Learn page): every 10 s (200 a day) the whole screen is saved
    with boxes drawn from the colour vision into `Download/MLBB-Research/screen_dataset` (heroes and minions from
-   their HP bars and team colour, creeps / buffs from monster bars and the camp type, turtle / lord from the boss bar
+   their HP bars and team colour, jungle monsters by name from their bars (see "Jungle monsters" below)
    and the minimap icons, enemy towers from the range circle, bushes and walls from the bush / wall finder). Only
    the colour vision's finds are used, never the screen detector's own (it would learn its own mistakes).
 2. Quick: zip `screen_dataset`, open `notebooks/train_screen_detector.ipynb` in Colab (T4 GPU), run all, choose the
@@ -418,7 +419,7 @@ hero_enemy, hero_self, minion_ally, minion_enemy, creep, buff, turtle, lord, tow
 3. Put `mlbb_screen_detector.tflite` and `screen_labels.txt` in Download/MLBB-Research; the app loads them.
 
 What the AI does with it (only filling gaps in the colour vision):
-- creeps, buffs, turtle, lord with no HP bar near them = monsters nobody has hit yet: the AI walks up and attacks
+- jungle monsters with no HP bar near them = monsters nobody has hit yet: the AI walks up and attacks
 - extra bushes (hiding, ambush) and wall cells (steering around them)
 - an enemy tower whose circle is not on screen: a circle of the usual size around it (red inside, green with our
   minions there, yellow otherwise), so the tower rules still apply
@@ -816,6 +817,34 @@ when you start watching are read right from the first frame.
 
 Not read: their items and gold (shown in the panel, not used by the tactical network), basic attacks directly,
 and aiming (no indicators on the live screen).
+
+## Jungle monsters by name (v36.4)
+
+There is no "blue buff" / "red buff": the buffs are the **purple buff (Thunder Fenrir)** and the **orange buff
+(Fiery Hound)**. The app's monster list (game/JungleDb.kt):
+
+| Name | Kind | Looks like |
+|---|---|---|
+| Lord | objective | a human-like giant holding a trident |
+| Turtle | objective | a giant turtle |
+| Fiery Hound (orange buff) | buff | a fire monster with orange flames |
+| Thunder Fenrir (purple buff) | buff | a purple monster with a cub beside it |
+| Lava Golem | camp | a human-like rock |
+| Horned Lizard | camp | a lizard |
+| Fire Beetle, Lithowanderer, Crab, Cyclone Eye | camp / river | (see the wiki) |
+
+How the colour vision names them (measured on 20 screenshots): the HP bar's full width inside its orange frame
+(Lord / Turtle 0.10+ and 5 rows thick with a purple skull icon; buffs 0.078-0.095; small camps less), then Lord or
+Turtle by the pit you stand by, the buffs by body colour (orange vs blue / lavender), the Horned Lizard by colour.
+A long red bar without the skull is not a boss (82 false "turtles" on old gameplay frames are gone), and a bar with a
+red turret emblem is a turret, not the Lord. The other small camps are `jungle_creep` until the trained screen
+detector names them: rename those boxes in Roboflow.
+
+Turrets: outer turrets have a gold energy shield (yellow HP bar) until 5:00 (`tower_enemy_plated` /
+`tower_ally_plated`), then `tower_enemy` / `tower_ally`; the base is `base_enemy` / `base_ally`.
+
+The fandom wiki (HP, gold, spawn times) could not be read from the build environment (network blocked): those numbers
+are not in the app yet.
 
 ## How it is organised (matches your note)
 

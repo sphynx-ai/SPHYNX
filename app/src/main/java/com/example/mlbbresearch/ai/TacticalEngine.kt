@@ -580,7 +580,9 @@ object TacticalEngine {
             if (threat.isNotEmpty() && (eng >= 70f || surv < 40f)) return null
             val creep = s.creeps.minByOrNull { s.distToSelf(it.x, it.y) } ?: return null
             return hitMonster(s, p, creep, Cfg.retriCreepPct, Intent.JUNGLE,
-                (if (JungleNav.atBuff) "our buff" else "jungle monster") + " HP ${(creep.hp * 100).toInt()}%")
+                (com.example.mlbbresearch.game.JungleDb.byId(creep.species)?.let { m ->
+                    m.name + if (m.aliases.isNotEmpty()) " (${m.aliases.first()})" else ""
+                } ?: if (JungleNav.atBuff) "our buff" else "jungle monster") + " HP ${(creep.hp * 100).toInt()}%")
         }
 
         fun jungleRoute(): TacticalDecision? {
