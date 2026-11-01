@@ -20,8 +20,9 @@ class MainApplication : Application() {
         // load the trained detector / tactical network added before
         Thread { if (com.example.mlbbresearch.vision.ObjectDetector.modelFile(this).exists()) com.example.mlbbresearch.vision.ObjectDetector.load(this) }.start()
         Thread { if (com.example.mlbbresearch.vision.ScreenDetector.modelFile(this).exists()) com.example.mlbbresearch.vision.ScreenDetector.load(this) }.start()
-        com.example.mlbbresearch.learning.PolicyNet.applyInfo(Cfg.raw("policy_info"))
-        Thread { if (com.example.mlbbresearch.learning.PolicyNet.modelFile(this).exists()) com.example.mlbbresearch.learning.PolicyNet.load(this) }.start()
+        // the tactical networks (one per hero + all heroes): the right one loads when your hero is known
+        com.example.mlbbresearch.learning.PolicyNet.init(this)
+        Thread { com.example.mlbbresearch.learning.PolicyNet.load(this) }.start()
         // and pick up anything new in the MLBB-Research folder (model, detector, network, Groq key)
         com.example.mlbbresearch.models.AutoFolder.scan(this)
     }
