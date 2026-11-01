@@ -110,7 +110,9 @@ object Utility {
         if (protector && !engager && s.alliesWithin(0.5f).isEmpty()) add(-20f, "protector: not without allies")
         // late-game carries avoid even fights early; early-game heroes press before their power fades
         if (com.example.mlbbresearch.game.WikiLanes.lateGame(s.ownHero) && s.matchSec in 0 until 600) add(-8f, "late-game hero: patience early")
-        if (com.example.mlbbresearch.game.WikiLanes.earlyGame(s.ownHero) && s.matchSec in 0 until 480) add(6f, "strong early")
+        val needPurple = com.example.mlbbresearch.game.WikiLanes.needPurpleFirst.any { it.equals(s.ownHero, ignoreCase = true) }
+        if (needPurple && s.matchSec in 0 until 120) add(-12f, "weak until the Purple Buff")
+        else if (com.example.mlbbresearch.game.WikiLanes.earlyGame(s.ownHero) && s.matchSec in 0 until 480) add(6f, "strong early")
         if (s.enemyLevel > 0) add((s.level - s.enemyLevel).coerceIn(-3, 3) * 5f, "level difference")
         else if (s.level < 4) add(-10f, "no ultimate yet")
         if (k.has(Passive.LOW_HP_POWER) && hp < 0.5f) add(10f, "passive: stronger when hurt")

@@ -859,7 +859,7 @@ class MainActivity : Activity() {
             val hero = GameStateTracker.ownHero()
             know.text = "Your hero ($hero) in the wiki's laning lists: ${com.example.mlbbresearch.game.WikiLanes.describe(hero)}\n" +
                 "Timeline: " + com.example.mlbbresearch.game.MatchEvents.ALL.joinToString("; ") { "%d:%02d %s".format(it.sec / 60, it.sec % 60, it.what) } + "\n" +
-                "Role tip now (${st.lane.label}): " + com.example.mlbbresearch.game.RoleTips.of(st.lane, st.matchSec.coerceAtLeast(0)) + "\n" +
+                "Role tip now (${st.lane.label}): " + com.example.mlbbresearch.game.RoleTips.of(st.lane, st.matchSec.coerceAtLeast(0), st.ownHero) + "\n" +
                 (st.spell?.let { sp -> "Battle spell $sp: ${com.example.mlbbresearch.game.SpellInfo.effect[sp] ?: "-"} (cooldown ${com.example.mlbbresearch.game.SpellInfo.cooldown[sp]?.toInt() ?: "?"} s)\n" } ?: "") +
                 "Jungle:\n" + com.example.mlbbresearch.game.JungleDb.describe()
         }
