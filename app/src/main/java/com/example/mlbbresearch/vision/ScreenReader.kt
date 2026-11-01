@@ -7,8 +7,23 @@ import kotlin.math.max
 import kotlin.math.min
 
 // Which MLBB screen is showing, read from colours only (no Gemma needed).
-// Measured on the hero-select, loading, shop, scoreboard and big-map screens.
-enum class ScreenHint { NONE, HERO_SELECT, LOADING, SHOP, SCOREBOARD, MAP }
+// Measured on screenshots of every screen from the home screen to the match-end scoreboard.
+enum class ScreenHint(val label: String) {
+    NONE("match view / unknown"),
+    HOME("home screen"),
+    LOBBY("lobby (Start Game)"),
+    QUEUE("match found (Enter)"),
+    HERO_SELECT("hero select: choosing"),
+    HERO_LOCKED("hero select: hero locked in"),
+    LOADING("loading"),
+    DEAD("death screen (respawn countdown)"),
+    SHOP("equipment shop"),
+    SCOREBOARD("in-game scoreboard"),
+    MAP("big map"),
+    RESULT_SPLASH("match end: Victory / Defeat"),
+    RESULT_STATS("match end: MVP / ratings"),
+    RESULT_BOARD("match end: scoreboard")
+}
 
 // Small HUD facts read every frame
 class HudInfo(
@@ -68,6 +83,10 @@ object ScreenReader {
             y += step
         }
         return if (n == 0) 0f else hit.toFloat() / n
+    }
+
+    private fun avgLum(px: IntArray, w: Int, h: Int, l: Float, t: Float, rr: Float, bb: Float): Int {
+        val a = avg(px, w, h, l, t, rr, bb); return (a[0] * 3 + a[1] * 6 + a[2]) / 10
     }
 
     // average r, g, b of a region
@@ -141,21 +160,87 @@ object ScreenReader {
 
     // ---------------- which screen ----------------
 
-    fun classify(px: IntArray, w: Int, h: Int): ScreenHint {
-        // hero select / draft: the big golden Confirm button (bottom right by default)
-        val (cx, cy) = Layout.get("lockIn")
-        val confirm = fraction(px, w, h, cx - 0.05f, cy - 0.02f, cx + 0.05f, cy + 0.02f, 2) { isGold(it) }
-        if (confirm > 0.45f) return ScreenHint.HERO_SELECT
+    // the cream-gold of the "VICTORY" letters (the buttons' gold is deeper)
+    private fun isPaleGold(p: Int) = r(p) >= 190 && g(p) >= 165 && b(p) in 110..200 && r(p) - b(p) >= 35
+    // the light-blue buttons of the match-end screens (Data, Quit, Confirm)
+    private fun isButtonBlue(p: Int) = b(p) >= 215 && g(p) >= 165 && r(p) in 90..190 && b(p) - r(p) >= 50
+    // the grey (not yet pressable) Confirm button of hero select
+    private fun isButtonGrey(p: Int) = r(p) in 115..170 && abs(g(p) - r(p)) <= 14 && b(p) - r(p) in -5..24
+    // the orange-red V-shaped ornament around the respawn countdown
+    private fun isEmber(p: Int) = r(p) >= 135 && r(p) - g(p) >= 70 && g(p) <= 85 && b(p) <= 70
+    private fun isLoadBlue(p: Int) = b(p) >= 150 && b(p) - r(p) >= 110 && g(p) in 80..150
+    private fun isLoadRed(p: Int) = r(p) >= 95 && g(p) <= 45 && b(p) <= 45
+    private fun isDark(p: Int) = lum(p) < 80
 
-        // loading: a row of blue progress bars (my team) and a row of red ones (enemies)
+    // Win or loss of the last match end screen: true = VICTORY (gold letters), false = no gold
+    // letters (DEFEAT; not measured on a real defeat screen yet), null = no match end seen
+    @Volatile var lastResultWin: Boolean? = null
+        private set
+
+    fun classify(px: IntArray, w: Int, h: Int): ScreenHint {
+        fun f(l: Float, t: Float, r: Float, b: Float, test: (Int) -> Boolean) = fraction(px, w, h, l, t, r, b, 2, test)
+
+        // menus darken the middle of the screen (76%+ measured); the match view does not (41-59%):
+        // keeps skill effects and blue / red ground from looking like a menu
+        val midDark = f(0.10f, 0.25f, 0.90f, 0.85f) { isDark(it) } > 0.7f
+
+        // ---- match end (dark screens with their own buttons): before anything else ----
+        val quit = f(0.82f, 0.885f, 0.935f, 0.95f) { isButtonBlue(it) }
+        val data = f(0.07f, 0.885f, 0.18f, 0.95f) { isButtonBlue(it) }
+        if (midDark && quit > 0.15f && data > 0.15f) {                       // scoreboard with Data + Quit
+            lastResultWin = f(0.40f, 0.03f, 0.60f, 0.13f) { isPaleGold(it) } > 0.05f
+            return ScreenHint.RESULT_BOARD
+        }
+        val confirmBlue = f(0.77f, 0.885f, 0.89f, 0.95f) { isButtonBlue(it) }
+        if (midDark && confirmBlue > 0.18f && data < 0.08f) {                // MVP / ratings with Confirm
+            lastResultWin = f(0.15f, 0.10f, 0.34f, 0.18f) { isPaleGold(it) } > 0.06f
+            return ScreenHint.RESULT_STATS
+        }
+        val cornersDark = f(0f, 0f, 0.25f, 0.30f) { isDark(it) } > 0.8f && f(0.75f, 0.70f, 1f, 1f) { isDark(it) } > 0.8f
+        val banner = f(0.33f, 0.40f, 0.68f, 0.56f) { isPaleGold(it) }
+        if (cornersDark && banner > 0.10f) {                      // the big VICTORY letters
+            lastResultWin = true
+            return ScreenHint.RESULT_SPLASH
+        }
+
+        // ---- before the match ----
+        // home: the big gold CLASSIC / RANKED button, taller than the hero-select Confirm
+        val homeBtn = f(0.76f, 0.87f, 0.97f, 0.97f) { isGold(it) }
+        val homeTop = f(0.80f, 0.875f, 0.95f, 0.905f) { isGold(it) }
+        if (homeBtn > 0.45f && homeTop > 0.35f) return ScreenHint.HOME
+        // lobby: the gold Start Game button (bottom, left of the middle)
+        if (homeBtn < 0.2f && f(0.27f, 0.80f, 0.48f, 0.86f) { isGold(it) } > 0.45f) return ScreenHint.LOBBY
+        // match found: the gold Enter button (bottom middle)
+        if (homeBtn < 0.2f && f(0.40f, 0.85f, 0.60f, 0.91f) { isGold(it) } > 0.45f) return ScreenHint.QUEUE
+
+        // hero select: the Confirm button (bottom right): gold when a hero is chosen, grey otherwise;
+        // the right panel shows the Hero tab while choosing and the Skins tab once locked in
+        val (cx, cy) = Layout.get("lockIn")
+        val confirm = f(cx - 0.05f, cy - 0.02f, cx + 0.05f, cy + 0.02f) { isGold(it) }
+        val greyBtn = f(0.80f, 0.925f, 0.945f, 0.975f) { isButtonGrey(it) }
+        if (confirm > 0.45f) return ScreenHint.HERO_SELECT
+        if (greyBtn > 0.6f && f(0.80f, 0.10f, 0.96f, 0.88f) { isDark(it) } > 0.55f) {
+            val heroTab = avgLum(px, w, h, 0.80f, 0.01f, 0.87f, 0.065f)
+            val skinsTab = avgLum(px, w, h, 0.88f, 0.01f, 0.95f, 0.065f)
+            return if (skinsTab > heroTab + 10) ScreenHint.HERO_LOCKED else ScreenHint.HERO_SELECT
+        }
+
+        // loading: progress bars under my team's cards (blue) and the enemies' (red); two layouts
         val blue = fraction(px, w, h, 0.07f, 0.38f, 0.58f, 0.40f, 2) { isBlueBar(it) }
         val red = fraction(px, w, h, 0.40f, 0.92f, 0.90f, 0.94f, 2) { isRedBar(it) }
         if (blue > 0.35f && red > 0.35f) return ScreenHint.LOADING
+        if (f(0.06f, 0.44f, 0.66f, 0.455f) { isLoadBlue(it) } > 0.15f && f(0.33f, 0.955f, 0.93f, 0.972f) { isLoadRed(it) } > 0.12f)
+            return ScreenHint.LOADING
+
+        // ---- in the match ----
+        // dead: the orange-red V around the respawn countdown (left wing, right wing and its tip)
+        if (f(0.415f, 0.695f, 0.45f, 0.725f) { isEmber(it) } > 0.04f && f(0.55f, 0.695f, 0.585f, 0.725f) { isEmber(it) } > 0.04f &&
+            f(0.485f, 0.74f, 0.515f, 0.765f) { isEmber(it) } > 0.03f) return ScreenHint.DEAD
 
         // scoreboard: the "VS" header is blue on the left and red on the right
         val left = avg(px, w, h, 0.15f, 0.15f, 0.35f, 0.20f)
         val right = avg(px, w, h, 0.62f, 0.15f, 0.85f, 0.20f)
-        if (left[2] - left[0] >= 30 && right[0] - right[2] >= 20) return ScreenHint.SCOREBOARD
+        if (midDark && left[2] - left[0] >= 30 && right[0] - right[2] >= 20) return ScreenHint.SCOREBOARD
 
         // shop: a big dark panel over the middle of the screen (measured: the shop 93% dark;
         // dark jungle and the lord pit in play reach 66-79%, so the line sits at 86%)
@@ -164,6 +249,7 @@ object ScreenReader {
 
         // big map: a column of 5 enemy portraits with dark red rings right of the map
         var rings = 0
+        var hitsAll = 0
         val rx = 0.021f
         val ry = rx * w / h
         for (cy in floatArrayOf(0.144f, 0.26f, 0.378f, 0.494f, 0.605f)) {
@@ -174,8 +260,11 @@ object ScreenReader {
                 isPortraitRed(px[yi * w + xi])
             }
             if (hits >= 2) rings++
+            hitsAll += hits
         }
-        if (rings >= 3) return ScreenHint.MAP
+        // real map: 17 of the 20 points (top portraits complete); a red fire effect in the middle
+        // of the match view reached 3 rings but only 7-8 points
+        if (rings >= 3 && hitsAll >= 12) return ScreenHint.MAP
         return ScreenHint.NONE
     }
 

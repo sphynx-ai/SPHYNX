@@ -74,8 +74,8 @@ object ButtonDetector {
             if (gold != null && gold.w > 0.06f) found["lockIn"] = gold.cx to gold.cy else notes.add("Confirm button not found")
             return Result(found, report(found, notes, "hero select"))
         }
-        if (hint == ScreenHint.LOADING || hint == ScreenHint.SHOP || hint == ScreenHint.SCOREBOARD) {
-            return Result(found, "This is the ${hint.name.lowercase()} screen, not the match view: go back to the match and detect again")
+        if (hint != ScreenHint.NONE && hint != ScreenHint.MAP) {
+            return Result(found, "This is the ${hint.label} screen, not the match view: go back to the match and detect again")
         }
 
         // MLBB's HUD scales with the screen HEIGHT and hangs off the corners, so with the

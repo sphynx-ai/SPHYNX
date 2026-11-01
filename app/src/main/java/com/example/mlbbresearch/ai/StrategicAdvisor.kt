@@ -69,7 +69,7 @@ object StrategicAdvisor {
             return
         }
         // 1b. Which hero / battle spell did I pick? (hero select and loading screens)
-        val pickPhase = s.phase == Phase.DRAFT || s.phase == Phase.LOADING
+        val pickPhase = s.phase == Phase.DRAFT || s.phase == Phase.HERO_LOCKED || s.phase == Phase.LOADING
         if ((playerOn || builderOn) && pickPhase && GameStateTracker.draftedHero == null && now - lastIdentify >= 6000) {
             lastIdentify = now
             runIdentify(s.phase)
@@ -228,7 +228,7 @@ object StrategicAdvisor {
     private suspend fun runIdentify(phase: Phase) {
         if (!GemmaEngine.visionOk) return
         val img = FrameHub.bitmap() ?: return
-        val where = if (phase == Phase.DRAFT) "This is the hero select screen. The hero I selected has its name written in big letters at the top."
+        val where = if (phase == Phase.DRAFT || phase == Phase.HERO_LOCKED) "This is the hero select screen. The hero I selected has its name written in big letters at the top."
                     else "This is the loading screen. My card is the first one on the top row, the one with my player name."
         val prompt = "Mobile Legends: Bang Bang screenshot. $where " +
             "Reply with ONLY one JSON object, no other words: {\"hero\":\"my hero's name or unknown\",\"spell\":\"my battle spell name or unknown\"}"

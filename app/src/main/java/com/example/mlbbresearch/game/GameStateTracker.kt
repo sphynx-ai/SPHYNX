@@ -173,15 +173,29 @@ object GameStateTracker {
             v.self != null -> Phase.IN_GAME
             hint == ScreenHint.SHOP && inMatch -> Phase.SHOP
             hint == ScreenHint.SCOREBOARD && inMatch -> Phase.SCOREBOARD
+            hint == ScreenHint.DEAD -> Phase.DEAD                // the respawn countdown
+            hint == ScreenHint.RESULT_SPLASH || hint == ScreenHint.RESULT_STATS || hint == ScreenHint.RESULT_BOARD -> Phase.RESULT
             now - lastSelfSeen < 3000 -> Phase.IN_GAME          // briefly hidden (effects)
             inMatch && v.saturation < 0.12f -> Phase.DEAD
             hint == ScreenHint.HERO_SELECT -> Phase.DRAFT
+            hint == ScreenHint.HERO_LOCKED -> Phase.HERO_LOCKED
             hint == ScreenHint.LOADING -> Phase.LOADING
+            hint == ScreenHint.HOME -> Phase.HOME
+            hint == ScreenHint.LOBBY -> Phase.LOBBY
+            hint == ScreenHint.QUEUE -> Phase.QUEUE
             now - gemmaScreenAt < 25_000 -> gemmaScreen
             else -> Phase.UNKNOWN
         }
         if (phase == Phase.SHOP || phase == Phase.SCOREBOARD || phase == Phase.MAP) lastInGame = now
-        if (phase == Phase.DRAFT) {
+        // match end (Victory / Defeat, MVP, final scoreboard): log the match once, with the result
+        val endScreen = hint == ScreenHint.RESULT_SPLASH || hint == ScreenHint.RESULT_STATS || hint == ScreenHint.RESULT_BOARD
+        if (endScreen && phase == Phase.RESULT && matchStartAt != 0L) {
+            lastResultWin = com.example.mlbbresearch.vision.ScreenReader.lastResultWin
+            logMatch()
+            matchStartAt = 0L
+            Diag.info("Match end: " + when (lastResultWin) { true -> "victory"; false -> "defeat"; null -> "result not read" })
+        }
+        if (phase == Phase.DRAFT || phase == Phase.HERO_LOCKED) {
             // first hero-select screen in 5 minutes = a new match: forget the old one
             if (now - lastSelectSeen > 300_000) newMatch()
             lastSelectSeen = now
@@ -245,10 +259,15 @@ object GameStateTracker {
 
     // New match: forget the previous one
     // the match that just ended goes into the evaluation log
+    // the last match end screen: true = victory, false = defeat, null = not seen
+    @Volatile var lastResultWin: Boolean? = null
+        private set
+
     private fun logMatch() {
         if (matchStartAt == 0L) return
         MatchLog.save(ownHero(), lane().first, kills, deaths, assists, com.example.mlbbresearch.vision.LevelReader.level,
-            ((lastInGame - matchStartAt) / 1000).toInt(), com.example.mlbbresearch.ai.AiRuntime.playerOn)
+            ((lastInGame - matchStartAt) / 1000).toInt(), com.example.mlbbresearch.ai.AiRuntime.playerOn, lastResultWin)
+        lastResultWin = null
     }
 
     fun newMatch() {
