@@ -1018,6 +1018,23 @@ How the small model plays (Model page switch "Small tactical model in fights", o
 - untrained, a 270M model's advice is rough (the checks catch the worst); the next step is a notebook that fine-tunes it
   on your recorded fights, using the same summary format
 
+## Training the small tactical model on your fights (v36.18)
+
+- the app now saves every fight choice (the Brain's, the small model's, or yours) with the exact summary the small model
+  is shown and how it went 4 s later (the Brain's score: damage dealt, kills, HP kept, death). Kept: the newest 30 000
+- Learn page: "Export fight moments (CSV)" -> Downloads/MLBB-Research/mlbb-fights-*.csv (and the count so far)
+- notebooks/train_tactical_llm.ipynb (Colab, T4 GPU): put the CSVs in My Drive/MLBB-Research (or upload them), add a
+  Hugging Face token as the HF_TOKEN secret (accept the Gemma licence on google/gemma-3-270m-it first), Run all
+  - answers it learns: choices that went well (yours count twice); your choices that were not a disaster; pushing on
+    that went badly -> GROUP (allies close) or RETREAT. No answer above 35% of the examples. Newest 15% kept for a test
+  - prints how often it is right on your newest fights vs always giving the most common answer
+  - continues from your last trained model (My Drive/MLBB-Research/tactical_llm) on every re-run
+  - makes gemma3-270m-mlbb-tactical.litertlm (int8, 256-token prompts, 512 tokens of memory), copied to Drive and
+    downloaded: put it in Download/MLBB-Research; the app puts it in the small-model slot by itself
+- tested here on a tiny stand-in model: loading, labelling, training, testing, saving, continuing, converting to
+  .litertlm, and running that file with the LiteRT-LM runtime. Not tested: the real Gemma 3 270M download and how well
+  it learns (that needs your fights). Versions that work together: litert-torch 0.10.0 + litert-lm-builder 0.18.1
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |

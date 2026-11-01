@@ -1113,7 +1113,8 @@ class MainActivity : Activity() {
         text("Put the downloaded files in  Download/MLBB-Research  and choose that folder once. The app copies, loads and " +
             "applies them by itself every time it starts:\n" +
             "  - strategic model: Gemma 4 E2B (or Gemma 3n E2B), the big  .litertlm  file (Gemma 4 is used when both are there)\n" +
-            "  - small tactical model (optional): Gemma 3 270M, a small  .litertlm  file (270m / 1b in the name, or under 1 GB)\n" +
+            "  - small tactical model (optional): Gemma 3 270M, a small  .litertlm  file (270m / 1b in the name, or under 1 GB);\n" +
+            "    trained on your fights: notebooks/train_tactical_llm.ipynb -> gemma3-270m-mlbb-tactical.litertlm\n" +
             "  - minimap detector:  mlbb_detector.tflite  +  labels.txt\n" +
             "  - screen detector:  mlbb_screen_detector.tflite  +  screen_labels.txt\n" +
             "  - tactical networks:  mlbb_policies.zip from the notebook (one per hero + all heroes; older policy.tflite works too)\n" +
@@ -1246,6 +1247,13 @@ class MainActivity : Activity() {
         }
         btn("Export my recorded play (CSV) - trains the tactical network") {
             DatasetManager.exportDemos(this) { msg -> runOnUiThread { toast(msg) } }
+        }
+        ExperienceRecorder.refreshFights()
+        val fightInfo = text("", 12f, color = "#9AA0A6")
+        upd { fightInfo.text = "Fight moments for the small tactical model: " + (if (ExperienceRecorder.fights < 0) "counting..." else "${ExperienceRecorder.fights}") +
+            " (each fight choice - the AI's, the small model's or yours - with how it went 4 s later)" }
+        btn("Export fight moments (CSV) - trains the small tactical model") {
+            DatasetManager.exportFights(this) { msg -> runOnUiThread { toast(msg) } }
         }
 
         title("LEARN FROM LIVE MATCHES (watching another player)")

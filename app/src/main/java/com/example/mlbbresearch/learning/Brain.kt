@@ -48,7 +48,8 @@ object Brain {
 
     private class Pending(
         val at: Long, val hero: String, val option: FightOption, val x: FloatArray, val byYou: Boolean,
-        val selfHp: Float, val enemyHp: Map<Int, Float>, val minions: Int
+        val selfHp: Float, val enemyHp: Map<Int, Float>, val minions: Int,
+        val summary: String = "", val lane: String = ""
     ) {
         // lowest HP each enemy was seen at during the fight (an enemy that vanishes after
         // being brought low was most likely killed)
@@ -163,8 +164,10 @@ object Brain {
     }
 
     private fun queue(s: GameState, o: FightOption, x: FloatArray, byYou: Boolean) {
+        // the same summary the small tactical model is shown: the fight moments it trains on
+        val summary = try { com.example.mlbbresearch.ai.TacticalAdvisor.summary(s, com.example.mlbbresearch.game.HeroDb.profile(s.ownHero)) } catch (e: Exception) { "" }
         pending.add(Pending(s.ts, s.ownHero ?: "unknown", o, x, byYou, s.selfHp,
-            s.enemiesWithin(1.2f).associate { it.id to it.hp }, s.enemyMinions.size))
+            s.enemiesWithin(1.2f).associate { it.id to it.hp }, s.enemyMinions.size, summary, s.lane.name))
         if (pending.size > 50) pending.removeAt(0)
     }
 
@@ -188,6 +191,7 @@ object Brain {
             learnedThisSession++
             changed = true
             note("${if (p.byYou) "you" else "AI"}: ${p.option.label} -> ${"%+.2f".format(r)}" + if (died) " (died)" else "")
+            if (p.summary.isNotEmpty()) ExperienceRecorder.recordFight(p.at, p.hero, p.lane, p.summary, p.option.name, p.byYou, r, died)
         }
         if (changed && learnedThisSession % 10 == 0) saveAll()
     }

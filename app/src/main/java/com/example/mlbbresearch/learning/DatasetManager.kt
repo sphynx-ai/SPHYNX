@@ -31,6 +31,12 @@ object DatasetManager {
         ctx, "live_demos", "mlbb-live", "id,ts,hero,features,move_x,move_y,casts,features2,source,lane,match_sec,died", done, heroType = true
     )
 
+    // fight moments for the small tactical model (notebooks/train_tactical_llm.ipynb): the summary
+    // it is shown, the option played, who chose it (1 = you) and how it went (the Brain's score)
+    fun exportFights(ctx: Context, done: (String) -> Unit) = exportTable(
+        ctx, "fights", "mlbb-fights", "id,ts,hero,lane,summary,option,by_you,reward,died", done
+    )
+
     // heroType: adds "hero_type" - the hero's 11 type numbers (role, ranged, starts fights, protects,
     // late / early game; PolicyNet.HeroType), so the notebook's all-heroes network knows what hero it is
     private fun exportTable(ctx: Context, table: String, prefix: String, cols: String, done: (String) -> Unit, heroType: Boolean = false) {
@@ -44,7 +50,8 @@ object DatasetManager {
                     for (i in 0 until c.columnCount) {
                         if (i > 0) sb.append(',')
                         val v = c.getString(i) ?: ""
-                        sb.append(if (v.contains(',')) "\"$v\"" else v)
+                        // standard CSV quoting (summaries hold commas, line breaks)
+                        sb.append(if (v.contains(',') || v.contains('"') || v.contains('\n')) "\"" + v.replace("\"", "\"\"") + "\"" else v)
                     }
                     if (heroType) {
                         val h = if (heroCol >= 0) c.getString(heroCol) ?: "" else ""

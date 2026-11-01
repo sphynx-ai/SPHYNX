@@ -11,7 +11,7 @@ import java.util.concurrent.Executors
 
 // Saves what the AI saw and did (one row about twice a second) into a local SQLite
 // database. PerformanceEvaluator later scores each row: did it help or hurt?
-class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "experiences.db", null, 5) {
+class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "experiences.db", null, 6) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE experiences (" +
@@ -21,6 +21,17 @@ class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "exp
         )
         createDemos(db)
         createLive(db)
+        createFights(db)
+    }
+
+    // v6: fight moments for the small tactical model: the summary it is shown, the option played
+    // (by the Brain, the small model or you) and how it went 4 s later (the Brain's score)
+    private fun createFights(db: SQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS fights (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, hero TEXT, lane TEXT, summary TEXT, " +
+                "option TEXT, by_you INTEGER, reward REAL, died INTEGER)"
+        )
     }
 
     // v4: moments from live matches you watched (another player's hero)
@@ -49,6 +60,7 @@ class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "exp
         // v5: died = 1 on the moments of the 6 s before the hero died
         if (oldVersion in 2..4) try { db.execSQL("ALTER TABLE demos ADD COLUMN died INTEGER DEFAULT 0") } catch (e: Exception) { }
         if (oldVersion == 4) try { db.execSQL("ALTER TABLE live_demos ADD COLUMN died INTEGER DEFAULT 0") } catch (e: Exception) { }
+        if (oldVersion < 6) createFights(db)
     }
 }
 
@@ -130,4 +142,29 @@ object ExperienceRecorder {
     }
 
     fun refreshCount() = io.execute { count = countRows() }
+
+    // one judged fight moment (kept to the newest 30 000)
+    @Volatile var fights = -1L
+        private set
+    fun recordFight(ts: Long, hero: String, lane: String, summary: String, option: String, byYou: Boolean, reward: Float, died: Boolean) {
+        val h = db ?: return
+        io.execute {
+            try {
+                val w = h.writableDatabase
+                w.insert("fights", null, ContentValues().apply {
+                    put("ts", ts); put("hero", hero); put("lane", lane); put("summary", summary); put("option", option)
+                    put("by_you", if (byYou) 1 else 0); put("reward", reward); put("died", if (died) 1 else 0)
+                })
+                if (fights < 0 || fights % 500 == 0L) {
+                    w.execSQL("DELETE FROM fights WHERE id <= (SELECT MAX(id) FROM fights) - 30000")
+                    fights = w.rawQuery("SELECT COUNT(*) FROM fights", null).use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
+                } else fights++
+            } catch (e: Exception) {
+                Diag.error("Learning: could not save a fight moment", e)
+            }
+        }
+    }
+    fun refreshFights() = io.execute {
+        fights = try { db?.readableDatabase?.rawQuery("SELECT COUNT(*) FROM fights", null)?.use { c -> if (c.moveToFirst()) c.getLong(0) else 0L } ?: 0L } catch (e: Exception) { 0L }
+    }
 }
