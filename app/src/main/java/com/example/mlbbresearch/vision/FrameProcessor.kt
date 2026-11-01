@@ -122,7 +122,7 @@ object FrameProcessor {
         val brightness = HashMap<String, Float>()
         if (live) {
             // their skill / spell icons in the panel (they darken while cooling down)
-            for ((k, c) in ScreenReader.LIVE_ICONS) brightness[k] = ScreenReader.iconBrightness(px, w, h, c.first, c.second)
+            for ((k, c) in ScreenReader.LIVE_ICONS) brightness[k] = ScreenReader.iconColour(px, w, h, c.first, c.second)
         } else if (Cfg.readCooldownsFromScreen || trackPlayer) {
             for (k in listOf("s1", "s2", "ult", "spell", "recall", "regen")) {
                 val (fx, fy) = Layout.get(k)

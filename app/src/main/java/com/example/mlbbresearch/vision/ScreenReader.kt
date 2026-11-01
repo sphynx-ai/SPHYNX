@@ -290,13 +290,23 @@ object ScreenReader {
     // ---------------- live match (watching another player's game) ----------------
     // The bottom panel: navy, with their portrait, level, a green HP line, K/D/A, skill and spell
     // icons (they darken while cooling down), items and gold. Measured on a 2712 x 1220 screen.
-    private fun isPanelNavy(p: Int) = r(p) in 12..55 && g(p) in 32..85 && b(p) in 45..110 && b(p) - r(p) >= 18
+    // the panel is see-through: the field shows through it a little (greyer navy, a unit's bar)
+    private fun isPanelNavy(p: Int) = r(p) in 10..70 && g(p) in 28..95 && b(p) in 40..120 && b(p) - r(p) >= 10 && lum(p) < 90
     private fun isHpGreen(p: Int) = g(p) >= 140 && g(p) - max(r(p), b(p)) >= 40
     private fun isHpEmpty(p: Int) = max(r(p), max(g(p), b(p))) < 75 && max(r(p), max(g(p), b(p))) - min(r(p), min(g(p), b(p))) < 20
 
-    fun livePanel(px: IntArray, w: Int, h: Int): Boolean =
-        fraction(px, w, h, 0.36f, 0.848f, 0.80f, 0.858f, 2) { isPanelNavy(it) } > 0.9f &&
-            fraction(px, w, h, 0.43f, 0.869f, 0.61f, 0.876f, 2) { isHpGreen(it) || isHpEmpty(it) } > 0.85f
+    // the panel's top strip in 9 pieces: 6+ must look like the panel (a unit or effect passing
+    // behind can spoil a few), and the HP line must be green / empty grey all along.
+    // Measured: 8-9 pieces on 7 live screens; any other screen with 5+ pieces has a line of 0.28 at most.
+    fun livePanel(px: IntArray, w: Int, h: Int): Boolean {
+        if (fraction(px, w, h, 0.43f, 0.869f, 0.61f, 0.876f, 2) { isHpGreen(it) || isHpEmpty(it) } <= 0.85f) return false
+        var good = 0
+        for (i in 0 until 9) {
+            val l = 0.36f + i * 0.05f
+            if (fraction(px, w, h, l, 0.848f, l + 0.0499f, 0.858f, 2) { isPanelNavy(it) } >= 0.6f) good++
+        }
+        return good >= 6
+    }
 
     // their HP: the green share of the line (0..1), -1 when it cannot be read
     fun liveHp(px: IntArray, w: Int, h: Int): Float {
@@ -315,8 +325,10 @@ object ScreenReader {
     val LIVE_ICONS = linkedMapOf("s1" to (0.417f to 0.946f), "s2" to (0.462f to 0.946f), "ult" to (0.505f to 0.946f),
         "spell" to (0.564f to 0.946f))
 
-    // average brightness of an icon (a disc around its centre): drops when it starts cooling down
-    fun iconBrightness(px: IntArray, w: Int, h: Int, fx: Float, fy: Float): Float {
+    // how colourful an icon is (average max-min of r, g, b over a disc): a cooling skill is greyed
+    // out with its countdown on top. Measured on 7 live screens: ready s1 87 / s2 99 / spell 65-67;
+    // cooling s1 14-60, s2 70-84, spell 35-48 (brightness alone hardly changed for s2)
+    fun iconColour(px: IntArray, w: Int, h: Int, fx: Float, fy: Float): Float {
         val rad = 0.012f * w
         var sum = 0L; var n = 0
         val cx = fx * w; val cy = fy * h
@@ -324,7 +336,10 @@ object ScreenReader {
         while (y <= cy + rad) {
             var x = (cx - rad).toInt()
             while (x <= cx + rad) {
-                if (x in 0 until w && y in 0 until h && hypot(x - cx, y - cy) <= rad) { sum += lum(px[y * w + x]); n++ }
+                if (x in 0 until w && y in 0 until h && hypot(x - cx, y - cy) <= rad) {
+                    val p = px[y * w + x]
+                    sum += max(r(p), max(g(p), b(p))) - min(r(p), min(g(p), b(p))); n++
+                }
                 x += 2
             }
             y += 2

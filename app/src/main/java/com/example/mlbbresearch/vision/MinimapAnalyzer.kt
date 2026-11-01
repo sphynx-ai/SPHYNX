@@ -106,9 +106,10 @@ object MinimapAnalyzer {
         // enemy towers are red too: do not count them as enemy heroes
         if (live) {
             // live: enemy heroes are found by their RING shape (towers / base icons are small and solid)
-            val rings = liveRings(px, w, h) { r, g, b -> r > 170 && g < 110 && r - b > 60 && r - g > 80 }
+            // enemies: no size cap, a clump of overlapping portraits counts as several
+            val rings = liveRings(px, w, h, splitClumps = true) { r, g, b -> r > 170 && g < 110 && r - b > 60 && r - g > 80 }
             // ally rings are blue; the camera circles are cyan and far bigger than a portrait
-            val allyRings = liveRings(px, w, h) { r, g, b -> b > 170 && r < 120 && b - r > 70 }
+            val allyRings = liveRings(px, w, h, maxFrac = 0.032f) { r, g, b -> b > 170 && r < 120 && b - r > 70 }
             val (lord, turtle) = pits(px, w, h)
             // the watched hero: the camera circles are drawn around them
             val me = liveSelf(px, w, h, allyRings)
@@ -158,6 +159,22 @@ object MinimapAnalyzer {
         }
         val fx = (cx / (x1 + 1)).toFloat(); val fy = (cy / (y1 + 1)).toFloat()
         if (fx !in 0f..1f || fy !in 0f..1f) return null
+        // a real camera circle: a plausible size, 100+ cyan points on it, seen all around (12+ of
+        // 18 directions). Without it (the circles are often not drawn) the position stays unknown.
+        val rr = rad / (x1 + 1)
+        if (rr !in 0.12..0.45) return null
+        var inl = 0
+        val dirs = BooleanArray(18)
+        for (y in 0..y1) for (x in 0..x1) {
+            val p = px[y * w + x]
+            val r = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val b = p and 0xff
+            if (r < 150 && g > 190 && b > 210 && kotlin.math.abs(kotlin.math.hypot(x - cx, y - cy) - rad) < 2.0) {
+                inl++
+                val a = Math.toDegrees(kotlin.math.atan2(y - cy, x - cx)) + 180.0
+                dirs[(a / 20.0).toInt().coerceIn(0, 17)] = true
+            }
+        }
+        if (inl < 100 || dirs.count { it } < 12) return null
         val near = rings.minByOrNull { kotlin.math.hypot(it.first - fx, it.second - fy) }
         return if (near != null && kotlin.math.hypot(near.first - fx, near.second - fy) < 0.1f) near else fx to fy
     }
@@ -174,7 +191,8 @@ object MinimapAnalyzer {
     // screen width across and mostly hollow (measured: rings 12-16 px wide at 800 px, 20-26%
     // filled; tower and base icons 2-8 px and 45-100% filled). Two overlapping portraits give
     // two arcs, so they still count as two.
-    private fun liveRings(px: IntArray, w: Int, h: Int, test: (Int, Int, Int) -> Boolean): List<Pair<Float, Float>> {
+    private fun liveRings(px: IntArray, w: Int, h: Int, maxFrac: Float = 1f, splitClumps: Boolean = false,
+                          test: (Int, Int, Int) -> Boolean): List<Pair<Float, Float>> {
         val x0 = (rect[0] * w).toInt(); val y0 = (rect[1] * h).toInt()
         val x1 = (rect[2] * w).toInt().coerceAtMost(w - 1); val y1 = (rect[3] * h).toInt().coerceAtMost(h - 1)
         val gw = x1 - x0 + 1; val gh = y1 - y0 + 1
@@ -185,7 +203,8 @@ object MinimapAnalyzer {
             m[y * gw + x] = test(r, g, b)
         }
         val minSide = (0.0125f * w).toInt().coerceAtLeast(4)
-        val maxSide = (0.032f * w).toInt()
+        val maxSide = (maxFrac * w).toInt()
+        val ring = 0.019f * w                         // one portrait ring, across
         val seen = BooleanArray(m.size)
         val stack = IntArray(m.size)
         val out = ArrayList<Pair<Float, Float>>()
@@ -208,7 +227,15 @@ object MinimapAnalyzer {
             }
             val bw = maxX - minX + 1; val bh = maxY - minY + 1
             if (maxOf(bw, bh) < minSide || maxOf(bw, bh) > maxSide || n.toFloat() / (bw * bh) > 0.35f) continue
-            out.add((sx.toFloat() / n / gw) to (sy.toFloat() / n / gh))
+            val k = if (splitClumps) Math.round(maxOf(bw, bh) / ring).coerceIn(1, 5) else 1
+            if (k == 1) { out.add((sx.toFloat() / n / gw) to (sy.toFloat() / n / gh)); continue }
+            // overlapping portraits: spread along the clump's longer side
+            for (j in 0 until k) {
+                val t = (j + 0.5f) / k
+                val cx = if (bw >= bh) minX + t * bw else (sx.toFloat() / n)
+                val cy = if (bw >= bh) (sy.toFloat() / n) else minY + t * bh
+                out.add((cx / gw) to (cy / gh))
+            }
         }
         return out
     }

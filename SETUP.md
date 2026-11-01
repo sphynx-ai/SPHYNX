@@ -788,10 +788,10 @@ live screen (its info panel along the bottom) and reads it like a match of yours
 |---|---|
 | Their hero | the blue HP bar in the middle (the camera follows them); HP from the green line in their panel |
 | Enemies, minions, monsters, bushes, tower circles | their screen, as in your matches |
-| Enemies on the map | the minimap (all enemies show in a live match): red portrait rings, not tower icons |
-| Their position on the map | the centre of the cyan camera circles on the minimap |
+| Enemies on the map | the minimap (all enemies show in a live match): red portrait rings, not tower icons; a clump of overlapping portraits counts as several |
+| Their position on the map | the centre of the cyan camera circles on the minimap, only when the circles are clearly drawn (otherwise unknown) |
 | Walking | the camera's motion (no joystick on screen) |
-| Skills / battle spell | the panel's skill and spell icons going dark (cooldown started); ready / cooling from the same icons |
+| Skills / battle spell | the panel's skill and spell icons greying out (cooldown started: their colour drops below 88% of normal); ready / cooling from the same icons |
 | Attack | standing still next to an enemy, minion or monster (basic attacks cannot be seen) |
 | Match time | the timer at the top, read by Gemma about once a minute (-1 without Gemma) |
 
