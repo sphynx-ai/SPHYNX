@@ -18,7 +18,7 @@ import kotlin.math.hypot
 //    screen, and the minimap (all enemies are shown there in a live match)
 //  - what they did:
 //      walking  = the camera's motion (it follows their hero; there is no joystick on screen)
-//      skills   = a skill / spell icon in the panel suddenly going dark (its cooldown started)
+//      skills   = a skill / spell icon in the panel suddenly greying out (its cooldown started)
 //      attack   = standing still next to an enemy / minion / monster (basic attacks cannot be seen)
 //  - their cooldowns (ready or not) come from the same icons, not from yours
 // Nothing here touches your own match: the phase is LIVE, the AI never plays on this screen.
@@ -63,8 +63,9 @@ object LiveRecorder {
             baseline[k] = if (b > base) b else base * 0.995f + b * 0.005f
             val prev = previous[k] ?: b
             previous[k] = b
-            ready[k] = b >= base * 0.82f
-            if (base > 40f && b < base * 0.72f && prev >= base * 0.82f) {
+            // colour strength of the icon: below 88% of its usual = cooling, 94%+ = ready
+            ready[k] = b >= base * 0.94f || (ready[k] == true && b >= base * 0.88f)
+            if (base > 20f && b < base * 0.88f && prev >= base * 0.94f) {
                 val bit = Casts.bySlot[k] ?: continue
                 pendingCasts = pendingCasts or bit
             }
