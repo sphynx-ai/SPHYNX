@@ -182,6 +182,7 @@ object ScreenReader {
     // (silver letters on red), null = no match end seen
     @Volatile var lastResultWin: Boolean? = null
         private set
+    fun clearResult() { lastResultWin = null }     // at each match start: no stale result
 
     fun classify(px: IntArray, w: Int, h: Int): ScreenHint {
         fun f(l: Float, t: Float, r: Float, b: Float, test: (Int) -> Boolean) = fraction(px, w, h, l, t, r, b, 2, test)

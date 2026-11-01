@@ -48,7 +48,10 @@ object GroqClient {
                     calls++
                     lastError = ""
                     lastSearched = search
-                    return@withContext parse(text)
+                    try { return@withContext parse(text) } catch (e: EmptyAnswer) {
+                        // an empty answer (often after a web search): try again, the last try without search
+                        lastError = "Groq gave an empty answer"; last = e; continue
+                    }
                 }
                 val err = try { JSONObject(text).getJSONObject("error") } catch (e: Exception) { null }
                 val msg = err?.optString("message") ?: text.take(200)
@@ -94,13 +97,20 @@ object GroqClient {
         }
     }
 
+    class EmptyAnswer : IllegalStateException("Groq gave an empty answer (tried again, also without web search)")
+
     // chat completion -> (answer text, sources from the web searches it ran)
     fun parse(json: String): Pair<String, List<String>> {
         val o = JSONObject(json)
         val msg = o.optJSONArray("choices")?.optJSONObject(0)?.optJSONObject("message")
             ?: throw IllegalStateException("Groq gave no answer")
-        val text = msg.optString("content", "")
-        if (text.isBlank()) throw IllegalStateException("Groq gave an empty answer")
+        var text = msg.optString("content", "")
+        // gpt-oss sometimes leaves "content" empty and writes the answer into its reasoning
+        if (text.isBlank()) {
+            val r = msg.optString("reasoning", "")
+            if (json(r) != null) text = r
+        }
+        if (text.isBlank()) throw EmptyAnswer()
         val sources = ArrayList<String>()
         val tools = msg.optJSONArray("executed_tools") ?: JSONArray()
         for (i in 0 until tools.length()) {
