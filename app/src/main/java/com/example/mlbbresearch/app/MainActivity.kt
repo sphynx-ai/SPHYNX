@@ -1125,7 +1125,7 @@ class MainActivity : Activity() {
             "  - Gemma 3n E2B model: the  .litertlm  file\n" +
             "  - minimap detector:  mlbb_detector.tflite  +  labels.txt\n" +
             "  - screen detector:  mlbb_screen_detector.tflite  +  screen_labels.txt\n" +
-            "  - tactical network:  policy.tflite  +  policy_info.json\n" +
+            "  - tactical networks:  mlbb_policies.zip from the notebook (one per hero + all heroes; older policy.tflite works too)\n" +
             "  - Groq API key:  groq_key.txt  (the key on the first line)", 13f)
         val c = card()
         val st = cardText(c, 14f, true)
@@ -1143,6 +1143,7 @@ class MainActivity : Activity() {
                 (if (com.example.mlbbresearch.vision.ScreenDetector.ready) ", ${com.example.mlbbresearch.vision.ScreenDetector.lastMs} ms per run; " +
                     com.example.mlbbresearch.vision.ScreenIntel.added else "") +
                 "\n${mark(pn.ready)} Tactical network: ${pn.state}" +
+                pn.available(this).let { if (it.isEmpty()) "" else "\n   on the phone: " + it.joinToString() } +
                 (if (pn.ready && pn.agreeRate >= 0f) ", agrees with the rules ${(pn.agreeRate * 100).toInt()}%" else "") +
                 (if (pn.ready) "\n     ${pn.qualityText}" else "") +
                 "\n${mark(Cfg.groqKey.isNotBlank())} Groq key: " + (if (Cfg.groqKey.isBlank()) "not found" else "set") +
@@ -1253,7 +1254,7 @@ class MainActivity : Activity() {
             "minions, monsters and the minimap (all enemies show there). Their walking comes from the camera, their skills " +
             "from the panel icons going dark, attacks from standing next to a target. The AI never plays on this screen. " +
             "Export gives mlbb-live-*.csv: the same columns as your recorded play, so the notebook trains on it " +
-            "(set HERO to the hero you watched).", 13f)
+            "(upload it with your own play; nothing to set).", 13f)
         switch("Learn from live matches", Cfg.liveLearn) { Cfg.liveLearn = it }
         field("Hero you are watching (e.g. Balmond)", Cfg.liveHero, false) { v ->
             val m = com.example.mlbbresearch.game.HeroDb.match(v)

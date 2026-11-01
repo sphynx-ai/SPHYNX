@@ -26,6 +26,30 @@ import java.nio.ByteOrder
 //  - buttons it is sure about (60%+, attack 50%+) are added when the skill is ready; the
 //    skill rules (ultimate only for heroes, range, ...) still filter them afterwards
 // Gemma stays the strategist (plan + aggression every few seconds); this is the fast part.
+// SEVERAL NETWORKS (v36.9): the notebook makes one network per hero you recorded enough of
+// (policy_<Hero>.tflite) plus one for all heroes (policy_all.tflite, it also gets the hero's
+// TYPE as input - HeroType), all in mlbb_policies.zip. They live in files/policies/<key>.tflite
+// and the one for the hero you play is loaded when your hero changes: your hero's own network,
+// else an older single policy.tflite made for that hero, else the all-heroes one.
+object HeroType {
+    const val SIZE = 11
+    // role (6), ranged, starts fights, protects, late-game, early-game - from HeroDb and the wiki
+    fun of(hero: String?): FloatArray {
+        val f = FloatArray(SIZE)
+        val h = hero?.takeIf { it.isNotBlank() && !it.startsWith("~") } ?: return f
+        val role = com.example.mlbbresearch.game.HeroDb.role(h)
+        val i = listOf(com.example.mlbbresearch.game.Role.TANK, com.example.mlbbresearch.game.Role.FIGHTER, com.example.mlbbresearch.game.Role.ASSASSIN,
+            com.example.mlbbresearch.game.Role.MAGE, com.example.mlbbresearch.game.Role.MARKSMAN, com.example.mlbbresearch.game.Role.SUPPORT).indexOf(role)
+        if (i >= 0) f[i] = 1f
+        if (com.example.mlbbresearch.game.HeroDb.isRanged(h)) f[6] = 1f
+        if (com.example.mlbbresearch.game.WikiLanes.engager(h)) f[7] = 1f
+        if (com.example.mlbbresearch.game.WikiLanes.protector(h)) f[8] = 1f
+        if (com.example.mlbbresearch.game.WikiLanes.lateGame(h)) f[9] = 1f
+        if (com.example.mlbbresearch.game.WikiLanes.earlyGame(h)) f[10] = 1f
+        return f
+    }
+}
+
 object PolicyNet {
 
     @Volatile private var interpreter: Interpreter? = null
@@ -39,10 +63,14 @@ object PolicyNet {
         private set
     private var inBuf: ByteBuffer? = null
     private var outBuf: ByteBuffer? = null
+    @Volatile private var withType = false     // the all-heroes network: hero type appended to the inputs
+    @Volatile var loadedKey = ""                // which network is loaded ("all", a hero, "_single")
+        private set
+    private var appCtx: Context? = null
 
     val ready: Boolean get() = interpreter != null
 
-    // ---- what is reliable (policy_info.json from the notebook, read from the MLBB-Research folder) ----
+    // ---- what is reliable (policy_info*.json from the notebook) ----
     // joystick: 40%+ with every move counted equally, on 300+ checked moments with 15+ of each move;
     // a button: 20+ presses checked and 40%+ of its presses right. Without the file: all used.
     @Volatile var moveTrusted = true
@@ -51,12 +79,8 @@ object PolicyNet {
         private set
     @Volatile var qualityText = "no policy_info.json: everything it suggests is used"
         private set
-    // the hero it was trained for ("" = all heroes / unknown): other heroes move and use skills
-    // differently, so it is only used while you play that hero
     @Volatile var trainedHero = ""
         private set
-
-    fun usableFor(hero: String?) = trainedHero.isEmpty() || (hero != null && trainedHero.equals(hero, ignoreCase = true))
 
     fun applyInfo(json: String?) {
         if (json == null) {
@@ -76,7 +100,8 @@ object PolicyNet {
                 if (q.optInt("checked", 0) >= 20 && q.optDouble("right", 0.0) >= 0.4) ok.add(k)
             }
             trustedButtons = ok
-            qualityText = (if (trainedHero.isNotEmpty()) "for $trainedHero only; " else "") + "joystick " + (if (moveTrusted) "used" else "not yet (${(bal * 100).toInt()}% on $checked moments)") +
+            qualityText = (if (trainedHero.isNotEmpty()) "for $trainedHero; " else "for all heroes; ") + "joystick " +
+                (if (moveTrusted) "used" else "not yet (${(bal * 100).toInt()}% on $checked moments)") +
                 "; buttons used: " + (if (ok.isEmpty()) "none yet" else ok.joinToString())
         } catch (t: Throwable) {
             Diag.error("policy_info.json", t)
@@ -84,25 +109,85 @@ object PolicyNet {
         }
     }
 
+    // ---- the networks on the phone ----
+    fun key(hero: String?): String = (hero ?: "").lowercase().filter { it.isLetterOrDigit() }
+    fun dir(ctx: Context) = File(ctx.applicationContext.filesDir, "policies").apply { mkdirs() }
+    fun fileFor(ctx: Context, key: String) = File(dir(ctx), "$key.tflite")
+    // the older single network (policy.tflite + policy_info.json)
     fun modelFile(ctx: Context) = File(ctx.applicationContext.filesDir, "policy.tflite")
+    fun infoFor(key: String): String? = if (key == "_single") Cfg.raw("policy_info") else Cfg.raw("policy_info_$key")
+    fun saveInfo(key: String, json: String) = if (key == "_single") Cfg.setRaw("policy_info", json) else Cfg.setRaw("policy_info_$key", json)
 
+    // every network on the phone, by name ("all heroes", "Chou", ...)
+    fun available(ctx: Context): List<String> {
+        val out = dir(ctx).listFiles()?.filter { it.name.endsWith(".tflite") }?.map { it.name.removeSuffix(".tflite") }?.sorted()?.map { k ->
+            if (k == "all") "all heroes" else (infoFor(k)?.let { runCatching { org.json.JSONObject(it).optString("hero") }.getOrNull() }?.takeIf { it.isNotBlank() } ?: k)
+        }?.toMutableList() ?: mutableListOf()
+        if (modelFile(ctx).exists()) out.add("older single network" + (singleHero().let { if (it.isNotEmpty()) " ($it)" else "" }))
+        return out
+    }
+    private fun singleHero() = Cfg.raw("policy_info")?.let { runCatching { org.json.JSONObject(it).optString("hero") }.getOrNull() } ?: ""
+
+    // which network to use for this hero ("" = none)
+    fun pick(ctx: Context, hero: String?): String {
+        val k = key(hero)
+        if (k.isNotEmpty() && fileFor(ctx, k).exists()) return k
+        if (modelFile(ctx).exists() && key(singleHero()) == k && k.isNotEmpty()) return "_single"
+        if (fileFor(ctx, "all").exists()) return "all"
+        if (modelFile(ctx).exists() && singleHero().isEmpty()) return "_single"
+        return ""
+    }
+
+    fun init(ctx: Context) { appCtx = ctx.applicationContext }
+
+    // load the network for this hero if it is not the loaded one; false = none for this hero
+    @Synchronized
+    fun ensure(hero: String?): Boolean {
+        val c = appCtx ?: return ready
+        val k = pick(c, hero)
+        if (k.isEmpty()) { if (ready) close(); return false }
+        if (k == loadedKey && ready) return true
+        val f = if (k == "_single") modelFile(c) else fileFor(c, k)
+        val err = loadFile(f, k)
+        if (err != null) return false
+        applyInfo(infoFor(k))
+        return true
+    }
+
+    // older entry point: load whatever fits the hero last seen (or the single file)
     @Synchronized
     fun load(ctx: Context): String? {
-        val f = modelFile(ctx)
-        if (!f.exists()) return "Choose the tactical network file (.tflite) first"
+        init(ctx)
+        loadedKey = ""
+        val k = pick(ctx, com.example.mlbbresearch.game.GameStateTracker.ownHero())
+        if (k.isEmpty()) return "No tactical network yet (put mlbb_policies.zip in Download/MLBB-Research)"
+        val err = loadFile(if (k == "_single") modelFile(ctx) else fileFor(ctx, k), k)
+        if (err == null) applyInfo(infoFor(k))
+        return err
+    }
+
+    @Synchronized
+    private fun loadFile(f: File, k: String): String? {
+        if (!f.exists()) return "missing ${f.name}"
         return try {
             close()
             val it = Interpreter(f, Interpreter.Options().setNumThreads(1))
             val n = it.getInputTensor(0).shape().last()
             val out = it.getOutputTensor(0).shape().last()
-            if (n != Features.SIZE && n != Features2.SIZE_V1 && n != Features2.SIZE) throw IllegalStateException("it expects $n inputs (17, 32 or 40)")
+            val plain = setOf(Features.SIZE, Features2.SIZE_V1, Features2.SIZE)
+            val base = if (n !in plain && (n - HeroType.SIZE) in plain) n - HeroType.SIZE else n
+            if (base != Features.SIZE && base != Features2.SIZE_V1 && base != Features2.SIZE)
+                throw IllegalStateException("it expects $n inputs (17, 32, 40, or those + ${HeroType.SIZE} hero-type numbers)")
             if (out != 15) throw IllegalStateException("it gives $out outputs, not 15")
-            inputs = n
+            // the all-heroes network has the hero-type numbers on top of the situation
+            withType = n == base + HeroType.SIZE
+            inputs = base
             inBuf = ByteBuffer.allocateDirect(n * 4).order(ByteOrder.nativeOrder())
             outBuf = ByteBuffer.allocateDirect(15 * 4).order(ByteOrder.nativeOrder())
             interpreter = it
-            state = "ready ($n inputs)"
-            Diag.info("Tactical network loaded: $n inputs")
+            loadedKey = k
+            state = "ready: " + (if (k == "all") "all heroes" else if (k == "_single") "single network" else k) + " ($n inputs)"
+            Diag.info("Tactical network loaded: $k, $n inputs")
             null
         } catch (t: Throwable) {
             state = "load failed (see Logs)"
@@ -115,8 +200,12 @@ object PolicyNet {
     fun close() {
         try { interpreter?.close() } catch (t: Throwable) { }
         interpreter = null
+        loadedKey = ""
         state = "no tactical network loaded"
     }
+
+    // true when a network for this hero is (now) loaded
+    fun usableFor(hero: String?): Boolean = ensure(hero)
 
     // move: 0..7 = the 8 directions (0 right, 2 down, 4 left, 6 up), 8 = stand still
     class Out(val move: Int, val moveP: Float, val casts: FloatArray)
@@ -129,7 +218,8 @@ object PolicyNet {
         val base = Features.of(s)
         // the way the AI is already steering = "the way you were moving" in your recordings
         val full = if (inputs > Features.SIZE) Features2.of(s, base, com.example.mlbbresearch.controller.ActionExecutor.steering()) else base
-        val f = if (inputs == full.size) full else full.copyOf(inputs)
+        val sit = if (inputs == full.size) full else full.copyOf(inputs)
+        val f = if (withType) sit + HeroType.of(s.ownHero) else sit
         ib.rewind(); for (v in f) ib.putFloat(v); ib.rewind()
         ob.rewind()
         it.run(ib, ob)
@@ -144,8 +234,8 @@ object PolicyNet {
     private fun dirName(m: Int) = if (m == 8) "stand" else listOf("right", "down-right", "down", "down-left", "left", "up-left", "up", "up-right")[m]
 
     fun blend(d: TacticalDecision, s: GameState, p: HeroProfile): TacticalDecision {
-        if (!Cfg.policyOn || !ready || s.self == null) return d
-        if (!usableFor(s.ownHero)) { last = "trained for $trainedHero, not ${s.ownHero ?: "this hero"}: rules only"; return d }
+        if (!Cfg.policyOn || s.self == null) return d
+        if (!ensure(s.ownHero)) { last = "no network for ${s.ownHero ?: "this hero"}: rules only"; return d }
         val o = try { predict(s) } catch (t: Throwable) { Diag.error("Tactical network run", t); null } ?: return d
         last = "${dirName(o.move)} ${(o.moveP * 100).toInt()}%" +
             SLOTS.indices.filter { o.casts[it] >= 0.5f }.joinToString("") { " + " + SLOTS[it] }

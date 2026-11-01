@@ -744,9 +744,11 @@ Lylia, Kagura, Miya, Brody, Claude, Tigreal, Minotaur, Mathilda. Other heroes us
 or the defaults, and every hero keeps learning cast modes and aiming from play. The seeds are general knowledge:
 a patch can change a skill, so a Groq fetch or a learned result replaces them.
 
-Tactical network per hero: the notebook trains one network for one hero (`HERO = "YourMainHero"`, or empty = the hero
-you recorded most) and only from your own play (`WATCHED_WEIGHT = 0`). policy_info.json says which hero; the app uses the
-network only while you play that hero and uses that hero's recorded moments otherwise.
+Tactical networks (v36.9) - nothing to set in the notebook: upload all your mlbb-my-play and mlbb-live CSV files, run
+all cells, download `mlbb_policies.zip`, put it in Download/MLBB-Research. Inside: one network for ALL heroes (it also
+gets each hero's type - role, melee / ranged, starts fights / protects, early / late game - from the hero_type column of
+the export) and one network per hero with 1500+ moments. The app unpacks it and, while you play, loads your hero's own
+network, else the all-heroes one. The Model page lists the networks on the phone. Older single policy.tflite files still work.
 
 Evaluation: at the end of each match (2+ minutes) the app saves the hero, role, K/D/A, level, length, and whether
 the AI or you played. The Learn page "HOW THE AI DOES PER HERO AND ROLE" shows the averages per role and per hero,
@@ -805,7 +807,7 @@ the scoreboard and the "ready in ..." notices.
 
 Learn page, LEARN FROM LIVE MATCHES: type the hero you are watching and their role, see what it reads now,
 and export `mlbb-live-*.csv` (same columns as `mlbb-my-play-*.csv` plus source, lane, match_sec). Train with
-the tactical notebook: upload it (with or without your own play) and set HERO to that hero.
+the tactical notebook: upload it together with your own play - nothing to set.
 
 Training with both: upload your `mlbb-my-play-*.csv` and `mlbb-live-*.csv` files together in the tactical notebook.
 Moments of the same hero from both are trained together; `LIVE_WEIGHT` (default 1) sets how much the live ones count.

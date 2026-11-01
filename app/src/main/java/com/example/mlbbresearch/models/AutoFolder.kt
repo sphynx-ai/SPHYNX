@@ -24,6 +24,8 @@ import java.io.InputStream
 //   screen_labels.txt               its class names           -> applied
 //   policy*.tflite / *tactical*.tflite          tactical network -> copied in, loaded
 //   policy_info.json                how reliable the network is -> only its reliable parts used
+//   mlbb_policies.zip               the notebook's networks: one per hero + all heroes -> unpacked
+//   policy_<Hero>.tflite / policy_info_<Hero>.json   one hero's network (or policy_all.tflite)
 //   groq_key.txt / groq.txt         Groq API key (first line)  -> applied
 //   groq_model.txt                  Groq model name (optional) -> applied
 // A file is only copied again when it changed (size or date), so big files are not copied
@@ -107,6 +109,41 @@ object AutoFolder {
         if (!tmp.renameTo(dst)) throw IllegalStateException("could not save ${dst.name}")
     }
 
+    // "policy_Chou.tflite" -> "chou", "policy_all.tflite" -> "all"
+    private fun policyKey(fileName: String): String {
+        val stem = fileName.substringBeforeLast('.').substringAfter('_')
+        return com.example.mlbbresearch.learning.PolicyNet.key(stem).ifEmpty { "all" }
+    }
+
+    // mlbb_policies.zip from the notebook: policy_<Hero>.tflite / policy_info_<Hero>.json files
+    private fun unpackPolicies(app: Context, e: Entry): List<String> {
+        val names = ArrayList<String>()
+        (e.open() ?: throw IllegalStateException("cannot open ${e.name}")).use { raw ->
+            java.util.zip.ZipInputStream(raw).use { zip ->
+                while (true) {
+                    val z = zip.nextEntry ?: break
+                    val n = z.name.substringAfterLast('/').lowercase()
+                    when {
+                        z.isDirectory -> {}
+                        n.endsWith(".tflite") && n.startsWith("policy_") -> {
+                            val k = policyKey(n)
+                            val dst = com.example.mlbbresearch.learning.PolicyNet.fileFor(app, k)
+                            val tmp = File(dst.parentFile, dst.name + ".tmp")
+                            tmp.outputStream().use { zip.copyTo(it) }
+                            dst.delete(); tmp.renameTo(dst)
+                            names.add(if (k == "all") "all heroes" else z.name.substringAfterLast('/').substringBeforeLast('.').substringAfter('_'))
+                        }
+                        n.endsWith(".json") && n.startsWith("policy_info_") -> {
+                            val k = policyKey("policy_" + n.removePrefix("policy_info_"))
+                            com.example.mlbbresearch.learning.PolicyNet.saveInfo(k, zip.readBytes().toString(Charsets.UTF_8))
+                        }
+                    }
+                }
+            }
+        }
+        return names
+    }
+
     private fun text(e: Entry): String = (e.open() ?: throw IllegalStateException("cannot open ${e.name}")).use { it.readBytes().toString(Charsets.UTF_8) }
 
     // look at the folder(s) and apply everything found; runs in the background
@@ -138,6 +175,34 @@ object AutoFolder {
                                         found.add("Gemma loading")
                                     }
                                 }
+                                // the notebook's bundle: every hero's network + the all-heroes one
+                                n.endsWith(".zip") && (n.contains("polic") || n.contains("tactical")) -> {
+                                    val sig = "${e.name}:${e.size}:${e.modified}"
+                                    if (Cfg.raw("auto_sig_policyzip") != sig) {
+                                        val names = unpackPolicies(app, e)
+                                        Cfg.setRaw("auto_sig_policyzip", sig)
+                                        found.add("tactical networks: " + names.joinToString())
+                                        com.example.mlbbresearch.learning.PolicyNet.load(app)
+                                    }
+                                }
+                                n.endsWith(".tflite") && (n.startsWith("policy_") || n.startsWith("tactical_")) -> {
+                                    val k = policyKey(n)
+                                    val dst = com.example.mlbbresearch.learning.PolicyNet.fileFor(app, k)
+                                    if (changed("policy_$k", e, dst)) {
+                                        copy(e, dst); remember("policy_$k", e)
+                                        found.add("tactical network for ${if (k == "all") "all heroes" else k}")
+                                        com.example.mlbbresearch.learning.PolicyNet.load(app)
+                                    }
+                                }
+                                n.endsWith(".json") && n.startsWith("policy_info_") -> {
+                                    val k = policyKey(n.removePrefix("policy_info_").let { "policy_$it" })
+                                    val txt = text(e)
+                                    if (txt != com.example.mlbbresearch.learning.PolicyNet.infoFor(k)) {
+                                        com.example.mlbbresearch.learning.PolicyNet.saveInfo(k, txt)
+                                        found.add("network quality for ${if (k == "all") "all heroes" else k}")
+                                        com.example.mlbbresearch.learning.PolicyNet.load(app)
+                                    }
+                                }
                                 n.endsWith(".tflite") && (n.contains("policy") || n.contains("tactical")) -> {
                                     val dst = com.example.mlbbresearch.learning.PolicyNet.modelFile(app)
                                     if (changed("policy", e, dst)) {
@@ -157,7 +222,7 @@ object AutoFolder {
                                     val txt = text(e)
                                     if (txt != Cfg.raw("policy_info")) {
                                         Cfg.setRaw("policy_info", txt)
-                                        com.example.mlbbresearch.learning.PolicyNet.applyInfo(txt)
+                                        com.example.mlbbresearch.learning.PolicyNet.load(app)
                                         found.add("tactical network quality: " + com.example.mlbbresearch.learning.PolicyNet.qualityText)
                                     }
                                 }
