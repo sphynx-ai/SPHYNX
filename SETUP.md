@@ -866,7 +866,11 @@ The Player page shows it under GAME KNOWLEDGE.
   high dive, roamer setter / initiator / utility / damage) pick the lane automatically when no online meta is known;
   setter / initiator heroes start fights with an ally near, utility roamers do not fight alone, late-game carries are
   more patient before 10:00, early-game heroes press before 8:00.
-- **Jungler**: with Retribution it leaves lane minions alone until 5:00 (70% less reward) unless a tower needs defending.
+- **Jungler**: with Retribution it leaves lane minions alone until 5:00 (70% less reward, not shared) unless a tower needs
+  defending. Jungler kinds (Jungler page): assassin junglers press early and invade, late-game junglers farm and avoid even
+  fights, tank junglers protect and start fights, ranged junglers stay behind the frontline; Fanny and Ling are weak until
+  the Purple Buff (take the Thunder Fenrir first, careful before 2:00). Heroes only in the jungler lists go jungle
+  automatically.
 
 ## How it is organised (matches your note)
 

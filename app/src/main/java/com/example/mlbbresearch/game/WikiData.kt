@@ -113,7 +113,20 @@ object WikiLanes {
     val roamUtility = setOf("Angela", "Diggie", "Estes", "Floryn", "Lolita", "Mathilda", "Rafaela")
     val roamDamage = setOf("Helcurt", "Natalia", "Saber", "Selena")
 
+    // Junglers: assassins (fast farm and burst, fall off late), late-game (must farm), hybrid (tough +
+    // damage), tank (frontline, slow farm), ranged (fast farm, weak in teamfights)
+    val jungleAssassin = setOf("Aamon", "Fanny", "Gusion", "Harley", "Helcurt", "Hayabusa", "Joy", "Karina", "Lancelot", "Ling",
+        "Nolan", "Natalia", "Saber", "Suyou")
+    val jungleLate = setOf("Aulus", "Hanzo", "Freya", "Roger", "Sun", "Yi Sun-shin", "Yin")
+    val jungleHybrid = setOf("Alice", "Alpha", "Alucard", "Balmond", "Dyrroth", "Jawhead", "Julian", "Leomord", "Lukas", "Martis")
+    val jungleTank = setOf("Akai", "Barats", "Baxia", "Fredrinn", "Hylos")
+    val jungleRanged = setOf("Bane", "Granger", "Popol and Kupa")
+    val jungleUnofficial = setOf("X.Borg", "Uranus", "Hylos", "Natan", "Brody", "Zilong", "Guinevere", "Lunox")
+    // weak until they have the Purple Buff (wiki): take it first
+    val needPurpleFirst = setOf("Fanny", "Ling")
+
     private val exp = expUtility + expHybrid + expDamage
+    private val jungle = jungleAssassin + jungleLate + jungleHybrid + jungleTank + jungleRanged
     private val gold = goldLate + goldBurst + goldMagic
     private val mid = midUtility + midHybrid + midDamage + midDive
     private val roam = roamSetter + roamInitiator + roamUtility + roamDamage
@@ -122,6 +135,8 @@ object WikiLanes {
 
     // the wiki's lane for a hero (official lists first; null = not listed)
     fun lane(hero: String?): Lane? = when {
+        // only in the jungler lists (official) -> jungle; heroes listed for a lane too keep the lane
+        has(jungle, hero) && !has(gold + exp + mid + roam, hero) -> Lane.JUNGLE
         has(gold, hero) -> Lane.GOLD
         has(roamSetter + roamUtility, hero) -> Lane.ROAM
         has(midUtility + midHybrid + midDamage, hero) -> Lane.MID
@@ -131,10 +146,10 @@ object WikiLanes {
         else -> null
     }
     // a roamer who starts fights (tank setters and initiators) / one who protects (utility)
-    fun engager(hero: String?) = has(roamSetter + roamInitiator + expUtility, hero)
+    fun engager(hero: String?) = has(roamSetter + roamInitiator + expUtility + jungleTank, hero)
     fun protector(hero: String?) = has(roamUtility, hero)
-    fun lateGame(hero: String?) = has(goldLate + expLate, hero)
-    fun earlyGame(hero: String?) = has(goldBurst + expEarly, hero)
+    fun lateGame(hero: String?) = has(goldLate + expLate + jungleLate, hero)
+    fun earlyGame(hero: String?) = has(goldBurst + expEarly + jungleAssassin, hero)
 
     fun describe(hero: String?): String {
         if (hero == null) return "-"
@@ -153,6 +168,13 @@ object WikiLanes {
         if (has(roamInitiator, hero)) tags.add("initiator roamer")
         if (has(roamUtility, hero)) tags.add("utility roamer")
         if (has(roamDamage, hero)) tags.add("damage roamer")
+        if (has(jungleAssassin, hero)) tags.add("assassin jungler")
+        if (has(jungleLate, hero)) tags.add("late-game jungler")
+        if (has(jungleHybrid, hero)) tags.add("hybrid jungler")
+        if (has(jungleTank, hero)) tags.add("tank jungler")
+        if (has(jungleRanged, hero)) tags.add("ranged jungler")
+        if (has(jungleUnofficial, hero)) tags.add("also played in the jungle")
+        if (has(needPurpleFirst, hero)) tags.add("weak until the Purple Buff")
         if (has(expEarly, hero)) tags.add("strong early")
         if (has(expLate, hero)) tags.add("late-game carry")
         return if (tags.isEmpty()) "not in the wiki's lane lists" else tags.joinToString()
@@ -161,7 +183,23 @@ object WikiLanes {
 
 // ---- role tips from the wiki, used in the strategy prompt and the status ----
 object RoleTips {
-    fun of(lane: Lane, sec: Int): String = when (lane) {
+    fun of(lane: Lane, sec: Int, hero: String? = null): String = base(lane, sec) + jungleExtra(lane, sec, hero)
+
+    // the Jungler page: what kind of jungler you are changes the plan
+    private fun jungleExtra(lane: Lane, sec: Int, hero: String?): String {
+        if (lane != Lane.JUNGLE || hero == null) return ""
+        fun inSet(set: Set<String>) = set.any { it.equals(hero, ignoreCase = true) }
+        return when {
+            inSet(WikiLanes.needPurpleFirst) && sec < 120 -> "; $hero is weak until the Purple Buff: take the Thunder Fenrir first and avoid fights before it"
+            inSet(WikiLanes.jungleAssassin) && sec < 600 -> "; assassin jungler: strongest now - gank and invade before you fall off late"
+            inSet(WikiLanes.jungleLate) -> "; late-game jungler: farm as much as possible, avoid even fights early"
+            inSet(WikiLanes.jungleTank) -> "; tank jungler: slower farm - protect your carries and start fights"
+            inSet(WikiLanes.jungleRanged) -> "; ranged jungler: fast farm, stay behind your frontline in teamfights"
+            else -> ""
+        }
+    }
+
+    private fun base(lane: Lane, sec: Int): String = when (lane) {
         Lane.EXP -> when {
             sec in 0 until 120 -> "reach level 4 before the first Turtle (2:00, next to the EXP lane); EXP-lane minions give 25% more EXP until 5:00"
             sec in 120 until 300 -> "after clearing the lane, help the mid laner; do not die before Turtle fights; zone or pick off the enemy jungler at the Turtle"
@@ -175,7 +213,7 @@ object RoleTips {
         Lane.MID -> if (sec < 300) "clear waves fast, then rotate with the roamer to gank and to the Turtle" else "rotate with the roamer, pick off enemies, group for objectives"
         Lane.ROAM -> if (sec < 480) "give vision (check bushes), protect the jungler's first buff, roam with the mid laner" else "lead teamfights; from 8:00 your farm shares minion / creep rewards"
         Lane.JUNGLE -> when {
-            sec in 0 until 300 -> "clear buffs and camps; with Retribution, minions give 70% less until 5:00 (do not take lane waves); secure Turtles"
+            sec in 0 until 300 -> "clear buffs and camps; with Retribution, minions give 70% less until 5:00 and are not shared with teammates (do not take lane waves); secure Turtles"
             else -> "take Orange / Purple Buffs and Turtles, farm minions in any lane, keep Retribution for the Lord"
         }
     }
