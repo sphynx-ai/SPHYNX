@@ -223,7 +223,8 @@ object TacticalEngine {
         // bars appear after the first hit.
         val atCamp = JungleNav.atCamp && (d.intent == Intent.JUNGLE || d.intent == Intent.LANE_CLEAR) ||
             d.intent == Intent.PUSH && s.towerRing.zone == com.example.mlbbresearch.vision.TowerRing.Zone.GREEN ||
-            d.reason.startsWith("finishing the monster")
+            d.reason.startsWith("finishing the monster") ||
+            d.intent == Intent.OBJECTIVE && d.targetLabel == "turtle"      // at the Turtle pit: its bar shows after the first hit
         val skillRange = s.enemiesWithin(p.engageRange).isNotEmpty() || atCamp ||
             s.minionsWithin(p.attackRange * 1.8f).isNotEmpty() || s.monsters.any { s.distToSelf(it.x, it.y) <= p.attackRange * 1.8f }
         val hitRange = s.enemiesWithin(p.attackRange * 1.4f).isNotEmpty() || atCamp ||
@@ -571,7 +572,19 @@ object TacticalEngine {
             val dObj = kotlin.math.hypot(obj.first - me.first, obj.second - me.second)
             val alliesThere = s.map.allies.count { kotlin.math.hypot(it.first - obj.first, it.second - obj.second) < 0.2f }
             val enemiesThere = s.map.enemies.count { kotlin.math.hypot(it.first - obj.first, it.second - obj.second) < 0.2f }
-            if (dObj !in 0.05f..maxDist || needAlly && alliesThere == 0 || enemiesThere > alliesThere) return null
+            if (dObj > maxDist || needAlly && alliesThere == 0 || enemiesThere > alliesThere) return null
+            if (dObj < 0.05f) {
+                // at the pit and no boss bar on screen. Only the Lord shows its HP bar before it is hit:
+                // no Lord bar = it is not in view yet, keep walking into the pit. The Turtle's bar shows
+                // only once someone hits it: start it with a basic attack (the skills follow on its bar).
+                if (LaneLogic.objectiveName(s.matchSec) == "lord") {
+                    val (mx, my) = mapDir(me, obj)
+                    return TacticalDecision(Intent.OBJECTIVE, mx * 0.5f, my * 0.5f, emptyList(), -1f, -1f, "-", -1f, -1,
+                        "at the Lord pit: its bar is not on screen yet, stepping in")
+                }
+                return TacticalDecision(Intent.OBJECTIVE, 0f, 0f, listOf("attack"), -1f, -1f, "turtle", -1f, -1,
+                    "at the Turtle pit: first hit to show its HP bar (it shows only after it is hit)")
+            }
             val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, obj) ?: mapDir(me, obj)
             return TacticalDecision(Intent.OBJECTIVE, mx, my, emptyList(), -1f, -1f, "-", -1f, -1,
                 "${LaneLogic.objectiveName(s.matchSec)} is up (minimap): rotating there" + if (alliesThere > 0) ", $alliesThere allies there" else "")
