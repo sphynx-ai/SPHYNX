@@ -756,7 +756,9 @@ class MainActivity : Activity() {
                 "K/D/A seen this match: ${GameStateTracker.kills} / ${GameStateTracker.deaths} / ${GameStateTracker.assists}" +
                 "  (jungle camps killed: ${com.example.mlbbresearch.game.JungleNav.campsKilled})\n" +
                 "Monsters on screen: ${gs.monsters.size}   Bushes on screen: ${gs.bushes.size}" + (if (gs.inBush) "   (you are in a bush)" else "") +
-                "\nVision: ${"%.0f".format(FrameProcessor.processedFps)} frames/s\nSpeed: ${com.example.mlbbresearch.core.Speed.text()}"
+                "\nVision: ${"%.0f".format(FrameProcessor.processedFps)} frames/s\nSpeed: ${com.example.mlbbresearch.core.Speed.text()}" +
+                "\n" + com.example.mlbbresearch.game.GameMemory.text(System.currentTimeMillis()) +
+                "\n" + com.example.mlbbresearch.ai.Deliberation.text(gs.lane)
         }
 
         title("SKILLS & ITEMS")

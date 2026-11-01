@@ -58,6 +58,8 @@ object Utility {
         // enemies close on the minimap but not on screen: in a bush or the fog, about to arrive
         val hidden = (com.example.mlbbresearch.game.MapIntel.enemiesNear(s, 0.15f) - s.enemies.size).coerceAtLeast(0)
         v -= hidden * 8f
+        // remembered enemies that left the map and could be right here by now
+        v -= com.example.mlbbresearch.game.GameMemory.fogDanger(s.minimapSelf, s.ts) * 6f
         // they are coming at you (a gank)
         if (com.example.mlbbresearch.game.MapIntel.gank(s)) v -= 12f
         val me = s.minimapSelf

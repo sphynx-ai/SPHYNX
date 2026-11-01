@@ -962,6 +962,38 @@ now read by its shade, 40 x 40 cells, each cell keeping the class it shows most 
 - Player page "Speed" line (and the Logs every 15 s): frame to touch in ms, split into vision / waiting / deciding /
   touch queue - send it if it still feels slow, it shows which part is
 
+## Human-style game sense: memory and the "why" (v36.16)
+
+How the human loop (observe, understand, evaluate, decide, execute, learn) maps onto the app:
+
+| Human ability | In the app |
+|---|---|
+| Seeing the battlefield | vision/ (HP bars, minimap, HUD, bushes, walls, tower ring) + the trained detectors |
+| Understanding the situation | game/GameStateTracker, MatchSense (phase, team advantage) |
+| Remembering enemy positions | **game/GameMemory (new)**: last known spot of every enemy on the map; missing enemies |
+| Predicting enemy actions | enemy tracks with speed (aim lead), MapIntel gank detection, GameMemory fog danger |
+| Understanding strategy | StrategicAdvisor (Gemma / Groq, slow, optional), RoleProfile, MetaAdvisor |
+| Choosing targets | ai/Utility.bestTarget |
+| Knowing when to fight | ai/Utility engagement + survival + **ai/Deliberation scores (new)** |
+| Executing combos | ai/ComboRunner (conditional steps, retries), SkillBook (what each skill does) |
+| Dodging / retreating | retreat to nearest ally tower, bushes, escape skills, battle spell by its effect |
+| Learning from mistakes | Brain, PolicyNet (trained on your play), Coach, **Deliberation weights (new)** |
+
+New:
+- GameMemory: an enemy that vanishes from the minimap is remembered; after t seconds it could be anywhere within about
+  0.025 x t of where it was last seen (forgotten after 45 s). Spots in reach of missing enemies count as dangerous
+  ("fog danger"): lower survival score, more careful farming, fewer risky fights
+- Deliberation: each decision scores Attack / Farm / Retreat / Objective / Push / Recall (0-1).
+  Attack = wK*kill chance + wH*HP edge + wS*skills ready + wT*teammates - wR*risk (start 0.30/0.20/0.20/0.20/0.10;
+  each role starts differently: jungler kill-minded, roamer team-minded, gold lane risk-averse)
+  - a fight the scores call clearly worse than leaving (by 0.15+, not a finishing blow) becomes a retreat
+  - a lone enemy at 25% or less in reach, scores clearly for the kill, you at 30%+ and level 4+: the kill is taken
+    even if the rules wanted to leave
+  - the weights learn per role: a fight ending in your kill / assist makes the high factors count more; one ending in
+    your death makes risk count more (shown in the Logs as "Learned: fight won / lost ...")
+- Player page: the score table, the factors, the role weights, the last lesson, and the enemies remembered / missing
+- the fast rules still decide every frame; the LLM is never in the frame-by-frame loop
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |
