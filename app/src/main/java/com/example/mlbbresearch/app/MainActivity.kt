@@ -39,6 +39,8 @@ import com.example.mlbbresearch.ai.AiRuntime
 import com.example.mlbbresearch.ai.ComboFetcher
 import com.example.mlbbresearch.ai.ComboRunner
 import com.example.mlbbresearch.ai.GemmaEngine
+import com.example.mlbbresearch.ai.TacticalAdvisor
+import com.example.mlbbresearch.ai.TacticalLlmEngine
 import com.example.mlbbresearch.ai.StrategicAdvisor
 import com.example.mlbbresearch.capture.FrameHub
 import com.example.mlbbresearch.capture.ScreenCaptureService
@@ -477,8 +479,10 @@ class MainActivity : Activity() {
         upd {
             status.text = "AI status: " + AiRuntime.statusLine()
             status.setTextColor(Color.parseColor(if (AiRuntime.anyOn()) "#66BB6A" else "#9AA0A6"))
-            gemma.text = "Gemma 3n E2B: " + GemmaEngine.state +
-                (if (GemmaEngine.calls > 0) "  (last answer ${GemmaEngine.lastLatencyMs / 100 / 10.0}s)" else "")
+            gemma.text = com.example.mlbbresearch.models.ModelManager.strategicName() + ": " + GemmaEngine.state +
+                (if (GemmaEngine.calls > 0) "  (last answer ${GemmaEngine.lastLatencyMs / 100 / 10.0}s)" else "") +
+                (if (Cfg.tacticalLlmOn) "\n" + com.example.mlbbresearch.models.ModelManager.tacticalName() + ": " + TacticalLlmEngine.state +
+                    (if (TacticalLlmEngine.calls > 0) "  (last answer ${TacticalLlmEngine.lastLatencyMs} ms)" else "") else "")
             capture.text = "Screen capture: " + (if (FrameHub.isLive()) FrameHub.source else "off") +
                 "  |  vision ${"%.0f".format(FrameProcessor.processedFps)} fps"
         }
@@ -1108,7 +1112,8 @@ class MainActivity : Activity() {
         title("FILES")
         text("Put the downloaded files in  Download/MLBB-Research  and choose that folder once. The app copies, loads and " +
             "applies them by itself every time it starts:\n" +
-            "  - Gemma 3n E2B model: the  .litertlm  file\n" +
+            "  - strategic model: Gemma 4 E2B (or Gemma 3n E2B), the big  .litertlm  file (Gemma 4 is used when both are there)\n" +
+            "  - small tactical model (optional): Gemma 3 270M, a small  .litertlm  file (270m / 1b in the name, or under 1 GB)\n" +
             "  - minimap detector:  mlbb_detector.tflite  +  labels.txt\n" +
             "  - screen detector:  mlbb_screen_detector.tflite  +  screen_labels.txt\n" +
             "  - tactical networks:  mlbb_policies.zip from the notebook (one per hero + all heroes; older policy.tflite works too)\n" +
@@ -1121,8 +1126,11 @@ class MainActivity : Activity() {
             fun mark(ok: Boolean) = if (ok) "\u2713" else "\u2717"
             st.text = "Folder: " + (af.treeUri?.let { Uri.decode(it.lastPathSegment ?: "chosen").substringAfter(':') } ?: "not chosen yet") +
                 "\n${af.status}" +
-                "\n\n${mark(GemmaEngine.ready)} Gemma: ${ModelManager.status(this)}, ${GemmaEngine.state}" +
+                "\n\n${mark(GemmaEngine.ready)} Strategic model: ${ModelManager.status(this)}, ${GemmaEngine.state}" +
                 (if (GemmaEngine.calls > 0) " (last answer ${GemmaEngine.lastLatencyMs} ms)" else "") +
+                "\n${mark(TacticalLlmEngine.ready)} Small tactical model: ${ModelManager.tacticalStatus(this)}, " +
+                (if (Cfg.tacticalLlmOn) TacticalLlmEngine.state else "switched off") +
+                (if (Cfg.tacticalLlmOn && TacticalLlmEngine.ready) "\n     " + TacticalAdvisor.text().substringAfter(": ") else "") +
                 "\n${mark(ObjectDetector.ready)} Minimap detector: ${ObjectDetector.state}" +
                 (if (ObjectDetector.ready) ", ${ObjectDetector.lastMs} ms per run" else "") +
                 "\n${mark(com.example.mlbbresearch.vision.ScreenDetector.ready)} Screen detector: ${com.example.mlbbresearch.vision.ScreenDetector.state}" +
@@ -1145,14 +1153,20 @@ class MainActivity : Activity() {
         }
 
         title("WHERE TO GET THEM")
-        btn("Gemma 3n E2B (Hugging Face, about 3 GB)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.MODEL_PAGE))) }
+        btn("Gemma 4 E2B, strategic model (Hugging Face, about 2.6 GB)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.MODEL_PAGE))) }
+        btn("Gemma 3 270M, small tactical model (Hugging Face)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.SMALL_MODEL_PAGE))) }
         btn("Training notebooks: detector and tactical network (GitHub)") {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/georgenaval1-blip/Ai-App/tree/main/notebooks")))
         }
         btn("Groq API key (free)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) }
 
         title("SETTINGS")
-        switch("Run Gemma on the GPU (faster; falls back to the CPU)", Cfg.useGpu) { Cfg.useGpu = it }
+        switch("Run the strategic model on the GPU (faster; falls back to the CPU)", Cfg.useGpu) { Cfg.useGpu = it }
+        switch("Small tactical model in fights (CPU, ~3 answers a second; its advice is checked by the rules)", Cfg.tacticalLlmOn) { on ->
+            Cfg.tacticalLlmOn = on
+            if (on) ModelManager.loadTactical(this) { err -> runOnUiThread { toast(err ?: "Small tactical model loaded") } }
+            else ModelManager.unloadTactical()
+        }
         // the detector and the tactical network are used together: one switch
         switch("Use the trained models (detectors + tactical network)", Cfg.detectorOn && Cfg.policyOn) {
             Cfg.detectorOn = it; Cfg.policyOn = it

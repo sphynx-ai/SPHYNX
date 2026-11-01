@@ -994,6 +994,30 @@ New:
 - Player page: the score table, the factors, the role weights, the last lesson, and the enemies remembered / missing
 - the fast rules still decide every frame; the LLM is never in the frame-by-frame loop
 
+## Two Gemma models: Gemma 4 E2B strategic + small tactical model (v36.17)
+
+Files (put them in Download/MLBB-Research; the app sorts them by itself):
+- strategic: `gemma-4-E2B-it.litertlm` (Hugging Face: litert-community/gemma-4-E2B-it-litert-lm, about 2.6 GB).
+  Gemma 3n E2B still works; when both are in the folder, Gemma 4 is used. GPU first, falls back to the CPU.
+- small tactical (optional): a Gemma 3 270M `.litertlm` (or Gemma 3 1B). A file with 270m / 1b / tactic in its name, or
+  under 1 GB, goes to this slot. It runs on the CPU, text only (the GPU stays with the game and the big model).
+- Gemma 4 needs a recent LiteRT-LM: keep `litertlm-android:latest.release` in build.gradle (Kotlin 2.2 or newer). If the
+  log says the model cannot be loaded, update that dependency and Kotlin.
+
+How the small model plays (Model page switch "Small tactical model in fights", off by default):
+- only in fights (an enemy hero close), about 3 times a second, in the background: the frame-by-frame play never waits
+- it gets a short summary (hero, HP, level, skills ready, enemies and their HP, allies, minions, tower, missing enemies,
+  the attack / retreat / risk scores) and answers with ONE of: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES
+- Kotlin checks the answer first: no all-in at 20% HP or when the scores favour leaving, no poke with a melee hero, no
+  farming at high risk or with nothing to farm, no retreating at full HP with nothing to fear, no grouping with no ally.
+  A rejected answer is ignored; an answer older than 1 s is dropped
+- an allowed answer is played through the Brain, which learns from how it went like any of its own choices; the safety
+  rules (critical HP, enemy tower, bad-fight veto) still come after. The model never sends a touch
+- Model page: both models' status and answer times, how often the small model was asked / used / rejected, its last
+  answer; Home page: both models' answer times
+- untrained, a 270M model's advice is rough (the checks catch the worst); the next step is a notebook that fine-tunes it
+  on your recorded fights, using the same summary format
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |

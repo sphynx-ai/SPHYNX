@@ -32,7 +32,8 @@ import kotlinx.coroutines.launch
 // Runs the three speeds of the hybrid AI with Kotlin coroutines:
 //   vision        10-15 fps   (FrameProcessor -> GameStateTracker)
 //   tactics       5 per sec   (TacticalEngine -> ActionExecutor)
-//   strategy      event-based (StrategicAdvisor -> Gemma 3n E2B)
+//   strategy      event-based (StrategicAdvisor -> Gemma 4 E2B / 3n E2B)
+//   tactical LLM  in fights, ~3 per second, background (TacticalAdvisor -> small Gemma; advice only)
 object AiRuntime {
 
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -236,7 +237,12 @@ object AiRuntime {
                     val plan = StrategicAdvisor.plan
                     val bias = Cfg.learnedBias(hero ?: "unknown")
                     // the learning brain picks how to handle a nearby enemy; the engine plays it
-                    val option = Brain.choose(s)
+                    var option = Brain.choose(s)
+                    // the small tactical model (if on): its advice, once the Kotlin checks allow it
+                    TacticalAdvisor.tick(s, profile)
+                    if (option != null) TacticalAdvisor.validated(s, profile)?.let { a ->
+                        if (a != option) { Brain.adopt(s, a); option = a }
+                    }
                     var d = TacticalEngine.decide(s, profile, plan, bias, option)
                     // fights: play the hero's combo in order instead of pressing everything at once
                     d = ComboRunner.apply(d, s, profile)

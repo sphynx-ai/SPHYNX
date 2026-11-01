@@ -30,6 +30,8 @@ object Cfg {
 
     // ---- model ----
     var useGpu: Boolean get() = b("gpu", true); set(v) = put("gpu", v)
+    // the small tactical language model (second slot): off until you turn it on (Model page)
+    var tacticalLlmOn: Boolean get() = b("tactical_llm", false); set(v) = put("tactical_llm", v)
 
     // ---- player ----
     var myHero: String get() = s("my_hero", ""); set(v) = put("my_hero", v)
