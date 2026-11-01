@@ -743,6 +743,10 @@ Lylia, Kagura, Miya, Brody, Claude, Tigreal, Minotaur, Mathilda. Other heroes us
 or the defaults, and every hero keeps learning cast modes and aiming from play. The seeds are general knowledge:
 a patch can change a skill, so a Groq fetch or a learned result replaces them.
 
+Tactical network per hero: the notebook trains one network for one hero (`HERO = "YourMainHero"`, or empty = the hero
+you recorded most) and only from your own play (`WATCHED_WEIGHT = 0`). policy_info.json says which hero; the app uses the
+network only while you play that hero and uses that hero's recorded moments otherwise.
+
 Evaluation: at the end of each match (2+ minutes) the app saves the hero, role, K/D/A, level, length, and whether
 the AI or you played. The Learn page "HOW THE AI DOES PER HERO AND ROLE" shows the averages per role and per hero,
 so you can see which heroes and roles it plays well. Wins and losses are not read from the screen yet.
