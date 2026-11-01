@@ -98,7 +98,7 @@ object AiRuntime {
             FrameProcessor.trackPlayer = true
         }
         lastError = ""
-        svc?.overlay?.show()
+        svc?.overlay?.let { if (!it.userHidden) it.show() }
         ensureLoops()
         Diag.info("$stage started" + if (stage == "player" && !GemmaEngine.ready) " (rules only, no Gemma)" else "")
         ActionExecutor.note("$stage started")
