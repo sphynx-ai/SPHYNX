@@ -118,7 +118,8 @@ object Cfg {
     fun setHeroDash(hero: String, v: String) = put("dash_" + hero.lowercase(), v)
 
     // save minimap pictures with pre-drawn boxes to train the detector (Download/MLBB-Research/dataset)
-    var collectDataset: Boolean get() = b("collect_ds", true); set(v) = put("collect_ds", v)
+    var collectDataset: Boolean get() = b("collect_ds", true); set(v) = put("collect_ds", v)          // minimap pictures
+    var collectScreenDataset: Boolean get() = b("collect_sds", true); set(v) = put("collect_sds", v)  // whole-screen pictures
 
     // ---- learning from live matches (watching another player) ----
     var liveLearn: Boolean get() = b("live_learn", true); set(v) = put("live_learn", v)
