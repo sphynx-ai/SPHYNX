@@ -162,6 +162,10 @@ object ScreenReader {
 
     // the cream-gold of the "VICTORY" letters (the buttons' gold is deeper)
     private fun isPaleGold(p: Int) = r(p) >= 190 && g(p) >= 165 && b(p) in 110..200 && r(p) - b(p) >= 35
+    // the silver of the "DEFEAT" letters
+    private fun isSilver(p: Int) = r(p) >= 170 && abs(r(p) - g(p)) <= 25 && abs(g(p) - b(p)) <= 30
+    // the red band behind the DEFEAT letters
+    private fun isBannerRed(p: Int) = r(p) >= 90 && r(p) - g(p) >= 50 && r(p) - b(p) >= 40
     // the light-blue buttons of the match-end screens (Data, Quit, Confirm)
     private fun isButtonBlue(p: Int) = b(p) >= 215 && g(p) >= 165 && r(p) in 90..190 && b(p) - r(p) >= 50
     // the grey (not yet pressable) Confirm button of hero select
@@ -172,8 +176,8 @@ object ScreenReader {
     private fun isLoadRed(p: Int) = r(p) >= 95 && g(p) <= 45 && b(p) <= 45
     private fun isDark(p: Int) = lum(p) < 80
 
-    // Win or loss of the last match end screen: true = VICTORY (gold letters), false = no gold
-    // letters (DEFEAT; not measured on a real defeat screen yet), null = no match end seen
+    // Win or loss of the last match end screen: true = VICTORY (gold letters), false = DEFEAT
+    // (silver letters on red), null = no match end seen
     @Volatile var lastResultWin: Boolean? = null
         private set
 
@@ -192,14 +196,25 @@ object ScreenReader {
             return ScreenHint.RESULT_BOARD
         }
         val confirmBlue = f(0.77f, 0.885f, 0.89f, 0.95f) { isButtonBlue(it) }
-        if (midDark && confirmBlue > 0.18f && data < 0.08f) {                // MVP / ratings with Confirm
-            lastResultWin = f(0.15f, 0.10f, 0.34f, 0.18f) { isPaleGold(it) } > 0.06f
-            return ScreenHint.RESULT_STATS
+        if (confirmBlue > 0.18f && data < 0.08f) {                // MVP / ratings with Confirm
+            // its title (top left): gold VICTORY or silver DEFEAT. The defeat version has a bright sky
+            // (only 53% dark), so the title also counts as proof that this is not the match view
+            val gold = f(0.15f, 0.10f, 0.34f, 0.18f) { isPaleGold(it) }
+            val silver = f(0.16f, 0.10f, 0.33f, 0.18f) { isSilver(it) }
+            if (midDark || gold > 0.08f || silver > 0.07f) {
+                lastResultWin = gold > 0.06f
+                return ScreenHint.RESULT_STATS
+            }
         }
         val cornersDark = f(0f, 0f, 0.25f, 0.30f) { isDark(it) } > 0.8f && f(0.75f, 0.70f, 1f, 1f) { isDark(it) } > 0.8f
         val banner = f(0.33f, 0.40f, 0.68f, 0.56f) { isPaleGold(it) }
         if (cornersDark && banner > 0.10f) {                      // the big VICTORY letters
             lastResultWin = true
+            return ScreenHint.RESULT_SPLASH
+        }
+        // the big silver DEFEAT letters on a red band (measured 0.12 / 0.17; any other screen: 0.05 / 0.04 at most)
+        if (cornersDark && f(0.30f, 0.40f, 0.70f, 0.58f) { isBannerRed(it) } > 0.10f && f(0.36f, 0.42f, 0.63f, 0.54f) { isSilver(it) } > 0.07f) {
+            lastResultWin = false
             return ScreenHint.RESULT_SPLASH
         }
 

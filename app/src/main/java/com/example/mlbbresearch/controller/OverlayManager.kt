@@ -80,6 +80,26 @@ class OverlayManager(private val ctx: Context) {
         }
     }
 
+    // the X on the icon hides it (the AI and screen capture keep running in the background);
+    // it stays hidden until "Show the floating icon" on the app's Home page
+    @Volatile var userHidden = false
+        private set
+
+    fun hideByUser() {
+        hide()
+        userHidden = true
+        Diag.info("Floating icon hidden (the AI keeps running)")
+        try {
+            android.widget.Toast.makeText(ctx, "Floating icon hidden. The AI keeps running. Show it again on the app's Home page.",
+                android.widget.Toast.LENGTH_LONG).show()
+        } catch (e: Exception) { }
+    }
+
+    fun showByUser(): Boolean {
+        userHidden = false
+        return show()
+    }
+
     fun hide() {
         ui.removeCallbacks(refresher)
         stopCalibration()
@@ -148,7 +168,8 @@ class OverlayManager(private val ctx: Context) {
         ))
         pointer = pv
 
-        // 2) round icon with a red X (X = emergency stop, tap icon = open window, drag = move)
+        // 2) round icon with an X (X = hide the icon, the AI keeps running; tap icon = open window;
+        //    drag = move; ⏻ = AI on / off)
         val ic = FrameLayout(ctx)
         val b = TextView(ctx).apply {
             gravity = Gravity.CENTER
@@ -164,8 +185,8 @@ class OverlayManager(private val ctx: Context) {
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             textSize = 11f
-            background = circle(Color.parseColor("#D32F2F")).apply { setStroke(dp(1), Color.WHITE) }
-            setOnClickListener { AiRuntime.emergencyStop("floating X") }
+            background = circle(Color.parseColor("#5F6368")).apply { setStroke(dp(1), Color.WHITE) }
+            setOnClickListener { hideByUser() }
         }
         ic.addView(close, FrameLayout.LayoutParams(dp(24), dp(24), Gravity.TOP or Gravity.END))
         // power button: AI on / off without opening the app

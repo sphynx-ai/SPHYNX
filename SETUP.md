@@ -49,8 +49,8 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
 
 ## In a match
 
-- **Floating icon**: the ⏻ button turns the AI on and off (it remembers which parts were running). The red X is the
-  emergency stop. The status window has an AI ON/OFF button too.
+- **Floating icon**: the ⏻ button turns the AI on and off (it remembers which parts were running). The X hides the
+  icon while the AI keeps running ("Show the floating icon" on the Home page brings it back). The status window has an AI ON/OFF button too.
 - **Player** levels up skills when the golden "+" shows (order is set on the Player page; the ultimate comes first
   by default). It buys the quick-buy item when it shows and no enemy is close. It holds the joystick down and turns
   smoothly, instead of tapping it again on every move.
@@ -765,16 +765,19 @@ The app reads which MLBB screen is up from colours alone (no Gemma needed), on e
 | Loading | blue progress bars under your team's cards, red under the enemies' | loading |
 | Death | the orange-red V around the respawn countdown | dead |
 | Shop / in-game scoreboard / big map | dark shop panel / blue-red VS header / enemy portrait column | shop / scoreboard / big map |
-| Victory | the big gold VICTORY letters on a dark screen | match end |
-| MVP / ratings | the light-blue Confirm button | match end |
+| Victory / Defeat | gold VICTORY letters, or silver DEFEAT letters on a red band, on a dark screen | match end |
+| MVP / ratings | the light-blue Confirm button with the VICTORY / DEFEAT title (top left) | match end |
 | Match-end scoreboard | the light-blue Data and Quit buttons | match end |
 
 A screen must show on 2 frames in a row before the phase changes. Menus darken the middle of the screen;
 the match view does not, so skill effects cannot look like a menu (tested on 1,000+ gameplay frames).
 
-At the match end the app logs the match once, with the result: gold VICTORY letters = win. The Learn page
-then shows "won X of Y" per role and per hero. A Defeat screen has not been measured yet: it is counted as
-a loss when the end screens show no gold letters.
+At the match end the app logs the match once, with the result: gold VICTORY letters = win, silver DEFEAT
+letters = loss. The Learn page then shows "won X of Y" per role and per hero.
+
+Floating icon: its X hides the icon; the AI, screen capture and recording keep running in the background.
+Bring it back with "Show the floating icon" on the Home page. To stop the AI: STOP ALL in the floating status
+window, the ⏻ button on the icon, STOP AI in the notification, or EMERGENCY STOP on the Home page.
 
 ## How it is organised (matches your note)
 

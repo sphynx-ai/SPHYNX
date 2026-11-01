@@ -553,7 +553,24 @@ class MainActivity : Activity() {
             setOnClickListener { AiRuntime.emergencyStop("home button") }
         }
         content.addView(stop, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(64)).apply { topMargin = dp(16) })
-        text("Also: the red X on the floating icon, STOP in the status window, and STOP AI in the notification.", 12f, color = "#9AA0A6")
+        text("Also: STOP ALL in the floating status window, the ⏻ button on the floating icon, and STOP AI in the notification.", 12f, color = "#9AA0A6")
+
+        // the X on the floating icon only hides it; bring it back here
+        val iconStatus = text("", 12f, color = "#9AA0A6")
+        upd {
+            val o = AccessibilityController.instance?.overlay
+            iconStatus.text = when {
+                o == null -> "Floating icon: needs the accessibility service"
+                o.shown -> "Floating icon: showing (its X hides it; the AI keeps running)"
+                o.userHidden -> "Floating icon: hidden (the AI keeps running in the background)"
+                else -> "Floating icon: shows when you start the AI"
+            }
+        }
+        btn("Show the floating icon") {
+            val o = AccessibilityController.instance?.overlay
+            if (o == null) toast("Turn on the accessibility service first")
+            else if (o.showByUser()) toast("Floating icon is back") else toast("Allow 'Display over other apps' so the floating icon can show")
+        }
     }
 
     // =====================================================================
