@@ -210,11 +210,21 @@ object AiRuntime {
     }
 
     // ---------- medium: 5 per second ----------
+    private var prevPhase = Phase.UNKNOWN
+    private var lastDeathMark = 0L
+
     private suspend fun tacticLoop() {
         while (anyOn()) {
             try {
                 val s = GameStateTracker.state
                 val stale = System.currentTimeMillis() - s.ts > 1500
+                // you just died: the moments you recorded in the 6 s before led to it
+                if (learnOn && !stale && s.phase == Phase.DEAD && prevPhase != Phase.DEAD && prevPhase.inMatch &&
+                    System.currentTimeMillis() - lastDeathMark > 10_000) {
+                    lastDeathMark = System.currentTimeMillis()
+                    DemoRecorder.markDeath(lastDeathMark)
+                }
+                if (!stale) prevPhase = s.phase
                 // the hero still plays with the big map open; shop / scoreboard pause it
                 val inGame = !stale && (s.phase == Phase.IN_GAME || s.phase == Phase.MAP)
                 if (playerOn && inGame) {

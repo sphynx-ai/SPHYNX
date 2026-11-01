@@ -806,6 +806,14 @@ Learn page, LEARN FROM LIVE MATCHES: type the hero you are watching and their ro
 and export `mlbb-live-*.csv` (same columns as `mlbb-my-play-*.csv` plus source, lane, match_sec). Train with
 the tactical notebook: upload it (with or without your own play) and set HERO to that hero.
 
+Training with both: upload your `mlbb-my-play-*.csv` and `mlbb-live-*.csv` files together in the tactical notebook.
+Moments of the same hero from both are trained together; `LIVE_WEIGHT` (default 1) sets how much the live ones count.
+
+Deaths: the moments of the 6 s before a death are marked (`died` = 1) - yours when you die in your matches, the
+watched hero's when their panel disappears for 2 s. The notebook counts them less (`DIED_WEIGHT`, default 0.3): those
+choices led to dying. The icons' "ready" colours are remembered per watched hero, so skills that are already cooling
+when you start watching are read right from the first frame.
+
 Not read: their items and gold (shown in the panel, not used by the tactical network), basic attacks directly,
 and aiming (no indicators on the live screen).
 

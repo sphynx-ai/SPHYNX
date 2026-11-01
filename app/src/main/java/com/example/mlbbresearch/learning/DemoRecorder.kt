@@ -306,6 +306,14 @@ object DemoRecorder {
         }
     }
 
+    // you died at (about) time t: your moments of the 6 s before led to it (the notebook can
+    // learn less from them). Watched heroes' moments ("~...") are not yours and stay as they are.
+    fun markDeath(t: Long) {
+        ExperienceRecorder.onDb({ db ->
+            db.execSQL("UPDATE demos SET died = 1 WHERE ts BETWEEN ? AND ? AND hero NOT LIKE '~%'", arrayOf<Any>(t - 6000, t + 500))
+        }) { }
+    }
+
     fun describe(mx: Float, my: Float, casts: Int): String {
         val dir = if (mx == 0f && my == 0f) "stand" else "move " + compass(mx, my)
         val c = Casts.names(casts)
