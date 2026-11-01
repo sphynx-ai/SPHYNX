@@ -229,7 +229,9 @@ object AiRuntime {
                     // joystick and skills); the survival rules still come first
                     // the trained tactical network (if loaded) learned your play; without it, the
                     // nearest recorded moments of yours are used
-                    if (com.example.mlbbresearch.learning.PolicyNet.ready && Cfg.policyOn) {
+                    // (a network trained for another hero is not used: that hero's recorded moments are)
+                    if (com.example.mlbbresearch.learning.PolicyNet.ready && Cfg.policyOn &&
+                        com.example.mlbbresearch.learning.PolicyNet.usableFor(s.ownHero)) {
                         d = com.example.mlbbresearch.learning.PolicyNet.blend(d, s, profile)
                     } else if (Cfg.playLikeMe) {
                         ImitationPolicy.ensureLoaded(hero)

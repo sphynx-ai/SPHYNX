@@ -51,15 +51,22 @@ object PolicyNet {
         private set
     @Volatile var qualityText = "no policy_info.json: everything it suggests is used"
         private set
+    // the hero it was trained for ("" = all heroes / unknown): other heroes move and use skills
+    // differently, so it is only used while you play that hero
+    @Volatile var trainedHero = ""
+        private set
+
+    fun usableFor(hero: String?) = trainedHero.isEmpty() || (hero != null && trainedHero.equals(hero, ignoreCase = true))
 
     fun applyInfo(json: String?) {
         if (json == null) {
-            moveTrusted = true; trustedButtons = setOf("attack", "s1", "s2", "ult", "spell", "recall")
+            moveTrusted = true; trustedButtons = setOf("attack", "s1", "s2", "ult", "spell", "recall"); trainedHero = ""
             qualityText = "no policy_info.json: everything it suggests is used"
             return
         }
         try {
             val o = org.json.JSONObject(json)
+            trainedHero = o.optString("hero", "").trim()
             val bal = o.optDouble("move_balanced", 0.0); val checked = o.optInt("move_checked", 0); val fewest = o.optInt("move_fewest", 0)
             moveTrusted = bal >= 0.40 && checked >= 300 && fewest >= 15
             val b = o.optJSONObject("buttons")
@@ -69,7 +76,7 @@ object PolicyNet {
                 if (q.optInt("checked", 0) >= 20 && q.optDouble("right", 0.0) >= 0.4) ok.add(k)
             }
             trustedButtons = ok
-            qualityText = "joystick " + (if (moveTrusted) "used" else "not yet (${(bal * 100).toInt()}% on $checked moments)") +
+            qualityText = (if (trainedHero.isNotEmpty()) "for $trainedHero only; " else "") + "joystick " + (if (moveTrusted) "used" else "not yet (${(bal * 100).toInt()}% on $checked moments)") +
                 "; buttons used: " + (if (ok.isEmpty()) "none yet" else ok.joinToString())
         } catch (t: Throwable) {
             Diag.error("policy_info.json", t)
@@ -138,6 +145,7 @@ object PolicyNet {
 
     fun blend(d: TacticalDecision, s: GameState, p: HeroProfile): TacticalDecision {
         if (!Cfg.policyOn || !ready || s.self == null) return d
+        if (!usableFor(s.ownHero)) { last = "trained for $trainedHero, not ${s.ownHero ?: "this hero"}: rules only"; return d }
         val o = try { predict(s) } catch (t: Throwable) { Diag.error("Tactical network run", t); null } ?: return d
         last = "${dirName(o.move)} ${(o.moveP * 100).toInt()}%" +
             SLOTS.indices.filter { o.casts[it] >= 0.5f }.joinToString("") { " + " + SLOTS[it] }
