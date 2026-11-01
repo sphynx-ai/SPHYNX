@@ -6,6 +6,9 @@ import com.example.mlbbresearch.vision.MinimapInfo
 // current map, plus the turrets. "Blue buff" / "red buff" are old names: the buffs are now the
 // PURPLE buff (Thunder Fenrir) and the ORANGE buff (Molten Fiend).
 //
+// HP bars: ONLY the Lord shows its bar before it is attacked; every other monster (Turtle, buffs,
+// camps) shows it only after it takes damage (from you, allies or enemies). Unhit monsters are
+// found by the trained screen detector, or started with a basic attack at their camp / pit.
 // How the app tells them apart on screen (measured on 20 screenshots, 2712 x 1220):
 //   HP bar (red, orange frame, no level badge): full width 0.095+ of the screen, 5 rows thick and a
 //   purple skull icon = Lord / Turtle; 0.078-0.095 = a buff; less = a common creep. (A hero's bar

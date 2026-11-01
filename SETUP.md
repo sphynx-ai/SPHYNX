@@ -834,6 +834,11 @@ There is no "blue buff" / "red buff": the buffs are the **purple buff (Thunder F
 | Fire Beetle (+ its little Crammer), Lithowanderer, Scavenger Crab | camp / river | see Game knowledge below |
 | Cyclone Eye | terrain (blink pad), not a monster | blue diamond on the minimap |
 
+HP bars: only the **Lord** shows its HP bar before it is attacked. Every other monster (Turtle, buffs, small camps) shows
+its bar only after it takes damage - from you, your teammates or the enemies. So the AI starts camps and the Turtle with a
+basic attack (skills once the bar shows); at the Lord pit with no bar on screen it steps in, because no bar there means the
+Lord is not in view yet. Monsters nobody has hit are only seen by the trained screen detector.
+
 How the colour vision names them (measured on 20 screenshots): the HP bar's full width inside its orange frame
 (Lord / Turtle 0.10+ and 5 rows thick with a purple skull icon; buffs 0.078-0.095; small camps less), then Lord or
 Turtle by the pit you stand by, the buffs by body colour (orange vs blue / lavender), the Horned Lizard by colour.

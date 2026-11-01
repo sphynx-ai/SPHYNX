@@ -713,8 +713,11 @@ class MainActivity : Activity() {
         title("JUNGLE, TURTLE & LORD")
         switch("Neutral monster detector (jungle monsters, turtle, lord)", Cfg.detectMonsters) { Cfg.detectMonsters = it }
         val monInfo = text("", 13f)
-        upd { monInfo.text = "Monsters are found by their red HP bar with no level badge next to it " +
-            "(enemy heroes have one). Nothing to learn or set." }
+        upd { monInfo.text = "Only the Lord shows its red HP bar before it is attacked. Every other monster (Turtle, buffs, " +
+            "small camps) shows its bar only after it takes damage - from you, your teammates or the enemies. So: a monster " +
+            "WITH a bar is found by that bar (no level badge next to it - enemy heroes have one) and named from its size, " +
+            "colour and pit; at a camp or the Turtle pit with no bar yet, the AI starts with a basic attack so the bar " +
+            "appears, then uses its skills. Monsters nobody has hit are only seen by the trained screen detector (if loaded)." }
         title("HERO LEVEL")
         text("Your level (1-15) is read from the badge left of your HP bar: it starts at 1, goes up when the badge " +
             "changes or a new skill point (+) shows, and every badge seen at a known level is remembered, so later " +
