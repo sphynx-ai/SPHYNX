@@ -39,6 +39,9 @@ object MetaAdvisor {
                     "\"lane\":\"exp|gold|mid|roam|jungle\",\"combo\":\"skill order using s1, s2, ult and a (basic attack), e.g. s2 > s1 > a > ult\"," +
                     "\"dash\":\"s1|s2|ult|none - the skill that dashes, leaps or blinks\"," +
                     "\"skill_order\":\"skill upgrade priority from the guides, e.g. ult > s1 > s2\"," +
+                    "\"playstyle\":\"how to play $hero effectively in 1-2 short sentences (its job in fights, positioning)\"," +
+                    "\"skill_use\":{\"s1\":\"when and how to use skill 1, one short sentence\",\"s2\":\"same for skill 2\",\"ult\":\"same for the ultimate\"}," +
+                    "\"power_spike\":\"when it is strongest (level / items), a few words\"," +
                     "\"laning\":[\"3 short early-game laning / farming tips\"],\"jungle\":[\"3 short jungle clear route tips\"]," +
                     "\"rotation\":[\"3 short rotation and objective timing tips (turtle, lord, towers)\"]," +
                     "\"counters\":[\"heroes strong against $hero\"],\"recent_changes\":\"its buffs / nerfs in recent patches, one sentence\"}"

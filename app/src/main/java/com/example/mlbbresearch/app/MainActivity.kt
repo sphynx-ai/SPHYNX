@@ -985,6 +985,54 @@ class MainActivity : Activity() {
                 "Jungle:\n" + com.example.mlbbresearch.game.JungleDb.describe()
         }
 
+        // ---- how to play the hero you are on (worked out from its skills + the online guide, and used in play) ----
+        title("How to play your hero")
+        val pc = card()
+        val pHead = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        pc.addView(pHead)
+        val pPlan = cardText(pc, 13f)
+        val pTips = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        pc.addView(pTips)
+        val pSrc = cardNote(pc)
+        var pKey = ""
+        upd {
+            val h = GameStateTracker.ownHero()
+            val pb = com.example.mlbbresearch.game.HeroPlaybook.of(h)
+            val key = "$h|${pb.combo}|${pb.tips.size}|${pb.source}"
+            if (key == pKey) return@upd
+            pKey = key
+            pHead.removeAllViews()
+            pHead.addView(com.example.mlbbresearch.app.IconCache.view(this, h ?: "?", true, dp(48)), LinearLayout.LayoutParams(dp(48), dp(48)))
+            val nm = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
+            nm.addView(TextView(this).apply { text = h ?: "No hero yet"; textSize = 17f; setTextColor(Color.WHITE); setTypeface(null, Typeface.BOLD) })
+            nm.addView(chip(pb.style, if (pb.learned) T.ACCENT else T.MUTED))
+            pHead.addView(nm, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            pPlan.text = "Combo: " + com.example.mlbbresearch.game.ComboBook.text(h).first +
+                "\nOpener ${pb.opener ?: "-"} · CC ${pb.cc ?: "-"} · finisher ${pb.finisher ?: "-"}" +
+                "\nEscape ${pb.escape ?: "-"}${if (pb.keepEscape) " (kept)" else ""} · waves ${pb.waveClear ?: "-"}" +
+                (pb.sustain?.let { " · heal/shield $it" } ?: "") + (pb.buff?.let { " · buff $it" } ?: "")
+            pTips.removeAllViews()
+            for (t in pb.tips) pTips.addView(TextView(this).apply {
+                text = "•  $t"; textSize = 13f; setTextColor(c(T.TEXT)); setLineSpacing(0f, 1.1f); setPadding(0, dp(3), 0, dp(1))
+            })
+            pSrc.text = if (pb.learned) "Used in play: combo, escape, wave clear, ultimate timing. From ${pb.source}."
+                else "Only role defaults so far: tap Learn this hero to get its real skills and guide."
+        }
+        btn("Learn this hero (skills + online guide)") {
+            val h = GameStateTracker.ownHero()
+            when {
+                h == null -> toast("Pick a hero first")
+                Cfg.groqKey.isBlank() -> toast("No Groq key: put groq_key.txt in the MLBB-Research folder")
+                else -> {
+                    toast("Learning $h (skills, then the guide)…")
+                    com.example.mlbbresearch.game.SkillBook.fetch(h) { m1 ->
+                        com.example.mlbbresearch.ai.MetaAdvisor.updateHero(h) { m2 -> runOnUiThread { toast("$h learned. " + m2.take(80)) } }
+                        runOnUiThread { toast(m1.take(80)) }
+                    }
+                }
+            }
+        }
+
         title("Skills & passive")
         text("What each skill does (range, crowd control, dash, cast mode) is learned online. Skills that miss or fail are re-tried and re-aimed.", 13f)
         val skInfo = text("", 13f)

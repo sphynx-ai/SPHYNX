@@ -22,7 +22,10 @@ class HeroMeta(
     val counters: List<String>,
     val changes: String,
     val sources: List<String>,
-    val skillOrder: List<String> = emptyList()    // upgrade priority from the guides (s1 / s2 / ult)
+    val skillOrder: List<String> = emptyList(),   // upgrade priority from the guides (s1 / s2 / ult)
+    val playstyle: String = "",                    // how to play it effectively, in a sentence or two
+    val skillUse: Map<String, String> = emptyMap(),  // s1 / s2 / ult -> when and how to use it
+    val powerSpike: String = ""
 )
 
 class GeneralMeta(
@@ -66,7 +69,10 @@ object MetaStore {
                 combo, dash, list(o, "laning"), list(o, "jungle"), list(o, "rotation"),
                 list(o, "counters").mapNotNull { HeroDb.match(it) }, o.optString("recent_changes", ""), list(o, "sources"),
                 skillOrder = Regex("ult|s1|s2").findAll(o.optString("skill_order", "").lowercase().replace("skill 1", "s1").replace("skill 2", "s2")
-                    .replace("ultimate", "ult")).map { it.value }.distinct().toList())
+                    .replace("ultimate", "ult")).map { it.value }.distinct().toList(),
+                playstyle = o.optString("playstyle", "").trim(),
+                skillUse = o.optJSONObject("skill_use")?.let { j -> listOf("s1", "s2", "ult").mapNotNull { k -> j.optString(k, "").trim().takeIf { it.isNotEmpty() }?.let { k to it } }.toMap() } ?: emptyMap(),
+                powerSpike = o.optString("power_spike", "").trim())
         } catch (e: Exception) {
             null
         }

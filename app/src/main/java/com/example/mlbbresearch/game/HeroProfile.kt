@@ -142,7 +142,11 @@ object HeroDb {
         "Floryn" to UltRule.DEFENSIVE
     )
 
-    fun profile(hero: String?): HeroProfile {
+    // the hero's profile, played the way its skills work (HeroPlaybook) when they are known
+    fun profile(hero: String?): HeroProfile = HeroPlaybook.adapt(baseProfile(hero), ultFixed = hero != null && hero in ultOverride)
+
+    // from the role alone (also the starting point of the playbook)
+    fun baseProfile(hero: String?): HeroProfile {
         val name = hero ?: "Unknown"
         val role = role(hero)
         val dmg = damage(hero)

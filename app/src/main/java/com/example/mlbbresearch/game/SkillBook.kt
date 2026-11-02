@@ -134,7 +134,7 @@ object SkillBook {
             role == Role.MARKSMAN || role == Role.MAGE -> 0.45f
             else -> 0.32f
         }
-        val hardCc = has(t, "stun", "knock", "airborne", "suppress", "taunt", "freeze", "frozen", "petrif", "immobil", "root", "bind", "pull", "silence", "sleep")
+        val hardCc = has(t, "stun", "knock", "airborne", "suppress", "taunt", "freeze", "frozen", "petrif", "immobil", "root", "bind", "pull", "silence", "sleep", "kick", "launch", "grab", "charm", "fear", "trap", "imprison", "petrify")
         val holdMs = Regex("(?:up to|for|over) (\\d+(?:\\.\\d+)?) ?s").find(t)?.groupValues?.get(1)?.toFloatOrNull()
             ?.takeIf { hold }?.let { (it * 1000).toLong().coerceIn(300L, 3000L) } ?: if (hold) 1000L else 0L
         val damage = when {
@@ -170,7 +170,7 @@ object SkillBook {
     private fun defaults(hero: String): HeroSkills {
         val role = HeroDb.role(hero)
         val dash = HeroDb.dashSlot(hero)
-        val base = HeroDb.profile(hero)
+        val base = HeroDb.baseProfile(hero)
         val m = HashMap<String, SkillInfo>()
         for (slot in listOf("s1", "s2", "ult")) {
             val isDash = slot == dash

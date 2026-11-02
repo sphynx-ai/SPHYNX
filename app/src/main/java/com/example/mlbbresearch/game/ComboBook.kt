@@ -70,6 +70,8 @@ object ComboBook {
             Cfg.heroCombo(hero)?.let { if (parse(it).isNotEmpty()) return it to "yours" }
             MetaStore.hero(hero)?.combo?.let { return it to "online meta" }
             builtIn[hero]?.let { return it to "built-in" }
+            // worked out from what its skills do
+            HeroPlaybook.of(hero).takeIf { it.learned }?.let { return it.combo to "from its skills" }
         }
         return (roleDefault[HeroDb.role(hero)] ?: "s1 > s2 > ult") to "role default"
     }
