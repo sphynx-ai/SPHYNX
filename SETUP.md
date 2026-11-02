@@ -1055,6 +1055,25 @@ How the small model plays (Model page switch "Small tactical model in fights", o
   waiting, deciding, touch queue, capture and read frame rates, tactical network, minimap / screen detectors, small
   tactical model, strategic model (Gemma), online meta (Groq). Green = fast, amber = ok, red = slow
 
+## How to play the hero you are on (v36.20)
+
+- the AI now works out a game plan for the hero you play from what its skills really do (learned online / pasted /
+  built-in) plus the online guide: its style (e.g. burst assassin, tank initiator, poke mage), the skill that opens a
+  fight (reach + crowd control first), the crowd control, the finisher, the escape, the wave-clear skill, the heal /
+  shield, the self-buff, when the ultimate is used, and plain-language tips
+- it is APPLIED in play, instead of the role's defaults:
+  - the hero's profile: combo order, escape skill, wave-clear skill, ultimate timing (engage / execute / teamfight /
+    survive / buff, from what the ultimate does), how far it starts fights
+  - the combo when you have not set one (and there is no built-in or online combo): buff > opener > crowd control >
+    damage > ultimate > basic attack
+  - in fights: a fragile hero (assassin, marksman, mage, support) keeps its dash for leaving while the enemy is still
+    healthy and no ally is near; the heal / shield goes out when hurt; the self-buff is cast first
+- the online hero update now also asks for how to play it (playstyle), when and how to use each skill, and when it is
+  strongest; these are added to the tips
+- the hero you play is learned by itself (Groq key); Player page: "How to play your hero" card (style, combo, roles of
+  each skill, tips) and "Learn this hero (skills + online guide)"
+- crowd control is now also recognised from "kick", "launch", "grab", "charm", "fear", "trap", "imprison"
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |

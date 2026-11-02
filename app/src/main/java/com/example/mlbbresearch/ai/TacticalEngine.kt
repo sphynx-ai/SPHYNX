@@ -1,6 +1,7 @@
 package com.example.mlbbresearch.ai
 
 import com.example.mlbbresearch.game.SkillBook
+import com.example.mlbbresearch.game.HeroPlaybook
 import com.example.mlbbresearch.game.Passive
 
 import com.example.mlbbresearch.core.Cfg
@@ -271,6 +272,8 @@ object TacticalEngine {
             // basic attacks keep going between and alongside skills (and while they cool down)
             casts = casts + "attack"
         }
+        // how this hero is played: keep the escape, heal / shield when hurt, self-buff first
+        casts = HeroPlaybook.applyCasts(d, casts, s, p) { CooldownTracker.ready(it, p) }
         casts = spellCasts(s, p, d, casts)
         if (casts == d.casts) return d
         return TacticalDecision(d.intent, d.moveX, d.moveY, casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId, d.reason)
