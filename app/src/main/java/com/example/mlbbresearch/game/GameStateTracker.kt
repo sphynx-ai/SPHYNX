@@ -3,6 +3,7 @@ package com.example.mlbbresearch.game
 import com.example.mlbbresearch.core.Cfg
 import com.example.mlbbresearch.core.Diag
 import com.example.mlbbresearch.vision.IconMemory
+import com.example.mlbbresearch.vision.HudInfo
 import com.example.mlbbresearch.vision.ScreenHint
 import com.example.mlbbresearch.vision.VisionResult
 
@@ -30,16 +31,33 @@ object GameStateTracker {
     @Volatile var enemyTeam: List<String> = emptyList()
     @Volatile var draftedHero: String? = null      // locked in during the draft
     @Volatile var guessedHero: String? = null      // recognised in game by Gemma
-    @Volatile var iconHero: String? = null         // recognised from the skill icons (IconMemory)
+    @Volatile var iconHero: String? = null         // recognised from its minimap portrait + model (IconMemory)
     @Volatile var gemmaSpell: String? = null       // battle spell read by Gemma this match
     @Volatile var iconSpell: String? = null        // battle spell recognised from its icon
-    @Volatile var lastHeroIcons: List<FloatArray>? = null
+    @Volatile var lastHeroSig: List<FloatArray>? = null
         private set
     @Volatile var lastSpellIcon: FloatArray? = null
         private set
     @Volatile var matchStartAt = 0L
         private set
     @Volatile var spawnAt = 0L
+        private set
+
+    // K / D / A seen this match (counted from the moment the app started watching)
+    @Volatile var kills = 0
+        private set
+    @Volatile var deaths = 0
+        private set
+    @Volatile var assists = 0
+        private set
+    @Volatile var lastKillAt = 0L
+        private set
+    @Volatile var lastDeathAt = 0L
+        private set
+    @Volatile var lastAssistAt = 0L
+        private set
+    // last frame on which the camera moved (no movement while walking = stuck on a wall)
+    @Volatile var lastMotionAt = 0L
         private set
     @Volatile private var items = -1
     @Volatile private var gold = -1
@@ -50,7 +68,7 @@ object GameStateTracker {
     fun ownHero(): String? = iconHero ?: draftedHero ?: HeroDb.match(Cfg.myHero) ?: guessedHero
 
     fun ownHeroSource(): String = when {
-        iconHero != null -> "recognised from the skill icons"
+        iconHero != null -> "recognised from its portrait and model"
         draftedHero != null -> "picked this match"
         HeroDb.match(Cfg.myHero) != null -> "typed by you"
         guessedHero != null -> "recognised by Gemma"
@@ -74,7 +92,7 @@ object GameStateTracker {
 
     // "This is my hero / spell now": label what the icons look like right now
     fun teachHero(name: String): Boolean {
-        val sig = lastHeroIcons ?: return false
+        val sig = lastHeroSig ?: return false
         IconMemory.learnHero(name, sig)
         iconHero = name
         return true
@@ -88,18 +106,19 @@ object GameStateTracker {
     }
 
     private fun recognise(v: VisionResult) {
-        v.heroIcons?.let { sig ->
-            lastHeroIcons = sig
+        // only on the normal map (the big map hides your minimap icon)
+        if (state.phase != Phase.MAP) v.heroSig?.let { sig ->
+            lastHeroSig = sig
             val m = IconMemory.matchHero(sig)
             if (m != null && m.second < IconMemory.HERO_MATCH) {
-                if (iconHero != m.first) Diag.info("Recognised your hero from the skill icons: ${m.first}")
+                if (iconHero != m.first) Diag.info("Recognised your hero from its portrait and model: ${m.first}")
                 iconHero = m.first
             }
             // learn the icons of a hero seen picked / read THIS match (never against the icons;
             // never from the typed name, which may be from an older match)
             val teacher = draftedHero ?: guessedHero
             if (teacher != null && (iconHero == null || iconHero == teacher) && IconMemory.learnHero(teacher, sig)) {
-                Diag.info("Learned the skill icons of $teacher")
+                Diag.info("Learned how $teacher looks")
             }
         }
         v.spellIcon?.let { p ->
@@ -126,14 +145,33 @@ object GameStateTracker {
 
     fun update(v: VisionResult): GameState {
         val now = v.ts
+        // watching someone's live match (and up to 4 s after its last frame)
+        // (LIVE_DEAD: the watched hero is dead, nothing on screen is theirs)
+        if (v.hint == ScreenHint.LIVE || v.hint == ScreenHint.LIVE_DEAD) lastLiveAt = now
+        if (v.hint == ScreenHint.LIVE || v.hint == ScreenHint.LIVE_DEAD || (now - lastLiveAt in 0..4000 && v.hint == ScreenHint.NONE))
+            return liveState(v, now, v.hint == ScreenHint.LIVE)
         val wasInMatch = now - lastInGame < 120_000
         val before = state.phase
         if (v.self != null && !wasInMatch) {
             // first look at your hero after hero select / loading: the match clock starts
+            logMatch()                      // a match without a hero-select screen in between
+            kills = 0; deaths = 0; assists = 0
             matchStartAt = now
+            com.example.mlbbresearch.vision.ScreenReader.clearResult()
             spawnAt = now
+            com.example.mlbbresearch.vision.LevelReader.reset()
         }
         recognise(v)
+        // being hit: your HP fell 6%+ within half a second -> the AI reacts on this very frame
+        v.self?.let { me ->
+            hpHist.addLast(now to me.hp)
+            while (hpHist.size > 1 && now - hpHist.first().first > 500) hpHist.removeFirst()
+            if (hpHist.first().second - me.hp >= 0.06f) hurtAt = now
+        }
+        if (v.kda[0] > 0) { kills++; lastKillAt = now; Diag.info("Kill (K/D/A)") }
+        if (v.kda[1] > 0) { deaths++; lastDeathAt = now }
+        if (v.kda[2] > 0) { assists++; lastAssistAt = now }
+        if (v.hud.motionX != 0f || v.hud.motionY != 0f) lastMotionAt = now
         if (v.self != null) {
             lastSelfSeen = now
             lastInGame = now
@@ -148,15 +186,30 @@ object GameStateTracker {
             v.self != null -> Phase.IN_GAME
             hint == ScreenHint.SHOP && inMatch -> Phase.SHOP
             hint == ScreenHint.SCOREBOARD && inMatch -> Phase.SCOREBOARD
+            hint == ScreenHint.DEAD -> Phase.DEAD                // the respawn countdown
+            hint == ScreenHint.RESULT_SPLASH || hint == ScreenHint.RESULT_STATS || hint == ScreenHint.RESULT_BOARD -> Phase.RESULT
             now - lastSelfSeen < 3000 -> Phase.IN_GAME          // briefly hidden (effects)
             inMatch && v.saturation < 0.12f -> Phase.DEAD
             hint == ScreenHint.HERO_SELECT -> Phase.DRAFT
+            hint == ScreenHint.HERO_LOCKED -> Phase.HERO_LOCKED
             hint == ScreenHint.LOADING -> Phase.LOADING
+            hint == ScreenHint.HOME -> Phase.HOME
+            hint == ScreenHint.LOBBY -> Phase.LOBBY
+            hint == ScreenHint.QUEUE -> Phase.QUEUE
             now - gemmaScreenAt < 25_000 -> gemmaScreen
             else -> Phase.UNKNOWN
         }
         if (phase == Phase.SHOP || phase == Phase.SCOREBOARD || phase == Phase.MAP) lastInGame = now
-        if (phase == Phase.DRAFT) {
+        // match end (Victory / Defeat, MVP, final scoreboard): log the match once, with the result
+        val endScreen = hint == ScreenHint.RESULT_SPLASH || hint == ScreenHint.RESULT_STATS || hint == ScreenHint.RESULT_BOARD
+        if (endScreen && phase == Phase.RESULT && matchStartAt != 0L) {
+            val result = com.example.mlbbresearch.vision.ScreenReader.lastResultWin
+            lastResultWin = result
+            logMatch()                       // (it clears lastResultWin: the message uses the copy)
+            matchStartAt = 0L
+            Diag.info("Match end: " + when (result) { true -> "victory"; false -> "defeat"; null -> "result not read" })
+        }
+        if (phase == Phase.DRAFT || phase == Phase.HERO_LOCKED) {
             // first hero-select screen in 5 minutes = a new match: forget the old one
             if (now - lastSelectSeen > 300_000) newMatch()
             lastSelectSeen = now
@@ -168,9 +221,19 @@ object GameStateTracker {
 
         // big map open: its portraits and icons are not units on the field
         val onMap = phase == Phase.MAP
-        fun field(x: Float, y: Float) = !onMap || !(x < 0.45f && y < 0.85f)
 
-        val s = GameState(
+        val s = makeState(v, now, phase, onMap, ownHero(), spell(), lane().first,
+            if (matchStartAt == 0L) -1 else ((now - matchStartAt) / 1000).toInt(),
+            if (spawnAt == 0L) Long.MAX_VALUE else now - spawnAt)
+        state = s
+        CooldownTracker.observe(v)
+        return s
+    }
+
+    private fun makeState(v: VisionResult, now: Long, phase: Phase, onMap: Boolean, hero: String?, spell: String?, lane: Lane,
+                          matchSec: Int, sinceSpawnMs: Long): GameState {
+        fun field(x: Float, y: Float) = !onMap || !(x < 0.45f && y < 0.85f)
+        return GameState(
             ts = now,
             phase = phase,
             self = v.self,
@@ -181,7 +244,7 @@ object GameStateTracker {
             allyMinions = v.allyMinions.filter { field(it.x, it.y) },
             minimapEnemies = v.minimap.enemies,
             aspect = v.aspect,
-            ownHero = ownHero(),
+            ownHero = hero,
             myTeam = myTeam,
             enemyTeam = enemyTeam,
             items = items,
@@ -189,21 +252,81 @@ object GameStateTracker {
             itemsGoldAgeMs = if (itemsGoldAt == 0L) Long.MAX_VALUE else now - itemsGoldAt,
             hud = v.hud,
             monsters = v.monsters.filter { field(it.x, it.y) },
-            spell = spell(),
-            lane = lane().first,
-            matchSec = if (matchStartAt == 0L) -1 else ((now - matchStartAt) / 1000).toInt(),
-            sinceSpawnMs = if (spawnAt == 0L) Long.MAX_VALUE else now - spawnAt
+            spell = spell,
+            lane = lane,
+            matchSec = matchSec,
+            sinceSpawnMs = sinceSpawnMs,
+            minimapSelf = if (onMap) null else v.minimap.self,
+            camps = if (onMap) emptyList() else v.minimap.camps,
+            towers = if (onMap) emptyList() else v.minimap.towers,
+            enemyBase = if (onMap) null else v.minimap.enemyBase,
+            allyWaves = if (onMap) emptyList() else v.minimap.allyWaves,
+            allyTowers = if (onMap) emptyList() else v.minimap.allyTowers,
+            enemyWaves = if (onMap) emptyList() else v.minimap.enemyWaves,
+            bossHp = v.bossHp,
+            bushes = v.bushes,
+            // on screen, or (alongside) the minimap shows your spot is bush ground
+            inBush = v.inBush || !onMap && com.example.mlbbresearch.vision.WallMap.inBush(v.minimap.self),
+            screenWalls = v.screenWalls,
+            level = v.level,
+            xp = v.xp,
+            enemyLevel = v.enemyLevel,
+            towerRing = v.towerRing,
+            map = if (onMap) MapIntel.Info.NONE else MapIntel.read(v.minimap, now)
         )
+    }
+
+    // ---------------- live match (watching another player) ----------------
+    // Their screen is read like a match of yours, but it never touches YOUR match: no match
+    // start, no K/D/A, no cooldowns, and the AI never plays (the phase is LIVE, not IN_GAME).
+    // The hero and role being watched come from the Learn page; the match clock from Gemma.
+    @Volatile private var lastLiveAt = 0L
+    @Volatile private var liveClockSec = -1
+    @Volatile private var liveClockAt = 0L
+
+    // the clock read from their screen (mm:ss, by Gemma): counted on from there
+    fun setLiveClock(sec: Int) { liveClockSec = sec; liveClockAt = System.currentTimeMillis() }
+    fun liveClockAge(): Long = if (liveClockAt == 0L) Long.MAX_VALUE else System.currentTimeMillis() - liveClockAt
+
+    private fun liveState(v: VisionResult, now: Long, seenLive: Boolean): GameState {
+        val wall = System.currentTimeMillis()        // the clock is stamped with this time too
+        if (liveClockAt != 0L && wall - liveClockAt > 40 * 60_000L) { liveClockAt = 0L; liveClockSec = -1 }
+        val sec = if (liveClockAt == 0L) -1 else liveClockSec + ((wall - liveClockAt) / 1000).toInt()
+        // a frame right after a live one that was not recognised (a popup over the panel):
+        // still the live screen, but nothing on it is trusted
+        val vv = if (seenLive) v else VisionResult(v.ts, v.frameW, v.frameH, null, emptyList(), emptyList(), emptyList(), emptyList(),
+            emptyList(), v.minimap, v.saturation, emptyMap(), v.hint, HudInfo.NONE, null, null, emptyList(), IntArray(3), -1f,
+            emptyList(), false, v.screenWalls, processMs = v.processMs)
+        val hero = HeroDb.match(Cfg.liveHero)
+        val s = makeState(vv, now, Phase.LIVE, false, hero, null, Cfg.liveLane, sec, Long.MAX_VALUE)
+        if (state.phase != Phase.LIVE) phaseSince = now
         state = s
-        CooldownTracker.observe(v)
         return s
     }
+
+    private val hpHist = ArrayDeque<Pair<Long, Float>>()
+    @Volatile var hurtAt = 0L
+        private set
+    fun hurtRecently(now: Long) = now - hurtAt in 0..700
 
     // set by the drafter so it can reset its once-per-match steps
     @Volatile var onNewMatch: (() -> Unit)? = null
 
     // New match: forget the previous one
+    // the match that just ended goes into the evaluation log
+    // the last match end screen: true = victory, false = defeat, null = not seen
+    @Volatile var lastResultWin: Boolean? = null
+        private set
+
+    private fun logMatch() {
+        if (matchStartAt == 0L) return
+        MatchLog.save(ownHero(), lane().first, kills, deaths, assists, com.example.mlbbresearch.vision.LevelReader.level,
+            ((lastInGame - matchStartAt) / 1000).toInt(), com.example.mlbbresearch.ai.AiRuntime.playerOn, lastResultWin)
+        lastResultWin = null
+    }
+
     fun newMatch() {
+        logMatch()
         onNewMatch?.invoke()
         myTeam = emptyList()
         enemyTeam = emptyList()
@@ -213,6 +336,11 @@ object GameStateTracker {
         gemmaSpell = null
         iconSpell = null
         matchStartAt = 0L
+        kills = 0; deaths = 0; assists = 0
+        com.example.mlbbresearch.vision.KdaReader.reset()
+        com.example.mlbbresearch.vision.LevelReader.reset()
+        com.example.mlbbresearch.vision.WallMap.reset()
+        GameMemory.reset()
         items = -1
         gold = -1
         itemsGoldAt = 0L
@@ -242,14 +370,39 @@ object CooldownTracker {
     }
 
     @Synchronized
+    // Ready = the button is bright again on screen (a skill on cooldown is dark with a countdown,
+    // a skill not learned yet is dark too). The screen beats the estimated timer, which is only
+    // used when the buttons cannot be read.
     fun ready(slot: String, p: HeroProfile): Boolean {
-        val cd = ((p.cooldownSec[slot] ?: 8f) * 1000 * cdFactor).toLong()
-        val timerOk = System.currentTimeMillis() - (lastCast[slot] ?: 0L) >= cd
-        if (!timerOk) return false
-        if (!Cfg.readCooldownsFromScreen) return true
-        val b = current[slot] ?: return true
-        val base = baseline[slot] ?: return true
-        return b >= base * 0.72f
+        val since = System.currentTimeMillis() - (lastCast[slot] ?: 0L)
+        if (Cfg.readCooldownsFromScreen) {
+            val b = current[slot]
+            val base = baseline[slot]
+            if (b != null && base != null && base > 40f) return since > 400 && b >= base * 0.72f
+        }
+        // the battle spell's real cooldown (wiki), whatever the hero profile says
+        val base = if (slot == "spell") SpellInfo.cooldown[GameStateTracker.spell()] ?: p.cooldownSec[slot] ?: 100f else p.cooldownSec[slot] ?: 8f
+        val cd = (base * 1000 * cdFactor).toLong()
+        return since >= cd
+    }
+
+    @Synchronized
+    fun screenKnown(slot: String): Boolean = Cfg.readCooldownsFromScreen && (baseline[slot] ?: 0f) > 40f && current[slot] != null
+
+    // what the button shows right now: bright = ready (true), dark = cooling down / used
+    // (false); unknown buttons count as not ready so nothing is pressed twice by mistake
+    @Synchronized
+    fun lookReady(slot: String): Boolean {
+        val b = current[slot] ?: return false
+        val base = baseline[slot] ?: return false
+        return base > 40f && b >= base * 0.72f
+    }
+
+    // for the Player page: what the buttons show right now
+    @Synchronized
+    fun screenState(): String = listOf("s1", "s2", "ult", "spell").joinToString("  ") { k ->
+        val b = current[k]; val base = baseline[k]
+        k + ": " + if (b == null || base == null || base <= 40f) "?" else if (b >= base * 0.72f) "ready" else "cooling down"
     }
 
     @Synchronized

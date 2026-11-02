@@ -12,7 +12,10 @@ import com.example.mlbbresearch.game.HeroDb
 import com.example.mlbbresearch.game.Phase
 import com.example.mlbbresearch.game.Role
 import com.example.mlbbresearch.game.SpellDb
+import com.example.mlbbresearch.game.Lane
+import com.example.mlbbresearch.game.MetaStore
 import com.example.mlbbresearch.vision.ObjectDetector
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 // Decides WHEN to ask Gemma and what to ask. Event-driven: Gemma is only consulted
@@ -36,12 +39,15 @@ object StrategicAdvisor {
     private var lastDraft = 0L
     private var lastBuildRead = 0L
     private var lastIdentify = 0L
+    private var lastClockAsk = 0L
     private var lastEnemyCount = 0
     private var lastHpBand = 2
     private var buildAdviceKey = ""
     private var lastDraftScreenAt = 0L
     private var lastDraftAction = ""
     private var lastDraftActionAt = 0L
+    @Volatile private var onlineDraft: MetaAdvisor.Draft? = null
+    private var onlineDraftKey = ""
 
     fun reset() {
         plan = StrategyPlan.DEFAULT
@@ -55,6 +61,14 @@ object StrategicAdvisor {
     suspend fun tick(s: GameState, playerOn: Boolean, drafterOn: Boolean, builderOn: Boolean) {
         if (!GemmaEngine.ready) return
         val now = System.currentTimeMillis()
+        // watching a live match: only read its clock (every minute or so), nothing else is ours
+        if (s.phase == Phase.LIVE) {
+            if (Cfg.liveLearn && GemmaEngine.visionOk && GameStateTracker.liveClockAge() > 60_000 && now - lastClockAsk > 30_000) {
+                lastClockAsk = now
+                readLiveClock()
+            }
+            return
+        }
         val inGame = s.phase.inMatch
 
         // 1. Draft (outside the match)
@@ -64,7 +78,7 @@ object StrategicAdvisor {
             return
         }
         // 1b. Which hero / battle spell did I pick? (hero select and loading screens)
-        val pickPhase = s.phase == Phase.DRAFT || s.phase == Phase.LOADING
+        val pickPhase = s.phase == Phase.DRAFT || s.phase == Phase.HERO_LOCKED || s.phase == Phase.LOADING
         if ((playerOn || builderOn) && pickPhase && GameStateTracker.draftedHero == null && now - lastIdentify >= 6000) {
             lastIdentify = now
             runIdentify(s.phase)
@@ -107,8 +121,14 @@ object StrategicAdvisor {
     private suspend fun runStrategy(s: GameState, why: String) {
         val hero = s.ownHero ?: "unknown hero"
         val role = HeroDb.role(s.ownHero).name.lowercase()
+        val meta = MetaStore.hero(s.ownHero)
+        val tips = if (meta == null) "" else
+            "Current meta tips for $hero: " + (meta.laning.take(2) + meta.rotation.take(2) + if (s.lane == Lane.JUNGLE) meta.jungle.take(2) else emptyList())
+                .joinToString("; ") + ". "
         val prompt = "You are the strategic brain of a Mobile Legends bot playing $hero ($role). " +
-            "Situation: ${s.summary()}${ObjectDetector.summary().let { if (it.isEmpty()) "" else "; minimap $it" }}. " +
+            "Situation: ${s.summary()}${ObjectDetector.summary().let { if (it.isEmpty()) "" else "; minimap $it" }}. " + tips +
+            (if (s.matchSec >= 0) "Match ${s.matchSec / 60}:%02d; ${com.example.mlbbresearch.game.MatchEvents.status(s.matchSec)}. ".format(s.matchSec % 60) else "") +
+            "Role (${s.lane.label}) tip: ${com.example.mlbbresearch.game.RoleTips.of(s.lane, s.matchSec.coerceAtLeast(0), s.ownHero)}. " +
             "Reply with ONLY one JSON object, no other words: " +
             "{\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 8 words\"}"
         val reply = ask("strategy ($why)", prompt, if (Cfg.strategyWithImage) FrameHub.bitmap() else null) ?: return
@@ -131,7 +151,10 @@ object StrategicAdvisor {
             .joinToString { it.name.lowercase() }
         val type = if (Cfg.ranked) "This is a RANKED match with a ban stage and a pick stage. "
                    else "This is a STANDARD match: there is NO ban stage, each player just picks a hero, so leave ban empty. "
-        val prompt = "This is a Mobile Legends: Bang Bang screenshot. $type$mode " +
+        val metaHint = onlineDraft?.let { o ->
+            "The current online meta recommends picking ${o.pick.joinToString()} and banning ${o.ban.joinToString()}: prefer these if available. "
+        } ?: MetaStore.general()?.let { g -> if (g.bans.isEmpty()) "" else "Strong heroes in the current patch: ${g.bans.joinToString()}. " } ?: ""
+        val prompt = "This is a Mobile Legends: Bang Bang screenshot. $type$mode $metaHint" +
             (if (known.isNotEmpty()) "My team so far: ${known.joinToString()}. Roles still missing: $missing. " else "") +
             "Reply with ONLY one JSON object like this example, no other words: " +
             "{\"screen\":\"draft\",\"stage\":\"pick\",\"my_turn\":true,\"my_team\":[\"Layla\"],\"enemy_team\":[\"Tigreal\"]," +
@@ -161,9 +184,26 @@ object StrategicAdvisor {
         var picks = d.pick.filter { it !in taken }
         if (picks.isEmpty() && d.screen == Phase.DRAFT) {
             val need = Role.values().firstOrNull { r -> r != Role.UNKNOWN && GameStateTracker.myTeam.none { HeroDb.role(it) == r } }
-            picks = (HeroDb.fallbackPicks[need] ?: emptyList()).filter { it !in taken }
+            picks = ((need?.let { MetaStore.general()?.picks?.get(it) } ?: emptyList()) +
+                (HeroDb.fallbackPicks[need] ?: emptyList())).distinct().filter { it !in taken }
         }
-        val bans = d.ban.filter { it !in taken }
+        // online meta (Groq): asked again whenever the line-ups change; its picks go first
+        val online = onlineDraft
+        if (online != null) {
+            picks = (online.pick + picks).distinct().filter { it !in taken }
+        }
+        if (d.screen == Phase.DRAFT && Cfg.onlineDraft && GroqClient.ready) {
+            val key = "${d.stage}|${GameStateTracker.myTeam.sorted()}|${GameStateTracker.enemyTeam.sorted()}"
+            if (key != onlineDraftKey) {
+                onlineDraftKey = key
+                val my = GameStateTracker.myTeam
+                val en = GameStateTracker.enemyTeam
+                AiRuntime.scope.launch {
+                    MetaAdvisor.draft(d.stage, my, en, Cfg.draftSolo)?.let { onlineDraft = it }
+                }
+            }
+        }
+        val bans = ((online?.ban ?: emptyList()) + d.ban).distinct().filter { it !in taken }.take(3)
         val final = DraftAdvice(d.screen, d.stage, d.myTurn, GameStateTracker.myTeam, GameStateTracker.enemyTeam,
             d.myHero, bans, picks, d.tapX, d.tapY, d.reason)
         draft = final
@@ -175,6 +215,7 @@ object StrategicAdvisor {
             if (GameStateTracker.myTeam.isNotEmpty()) append("\nMy team: ").append(GameStateTracker.myTeam.joinToString())
             if (GameStateTracker.enemyTeam.isNotEmpty()) append("\nEnemy team: ").append(GameStateTracker.enemyTeam.joinToString())
             if (d.reason.isNotBlank()) append("\nWhy: ").append(d.reason)
+            if (online != null) append("\nOnline meta: ").append(online.reason)
         }
 
         // Autonomous ranked drafting: both Drafter and Builder on + autonomous switch.
@@ -198,7 +239,7 @@ object StrategicAdvisor {
     private suspend fun runIdentify(phase: Phase) {
         if (!GemmaEngine.visionOk) return
         val img = FrameHub.bitmap() ?: return
-        val where = if (phase == Phase.DRAFT) "This is the hero select screen. The hero I selected has its name written in big letters at the top."
+        val where = if (phase == Phase.DRAFT || phase == Phase.HERO_LOCKED) "This is the hero select screen. The hero I selected has its name written in big letters at the top."
                     else "This is the loading screen. My card is the first one on the top row, the one with my player name."
         val prompt = "Mobile Legends: Bang Bang screenshot. $where " +
             "Reply with ONLY one JSON object, no other words: {\"hero\":\"my hero's name or unknown\",\"spell\":\"my battle spell name or unknown\"}"
@@ -253,6 +294,19 @@ object StrategicAdvisor {
         }
     }
 
+    // the match timer of the live match (top centre, mm:ss)
+    private suspend fun readLiveClock() {
+        val img = FrameHub.bitmap() ?: return
+        val reply = ask("live match clock", "Mobile Legends: Bang Bang screenshot of a live match. Read the match timer at the " +
+            "top centre of the screen, between the two teams' kill counts. Reply with ONLY the time as mm:ss, for example 07:00.", img, 0.0) ?: return
+        val m = Regex("(\\d{1,2})\\s*[:.]\\s*(\\d{2})").find(reply) ?: return
+        val sec = m.groupValues[1].toInt() * 60 + m.groupValues[2].toInt()
+        if (sec in 0..3600 && m.groupValues[2].toInt() < 60) {
+            GameStateTracker.setLiveClock(sec)
+            Diag.info("Live match clock: ${m.value}")
+        }
+    }
+
     private suspend fun ask(what: String, prompt: String, img: android.graphics.Bitmap?, temp: Double = 0.2): String? {
         busyWith = what
         return try {
@@ -284,6 +338,14 @@ object StrategicAdvisor {
             sb.append(" vs ").append(GameStateTracker.enemyTeam.joinToString()).append(":\n")
             if (counters.isEmpty()) sb.append("none needed, keep the primary build\n")
             counters.forEach { sb.append("- ${it.item}: ${it.reason}\n") }
+        }
+        MetaStore.hero(hero)?.let { m ->
+            sb.append("\nONLINE META (").append(m.patch).append(", ").append("%.0f".format(MetaStore.ageDays(m.updatedAt))).append(" days old):\n")
+            m.build.forEachIndexed { i, it -> sb.append("${i + 1}. $it\n") }
+            if (m.emblem.isNotBlank()) sb.append("Emblem: ").append(m.emblem).append('\n')
+            if (m.spell != null) sb.append("Spell: ").append(m.spell).append('\n')
+            if (m.counters.isNotEmpty()) sb.append("Countered by: ").append(m.counters.joinToString()).append('\n')
+            if (m.changes.isNotBlank()) sb.append("Recent changes: ").append(m.changes).append('\n')
         }
         if (buildAiText.isNotBlank()) sb.append("\nGemma's suggestion:\n").append(buildAiText)
         return sb.toString().trim()

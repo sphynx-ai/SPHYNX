@@ -13,17 +13,26 @@ import kotlin.math.max
 import kotlin.math.min
 
 // One object found by the trained detector. Positions are fractions of the whole screen.
-class Detection(val label: String, val score: Float, val left: Float, val top: Float, val right: Float, val bottom: Float) {
+// team: for hero icons on the minimap, "enemy" (red ring), "ally" (blue ring), "self" (green ring) or ""
+class Detection(val label: String, val score: Float, val left: Float, val top: Float, val right: Float, val bottom: Float,
+                val team: String = "") {
     val cx: Float get() = (left + right) / 2f
     val cy: Float get() = (top + bottom) / 2f
 }
 
-// Optional trained vision model (YOLOv8 exported to LiteRT .tflite), e.g. trained on the
-// Roboflow "Mobile Legends Minimap Dataset". It runs a few times a second on its own thread
-// next to the colour-based detector, never blocking it.
-object ObjectDetector {
+// A trained vision model (YOLOv8 exported to LiteRT .tflite). It runs a few times a second on
+// its own thread next to the colour-based vision, never blocking it. Two of them:
+//  - ObjectDetector: the MINIMAP (hero icons with team, turrets, turtle / lord)
+//  - ScreenDetector: the WHOLE SCREEN (heroes, minions, creeps, buffs, turtle, lord, towers,
+//    bushes, walls) - trained on pictures of your own matches
+open class YoloDetector(
+    private val fileName: String,
+    private val labelsOf: () -> String,
+    private val wholeScreen: Boolean,
+    private val name: String
+) {
 
-    private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "detector") }
+    private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, name) }
     @Volatile private var interpreter: Interpreter? = null
     @Volatile private var busy = false
     private var lastRun = 0L
@@ -31,6 +40,7 @@ object ObjectDetector {
     private var inW = 640
     private var inH = 640
     private var inType: DataType = DataType.FLOAT32
+    private var channelsFirstIn = false
     private var inBuf: ByteBuffer? = null
     private var outShape = intArrayOf()
     private var outType: DataType = DataType.FLOAT32
@@ -51,11 +61,10 @@ object ObjectDetector {
 
     val ready: Boolean get() = interpreter != null
 
-    // Minimap area (same as MinimapAnalyzer) or the whole screen
-    private fun region(): FloatArray =
-        if (Cfg.detectorRegion == "screen") floatArrayOf(0f, 0f, 1f, 1f) else MinimapAnalyzer.rect
+    // the minimap area (same as MinimapAnalyzer) or the whole screen
+    private fun region(): FloatArray = if (wholeScreen) floatArrayOf(0f, 0f, 1f, 1f) else MinimapAnalyzer.rect
 
-    fun modelFile(ctx: Context) = File(ctx.applicationContext.filesDir, "mlbb_detector.tflite")
+    fun modelFile(ctx: Context) = File(ctx.applicationContext.filesDir, fileName)
 
     fun load(ctx: Context): String? {
         val f = modelFile(ctx)
@@ -64,9 +73,14 @@ object ObjectDetector {
             close()
             val it = Interpreter(f, Interpreter.Options().setNumThreads(2))
             val inT = it.getInputTensor(0)
-            val s = inT.shape()                     // [1, H, W, 3]
-            if (s.size != 4 || s[3] != 3) throw IllegalStateException("unexpected input shape ${s.joinToString()}")
-            inH = s[1]; inW = s[2]
+            // channels last [1, H, W, 3] (classic TFLite export) or channels first [1, 3, H, W]
+            // (newer "litert" exports from Ultralytics / PyTorch)
+            val s = inT.shape()
+            when {
+                s.size == 4 && s[3] == 3 -> { inH = s[1]; inW = s[2]; channelsFirstIn = false }
+                s.size == 4 && s[1] == 3 -> { inH = s[2]; inW = s[3]; channelsFirstIn = true }
+                else -> throw IllegalStateException("unexpected input shape ${s.joinToString()}")
+            }
             inType = inT.dataType()
             val bytesPer = if (inType == DataType.FLOAT32) 4 else 1
             inBuf = ByteBuffer.allocateDirect(inW * inH * 3 * bytesPer).order(ByteOrder.nativeOrder())
@@ -77,14 +91,14 @@ object ObjectDetector {
             outZero = outT.quantizationParams().getZeroPoint()
             val outCount = outShape.fold(1) { a, b -> a * b }
             outBuf = ByteBuffer.allocateDirect(outCount * (if (outType == DataType.FLOAT32) 4 else 1)).order(ByteOrder.nativeOrder())
-            labels = Cfg.detectorLabels.split(",").map { l -> l.trim() }.filter { l -> l.isNotEmpty() }
+            labels = labelsOf().split(",").map { l -> l.trim() }.filter { l -> l.isNotEmpty() }
             interpreter = it
             state = "ready (${inW}x$inH, ${classCount()} classes)"
-            Diag.info("Detector loaded: input ${inW}x$inH $inType, output ${outShape.joinToString("x")}")
+            Diag.info("$name loaded: input ${inW}x$inH $inType ${if (channelsFirstIn) "channels first" else "channels last"}, output ${outShape.joinToString("x")}")
             null
         } catch (t: Throwable) {
             state = "load failed (see Logs)"
-            Diag.error("Detector load failed", t)
+            Diag.error("$name load failed", t)
             t.message ?: t.toString()
         }
     }
@@ -117,7 +131,7 @@ object ObjectDetector {
                 latestAt = System.currentTimeMillis()
                 lastMs = latestAt - t0
             } catch (t: Throwable) {
-                Diag.error("Detector run failed", t)
+                Diag.error("$name run failed", t)
                 state = "error (see Logs)"
             } finally {
                 busy = false
@@ -147,15 +161,18 @@ object ObjectDetector {
         val ib = inBuf ?: return emptyList()
         val ob = outBuf ?: return emptyList()
         ib.rewind()
-        for (p in rgb) {
-            val red = (p shr 16) and 0xff
-            val grn = (p shr 8) and 0xff
-            val blu = p and 0xff
+        fun put(v: Int) {
             when (inType) {
-                DataType.FLOAT32 -> { ib.putFloat(red / 255f); ib.putFloat(grn / 255f); ib.putFloat(blu / 255f) }
-                DataType.INT8 -> { ib.put((red - 128).toByte()); ib.put((grn - 128).toByte()); ib.put((blu - 128).toByte()) }
-                else -> { ib.put(red.toByte()); ib.put(grn.toByte()); ib.put(blu.toByte()) }
+                DataType.FLOAT32 -> ib.putFloat(v / 255f)
+                DataType.INT8 -> ib.put((v - 128).toByte())
+                else -> ib.put(v.toByte())
             }
+        }
+        if (channelsFirstIn) {
+            // all reds, then all greens, then all blues
+            for (shift in intArrayOf(16, 8, 0)) for (p in rgb) put((p shr shift) and 0xff)
+        } else {
+            for (p in rgb) { put((p shr 16) and 0xff); put((p shr 8) and 0xff); put(p and 0xff) }
         }
         ib.rewind()
         ob.rewind()
@@ -208,7 +225,34 @@ object ObjectDetector {
                 )
             )
         }
-        return nms(found, 0.45f).take(50)
+        // hero icons: which team, from the colour of the ring around the portrait
+        return nms(found, 0.45f).take(50).map { d ->
+            if (!d.label.contains("hero")) d else Detection(d.label, d.score, d.left, d.top, d.right, d.bottom, ringTeam(rgb, d, r))
+        }
+    }
+
+    // count red / blue / green pixels on the icon's border ring (in the model's input image)
+    private fun ringTeam(rgb: IntArray, d: Detection, r: FloatArray): String {
+        val rw = r[2] - r[0]; val rh = r[3] - r[1]
+        val cx = (d.cx - r[0]) / rw * inW; val cy = (d.cy - r[1]) / rh * inH
+        val rad = maxOf((d.right - d.left) / rw * inW, (d.bottom - d.top) / rh * inH) / 2f
+        var red = 0; var blue = 0; var green = 0
+        for (k in 0 until 32) {
+            val a = k * Math.PI * 2 / 32
+            for (f in floatArrayOf(0.85f, 1.0f)) {
+                val x = (cx + Math.cos(a) * rad * f).toInt(); val y = (cy + Math.sin(a) * rad * f).toInt()
+                if (x !in 0 until inW || y !in 0 until inH) continue
+                val p = rgb[y * inW + x]
+                val rr = (p shr 16) and 0xff; val gg = (p shr 8) and 0xff; val bb = p and 0xff
+                when {
+                    rr > 150 && rr - maxOf(gg, bb) > 60 -> red++
+                    bb > 150 && bb - rr > 60 -> blue++
+                    gg > 150 && gg - maxOf(rr, bb) > 50 -> green++
+                }
+            }
+        }
+        val m = maxOf(red, blue, green)
+        return when { m < 6 -> ""; m == green -> "self"; m == red -> "enemy"; else -> "ally" }
     }
 
     private fun nms(list: List<Detection>, iouMax: Float): List<Detection> {
@@ -233,6 +277,19 @@ object ObjectDetector {
         if (!ready || System.currentTimeMillis() - latestAt > 3000) return ""
         val counts = latest.groupingBy { it.label }.eachCount()
         if (counts.isEmpty()) return "detector: nothing"
-        return "detector: " + counts.entries.joinToString { "${it.value} ${it.key}" }
+        return "$name: " + counts.entries.joinToString { "${it.value} ${it.key}" }
     }
+}
+
+// the minimap detector
+object ObjectDetector : YoloDetector("mlbb_detector.tflite", { Cfg.detectorLabels }, false, "detector")
+
+// the whole-screen detector (notebooks/train_screen_detector.ipynb)
+object ScreenDetector : YoloDetector("mlbb_screen_detector.tflite", { Cfg.screenLabels }, true, "screen detector") {
+    // monsters by name (JungleDb): purple buff = thunder_fenrir, orange buff = molten_fiend;
+    // jungle_creep = a small monster not named yet. Turrets: plated = gold energy shield (early game)
+    val CLASSES = listOf("hero_ally", "hero_enemy", "hero_self", "minion_ally", "minion_enemy",
+        "lord", "turtle", "molten_fiend", "thunder_fenrir", "lava_golem", "horned_lizard", "fire_beetle", "lithowanderer", "crab",
+        "cyclone_eye", "jungle_creep",
+        "tower_ally", "tower_ally_plated", "tower_enemy", "tower_enemy_plated", "base_ally", "base_enemy", "bush", "wall")
 }

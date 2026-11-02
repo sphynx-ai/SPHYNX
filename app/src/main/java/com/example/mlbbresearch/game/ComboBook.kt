@@ -46,7 +46,12 @@ object ComboBook {
         "Brody" to "s1 > a > s2 > ult",
         "Masha" to "s1 > s2 > a > ult",
         "Rafaela" to "s1 > s2 > ult",
-        "Estes" to "s1 > s2 > ult"
+        "Estes" to "s1 > s2 > ult",
+        "Fredrinn" to "s1 > s2 > a > ult",
+        "Lylia" to "s1 > s2 > s1 > a",
+        "Claude" to "s1 > a > s2 > ult > a",
+        "Minotaur" to "s1 > ult > s2",
+        "Mathilda" to "s2 > ult > s1"
     )
 
     private val roleDefault: Map<Role, String> = mapOf(
@@ -63,7 +68,10 @@ object ComboBook {
     fun text(hero: String?): Pair<String, String> {
         if (hero != null) {
             Cfg.heroCombo(hero)?.let { if (parse(it).isNotEmpty()) return it to "yours" }
+            MetaStore.hero(hero)?.combo?.let { return it to "online meta" }
             builtIn[hero]?.let { return it to "built-in" }
+            // worked out from what its skills do
+            HeroPlaybook.of(hero).takeIf { it.learned }?.let { return it.combo to "from its skills" }
         }
         return (roleDefault[HeroDb.role(hero)] ?: "s1 > s2 > ult") to "role default"
     }

@@ -28,7 +28,8 @@ class HeroProfile(
     val waveClearSkill: String?,      // skill used on a minion wave
     val escapeSkill: String?,         // skill used to run away
     val ult: UltRule,
-    val cooldownSec: Map<String, Float>
+    val cooldownSec: Map<String, Float>,
+    val ranged: Boolean = false       // attacks from a distance (can poke heroes and keep away)
 )
 
 object HeroDb {
@@ -79,6 +80,37 @@ object HeroDb {
         return if (bestD <= allowed) best else null
     }
 
+    // The skill that dashes / leaps / blinks, used to chase and to escape. Common picks below
+    // (check them); others use a role default; you can set it per hero on the Player page.
+    private val dashTable = mapOf(
+        "Thamuz" to "s2", "Saber" to "s2", "Gusion" to "s2", "Lancelot" to "s1", "Alucard" to "s1",
+        "Chou" to "s2", "Zilong" to "s2", "Hayabusa" to "s2", "Fanny" to "s1", "Ling" to "s1",
+        "Karina" to "ult", "Natalia" to "s1", "Balmond" to "s1", "Freya" to "s1", "Tigreal" to "s2",
+        "Akai" to "s1", "Brody" to "s2", "Granger" to "s2", "Lesley" to "s1", "Clint" to "s2",
+        "Miya" to "ult", "Benedetta" to "s2", "Paquito" to "s1", "Aldous" to "ult", "Martis" to "s2",
+        "Ruby" to "s2", "Yu Zhong" to "s2", "Khufra" to "s1", "Franco" to "none", "Layla" to "none",
+        "Eudora" to "none", "Nana" to "none", "Vexana" to "none", "Badang" to "none", "Sun" to "none",
+        "Masha" to "s2", "Kagura" to "s2", "Harley" to "s2", "Wanwan" to "s1", "Beatrix" to "none",
+        "Fredrinn" to "s1", "Claude" to "s1", "Minotaur" to "s1", "Mathilda" to "ult", "Lylia" to "ult"
+    )
+
+    fun dashSlot(hero: String?): String? {
+        val chosen = if (hero == null) "auto" else Cfg.heroDash(hero)
+        val slot = if (chosen != "auto") chosen else MetaStore.hero(hero)?.dash ?: dashTable[hero] ?: when (role(hero)) {
+            Role.FIGHTER -> "s1"
+            Role.ASSASSIN, Role.TANK -> "s2"
+            else -> "none"
+        }
+        return if (slot == "none") null else slot
+    }
+
+    fun dashSource(hero: String?): String = when {
+        hero != null && Cfg.heroDash(hero) != "auto" -> "your choice"
+        MetaStore.hero(hero)?.dash != null -> "online meta"
+        dashTable.containsKey(hero) -> "built-in"
+        else -> "role default"
+    }
+
     fun role(name: String?): Role = name?.let { roles[it] } ?: Role.UNKNOWN
 
     fun damage(name: String?): Damage {
@@ -110,11 +142,15 @@ object HeroDb {
         "Floryn" to UltRule.DEFENSIVE
     )
 
-    fun profile(hero: String?): HeroProfile {
+    // the hero's profile, played the way its skills work (HeroPlaybook) when they are known
+    fun profile(hero: String?): HeroProfile = HeroPlaybook.adapt(baseProfile(hero), ultFixed = hero != null && hero in ultOverride)
+
+    // from the role alone (also the starting point of the playbook)
+    fun baseProfile(hero: String?): HeroProfile {
         val name = hero ?: "Unknown"
         val role = role(hero)
         val dmg = damage(hero)
-        val cds = mapOf("s1" to 6f, "s2" to 8f, "ult" to 35f, "spell" to 100f, "recall" to 0f)
+        val cds = mapOf("s1" to 6f, "s2" to 8f, "ult" to 35f, "spell" to 100f, "recall" to 0f, "regen" to 40f)
         val base = when (role) {
             Role.TANK -> HeroProfile(name, role, dmg, 0.16f, 0.45f, 0.22f, listOf("s1", "s2", "ult"), "s1", null, UltRule.TEAMFIGHT, cds)
             Role.FIGHTER -> HeroProfile(name, role, dmg, 0.16f, 0.42f, 0.28f, listOf("s1", "s2", "ult"), "s2", null, UltRule.ENGAGE, cds)
@@ -124,10 +160,29 @@ object HeroDb {
             Role.SUPPORT -> HeroProfile(name, role, dmg, 0.32f, 0.40f, 0.35f, listOf("s1", "s2", "ult"), null, null, UltRule.TEAMFIGHT, cds)
             Role.UNKNOWN -> HeroProfile(name, role, dmg, 0.20f, 0.40f, 0.30f, listOf("s1", "s2", "ult"), "s1", null, UltRule.ENGAGE, cds)
         }
-        val ult = ultOverride[hero] ?: return base
-        return HeroProfile(base.name, base.role, base.damage, base.attackRange, base.engageRange, base.retreatHp,
-            base.combo, base.waveClearSkill, base.escapeSkill, ult, base.cooldownSec)
+        // melee (close range) or ranged decides the attack range and how heroes are fought
+        val ranged = isRanged(hero)
+        val range = when {
+            ranged && base.attackRange < 0.3f -> 0.32f       // a ranged hero of a melee role
+            !ranged && base.attackRange > 0.2f -> 0.16f      // a melee hero of a ranged role
+            else -> base.attackRange
+        }
+        return HeroProfile(base.name, base.role, base.damage, range, maxOf(base.engageRange, range * 1.1f), base.retreatHp,
+            base.combo, base.waveClearSkill, base.escapeSkill, ultOverride[hero] ?: base.ult, base.cooldownSec, ranged)
     }
+
+    // Ranged = marksmen, mages and these; everyone else fights up close (melee).
+    private val rangedExtra = setOf("Estes", "Rafaela", "Angela", "Floryn", "Faramis", "Diggie", "Chip", "Yi Sun-shin", "Kimmy", "Natan")
+    private val meleeExtra = setOf<String>()
+
+    fun isRanged(hero: String?): Boolean {
+        if (hero != null) when (Cfg.heroRange(hero)) { "ranged" -> return true; "melee" -> return false }
+        if (hero in rangedExtra) return true
+        if (hero in meleeExtra) return false
+        return role(hero) == Role.MARKSMAN || role(hero) == Role.MAGE
+    }
+
+    fun rangeSource(hero: String?): String = if (hero != null && Cfg.heroRange(hero) != "auto") "your choice" else "auto, from the role"
 
     private fun distance(a: String, b: String): Int {
         val dp = IntArray(b.length + 1) { it }
@@ -144,20 +199,24 @@ object HeroDb {
     }
 }
 
-// Primary builds per role. Editable on the Build page; check them against the current patch.
+// Primary builds per role. Editable on the Build page. Every item is in the wiki's current list
+// (ItemDb); a typed item that is not is shown as outdated and left out (names are corrected).
 object BuildBook {
     val defaults: Map<Role, String> = mapOf(
         Role.FIGHTER to "Warrior Boots, War Axe, Hunter Strike, Queen's Wings, Brute Force Breastplate, Immortality",
-        Role.TANK to "Tough Boots, Dominance Ice, Antique Cuirass, Athena's Shield, Radiant Armor, Immortality",
+        Role.TANK to "Tough Boots, Dominance Ice, Antique Cuirass, Guardian Helmet, Radiant Armor, Immortality",
         Role.ASSASSIN to "Warrior Boots, Hunter Strike, Blade of Despair, Malefic Roar, Queen's Wings, Immortality",
         Role.MAGE to "Arcane Boots, Enchanted Talisman, Lightning Truncheon, Holy Crystal, Divine Glaive, Blood Wings",
-        Role.MARKSMAN to "Swift Boots, Windtalker, Berserker's Fury, Haas's Claws, Blade of Despair, Malefic Roar",
-        Role.SUPPORT to "Tough Boots, Fleeting Time, Oracle, Dominance Ice, Athena's Shield, Immortality",
-        Role.UNKNOWN to "Warrior Boots, War Axe, Dominance Ice, Athena's Shield, Brute Force Breastplate, Immortality"
+        Role.MARKSMAN to "Swift Boots, Windtalker, Berserker's Fury, Haas' Claws, Blade of Despair, Malefic Roar",
+        Role.SUPPORT to "Tough Boots, Fleeting Time, Oracle, Dominance Ice, Radiant Armor, Immortality",
+        Role.UNKNOWN to "Warrior Boots, War Axe, Dominance Ice, Radiant Armor, Brute Force Breastplate, Immortality"
     )
 
     fun primary(role: Role): List<String> =
         Cfg.roleBuild(role.name, defaults[role] ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            .mapNotNull { ItemDb.canonical(it) }
+    fun outdated(role: Role): List<String> =
+        ItemDb.outdated(Cfg.roleBuild(role.name, defaults[role] ?: "").split(",").map { it.trim() })
 }
 
 // Secondary (counter) items picked from the enemy team's make-up
@@ -175,20 +234,20 @@ object CounterRules {
         val healers = enemies.filter { it in HeroDb.sustain }
         val out = ArrayList<Pick>()
         if (magic >= 2) {
-            out.add(Pick("Athena's Shield", "$magic magic-damage enemies (burst)"))
-            out.add(Pick("Radiant Armor", "sustained magic damage"))
+            out.add(Pick("Radiant Armor", "$magic magic-damage enemies"))
         }
         if (physical >= 3) {
             out.add(Pick("Antique Cuirass", "$physical physical-damage enemies"))
             out.add(Pick("Dominance Ice", "armour and slows their attack speed"))
         }
+        // anti-heal (only items in the current list; magic damage has no listed anti-heal item)
         if (healers.isNotEmpty()) {
             val anti = when {
                 myRole == Role.TANK || myRole == Role.SUPPORT -> "Dominance Ice"
-                myDmg == Damage.MAGIC -> "Necklace of Durance"
+                myDmg == Damage.MAGIC -> null
                 else -> "Sea Halberd"
             }
-            out.add(Pick(anti, "anti-heal vs ${healers.joinToString()}"))
+            if (anti != null) out.add(Pick(anti, "anti-heal vs ${healers.joinToString()}"))
         }
         if (tanks >= 2 && myRole != Role.TANK && myRole != Role.SUPPORT) {
             out.add(Pick(if (myDmg == Damage.MAGIC) "Divine Glaive" else "Malefic Roar", "$tanks tanks: penetration"))
@@ -197,6 +256,6 @@ object CounterRules {
             out.add(Pick("Immortality", "$burst assassins: second life"))
             out.add(Pick("Winter Crown", "freeze to survive burst (if it fits your build)"))
         }
-        return out.distinctBy { it.item }
+        return out.filter { ItemDb.isCurrent(it.item) }.distinctBy { it.item }
     }
 }
