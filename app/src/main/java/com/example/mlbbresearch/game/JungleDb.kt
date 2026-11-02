@@ -1,0 +1,137 @@
+package com.example.mlbbresearch.game
+
+import com.example.mlbbresearch.vision.MinimapInfo
+
+// THE JUNGLE (Mobile Legends wiki, Jungle + Battlefield Guide pages): every neutral monster of the
+// current map, plus the turrets. "Blue buff" / "red buff" are old names: the buffs are now the
+// PURPLE buff (Thunder Fenrir) and the ORANGE buff (Molten Fiend).
+//
+// HP bars: ONLY the Lord shows its bar before it is attacked; every other monster (Turtle, buffs,
+// camps) shows it only after it takes damage (from you, allies or enemies). Unhit monsters are
+// found by the trained screen detector, or started with a basic attack at their camp / pit.
+// How the app tells them apart on screen (measured on 20 screenshots, 2712 x 1220):
+//   HP bar (red, orange frame, no level badge): full width 0.095+ of the screen, 5 rows thick and a
+//   purple skull icon = Lord / Turtle; 0.078-0.095 = a buff; less = a common creep. (A hero's bar
+//   is about 0.077 but always has a level badge; a turret's bar has a red emblem.)
+//   Lord or Turtle: which pit you stand by on the minimap (Lord top-left, Turtle bottom-right).
+//   Buffs: the body under the bar - orange (Molten Fiend, 21-33% orange) or blue / lavender
+//   (Thunder Fenrir, 46-54% blue). Horned Lizard is blue too but has a small bar.
+//   The other common creeps look too alike by colour: the trained screen detector tells them
+//   apart (the training pictures label them "jungle_creep" until you fix the name in Roboflow).
+enum class MonsterKind(val label: String) { BOSS("legend creep"), BUFF("elite creep"), CAMP("common creep"), RIVER("river creep") }
+
+class Monster(
+    val id: String,              // the class name in the screen detector / training pictures
+    val name: String,
+    val aliases: List<String>,
+    val kind: MonsterKind,
+    val look: String,            // what it looks like (for labelling pictures)
+    val reward: String,          // what killing it gives (wiki)
+    val gold: Int = 0,           // gold for the kill (wiki; 0 = not listed)
+    val firstSec: Int = -1,      // first spawn (match time), -1 = from the start / not listed
+    val respawnSec: Int = -1     // respawn after it is killed, -1 = not listed
+)
+
+object JungleDb {
+
+    val LORD = Monster("lord", "Lord", listOf("Elemental Lord"), MonsterKind.BOSS,
+        "a human-like giant holding a trident, in the Lord pit",
+        "the Lord comes back to life on your side and charges down the lane with the fewest / weakest turrets, " +
+            "strengthens your minion waves in all three lanes, and charges the first turret it meets (true damage, " +
+            "disables it for a few seconds). Gold and EXP for the team",
+        firstSec = 480)
+    val TURTLE = Monster("turtle", "Turtle", listOf("Dragon Turtle"), MonsterKind.BOSS,
+        "a giant turtle, in the Turtle pit (next to the EXP lane)",
+        "the killer gets the Turtle Buff (a regenerating shield that adds Physical Attack and Magic Power); " +
+            "allies get bonus gold and a one-time shield", firstSec = 120)
+    val MOLTEN_FIEND = Monster("molten_fiend", "Molten Fiend", listOf("orange buff", "red buff", "Fiery Hound"), MonsterKind.BUFF,
+        "a big fire monster with orange flames, by a red cave",
+        "the Orange Buff: attacks on enemy heroes deal extra true damage and slow them (every 3 s); " +
+            "plus 5% (fighter / assassin / tank) or 10% (marksman / mage / support) adaptive penetration",
+        gold = 120, firstSec = 30, respawnSec = 120)
+    val THUNDER_FENRIR = Monster("thunder_fenrir", "Thunder Fenrir", listOf("purple buff", "blue buff", "Little Thunder Fenrir"), MonsterKind.BUFF,
+        "a big purple / lavender wolf-dragon with a small cub beside it (a duo camp)",
+        "the Purple Buff: cooldown reduction and lower mana / energy costs; each kill heals you " +
+            "(minion 3%, hero 8%, creep 12%)", gold = 100, firstSec = 30, respawnSec = 120)
+    val LAVA_GOLEM = Monster("lava_golem", "Lava Golem", emptyList(), MonsterKind.CAMP,
+        "a human-like rock with glowing orange cracks", "the Healing Buff", gold = 81)
+    val HORNED_LIZARD = Monster("horned_lizard", "Horned Lizard", emptyList(), MonsterKind.CAMP,
+        "a blue lizard with a pink horned head", "the Healing Buff; it attacks from range and raises its defence when low", gold = 92)
+    val FIRE_BEETLE = Monster("fire_beetle", "Fire Beetle", listOf("Crammer"), MonsterKind.CAMP,
+        "a small red / magenta beetle; when killed it turns into a little Crammer (lives about 15 s)",
+        "the Healing Buff; its Crammer gives the extra EXP that reaches level 4 in the first clear")
+    val LITHOWANDERER = Monster("lithowanderer", "Lithowanderer", listOf("Stone Roamer"), MonsterKind.RIVER,
+        "a small walking green rock in the river (it never attacks)",
+        "Walkie Grass: extra movement speed in the river for 120 s", gold = 92)
+    val CRAB = Monster("crab", "Scavenger Crab", listOf("crab", "Little Crab"), MonsterKind.RIVER,
+        "a crab with a purple crystal shell and orange legs, by the river (a little crab first; upgraded at 2:00)",
+        "the Gold Buff or EXP Buff (depends on the lane; 30 s). The EXP-lane crab gives the EXP of a siege minion", gold = 36)
+    // a small monster whose kind the colour vision cannot tell (training pictures: fix the name)
+    // a small monster whose kind the colour vision cannot tell (training pictures: fix the name)
+    val CREEP = Monster("jungle_creep", "jungle monster", emptyList(), MonsterKind.CAMP, "any small jungle monster", "gold and EXP")
+
+    // not a monster: a terrain feature (blue diamond on the minimap) that blinks you forward in the
+    // direction you move. It keeps its own class in the screen detector.
+    const val CYCLONE_EYE = "cyclone_eye"
+    // what the minimap dots mean (wiki): purple dots = buff camps, yellow = crab (gold / EXP buff),
+    // green = healing-buff camps, turquoise = Lithowanderer, blue diamonds = Cyclone Eyes,
+    // purple paw = Turtle, purple cross = Lord
+
+    val ALL = listOf(LORD, TURTLE, MOLTEN_FIEND, THUNDER_FENRIR, LAVA_GOLEM, HORNED_LIZARD, FIRE_BEETLE, LITHOWANDERER, CRAB)
+    val IDS: Set<String> = (ALL + CREEP).map { it.id }.toSet()
+
+    // (older names map on: fiery_hound was this app's first name for the Molten Fiend)
+    fun byId(id: String?): Monster? = (ALL + CREEP).firstOrNull { it.id == id } ?: if (id == "fiery_hound") MOLTEN_FIEND else null
+    fun isMonster(label: String) = label in IDS || label == "creep" || label == "buff" || label == "fiery_hound"
+    fun isBoss(label: String) = label == "lord" || label == "turtle"
+    fun isBuff(label: String) = label == MOLTEN_FIEND.id || label == THUNDER_FENRIR.id || label == "buff" || label == "fiery_hound"
+
+    // ---- turrets ----
+    // Outer turrets carry a gold energy shield (gold plating, yellow HP bar) early in the match:
+    // "Outer Turret Energy Shield will disappear in 30s" shows at 4:30, so it ends at 5:00.
+    const val OUTER_SHIELD_ENDS_SEC = 300
+    val TURRET_CLASSES = listOf("tower_ally", "tower_ally_plated", "tower_enemy", "tower_enemy_plated", "base_ally", "base_enemy")
+    fun isEnemyTurret(label: String) = label == "tower_enemy" || label == "tower_enemy_plated"
+
+    // ---- from the HP bar ----
+    const val BOSS_WIDTH = 0.095f
+    const val BUFF_WIDTH = 0.078f
+
+    fun kindOf(fullWidth: Float, thickRows: Boolean): MonsterKind = when {
+        fullWidth >= BOSS_WIDTH || (thickRows && fullWidth >= 0.085f) -> MonsterKind.BOSS
+        fullWidth >= BUFF_WIDTH -> MonsterKind.BUFF
+        else -> MonsterKind.CAMP
+    }
+
+    // Lord or Turtle: the pit you stand next to on the minimap (else the pit icon, else the time)
+    private val LORD_PIT = 0.31f to 0.26f
+    private val TURTLE_PIT = 0.67f to 0.68f
+    fun boss(mini: MinimapInfo?, matchSec: Int): Monster {
+        val me = mini?.self
+        if (me != null) {
+            val dl = kotlin.math.hypot(me.first - LORD_PIT.first, me.second - LORD_PIT.second)
+            val dt = kotlin.math.hypot(me.first - TURTLE_PIT.first, me.second - TURTLE_PIT.second)
+            if (kotlin.math.min(dl, dt) < 0.25f) return if (dl < dt) LORD else TURTLE
+        }
+        if (mini?.lordIcon != null && mini.turtleIcon == null) return LORD
+        if (mini?.turtleIcon != null && mini.lordIcon == null) return TURTLE
+        return if (matchSec >= 480) LORD else TURTLE
+    }
+
+    // body colour shares under the bar -> species (null = cannot tell)
+    fun buff(orange: Float, blue: Float): Monster? = when {
+        orange >= 0.12f && orange > blue -> MOLTEN_FIEND
+        blue >= 0.25f -> THUNDER_FENRIR
+        else -> null
+    }
+    fun camp(orange: Float, blue: Float, green: Float): Monster = when {
+        blue >= 0.22f -> HORNED_LIZARD
+        else -> CREEP
+    }
+
+    fun describe(): String = ALL.joinToString("\n") { m ->
+        "${m.name}" + (if (m.aliases.isNotEmpty()) " (${m.aliases.first()})" else "") + " - ${m.kind.label}: ${m.reward}" +
+            (if (m.gold > 0) "; ${m.gold} gold" else "") + (if (m.firstSec > 0) "; first at %d:%02d".format(m.firstSec / 60, m.firstSec % 60) else "") +
+            (if (m.respawnSec > 0) "; respawns after %d:%02d".format(m.respawnSec / 60, m.respawnSec % 60) else "")
+    }
+}

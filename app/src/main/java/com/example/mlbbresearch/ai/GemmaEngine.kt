@@ -16,12 +16,14 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 
-// Gemma 3n E2B running on the phone through LiteRT-LM.
-// It is only the strategic brain: it is asked occasionally, never every frame.
-// All calls run one at a time on a dedicated thread.
-object GemmaEngine {
+// A language model running on the phone through LiteRT-LM (.litertlm file). LiteRT-LM applies
+// each model's own prompt format, so any Gemma .litertlm works: Gemma 4 E2B, Gemma 3n E2B,
+// Gemma 3 270M / 1B. All calls of one slot run one at a time on its own thread.
+//   GemmaEngine       = the STRATEGIC brain (Gemma 4 E2B or 3n E2B, GPU first): asked now and then
+//   TacticalLlmEngine = the small TACTICAL adviser (e.g. Gemma 3 270M, CPU, text only)
+open class LlmSlot(private val label: String, threadPriority: Int) {
 
-    private val thread = Executors.newSingleThreadExecutor { r -> Thread(r, "gemma").apply { priority = Thread.NORM_PRIORITY - 1 } }
+    private val thread = Executors.newSingleThreadExecutor { r -> Thread(r, label).apply { priority = threadPriority } }
     private val dispatcher = thread.asCoroutineDispatcher()
 
     @Volatile private var engine: Engine? = null
@@ -45,15 +47,17 @@ object GemmaEngine {
 
     // Loads the .litertlm model with Google's recommended fallback order:
     //   1. image + text on the GPU   2. image + text on the CPU   3. text only on the CPU
-    suspend fun load(ctx: Context, modelPath: String, preferGpu: Boolean): String? = withContext(dispatcher) {
+    suspend fun load(ctx: Context, modelPath: String, preferGpu: Boolean, textOnly: Boolean = false): String? = withContext(dispatcher) {
         loading = true
         state = "loading..."
         try { engine?.close() } catch (e: Throwable) { }
         engine = null
         class Attempt(val label: String, val gpu: Boolean, val vision: Boolean)
         val attempts = ArrayList<Attempt>()
-        if (preferGpu) attempts.add(Attempt("GPU", true, true))
-        attempts.add(Attempt("CPU", false, true))
+        if (!textOnly) {
+            if (preferGpu) attempts.add(Attempt("GPU", true, true))
+            attempts.add(Attempt("CPU", false, true))
+        } else if (preferGpu) attempts.add(Attempt("GPU, text only", true, false))
         attempts.add(Attempt("CPU, text only", false, false))
         var lastErr: Throwable? = null
         for (a in attempts) {
@@ -69,7 +73,7 @@ object GemmaEngine {
                         cacheDir = ctx.cacheDir.path
                     )
                 } else {
-                    EngineConfig(modelPath = modelPath, backend = Backend.CPU(), cacheDir = ctx.cacheDir.path)
+                    EngineConfig(modelPath = modelPath, backend = if (a.gpu) Backend.GPU() else Backend.CPU(), cacheDir = ctx.cacheDir.path)
                 }
                 val e = Engine(cfg)
                 e.initialize()
@@ -78,11 +82,11 @@ object GemmaEngine {
                 backendName = a.label
                 state = "ready on ${a.label}"
                 loading = false
-                Diag.info("Gemma loaded on ${a.label}")
+                Diag.info("$label model loaded on ${a.label}")
                 return@withContext null
             } catch (t: Throwable) {
                 lastErr = t
-                Diag.error("Gemma load on ${a.label} failed", t)
+                Diag.error("$label model load on ${a.label} failed", t)
             }
         }
         state = "load failed (see Logs)"
@@ -92,7 +96,7 @@ object GemmaEngine {
 
     // Asks Gemma one question, optionally with a screenshot. Returns the text reply.
     suspend fun ask(prompt: String, image: Bitmap? = null, temperature: Double = 0.2): String = withContext(dispatcher) {
-        val e = engine ?: throw IllegalStateException("Gemma is not loaded")
+        val e = engine ?: throw IllegalStateException("the $label model is not loaded")
         val t0 = System.currentTimeMillis()
         val conv = e.createConversation(
             ConversationConfig(samplerConfig = SamplerConfig(topK = 40, topP = 0.95, temperature = temperature))
@@ -105,7 +109,7 @@ object GemmaEngine {
             } else {
                 Contents.of(Content.Text(prompt))
             }
-            val reply = conv.sendMessage(contents).toString()
+            val reply = clean(conv.sendMessage(contents).toString())
             lastLatencyMs = System.currentTimeMillis() - t0
             calls++
             reply
@@ -127,6 +131,13 @@ object GemmaEngine {
         backendName = "-"
     }
 
+    // newer models (Gemma 4) may think out loud before answering: keep only the answer
+    private fun clean(r: String): String {
+        var t = r.replace(Regex("(?s)<think>.*?</think>"), "")
+        if (t.contains("<channel|>")) t = t.substringAfterLast("<channel|>")
+        return t.trim()
+    }
+
     private fun jpeg(b: Bitmap): ByteArray {
         val w = 768
         val small = if (b.width > w) Bitmap.createScaledBitmap(b, w, b.height * w / b.width, true) else b
@@ -135,3 +146,8 @@ object GemmaEngine {
         return out.toByteArray()
     }
 }
+
+object GemmaEngine : LlmSlot("gemma", Thread.NORM_PRIORITY - 1)
+
+// low priority: it must never slow down the screen reading or the touches
+object TacticalLlmEngine : LlmSlot("tactical-llm", Thread.MIN_PRIORITY + 1)

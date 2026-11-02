@@ -1,6 +1,9 @@
 package com.example.mlbbresearch.game
 
+import com.example.mlbbresearch.vision.Bush
+import com.example.mlbbresearch.vision.Camp
 import com.example.mlbbresearch.vision.HudInfo
+import com.example.mlbbresearch.vision.MapTower
 import com.example.mlbbresearch.vision.Seen
 import com.example.mlbbresearch.vision.Track
 import kotlin.math.hypot
@@ -8,9 +11,10 @@ import kotlin.math.hypot
 // DRAFT = hero select (standard) or ban & pick (ranked).
 // SHOP / SCOREBOARD / MAP = in a match, with the equipment screen, the Tab scoreboard or the big map open.
 enum class Phase(val label: String) {
-    UNKNOWN("unknown"), LOBBY("lobby"), DRAFT("hero select / draft"), LOADING("loading"), IN_GAME("in game"),
+    UNKNOWN("unknown"), HOME("home screen"), LOBBY("lobby"), QUEUE("match found (Enter)"),
+    DRAFT("hero select / draft"), HERO_LOCKED("hero select: hero locked in"), LOADING("loading"), IN_GAME("in game"),
     DEAD("dead (respawning)"), SHOP("equipment shop open"), SCOREBOARD("scoreboard open"), MAP("big map open"),
-    RESULT("result");
+    RESULT("match end"), LIVE("watching a live match (learning)");
 
     // anything that happens during a match
     val inMatch: Boolean get() = this == IN_GAME || this == DEAD || this == SHOP || this == SCOREBOARD || this == MAP
@@ -39,7 +43,23 @@ class GameState(
     val spell: String? = null,                // your battle spell, if known
     val lane: Lane = Lane.MID,
     val matchSec: Int = -1,                   // seconds since the match started, -1 unknown
-    val sinceSpawnMs: Long = Long.MAX_VALUE   // since you last (re)spawned in base
+    val sinceSpawnMs: Long = Long.MAX_VALUE,  // since you last (re)spawned in base
+    val minimapSelf: Pair<Float, Float>? = null,   // your icon on the minimap (0..1 inside the map)
+    val camps: List<Camp> = emptyList(),           // your side's jungle camps still up
+    val towers: List<MapTower> = emptyList(),              // enemy towers on the minimap
+    val enemyBase: Pair<Float, Float>? = null,
+    val allyWaves: List<Pair<Float, Float>> = emptyList(),
+    val allyTowers: List<Pair<Float, Float>> = emptyList(),
+    val enemyWaves: List<Pair<Float, Float>> = emptyList(),
+    val bossHp: Float = -1f,                  // turtle / lord HP from the bar under the scoreboard
+    val bushes: List<Bush> = emptyList(),
+    val inBush: Boolean = false,
+    val screenWalls: BooleanArray = BooleanArray(0),
+    val level: Int = 1,                       // your hero level 1..15
+    val xp: Float = -1f,                      // EXP ring 0..1 towards the next level (-1 unknown)
+    val enemyLevel: Int = -1,                 // level of the nearest enemy hero, -1 unknown
+    val towerRing: com.example.mlbbresearch.vision.TowerRing.Ring = com.example.mlbbresearch.vision.TowerRing.NONE,
+    val map: MapIntel.Info = MapIntel.Info.NONE        // heroes / objectives on the minimap (YOLO detector)
 ) {
     val creeps: List<Seen> get() = monsters.filter { !it.hero }
     val boss: Seen? get() = monsters.filter { it.hero }.minByOrNull { distToSelf(it.x, it.y) }

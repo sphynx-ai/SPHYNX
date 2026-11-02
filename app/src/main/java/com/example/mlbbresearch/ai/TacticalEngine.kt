@@ -1,5 +1,9 @@
 package com.example.mlbbresearch.ai
 
+import com.example.mlbbresearch.game.SkillBook
+import com.example.mlbbresearch.game.HeroPlaybook
+import com.example.mlbbresearch.game.Passive
+
 import com.example.mlbbresearch.core.Cfg
 import com.example.mlbbresearch.game.CooldownTracker
 import com.example.mlbbresearch.game.GameState
@@ -7,13 +11,18 @@ import com.example.mlbbresearch.game.GameStateTracker
 import com.example.mlbbresearch.game.Lane
 import com.example.mlbbresearch.game.LaneLogic
 import com.example.mlbbresearch.game.HeroProfile
+import com.example.mlbbresearch.game.HeroDb
+import com.example.mlbbresearch.game.Role
+import com.example.mlbbresearch.game.JungleNav
+import com.example.mlbbresearch.game.TowerLogic
 import com.example.mlbbresearch.game.Phase
 import com.example.mlbbresearch.game.UltRule
+import com.example.mlbbresearch.learning.FightOption
 import com.example.mlbbresearch.vision.Seen
 import com.example.mlbbresearch.vision.Track
 import kotlin.math.hypot
 
-enum class Intent { IDLE, LANE_CLEAR, ENGAGE, RETREAT, RECALL, PUSH, GROUP, IMITATE, OBJECTIVE, JUNGLE }
+enum class Intent { IDLE, LANE_CLEAR, ENGAGE, RETREAT, RECALL, REGEN, PUSH, GROUP, IMITATE, OBJECTIVE, JUNGLE, AMBUSH }
 
 // What the fast engine wants to do right now. Movement is a direction on screen.
 class TacticalDecision(
@@ -45,41 +54,442 @@ object TacticalEngine {
     private var held: Intent = Intent.IDLE
     private var heldSince = 0L
     private var recallUntil = 0L
+    private var regenUntil = 0L
+    private var ambushSince = 0L
 
     fun reset() {
         held = Intent.IDLE
         heldSince = 0L
         recallUntil = 0L
+        regenUntil = 0L
+        JungleNav.reset()
     }
 
-    fun decide(s: GameState, p: HeroProfile, plan: StrategyPlan, learnedBias: Float): TacticalDecision {
+    // option: what the learning brain chose for this fight (null / RULES = the normal rules)
+    fun decide(s: GameState, p: HeroProfile, plan: StrategyPlan, learnedBias: Float, option: FightOption? = null): TacticalDecision {
+        pendingHop = false
+        var d = decideRaw(s, p, plan, learnedBias, option)
+        // game sense: remember enemies that left the map; weigh the options (the "why")
+        com.example.mlbbresearch.game.GameMemory.update(s, d.reason.substringBefore(" |").take(60), plan.plan)
+        if (s.self != null && s.phase == Phase.IN_GAME) {
+            val sc = Deliberation.score(s, p)
+            val brainFight = option != null && option != FightOption.RULES
+            if (!brainFight) Deliberation.vetoFight(s, d, sc)?.let { why ->
+                val (mx, my) = retreatDir(s, s.enemiesWithin(0.9f))
+                d = TacticalDecision(Intent.RETREAT, mx, my, d.casts.filter { it != "ult" && it != "attack" }, -1f, -1f, "-", -1f, -1, why)
+            }
+            if (!brainFight) Deliberation.takeKill(s, p, d, sc)?.let { t ->
+                val casts = arrayListOf("attack")
+                for (sk in p.combo) if (CooldownTracker.ready(sk, p)) casts.add(sk)
+                if (CooldownTracker.ready("ult", p) && "ult" !in casts) casts.add("ult")
+                val (mx, my) = toward(s, t.x, t.y)
+                d = TacticalDecision(Intent.ENGAGE, mx, my, casts, t.x, t.y, "enemy #${t.id}", t.hp, t.id,
+                    "the scores say take the kill: attack %.2f > retreat %.2f, enemy at %d%%".format(sc.attack, sc.retreat, (t.hp * 100).toInt()))
+            }
+            Deliberation.observe(s, d, sc)
+        }
+        // (a chase for a kill on an enemy under 10% may follow it into tower range)
+        val killChase = d.intent == Intent.ENGAGE && d.targetHp in 0f..0.10f
+        if (d.intent != Intent.RETREAT && d.intent != Intent.RECALL && d.intent != Intent.IDLE && !killChase) {
+            // never walk into enemy tower range without your minions there
+            val (gx, gy, changed) = TowerLogic.guard(s, d.moveX, d.moveY)
+            if (changed) d = TacticalDecision(d.intent, gx, gy, d.casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId,
+                d.reason + " (keeping out of enemy tower range)")
+        }
+        d = towerRingRule(s, d)
+        d = commit(s, d)
+        return travelDash(s, p, wallHop(s, p, steerAroundWalls(s, d)))
+    }
+
+    // The enemy tower's circle on screen:
+    //  RED (inside, no minions): the tower shoots you - walk straight out, away from the tower
+    //    (only a kill on an enemy under 10% with a healthy survival score may stay a moment)
+    //  YELLOW (just outside, no minions): never step in; wait at the edge for your minions
+    //  GREEN (your minions are in): safe to go in and hit the tower (see step 7b)
+    private fun towerRingRule(s: GameState, d0: TacticalDecision): TacticalDecision {
+        val ring = s.towerRing
+        val self = s.self ?: return d0
+        if (ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.NONE) return d0
+        // attacking an enemy HERO inside its tower range: the tower shoots YOU first, even with our
+        // minions there - so for a hero fight even a green circle counts as red / yellow
+        val targetIn = d0.intent == Intent.ENGAGE && d0.targetX >= 0f &&
+            ((d0.targetX - ring.cx) / ring.rx).let { it * it } + ((d0.targetY - ring.cy) / ring.ry).let { it * it } < 1f
+        if (ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.GREEN && !targetIn) return d0
+        val (tx, ty) = ring.dirFrom(self.x, self.y, s.aspect)
+        val killChase = d0.intent == Intent.ENGAGE && d0.targetHp in 0f..0.10f && Utility.lastSurvival >= 50f
+        if ((ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.RED || targetIn) && ring.inside) {
+            if (killChase) return d0
+            val casts = d0.casts.filter { it != "attack" }      // no hitting the tower from in here
+            return TacticalDecision(Intent.RETREAT, -tx, -ty, casts, -1f, -1f, "-", -1f, -1,
+                if (targetIn && ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.GREEN)
+                    "fighting a hero under its tower: the tower shoots me first, getting out"
+                else "inside the enemy tower range with no minions (red circle): getting out")
+        }
+        // yellow: any step towards the tower is taken out; with nothing left, wait for minions
+        val dot = d0.moveX * tx + d0.moveY * ty
+        if (dot <= 0.15f || killChase || d0.intent == Intent.RETREAT) return d0
+        val sx = d0.moveX - dot * tx; val sy = d0.moveY - dot * ty
+        val l = kotlin.math.hypot(sx, sy)
+        return if (l > 0.35f) TacticalDecision(d0.intent, sx / l, sy / l, d0.casts.filter { it != "attack" }, d0.targetX, d0.targetY,
+            d0.targetLabel, d0.targetHp, d0.targetId, d0.reason + " (along the edge of the tower range, yellow circle)")
+        else TacticalDecision(Intent.PUSH, 0f, 0f, emptyList(), -1f, -1f, "-", -1f, -1,
+            "waiting for our minions at the tower range (yellow circle)")
+    }
+
+    // Walls seen on screen right ahead (rock, cliff, trees): curve 35 or 70 degrees to the clear
+    // side before bumping into them. If every way is blocked, the wall-jump check takes over.
+    private fun steerAroundWalls(s: GameState, d: TacticalDecision): TacticalDecision {
+        val self = s.self ?: return d
+        if (!Cfg.wallAvoid || (d.moveX == 0f && d.moveY == 0f) || s.screenWalls.isEmpty()) return d
+        val bd = com.example.mlbbresearch.vision.BushDetector
+        val fy = self.y + 0.02f                        // feet
+        if (bd.wallAhead(s.screenWalls, self.x, fy, d.moveX, d.moveY, s.aspect) < 0.34f) return d
+        for (deg in intArrayOf(35, -35, 70, -70)) {
+            val a = Math.toRadians(deg.toDouble())
+            val rx = (d.moveX * Math.cos(a) - d.moveY * Math.sin(a)).toFloat()
+            val ry = (d.moveX * Math.sin(a) + d.moveY * Math.cos(a)).toFloat()
+            if (bd.wallAhead(s.screenWalls, self.x, fy, rx, ry, s.aspect) < 0.2f) {
+                return TacticalDecision(d.intent, rx, ry, d.casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId,
+                    d.reason + " (curving around a wall)")
+            }
+        }
+        pendingHop = true                              // boxed in: jump it if a dash is ready
+        return d
+    }
+
+    // ---- thinking ahead: what comes after the current task ----
+    // Worked out on every decision while the current task runs, so the next one starts at once.
+    @Volatile var nextPlan = "-"
+        private set
+
+    // ---- hero level (1..15): higher level = more damage and HP ----
+    //  - before level 4 there is no ultimate: farm first, fight only easy targets
+    //  - level 4 (ultimate), 8 and 12 (ultimate upgrades) are power spikes: fight more willingly
+    //  - ahead of the enemy in level: press the fight; 2+ levels behind: avoid even fights
+    fun levelBias(s: GameState): Float {
+        var b = when {
+            s.level < 4 -> -0.1f
+            s.level >= 12 -> 0.12f
+            s.level >= 8 -> 0.08f
+            else -> 0.05f
+        }
+        if (s.enemyLevel > 0) b += ((s.level - s.enemyLevel).coerceIn(-3, 3)) * 0.07f
+        return b
+    }
+
+    // what to do to raise the level (shown with the plan)
+    fun levelGoal(s: GameState): String {
+        val xp = if (s.xp >= 0f) " (EXP ${(s.xp * 100).toInt()}%)" else ""
+        val vs = if (s.enemyLevel > 0) ", enemy level ${s.enemyLevel}" else ""
+        val next = when {
+            s.level >= 15 -> "max level: push towers and take turtle / lord to end the game"
+            s.level < 4 -> "farm to level 4 for the ultimate: " + if (s.lane == Lane.JUNGLE) "clear camps back to back, buffs first" else "last-hit every minion, take a near camp between waves"
+            s.enemyLevel > 0 && s.enemyLevel > s.level + 1 -> "behind in level: farm safe camps / waves, fight only with allies"
+            s.enemyLevel > 0 && s.level > s.enemyLevel + 1 -> "ahead in level: look for kills and push while stronger"
+            s.lane == Lane.JUNGLE -> "keep the camp route going, kill heroes when they are low (kills give the most EXP)"
+            else -> "clear waves (EXP), kill heroes when they are low, push with minions"
+        }
+        return "level ${s.level}$xp$vs: $next"
+    }
+
+    @Volatile var lastTargetId = -1
+    private var lastBushCheck = 0L
+
+    fun planAhead(s: GameState, d: TacticalDecision, p: HeroProfile): String {
+        val hp = s.selfHp
+        nextPlan = when {
+            d.intent == Intent.RECALL -> "back in base: buy, then walk the lane"
+            hp in 0f..0.35f && d.intent != Intent.RETREAT -> "recall or Regen once safe"
+            d.intent == Intent.ENGAGE && s.minionsWithin(0.9f).isNotEmpty() -> "after the fight: clear the minion wave"
+            d.intent == Intent.ENGAGE && s.lane == Lane.JUNGLE -> "after the fight: back to the jungle camps"
+            d.intent == Intent.ENGAGE -> "after the fight: walk the lane / push"
+            d.intent == Intent.JUNGLE -> JungleNav.next?.let { "next: the ${if (it.buff) "buff" else "camp"} at %.0f%%,%.0f%% of the map".format(it.x * 100, it.y * 100) }
+                ?: "next: look for the next camp"
+            d.intent == Intent.LANE_CLEAR && TowerLogic.selfInRange(s, 0.06f) -> "after the wave: push the tower with our minions"
+            d.intent == Intent.LANE_CLEAR -> "after the wave: a nearby camp or the next tower"
+            d.intent == Intent.OBJECTIVE -> "after the objective: push a lane with the buff"
+            else -> "keep going: ${d.reason}"
+        } + " | " + levelGoal(s)
+        return nextPlan
+    }
+
+    // ---- skill rules: the last step before the touches go out ----
+    // (also covers combos and "Play like me")
+    //  - the ultimate is kept for enemy heroes (fighting or escaping them), never for creeps
+    //  - Skill 1 and 2 go out the moment they are ready while fighting creeps or heroes in reach
+    fun filterCasts(d: TacticalDecision, s: GameState, p: HeroProfile): TacticalDecision {
+        val vsHero = (d.intent == Intent.ENGAGE || d.intent == Intent.AMBUSH || d.intent == Intent.IMITATE) &&
+            d.targetId >= 0 || d.intent == Intent.RETREAT
+        var casts = d.casts
+        // a wall jump may use the ultimate when that is the hero's dash: keep it
+        val hop = if (d.reason.contains("passing the wall") || d.reason.contains("to get there faster")) HeroDb.dashSlot(s.ownHero) else null
+        if (Cfg.noUltOnCreeps && !vsHero) casts = casts.filter { it != "ult" || it == hop }
+        // Coach: you cast this skill at enemies about this close; wait until the target is that
+        // close (a far-away cast mostly misses) - only for skills seen at least 3 times
+        if (Cfg.coachMode && vsHero && d.intent != Intent.RETREAT && d.targetX >= 0f) {
+            val dist = s.distToSelf(d.targetX, d.targetY)
+            casts = casts.filter { c ->
+                val r = if (c in setOf("s1", "s2", "ult")) com.example.mlbbresearch.learning.Coach.castRange(s.ownHero, c) else null
+                r == null || dist <= r * 1.3f + 0.05f
+            }
+        }
+        if (Cfg.skillsWhenReady && inReach(d, s, p)) {
+            val extra = listOf("s1", "s2").filter { it !in casts && CooldownTracker.ready(it, p) }
+            if (extra.isNotEmpty()) casts = casts + extra
+        }
+        // only basic attacks damage turrets: no skills thrown at a tower
+        if (d.targetLabel == "tower") casts = casts.filter { it == "attack" || it == "regen" || it == "recall" }
+        // Nothing to hit = no attack, no skills (escape skills, wall jumps, Regen, Recall stay).
+        // Something in reach and no skill ready = keep pressing attack.
+        // A jungle monster shows NO HP bar until it is hit: standing at a camp the minimap still
+        // shows, the attack button is pressed anyway (it locks on to the nearest monster), and the
+        // bars appear after the first hit.
+        val atCamp = JungleNav.atCamp && (d.intent == Intent.JUNGLE || d.intent == Intent.LANE_CLEAR) ||
+            d.intent == Intent.PUSH && s.towerRing.zone == com.example.mlbbresearch.vision.TowerRing.Zone.GREEN ||
+            d.reason.startsWith("finishing the monster") ||
+            d.intent == Intent.OBJECTIVE && d.targetLabel == "turtle"      // at the Turtle pit: its bar shows after the first hit
+        val skillRange = s.enemiesWithin(p.engageRange).isNotEmpty() || atCamp ||
+            s.minionsWithin(p.attackRange * 1.8f).isNotEmpty() || s.monsters.any { s.distToSelf(it.x, it.y) <= p.attackRange * 1.8f }
+        val hitRange = s.enemiesWithin(p.attackRange * 1.4f).isNotEmpty() || atCamp ||
+            s.minionsWithin(p.attackRange * 1.4f).isNotEmpty() || s.monsters.any { s.distToSelf(it.x, it.y) <= p.attackRange * 1.5f } ||
+            TowerLogic.canPush(s)
+        // Chasing an enemy hero: keep pressing attack while walking after it (it lands the moment
+        // they are in reach). Standing hidden in a bush: still hit whatever is in reach.
+        val chasing = (d.intent == Intent.ENGAGE || d.intent == Intent.IMITATE) && d.targetId >= 0 &&
+            d.targetX >= 0f && (s.distToSelf(d.targetX, d.targetY) <= p.engageRange * 1.3f || d.targetHp in 0f..0.10f)
+        val hiding = d.intent == Intent.RETREAT && d.moveX == 0f && d.moveY == 0f
+        if (d.intent != Intent.RETREAT) {
+            if (!skillRange && !TowerLogic.canPush(s) && !chasing) {
+                casts = casts.filter { it == hop || it == "regen" || it == "recall" }
+            } else if (!hitRange && !chasing) {
+                casts = casts.filter { it != "attack" }
+            }
+        }
+        // (never while recalling or regenerating: attacking cancels the channel)
+        // (nor while backing off to wait for a better moment: stopping to hit would undo it)
+        if (d.intent == Intent.RECALL || d.intent == Intent.REGEN || d.reason.startsWith("positioning")) casts = casts.filter { it != "attack" }
+        else if ((hitRange && (d.intent != Intent.RETREAT || hiding) || chasing) && "attack" !in casts) {
+            // basic attacks keep going between and alongside skills (and while they cool down)
+            casts = casts + "attack"
+        }
+        // how this hero is played: keep the escape, heal / shield when hurt, self-buff first
+        casts = HeroPlaybook.applyCasts(d, casts, s, p) { CooldownTracker.ready(it, p) }
+        casts = spellCasts(s, p, d, casts)
+        if (casts == d.casts) return d
+        return TacticalDecision(d.intent, d.moveX, d.moveY, casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId, d.reason)
+    }
+
+    // THE BATTLE SPELL, by what it does (wiki descriptions) - not only at very low HP.
+    // Retribution: only buffs (Molten Fiend / Thunder Fenrir), Turtle, Lord (see hitMonster) and in a
+    // fight against a hero for the edge (slow / burn), never on minions or common creeps.
+    private fun spellCasts(s: GameState, p: HeroProfile, d: TacticalDecision, casts0: List<String>): List<String> {
+        val sp = s.spell ?: return casts0
+        if ("spell" in casts0 || !CooldownTracker.ready("spell", p)) return casts0
+        val hp = s.selfHp
+        val fight = d.intent == Intent.ENGAGE || d.intent == Intent.AMBUSH
+        val running = d.intent == Intent.RETREAT && d.moveX != 0f || d.intent == Intent.RETREAT && d.moveY != 0f
+        val tDist = if (d.targetX >= 0f) s.distToSelf(d.targetX, d.targetY) else 9f
+        val close = s.enemiesWithin(0.15f).size
+        val near = s.enemiesWithin(0.5f).size
+        val hurt = GameStateTracker.hurtRecently(s.ts)
+        val use = when (sp) {
+            "Execute" -> fight && d.targetHp in 0f..com.example.mlbbresearch.game.SpellInfo.EXECUTE_BELOW && tDist <= p.engageRange
+            "Flameshot" -> fight && d.targetHp in 0f..0.3f && tDist <= 0.8f || running && close > 0
+            "Petrify" -> (fight && (close >= 2 || close >= 1 && d.targetHp in 0f..0.6f)) || running && close > 0
+            "Inspire" -> fight && tDist <= p.attackRange * 1.3f && d.targetHp > 0.15f
+            "Sprint" -> running && near > 0 || fight && d.targetHp in 0f..0.2f && tDist > p.attackRange * 1.5f && tDist <= p.engageRange * 1.6f
+            "Aegis" -> (fight || running) && near > 0 && hp in 0f..0.45f
+            "Revitalize" -> (fight || running) && near > 0 && hp in 0f..0.5f
+            "Purify" -> (fight || running) && hurt && close > 0 && hp in 0f..0.45f
+            "Vengeance" -> fight && close >= 1 && hurt && hp in 0f..0.75f
+            // Retribution on a hero: in a close fight that is going on (slow / burn / drain = the edge),
+            // only when no buff, Turtle or Lord is on screen to save it for
+            "Retribution" -> fight && tDist <= 0.3f && d.targetHp in 0f..0.6f && s.boss == null &&
+                s.creeps.none { com.example.mlbbresearch.game.JungleDb.isBuff(it.species) }
+            else -> false      // Flicker (chase / escape / walls) and Arrival are handled elsewhere
+        }
+        return if (use) casts0 + "spell" else casts0
+    }
+
+    // fighting something right now: an enemy hero, minions, a jungle camp or turtle / lord, in reach
+    private fun inReach(d: TacticalDecision, s: GameState, p: HeroProfile): Boolean {
+        return when (d.intent) {
+            Intent.ENGAGE -> d.targetX >= 0f && s.distToSelf(d.targetX, d.targetY) <= p.engageRange
+            Intent.LANE_CLEAR, Intent.OBJECTIVE -> d.targetX >= 0f && s.distToSelf(d.targetX, d.targetY) <= p.attackRange * 1.8f
+            Intent.JUNGLE -> JungleNav.atCamp && s.creeps.isNotEmpty() || d.targetX >= 0f && s.distToSelf(d.targetX, d.targetY) <= p.attackRange * 1.8f
+            else -> false
+        }
+    }
+
+    // ---- FINISH THE CURRENT PLAN: a walk to a camp / an objective / a lane / a fight on the map
+    // is kept for up to 2.5 s instead of switching to another walk every frame (no back-and-forth,
+    // no standing around). Anything urgent (danger, a fight, something to hit) takes over at once.
+    private var committed: TacticalDecision? = null
+    private var commitUntil = 0L
+    private fun travelling(d: TacticalDecision) = (d.moveX != 0f || d.moveY != 0f) && d.casts.isEmpty() && d.targetX < 0f &&
+        (d.intent == Intent.PUSH || d.intent == Intent.GROUP || d.intent == Intent.JUNGLE || d.intent == Intent.OBJECTIVE)
+    private fun commit(s: GameState, d: TacticalDecision): TacticalDecision {
+        val now = s.ts
+        val c = committed
+        val urgent = !travelling(d) || s.enemiesWithin(0.9f).isNotEmpty() || GameStateTracker.hurtRecently(now)
+        if (urgent) { committed = if (travelling(d)) d else null; commitUntil = now + 1200; return d }
+        if (c == null || now > commitUntil || c.intent == d.intent && c.reason.substringBefore(':') == d.reason.substringBefore(':') ||
+            d.intent == Intent.IDLE) {
+            if (c == null || now > commitUntil || c.intent != d.intent || c.reason.substringBefore(':') != d.reason.substringBefore(':')) commitUntil = now + 1200
+            committed = d
+            return d
+        }
+        // a different walk while the current one is not finished: carry on with the current one
+        return TacticalDecision(c.intent, c.moveX, c.moveY, d.casts, c.targetX, c.targetY, c.targetLabel, c.targetHp, c.targetId,
+            c.reason + " (finishing this first)")
+    }
+
+    // ---- DASH TO TRAVEL: on a long walk (to a camp, a lane, an objective, roaming) with nobody
+    // around, the dash skill speeds the trip up (aimed the way the hero walks). Not the ultimate,
+    // not while low, at most every 6 s.
+    private var lastTravelDash = 0L
+    private var travelSince = 0L
+    private fun travelDash(s: GameState, p: HeroProfile, d: TacticalDecision): TacticalDecision {
+        val now = s.ts
+        if (!travelling(d)) { travelSince = 0L; return d }
+        if (travelSince == 0L) travelSince = now
+        val slot = HeroDb.dashSlot(s.ownHero) ?: return d
+        if (slot == "ult" || slot in d.casts || now - lastTravelDash < 6000 || now - travelSince < 800) return d
+        if (s.selfHp in 0f..0.5f || s.enemiesWithin(1.0f).isNotEmpty() || s.creeps.isNotEmpty() || s.boss != null || JungleNav.atCamp) return d
+        if (!CooldownTracker.ready(slot, p)) return d
+        lastTravelDash = now
+        return TacticalDecision(d.intent, d.moveX, d.moveY, d.casts + slot, -1f, -1f, d.targetLabel, d.targetHp, d.targetId,
+            d.reason + " | dash ($slot) to get there faster")
+    }
+
+    // ---- passing walls with a dash, a mobility skill or Flicker ----
+    private var pendingHop = false       // the path planner found a thin wall worth jumping
+    private var movingSince = 0L
+
+    private fun wallHop(s: GameState, p: HeroProfile, d: TacticalDecision): TacticalDecision {
+        val now = s.ts
+        val moving = d.moveX != 0f || d.moveY != 0f
+        if (!moving) { movingSince = 0L; return d }
+        if (movingSince == 0L) movingSince = now
+        if (!Cfg.wallHop) return d
+        // stuck against a wall: walking for 1 s but the camera has not moved for 0.6 s
+        val stuck = now - movingSince > 1000 && now - GameStateTracker.lastMotionAt > 600
+        if (!pendingHop && !stuck) return d
+        val dash = if (Cfg.useDash) HeroDb.dashSlot(s.ownHero)?.takeIf { CooldownTracker.ready(it, p) } else null
+        // Flicker has a long cooldown: only to escape or to catch someone
+        val flicker = if (s.spell == "Flicker" && CooldownTracker.ready("spell", p) &&
+            (d.intent == Intent.RETREAT || d.intent == Intent.ENGAGE)) "spell" else null
+        val slot = dash ?: flicker ?: return d
+        if (slot in d.casts) return d
+        val self = s.self ?: return d
+        // aim the jump the way we walk (a chase keeps its target)
+        val tx = if (d.targetX >= 0f && d.intent == Intent.ENGAGE) d.targetX else self.x + d.moveX / s.aspect * 0.3f
+        val ty = if (d.targetX >= 0f && d.intent == Intent.ENGAGE) d.targetY else self.y + d.moveY * 0.3f
+        movingSince = now
+        return TacticalDecision(d.intent, d.moveX, d.moveY, d.casts + slot, tx, ty, d.targetLabel, d.targetHp, d.targetId,
+            d.reason + " | passing the wall with ${if (slot == "spell") "Flicker" else slot}")
+    }
+
+    private fun decideRaw(s: GameState, p: HeroProfile, plan: StrategyPlan, learnedBias: Float, option: FightOption?): TacticalDecision {
         val self = s.self
         if (s.phase != Phase.IN_GAME || self == null) return TacticalDecision.IDLE
         val now = s.ts
         val hp = s.selfHp
-        val aggression = (plan.aggression + learnedBias).coerceIn(0f, 1f)
-        val retreatHp = (p.retreatHp + (0.5f - aggression) * 0.15f).coerceIn(0.12f, 0.6f)
+        // the big picture (game state engine) and the role's style (role profile)
+        val roleP = com.example.mlbbresearch.game.RoleProfile.of(s.lane)
+        val advantage = com.example.mlbbresearch.game.MatchSense.advantage(s)
+        val gamePhase = com.example.mlbbresearch.game.MatchSense.phase(s)
+        val aggression = (plan.aggression + learnedBias + levelBias(s) + advantage * 0.15f).coerceIn(0f, 1f)
+        val retreatHp = (p.retreatHp + roleP.retreatBonus + (0.5f - aggression) * 0.15f).coerceIn(0.12f, 0.6f)
 
         val threat = s.enemiesWithin(0.55f)
         val alliesNear = s.alliesWithin(0.5f).size
         val minions = s.minionsWithin(0.6f)
 
+        // ---- 0. assess: survival, the best target and how good a fight with it is, the state ----
+        val kit = SkillBook.get(s.ownHero)
+        val surv = Utility.survival(s, p, kit)
+        val cand = Utility.bestTarget(s, p, threat, lastTargetId)
+        val eng = cand?.let { Utility.engagement(s, p, it, kit) + (aggression - 0.5f) * 30f } ?: 0f
+        val bossNow = s.boss
+        val objectiveOn = Cfg.takeObjectives && bossNow != null &&
+            (s.allies.count { s.dist(it.x, it.y, bossNow.x, bossNow.y) < 0.5f } >= 1 || s.lane == Lane.JUNGLE)
+        val fstate = Utility.update(s, surv, eng, objectiveOn, threat.isNotEmpty())
+
         // ---- 1. survive ----
-        val outnumbered = threat.size >= alliesNear + 2
-        val losingDuel = threat.size == 1 && alliesNear == 0 && hp < 0.5f && threat[0].hp > hp + 0.25f
-        if (hp in 0f..retreatHp && threat.isNotEmpty() || outnumbered || losingDuel || plan.plan == "retreat" && threat.isNotEmpty()) {
-            val (mx, my) = away(s, threat)
+        // Low HP always retreats. "Outnumbered" / "losing the duel" are rules of thumb: when the
+        // brain has chosen an option it decides those itself (and learns if it was wrong).
+        val rules = option == null || option == FightOption.RULES
+        // HP alone does not decide (a tank at 20% outlasts a marksman at 40%): the survival score
+        // does, except at critical HP (under 15%)
+        val outnumbered = rules && threat.size >= alliesNear + 2 && surv < 55f
+        val losingDuel = rules && threat.size == 1 && alliesNear == 0 && hp < 0.5f && threat[0].hp > hp + 0.25f && surv < 45f
+        val brainRetreat = option == FightOption.RETREAT && s.enemiesWithin(0.9f).isNotEmpty()
+        if ((hp in 0f..0.15f || fstate == Utility.State.RETREATING) && threat.isNotEmpty() || outnumbered || losingDuel || brainRetreat ||
+            plan.plan == "retreat" && threat.isNotEmpty() && rules
+        ) {
+            var (mx, my) = retreatDir(s, threat)
+            // hurt and chased: a bush on the way out hides you (enemies lose sight of you)
+            if (Cfg.useBushes && hp < 0.4f) {
+                if (s.inBush && s.enemiesWithin(0.3f).isEmpty()) {
+                    val casts = if (s.enemiesWithin(0.6f).isEmpty() && Cfg.useRegen && CooldownTracker.ready("regen", p)) listOf("regen") else emptyList()
+                    return hold(now, TacticalDecision(Intent.RETREAT, 0f, 0f, casts, -1f, -1f, "-", -1f, -1, "hiding in a bush"), force = true)
+                }
+                val b = s.bushes.filter { s.distToSelf(it.x, it.y) < 0.35f }.firstOrNull { bu ->
+                    val (bx, by) = toward(s, bu.x, bu.y)
+                    bx * mx + by * my > 0.3f
+                }
+                if (b != null) { val t = toward(s, b.x, b.y); mx = t.first; my = t.second }
+                else s.minimapSelf?.let { me ->
+                    // none on screen: a bush on the minimap, close and on the way out
+                    val wm = com.example.mlbbresearch.vision.WallMap
+                    wm.nearestBush(me, 0.08f, mx, my)?.let { mb ->
+                        val t = wm.direction(me, mb) ?: mapDir(me, mb); mx = t.first; my = t.second
+                    }
+                }
+            }
             val casts = ArrayList<String>()
             p.escapeSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
             if (p.ult == UltRule.DEFENSIVE && hp < 0.35f && CooldownTracker.ready("ult", p)) casts.add("ult")
-            if (Cfg.spellIsDefensive && s.spell != "Retribution" && hp < 0.2f && CooldownTracker.ready("spell", p)) casts.add("spell")
+            // (the battle spell is chosen by what it does: spellCasts)
+            // dash away when an enemy is right on you (aimed away from them)
+            val dash = dashSlot(s, p)
+            if (dash != null && dash !in casts && s.enemiesWithin(0.35f).isNotEmpty()) casts.add(dash)
             recallUntil = 0L
-            return hold(now, TacticalDecision(Intent.RETREAT, mx, my, casts, -1f, -1f, "-", -1f, -1,
+            val awayX = self.x + mx / s.aspect * 0.3f
+            val awayY = self.y + my * 0.3f
+            return hold(now, TacticalDecision(Intent.RETREAT, mx, my, casts, awayX, awayY, "away", -1f, -1,
                 when {
                     outnumbered -> "outnumbered ${threat.size} vs ${alliesNear + 1}"
                     losingDuel -> "losing the duel"
-                    else -> "HP ${(hp * 100).toInt()}%"
+                    brainRetreat && hp > retreatHp -> "brain: back off"
+                    else -> "HP ${(hp * 100).toInt()}%, survival ${surv.toInt()}"
                 }), force = true)
+        }
+
+        // ---- 1a. a monster that was almost dead just went out of sight (its last few % of bar
+        // are tiny): keep hitting for 1.5 s - with Retribution if it is ready - instead of leaving ----
+        if (s.creeps.isEmpty() && s.boss == null && threat.isEmpty() && lastMonAt > 0 && now - lastMonAt in 0..1500 &&
+            lastMonHp <= 0.2f && s.distToSelf(lastMonX, lastMonY) <= p.attackRange * 2f
+        ) {
+            val casts = arrayListOf("attack")
+            if (s.spell == "Retribution" && retriWorthy(lastMonSpecies, lastMonBoss) && CooldownTracker.ready("spell", p)) casts.add("spell")
+            return TacticalDecision(Intent.JUNGLE, 0f, 0f, casts, lastMonX, lastMonY, "monster", lastMonHp, -1,
+                "finishing the monster (last seen at ${(lastMonHp * 100).toInt()}% HP)")
+        }
+
+        // ---- 1b. never walk away from a monster that is almost dead or that you are fighting:
+        // finish it first (its gold / EXP / buff), whatever the lane - then recall / move on.
+        // Only with no enemy hero near.
+        val fighting = now - lastMonAt in 0..2000
+        val lowMon = (s.creeps + listOfNotNull(s.boss)).filter {
+            s.distToSelf(it.x, it.y) <= p.attackRange * 1.8f && (it.hp <= (if (it.hero) 0.15f else 0.35f) ||
+                fighting && !it.hero && s.dist(it.x, it.y, lastMonX, lastMonY) < 0.15f && (hp >= 0.3f || it.hp <= 0.5f))
+        }.minByOrNull { it.hp }
+        if (lowMon != null && threat.isEmpty() && hp >= 0.04f && now >= recallUntil) {
+            return hold(now, hitMonster(s, p, lowMon, if (lowMon.hero) Cfg.retriBossPct else Cfg.retriCreepPct,
+                if (lowMon.hero) Intent.OBJECTIVE else Intent.JUNGLE,
+                "finishing the monster first (${(lowMon.hp * 100).toInt()}% HP)"), force = true)
         }
 
         // ---- 2. recall when low and safe ----
@@ -94,78 +504,434 @@ object TacticalEngine {
             }
             recallUntil = 0L
         }
-        if (hp in 0f..0.35f && s.enemiesWithin(0.9f).isEmpty()) {
+        val safe = s.enemiesWithin(0.9f).isEmpty()
+        // early game: walking home costs too much farm, so recall only when really low (Regen covers the rest)
+        var recallAt = if (s.matchSec in 0..180) minOf(Cfg.recallHpPct, 20) else Cfg.recallHpPct
+        // passive heals out of combat: stepping away beats walking home
+        if (kit.has(Passive.OUT_OF_COMBAT_REGEN)) recallAt = recallAt * 6 / 10
+        // a level-up is moments away (EXP ring almost full) and not in danger: finish the camp or
+        // wave first, the new level heals a little and makes the walk back worth it
+        val levelSoon = s.xp >= 0.8f && s.level < 15 && hp > 0.15f && (s.creeps.isNotEmpty() || minions.isNotEmpty())
+        if (Cfg.useRecall && hp in 0f..recallAt / 100f && safe && !levelSoon && !s.inBush && Cfg.useBushes) {
+            // a bush close by: recall from inside it (enemies cannot see you channel)
+            s.bushes.filter { s.distToSelf(it.x, it.y) < 0.3f }.minByOrNull { s.distToSelf(it.x, it.y) }?.let { b ->
+                val (bx, by) = toward(s, b.x, b.y)
+                return TacticalDecision(Intent.RECALL, bx, by, emptyList(), -1f, -1f, "-", -1f, -1, "into the bush to recall hidden")
+            }
+            // none on screen: the nearest bush on the minimap (a few steps away)
+            s.minimapSelf?.let { me ->
+                val wm = com.example.mlbbresearch.vision.WallMap
+                wm.nearestBush(me, 0.06f)?.let { mb ->
+                    val (bx, by) = wm.direction(me, mb) ?: mapDir(me, mb)
+                    return TacticalDecision(Intent.RECALL, bx, by, emptyList(), -1f, -1f, "-", -1f, -1, "into the bush (minimap) to recall hidden")
+                }
+            }
+        }
+        if (Cfg.useRecall && hp in 0f..recallAt / 100f && safe && !levelSoon) {
+            // Recall channels ~6 s: stand still; an enemy showing up cancels it (step 1 / above)
+            regenUntil = 0L
             recallUntil = now + 8000
             return TacticalDecision(Intent.RECALL, 0f, 0f, listOf("recall"), -1f, -1f, "-", -1f, -1, "low HP, safe to recall")
         }
 
-        // ---- 3. engage an enemy hero ----
-        val target = pickTarget(s, threat, plan)
-        if (target != null) {
-            val d = s.distToSelf(target.x, target.y)
-            val winnable = target.hp <= hp + 0.1f + (aggression - 0.5f) * 0.4f ||
-                target.hp < 0.35f ||
-                (alliesNear + 1 >= threat.size && aggression >= 0.5f)
-            if (d <= p.engageRange && winnable) {
-                val casts = ArrayList<String>()
-                if (d <= p.attackRange * 1.3f) casts.add("attack")
-                for (sk in p.combo) {
-                    if (sk == "ult") continue
-                    if (d <= p.engageRange && CooldownTracker.ready(sk, p)) casts.add(sk)
+        // ---- 2b. Regen: heal over a few seconds when hurt but not low enough to go home ----
+        if (now < regenUntil) {
+            if (safe && hp < 0.98f) {
+                return TacticalDecision(Intent.REGEN, 0f, 0f, emptyList(), -1f, -1f, "-", -1f, -1, "regenerating")
+            }
+            regenUntil = 0L
+        }
+        if (Cfg.useRegen && hp in 0f..Cfg.regenHpPct / 100f && safe && s.minionsWithin(0.5f).isEmpty() &&
+            CooldownTracker.ready("regen", p)
+        ) {
+            regenUntil = now + 5000
+            return TacticalDecision(Intent.REGEN, 0f, 0f, listOf("regen"), -1f, -1f, "-", -1f, -1,
+                "HP ${(hp * 100).toInt()}%, using Regen")
+        }
+
+        // ---- 2c. finish off low-HP enemy heroes ----
+        //  - under 10% HP: ALWAYS chase if possible: further out, and even under their tower when
+        //    you are healthy (40%+ HP) and it is a quick kill (close, or a dash is ready)
+        //  - under the execute % (20 by default): chase, but never under their tower
+        //  - before level 4 only the under-10% kills (no duels yet)
+        val safeTargets = s.enemiesWithin(0.9f).filter { !TowerLogic.enemyUnderTower(s, it) }
+        // (never on HP alone: you must be fairly safe, the enemy alone, and no objective to lose)
+        val dying = s.enemiesWithin(1.3f).filter { e ->
+            e.hp <= 0.10f && hp > 0.15f && surv >= 35f && !(objectiveOn && bossNow!!.hp < 0.4f) &&
+                s.enemies.none { o -> o.id != e.id && s.dist(o.x, o.y, e.x, e.y) < 0.35f && o.hp > 0.3f } && (!TowerLogic.enemyUnderTower(s, e) ||
+                hp >= 0.4f && (s.distToSelf(e.x, e.y) <= p.attackRange * 1.6f || dashSlot(s, p) != null || s.spell == "Flicker" && CooldownTracker.ready("spell", p)))
+        }.minByOrNull { it.hp + s.distToSelf(it.x, it.y) * 0.3f }
+        val low = dying ?: if (s.level < 4) null else
+            safeTargets.filter { it.hp * 100 <= Cfg.executeHpPct + (if (kit.has(Passive.EXECUTE_BONUS)) 10 else 0) }.minByOrNull { it.hp + s.distToSelf(it.x, it.y) * 0.3f }
+        if (low != null && (hp > retreatHp || low === dying)) {
+            val d = s.distToSelf(low.x, low.y)
+            val casts = ArrayList<String>()
+            if (d <= p.attackRange * 1.3f) casts.add("attack")
+            chaseDash(s, p, d)?.let { casts.add(it) }
+            for (sk in p.combo) if (sk != "ult" && sk !in casts && d <= p.engageRange && CooldownTracker.ready(sk, p)) casts.add(sk)
+            if (d <= p.engageRange && CooldownTracker.ready("ult", p) && (p.ult == UltRule.EXECUTE || p.ult == UltRule.ENGAGE)) casts.add("ult")
+            // Execute: true damage that grows with the target's LOST HP - a finisher (wiki), not an opener
+            if (s.spell == "Execute" && low.hp <= com.example.mlbbresearch.game.SpellInfo.EXECUTE_BELOW && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
+            if (s.spell == "Flameshot" && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
+            // Flicker onto a fleeing enemy under 10% that is just out of reach
+            if (low === dying && s.spell == "Flicker" && d > p.attackRange * 1.5f && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
+            // chasing: straight after it (no keeping distance)
+            val (mx, my) = if (low === dying && d > p.attackRange * 0.8f) toward(s, low.x, low.y) else heroSpacing(s, p, low, d)
+            return hold(now, TacticalDecision(Intent.ENGAGE, mx, my, casts, low.x, low.y, "enemy #${low.id}", low.hp, low.id,
+                (if (low === dying) "chasing a kill: enemy at " else "finishing enemy at ") + "${(low.hp * 100).toInt()}% HP"), force = true)
+        }
+
+        // ---- 2d. ambush from a bush: hide while an enemy walks towards us (3 s at most) ----
+        if (Cfg.useBushes && hp > 0.55f && (s.lane == Lane.ROAM || s.lane == Lane.JUNGLE || alliesNear > 0 || kit.has(Passive.BUSH_BONUS))) {
+            val e = safeTargets.minByOrNull { s.distToSelf(it.x, it.y) }
+            val de = e?.let { s.distToSelf(it.x, it.y) } ?: 9f
+            // only while the enemy is actually coming towards us, and 3 s at most (no long waits)
+            val coming = e != null && self.let { me -> (me.x - e.x) * e.vx * s.aspect * s.aspect + (me.y - e.y) * e.vy > 0f }
+            if (e != null && coming && de > p.engageRange * 1.1f && de < 0.9f && (ambushSince == 0L || now - ambushSince < 3000)) {
+                if (ambushSince == 0L) ambushSince = now
+                if (s.inBush) {
+                    return hold(now, TacticalDecision(Intent.AMBUSH, 0f, 0f, emptyList(), e.x, e.y, "enemy #${e.id}", e.hp, e.id,
+                        "hidden in a bush, waiting for enemy #${e.id}"))
                 }
-                if (useUlt(p, s, target, d, hp, threat.size, alliesNear)) casts.add("ult")
-                val (mx, my) = if (d > p.attackRange) toward(s, target.x, target.y) else (0f to 0f)
-                return hold(now, TacticalDecision(Intent.ENGAGE, mx, my, casts, target.x, target.y,
-                    "enemy #${target.id}", target.hp, target.id,
-                    "target HP ${(target.hp * 100).toInt()}%, ${(d * 100).toInt()} away"))
+                val b = s.bushes.filter { s.distToSelf(it.x, it.y) < 0.25f && s.dist(it.x, it.y, e.x, e.y) < de }
+                    .minByOrNull { s.distToSelf(it.x, it.y) }
+                if (b != null) {
+                    val (mx, my) = toward(s, b.x, b.y)
+                    return hold(now, TacticalDecision(Intent.AMBUSH, mx, my, emptyList(), e.x, e.y, "enemy #${e.id}", e.hp, e.id,
+                        "moving into a bush to ambush enemy #${e.id}"))
+                }
+            }
+        }
+        if (safeTargets.isEmpty()) ambushSince = 0L
+
+        // ---- 2e. no duels before level 4 (no ultimate yet): alone with an enemy hero close by,
+        // step back to your side and keep farming; with an ally near you may fight together ----
+        val noDuel = s.level < 4 && alliesNear == 0
+        if (noDuel) {
+            val close = threat.filter { s.distToSelf(it.x, it.y) < 0.35f && it.hp > 0.10f }
+            if (close.isNotEmpty()) {
+                val (mx, my) = retreatDir(s, close)
+                return hold(now, TacticalDecision(Intent.RETREAT, mx, my, emptyList(), -1f, -1f, "-", -1f, -1,
+                    "level ${s.level}: no duels before level 4"))
             }
         }
 
-        // ---- 4. turtle / lord: help the team take it (or take it as the jungler) ----
-        val boss = s.boss
-        if (Cfg.takeObjectives && boss != null && threat.isEmpty()) {
+        // ---- 2f. LAST HITS first, in every lane: the turtle / lord, a monster or a minion that the
+        // next hit kills (gold, EXP, the buff, and no steal). Not in a fight that is going well. ----
+        if (fstate != Utility.State.ENGAGING && surv >= 45f) {
+            s.boss?.takeIf { it.hp <= 0.15f && s.distToSelf(it.x, it.y) <= p.engageRange }?.let { b ->
+                return hold(now, hitMonster(s, p, b, Cfg.retriBossPct, Intent.OBJECTIVE,
+                    "last hit: ${LaneLogic.objectiveName(s.matchSec)} at ${(b.hp * 100).toInt()}%"), force = true)
+            }
+            s.creeps.filter { it.hp <= 0.2f && s.distToSelf(it.x, it.y) <= p.attackRange * 1.6f }.minByOrNull { it.hp }?.let { c ->
+                return hold(now, hitMonster(s, p, c, Cfg.retriCreepPct, Intent.JUNGLE, "last hit: monster at ${(c.hp * 100).toInt()}%"))
+            }
+            minions.filter { it.hp <= 0.18f && s.distToSelf(it.x, it.y) <= p.attackRange * 1.3f }.minByOrNull { it.hp }?.let { m ->
+                val d = s.distToSelf(m.x, m.y)
+                val (mx, my) = if (d > p.attackRange) toward(s, m.x, m.y) else (0f to 0f)
+                return hold(now, TacticalDecision(Intent.LANE_CLEAR, mx, my, listOf("attack"), m.x, m.y, "minion", m.hp, -1,
+                    "last hit: minion at ${(m.hp * 100).toInt()}%"))
+            }
+        }
+
+        // ================= the rest: each role does these in its own order =================
+        val role = HeroDb.role(s.ownHero)
+        val me = s.minimapSelf
+        val early = s.matchSec in 0..599
+        val target = if (noDuel) null else cand?.takeIf { option != null || it in safeTargets }
+        if (target != null && option != null && !rules) {
+            brainFight(s, p, option, target, hp, alliesNear)?.let { lastTargetId = target.id; return hold(now, it, force = true) }
+        }
+
+        // ---- fight an enemy hero (engagement 50+, 35+ to keep going) ----
+        fun fight(minEng: Float = 0f): TacticalDecision? {
+            val fightOk = fstate == Utility.State.ENGAGING && eng >= minEng && !(objectiveOn && eng < 70f) || option == FightOption.ALL_IN
+            if (target == null || !(rules || option == FightOption.ALL_IN) || s.distToSelf(target.x, target.y) > 0.55f || !fightOk) return null
+            val d = s.distToSelf(target.x, target.y)
+            lastTargetId = target.id
+            if (d > p.engageRange) {
+                // out of reach: reposition first (walk in), skills wait
+                val (mx, my) = toward(s, target.x, target.y)
+                return TacticalDecision(Intent.ENGAGE, mx, my, emptyList(), target.x, target.y, "enemy #${target.id}",
+                    target.hp, target.id, "closing in on enemy #${target.id} (engage ${eng.toInt()})")
+            }
+            val casts = ArrayList<String>()
+            if (d <= p.attackRange * 1.3f) casts.add("attack")
+            for (sk in p.combo) {
+                if (sk == "ult") continue
+                if (d <= p.engageRange && CooldownTracker.ready(sk, p)) casts.add(sk)
+            }
+            if (useUlt(p, s, target, d, hp, threat.size, alliesNear)) casts.add("ult")
+            chaseDash(s, p, d)?.let { if (it !in casts) casts.add(it) }
+            var (mx, my) = heroSpacing(s, p, target, d)
+            // a support stays with the ally it protects: between that ally and the enemy
+            if (role == Role.SUPPORT) s.allies.minByOrNull { s.distToSelf(it.x, it.y) }?.let { a ->
+                val (gx, gy) = toward(s, (a.x + target.x) / 2f, (a.y + target.y) / 2f)
+                if (s.distToSelf((a.x + target.x) / 2f, (a.y + target.y) / 2f) > 0.06f) { mx = gx; my = gy }
+            }
+            return TacticalDecision(Intent.ENGAGE, mx, my, casts, target.x, target.y,
+                "enemy #${target.id}", target.hp, target.id,
+                "target HP ${(target.hp * 100).toInt()}%, ${(d * 100).toInt()} away, engage ${eng.toInt()}, survival ${surv.toInt()}")
+        }
+
+        // ---- turtle / lord on screen: take it with the team ----
+        fun bossOnScreen(): TacticalDecision? {
+            val boss = s.boss ?: return null
+            if (!Cfg.takeObjectives || threat.isNotEmpty()) return null
             val alliesThere = s.allies.count { s.dist(it.x, it.y, boss.x, boss.y) < 0.5f }
-            if (alliesThere >= 1 || s.lane == Lane.JUNGLE || s.lane == Lane.ROAM || boss.hp < 0.5f) {
-                val name = LaneLogic.objectiveName(s.matchSec)
-                return hold(now, hitMonster(s, p, boss, Cfg.retriBossPct, Intent.OBJECTIVE,
-                    "$name HP ${(boss.hp * 100).toInt()}%" + if (alliesThere > 0) ", with $alliesThere allies" else ""))
-            }
+            if (!(alliesThere >= 1 || s.lane == Lane.JUNGLE || s.lane == Lane.ROAM || boss.hp < 0.5f)) return null
+            val name = LaneLogic.objectiveName(s.matchSec)
+            return hitMonster(s, p, boss, Cfg.retriBossPct, Intent.OBJECTIVE,
+                "$name HP ${(boss.hp * 100).toInt()}%" + if (alliesThere > 0) ", with $alliesThere allies" else "")
         }
 
-        // ---- 5. jungler: farm the jungle monsters ----
-        if (s.lane == Lane.JUNGLE && threat.isEmpty()) {
-            val creep = s.creeps.minByOrNull { s.distToSelf(it.x, it.y) }
-            if (creep != null) {
-                return hold(now, hitMonster(s, p, creep, Cfg.retriCreepPct, Intent.JUNGLE,
-                    "jungle monster HP ${(creep.hp * 100).toInt()}%"))
+        // ---- turtle / lord up on the minimap: rotate there (who goes, and how far, depends on the role) ----
+        fun objectiveOnMap(maxDist: Float, needAlly: Boolean): TacticalDecision? {
+            val obj = s.map.objective ?: return null
+            if (!Cfg.takeObjectives || me == null || threat.isNotEmpty() || hp <= 0.55f || s.level < 4 || s.boss != null) return null
+            val dObj = kotlin.math.hypot(obj.first - me.first, obj.second - me.second)
+            val alliesThere = s.map.allies.count { kotlin.math.hypot(it.first - obj.first, it.second - obj.second) < 0.2f }
+            val enemiesThere = s.map.enemies.count { kotlin.math.hypot(it.first - obj.first, it.second - obj.second) < 0.2f }
+            if (dObj > maxDist || needAlly && alliesThere == 0 || enemiesThere > alliesThere) return null
+            if (dObj < 0.05f) {
+                // at the pit and no boss bar on screen. Only the Lord shows its HP bar before it is hit:
+                // no Lord bar = it is not in view yet, keep walking into the pit. The Turtle's bar shows
+                // only once someone hits it: start it with a basic attack (the skills follow on its bar).
+                if (LaneLogic.objectiveName(s.matchSec) == "lord") {
+                    val (mx, my) = mapDir(me, obj)
+                    return TacticalDecision(Intent.OBJECTIVE, mx * 0.5f, my * 0.5f, emptyList(), -1f, -1f, "-", -1f, -1,
+                        "at the Lord pit: its bar is not on screen yet, stepping in")
+                }
+                return TacticalDecision(Intent.OBJECTIVE, 0f, 0f, listOf("attack"), -1f, -1f, "turtle", -1f, -1,
+                    "at the Turtle pit: first hit to show its HP bar (it shows only after it is hit)")
             }
+            val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, obj) ?: mapDir(me, obj)
+            return TacticalDecision(Intent.OBJECTIVE, mx, my, emptyList(), -1f, -1f, "-", -1f, -1,
+                "${LaneLogic.objectiveName(s.matchSec)} is up (minimap): rotating there" + if (alliesThere > 0) ", $alliesThere allies there" else "")
         }
 
-        // ---- 6. roamer: stay with the team ----
-        if (s.lane == Lane.ROAM && s.allies.isNotEmpty()) {
-            val ax = s.allies.map { it.x }.average().toFloat()
-            val ay = s.allies.map { it.y }.average().toFloat()
-            if (s.distToSelf(ax, ay) > 0.2f) {
-                val (mx, my) = toward(s, ax, ay)
-                return hold(now, TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roaming with allies"))
-            }
+        // ---- jungle monsters on screen (your buffs first) ----
+        fun monstersOnScreen(): TacticalDecision? {
+            if (threat.isNotEmpty() && (eng >= 70f || surv < 40f)) return null
+            val creep = s.creeps.minByOrNull { s.distToSelf(it.x, it.y) } ?: return null
+            return hitMonster(s, p, creep, Cfg.retriCreepPct, Intent.JUNGLE,
+                (com.example.mlbbresearch.game.JungleDb.byId(creep.species)?.let { m ->
+                    m.name + if (m.aliases.isNotEmpty()) " (${m.aliases.first()})" else ""
+                } ?: if (JungleNav.atBuff) "our buff" else "jungle monster") + " HP ${(creep.hp * 100).toInt()}%")
         }
 
-        // ---- 7. clear the minion wave ----
-        if (minions.isNotEmpty() && plan.plan != "group") {
+        fun jungleRoute(): TacticalDecision? {
+            if (!Cfg.jungleRoute || threat.isNotEmpty()) return null
+            // (at level 15 more EXP is useless: only camps on the way)
+            return JungleNav.direction(s, if (s.level >= 15) 0.15f else 9f)?.let { jungleStep(s, p, it) }
+        }
+
+        // ---- the minion wave: last hits first (the minion that dies to the next hit), lowest HP ----
+        fun minionWave(): TacticalDecision? {
+            if (minions.isEmpty() || plan.plan == "group") return null
+            // jungler with Retribution: lane minions give 70% less until 5:00 and feed the laners less (wiki)
+            if (s.lane == Lane.JUNGLE && s.spell == "Retribution" && s.matchSec in 0 until 300 &&
+                TowerLogic.towerToDefend(s) == null) return null
             val mx0 = minions.map { it.x }.average().toFloat()
             val my0 = minions.map { it.y }.average().toFloat()
-            val d = s.distToSelf(mx0, my0)
+            // WAVE MANAGEMENT: PUSH (clear fast with skills: mid before rotating, anyone ahead or with
+            // an objective / teamfight to go to), FREEZE (only last hits, no skills, wave stays near our
+            // tower: gold lane early or when behind, or enemies hidden near), else CLEAR
+            val hiddenNear = (com.example.mlbbresearch.game.MapIntel.enemiesNear(s, 0.18f) - s.enemies.size) > 0
+            val wave = when {
+                s.lane == Lane.MID || advantage > 0.2f || s.map.objective != null -> "push"
+                (s.lane == Lane.GOLD && gamePhase == com.example.mlbbresearch.game.MatchSense.GamePhase.EARLY && advantage <= 0f) ||
+                    advantage < -0.25f || hiddenNear -> "freeze"
+                else -> "clear"
+            }
+            if (wave == "freeze") {
+                val lh = minions.filter { it.hp <= 0.35f }.minByOrNull { it.hp }
+                if (lh == null) {
+                    // nothing to last-hit yet: stay a little back and let the minions fight
+                    val (bx, by) = norm(-pushVector().first, -pushVector().second)
+                    val near = minions.minOf { s.distToSelf(it.x, it.y) }
+                    val (mx, my) = if (near < p.attackRange * 0.9f) (bx to by) else (0f to 0f)
+                    return TacticalDecision(Intent.LANE_CLEAR, mx, my, emptyList(), -1f, -1f, "${minions.size} minions", -1f, -1,
+                        "freezing the wave: waiting for last hits")
+                }
+                val d = s.distToSelf(lh.x, lh.y)
+                val (mx, my) = if (d > p.attackRange) toward(s, lh.x, lh.y) else (0f to 0f)
+                return TacticalDecision(Intent.LANE_CLEAR, mx, my, if (d <= p.attackRange * 1.4f) listOf("attack") else emptyList(),
+                    lh.x, lh.y, "minion", lh.hp, -1, "freezing the wave: last hit at ${(lh.hp * 100).toInt()}%")
+            }
+            val tgt = minions.minByOrNull { it.hp * 0.6f + s.distToSelf(it.x, it.y) }!!
+            val d = s.distToSelf(tgt.x, tgt.y)
             val casts = ArrayList<String>()
             if (d <= p.attackRange * 1.4f) casts.add("attack")
             val clustered = minions.count { s.dist(it.x, it.y, mx0, my0) < 0.25f }
             val wc = p.waveClearSkill
-            if (wc != null && clustered >= 3 && d <= p.attackRange * 1.8f && CooldownTracker.ready(wc, p)) casts.add(wc)
-            val (mx, my) = if (d > p.attackRange) toward(s, mx0, my0) else (0f to 0f)
-            return hold(now, TacticalDecision(Intent.LANE_CLEAR, mx, my, casts, mx0, my0,
-                "${minions.size} minions", minions.map { it.hp }.average().toFloat(), -1,
-                "${minions.size} minions"))
+            // early game: clear waves fast with skills (no enemy hero close), later only on big waves
+            val earlyClear = s.matchSec in 0..360 && threat.isEmpty()
+            val pushing = wave == "push"
+            if (wc != null && clustered >= (if (earlyClear || pushing) 2 else 3) && s.distToSelf(mx0, my0) <= p.attackRange * 1.8f && CooldownTracker.ready(wc, p)) casts.add(wc)
+            if ((earlyClear || pushing) && clustered >= 3 && s.distToSelf(mx0, my0) <= p.attackRange * 1.8f) {
+                for (sk in p.combo) if (sk != "ult" && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
+            }
+            val (mx, my) = if (d > p.attackRange) toward(s, tgt.x, tgt.y) else (0f to 0f)
+            return TacticalDecision(Intent.LANE_CLEAR, mx, my, casts, tgt.x, tgt.y,
+                "${minions.size} minions", tgt.hp, -1,
+                "${if (pushing) "pushing" else "clearing"} the wave (${minions.size}), hitting one at ${(tgt.hp * 100).toInt()}%")
         }
+
+        // ---- push the enemy tower: only with your minions in its range and no enemy hero ----
+        val ring = s.towerRing
+        fun tower(): TacticalDecision? {
+            if (ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.GREEN && threat.isEmpty()) {
+                val dx = (ring.cx - self.x) * s.aspect; val dy = ring.cy - self.y
+                val dd = kotlin.math.hypot(dx, dy)
+                val (mx, my) = if (dd > ring.ry * 0.55f) (dx / dd) to (dy / dd) else (0f to 0f)
+                return TacticalDecision(Intent.PUSH, mx, my, listOf("attack"), -1f, -1f, "tower", -1f, -1,
+                    "pushing the tower: our minions are in (green circle)")
+            }
+            if (TowerLogic.canPush(s) && ring.zone != com.example.mlbbresearch.vision.TowerRing.Zone.YELLOW &&
+                ring.zone != com.example.mlbbresearch.vision.TowerRing.Zone.RED) {
+                val n = TowerLogic.nearest(s)!!
+                val m = s.minimapSelf!!
+                val (mx, my) = if (n.second > TowerLogic.range() * 0.6f) norm(n.first.first - m.first, n.first.second - m.second) else (0f to 0f)
+                return TacticalDecision(Intent.PUSH, mx, my, listOf("attack"), -1f, -1f, "tower", -1f, -1,
+                    "pushing the tower with ${s.allyMinions.size} minions")
+            }
+            return null
+        }
+
+        // ---- rotations: defend a tower, join a teamfight, then back to the lane ----
+        fun defendTower(): TacticalDecision? = if (s.lane == Lane.JUNGLE) null else TowerLogic.towerToDefend(s)?.let { t ->
+            val (mx, my) = mapDir(s.minimapSelf!!, t)
+            TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "rotating: defending our tower")
+        }
+        fun teamfight(maxDist: Float): TacticalDecision? {
+            if (me == null || threat.isNotEmpty() || hp < 0.6f || s.map.allies.size < 2) return null
+            // two allies close together with an enemy next to them = a fight going on
+            val spot = s.map.allies.firstOrNull { a ->
+                s.map.allies.count { kotlin.math.hypot(it.first - a.first, it.second - a.second) < 0.15f } >= 2 &&
+                    s.map.enemies.any { kotlin.math.hypot(it.first - a.first, it.second - a.second) < 0.15f }
+            } ?: return null
+            val d = kotlin.math.hypot(spot.first - me.first, spot.second - me.second)
+            if (d !in 0.1f..maxDist) return null
+            val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, spot) ?: mapDir(me, spot)
+            return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "rotating to help a teamfight (minimap)")
+        }
+
+        // ---- laners: a nearby jungle camp between waves (gold + EXP) ----
+        fun laneCamps(radius: Float): TacticalDecision? {
+            if (!Cfg.lanersTakeCamps || threat.isNotEmpty() || s.level >= 15) return null
+            return JungleNav.direction(s, radius)?.let { jungleStep(s, p, it) }
+        }
+
+        // ---- roamer: walk the map with the mid laner / jungler, checking bushes ahead (vision) ----
+        fun roam(): TacticalDecision? {
+            if (threat.isNotEmpty()) return null
+            // a bush ahead (towards the enemy side) next to the team: step in to see who hides there
+            if (Cfg.useBushes && hp > 0.6f && !s.inBush && s.allies.isNotEmpty() && now - lastBushCheck > 6000) {
+                val (px0, py0) = pushVector()
+                val bush = s.bushes.filter { s.distToSelf(it.x, it.y) in 0.08f..0.35f }.firstOrNull { b ->
+                    val (bx, by) = toward(s, b.x, b.y); bx * px0 + by * py0 > 0.3f
+                }
+                if (bush != null) {
+                    if (s.distToSelf(bush.x, bush.y) < 0.1f) lastBushCheck = now
+                    val (mx, my) = toward(s, bush.x, bush.y)
+                    return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "checking a bush ahead for the team (vision)")
+                }
+            }
+            // follow the ally on screen; else the mid laner / jungler on the map (the one away from the side lanes)
+            if (s.allies.isNotEmpty()) {
+                val ax = s.allies.map { it.x }.average().toFloat(); val ay = s.allies.map { it.y }.average().toFloat()
+                if (s.distToSelf(ax, ay) > 0.2f) {
+                    val (mx, my) = toward(s, ax, ay)
+                    return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roaming with allies")
+                }
+                return null
+            }
+            if (me == null) return null
+            val buddy = s.map.allies.filter { a ->
+                val inBase = a.first < 0.18f && a.second > 0.82f
+                val sideLane = a.first < 0.12f || a.second > 0.88f
+                !inBase && !sideLane
+            }.minByOrNull { a -> kotlin.math.abs(a.first + a.second - 1f) + kotlin.math.hypot(a.first - me.first, a.second - me.second) * 0.5f }
+                ?: return null
+            if (kotlin.math.hypot(buddy.first - me.first, buddy.second - me.second) < 0.06f) return null
+            val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, buddy) ?: mapDir(me, buddy)
+            return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roaming the map with the mid laner / jungler")
+        }
+
+        // ---- MOBA rule: do not wander alone deep in the enemy half (ganks) ----
+        fun safety(): TacticalDecision? {
+            if (me == null || s.lane == Lane.JUNGLE || threat.isNotEmpty() || s.allies.isNotEmpty() || s.allyMinions.isNotEmpty() ||
+                !(me.second < me.first - 0.25f && me.second > 0.15f && me.first < 0.85f)) return null
+            val home = s.allyTowers.minByOrNull { kotlin.math.hypot(it.first - me.first, it.second - me.second) } ?: (0.1f to 0.9f)
+            val (mx, my) = mapDir(me, home)
+            return TacticalDecision(Intent.PUSH, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "alone deep in the enemy half: falling back")
+        }
+
+        // 25-49: not good enough yet - keep a safe distance and wait for a better moment
+        fun positioning(): TacticalDecision? {
+            if (fstate != Utility.State.POSITIONING || target == null || minions.isNotEmpty() || s.creeps.isNotEmpty()) return null
+            if (s.distToSelf(target.x, target.y) >= 0.42f) return null
+            val (mx, my) = retreatDir(s, listOf(target))
+            return TacticalDecision(Intent.GROUP, mx, my, emptyList(), target.x, target.y, "enemy #${target.id}", target.hp, -1,
+                "positioning: engage ${eng.toInt()} is not enough, keeping distance")
+        }
+
+        // ---- jungle GANK: an enemy in a lane on the minimap, close to us, alone (and better near our
+        // laner or our tower), while we are healthy, level 4+ with the ultimate or 2 skills ready ----
+        fun gank(): TacticalDecision? {
+            if (me == null || threat.isNotEmpty() || hp < 0.6f || s.level < 4) return null
+            val ready = listOf("s1", "s2", "ult").count { CooldownTracker.ready(it, p) }
+            if (!CooldownTracker.ready("ult", p) && ready < 2) return null
+            fun d(a: Pair<Float, Float>, b: Pair<Float, Float>) = kotlin.math.hypot(a.first - b.first, a.second - b.second)
+            val prey = s.map.enemies.filter { e ->
+                val onLane = e.first < 0.14f || e.second > 0.86f || e.first > 0.86f || e.second < 0.14f || kotlin.math.abs(e.first + e.second - 1f) < 0.12f
+                onLane && d(e, me) in 0.08f..0.35f && s.map.enemies.none { o -> o !== e && d(o, e) < 0.15f }
+            }.maxByOrNull { e ->
+                (if (s.map.allies.any { d(it, e) < 0.15f }) 1f else 0f) + (if (s.allyTowers.any { d(it, e) < 0.15f }) 1f else 0f) - d(e, me)
+            } ?: return null
+            val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, prey) ?: mapDir(me, prey)
+            return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "ganking: an enemy alone in a lane (minimap)")
+        }
+
+        // ---- EXP SPLIT PUSH: mid / late game, nobody near on the map, healthy: push the side lane ----
+        fun splitPush(): TacticalDecision? {
+            if (me == null || gamePhase == com.example.mlbbresearch.game.MatchSense.GamePhase.EARLY || threat.isNotEmpty() || hp < 0.6f) return null
+            // only when the enemies are really SEEN elsewhere (2+ on the minimap), not just unknown
+            if (s.map.enemies.size < 2 || com.example.mlbbresearch.game.MapIntel.enemiesNear(s, 0.3f) > 0) return null
+            val (px, py, where) = laneVector(s)
+            return TacticalDecision(Intent.PUSH, px, py, emptyList(), -1f, -1f, "-", -1f, -1, "split pushing: $where (enemies are elsewhere)")
+        }
+
+        // ---- the role's order (RoleProfile): the same jobs for everyone, in the role's order ----
+        //  EXP: lane pressure, engage, split push    JUNGLE: farm, gank, objectives
+        //  MID: wave clear, rotate, control           GOLD: farm, positioning, survival
+        //  ROAM: vision, initiation, protection
+        val rotate = if (early) roleP.rotateEarly else roleP.rotateLate
+        val needAlly = roleP.objectiveNeedsAlly || (s.lane == Lane.JUNGLE && s.level < 6) ||
+            (!early && (s.lane == Lane.EXP || s.lane == Lane.MID))
+        val campR = if (s.matchSec in 0..360) roleP.campRadiusEarly else roleP.campRadiusLate
+        val order: List<() -> TacticalDecision?> = roleP.order.map { job ->
+            when (job) {
+                com.example.mlbbresearch.game.Job.STRONG_FIGHT -> { -> fight(70f) }
+                com.example.mlbbresearch.game.Job.BOSS -> ::bossOnScreen
+                com.example.mlbbresearch.game.Job.OBJECTIVE_MAP -> { -> objectiveOnMap(rotate, needAlly) }
+                com.example.mlbbresearch.game.Job.MONSTERS -> ::monstersOnScreen
+                com.example.mlbbresearch.game.Job.FIGHT -> { -> fight() }
+                com.example.mlbbresearch.game.Job.POSITIONING -> ::positioning
+                com.example.mlbbresearch.game.Job.GANK -> ::gank
+                com.example.mlbbresearch.game.Job.JUNGLE_ROUTE -> ::jungleRoute
+                com.example.mlbbresearch.game.Job.MINIONS -> ::minionWave
+                com.example.mlbbresearch.game.Job.TOWER -> ::tower
+                com.example.mlbbresearch.game.Job.DEFEND -> ::defendTower
+                com.example.mlbbresearch.game.Job.TEAMFIGHT -> { -> teamfight(rotate) }
+                com.example.mlbbresearch.game.Job.LANE_CAMPS -> { -> laneCamps(campR) }
+                com.example.mlbbresearch.game.Job.SPLIT_PUSH -> ::splitPush
+                com.example.mlbbresearch.game.Job.ROAM -> ::roam
+                com.example.mlbbresearch.game.Job.SAFETY -> ::safety
+            }
+        }
+        for (step in order) step()?.let { return hold(now, it) }
 
         // ---- 8. follow Gemma's plan, else walk your lane ----
         if (plan.plan == "group" && s.allies.isNotEmpty()) {
@@ -176,21 +942,90 @@ object TacticalEngine {
         }
         val (px, py, where) = laneVector(s)
         return hold(now, TacticalDecision(Intent.PUSH, px, py, emptyList(), -1f, -1f, "-", -1f, -1,
-            "${s.lane.label}: $where (${plan.plan})"))
+            "${s.lane.label} (${roleP.focus}): $where (${plan.plan})"))
     }
 
+    // Walking the jungle path, or standing at a camp: attack (MLBB's attack button locks on to
+    // the nearest monster) and use skills until the camp's icon is gone from the minimap.
+    private fun jungleStep(s: GameState, p: HeroProfile, nav: Triple<Float, Float, String>): TacticalDecision {
+        if (!JungleNav.atCamp) {
+            return TacticalDecision(Intent.JUNGLE, nav.first, nav.second, emptyList(), -1f, -1f, "-", -1f, -1, "jungle path: ${nav.third}")
+        }
+        val casts = arrayListOf("attack")
+        // farm fast: every ready skill except the ultimate goes into the camp
+        p.waveClearSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
+        for (sk in p.combo) if (sk != "ult" && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
+        val m = s.creeps.minByOrNull { s.distToSelf(it.x, it.y) }
+        // no HP bar to read: Retribution once the camp has taken a few seconds of hits
+        // Retribution only at the buffs (never on common creeps)
+        if (s.spell == "Retribution" && JungleNav.atBuff && JungleNav.atCampMs > 5000L && CooldownTracker.ready("spell", p)) casts.add("spell")
+        if (m != null) {
+            // a monster is seen: stand in reach of it and aim at it
+            val d = s.distToSelf(m.x, m.y)
+            val (mx, my) = if (d > p.attackRange) toward(s, m.x, m.y) else (0f to 0f)
+            return TacticalDecision(Intent.JUNGLE, mx, my, casts, m.x, m.y, "monster", m.hp, -1, JungleNav.status)
+        }
+        // no bar yet (a monster's HP bar only shows once it is hit): basic attack to start the
+        // fight, the skills follow as soon as the bars appear (no skills thrown at nothing)
+        return TacticalDecision(Intent.JUNGLE, 0f, 0f, listOf("attack"), -1f, -1f, "camp", -1f, -1,
+            JungleNav.status + ", first hit to show the monsters")
+    }
+
+    private fun dashSlot(s: GameState, p: HeroProfile): String? {
+        if (!Cfg.useDash) return null
+        val slot = HeroDb.dashSlot(s.ownHero) ?: return null
+        return if (CooldownTracker.ready(slot, p)) slot else null
+    }
+
+    // dash to close the gap when the target is a bit out of reach
+    private fun chaseDash(s: GameState, p: HeroProfile, d: Float): String? =
+        if (d > p.attackRange * 1.5f && d <= p.engageRange * 1.4f) dashSlot(s, p) else null
+
     // Attack a jungle monster / turtle / lord; Retribution (if you have it) to finish it
+    // the monster last fought: its bar at the last 1-3% can flicker out of sight
+    private var lastMonX = -1f; private var lastMonY = -1f; private var lastMonHp = 1f; private var lastMonAt = 0L
+    private var lastMonSpecies = ""; private var lastMonBoss = false
+    // Retribution is kept for the Purple / Orange Buffs, the Turtle and the Lord (and hero fights)
+    private fun retriWorthy(species: String, boss: Boolean) = boss || com.example.mlbbresearch.game.JungleDb.isBuff(species) ||
+        species.isEmpty() && JungleNav.atBuff
+
     private fun hitMonster(s: GameState, p: HeroProfile, m: Seen, retriPct: Int, intent: Intent, why: String): TacticalDecision {
+        lastMonX = m.x; lastMonY = m.y; lastMonHp = m.hp; lastMonAt = s.ts; lastMonSpecies = m.species; lastMonBoss = m.hero
         val d = s.distToSelf(m.x, m.y)
         val casts = ArrayList<String>()
         if (d <= p.attackRange * 1.4f) casts.add("attack")
         if (d <= p.attackRange * 1.8f) {
             p.waveClearSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
-            if (m.hero) for (sk in p.combo) if (sk != "ult" && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
+            for (sk in p.combo) if (sk != "ult" && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
         }
-        if (s.spell == "Retribution" && m.hp * 100 <= retriPct && d <= 0.45f && CooldownTracker.ready("spell", p)) casts.add("spell")
-        val (mx, my) = if (d > p.attackRange) toward(s, m.x, m.y) else (0f to 0f)
-        return TacticalDecision(intent, mx, my, casts, m.x, m.y, if (m.hero) "objective" else "monster", m.hp, -1, why)
+        // turtle / lord: the HP bar under the scoreboard is exact
+        val mhp = if (m.hero && s.bossHp >= 0f) s.bossHp else m.hp
+        if (s.spell == "Retribution" && retriWorthy(m.species, m.hero) && mhp * 100 <= retriPct && d <= 0.45f && CooldownTracker.ready("spell", p)) casts.add("spell")
+        // no poking monsters: walk into reach, and never leave its aggro circle (it would reset)
+        val (mx, my) = if (d > p.attackRange || !inLeash(s, m)) toward(s, m.x, m.y) else (0f to 0f)
+        return TacticalDecision(intent, mx, my, casts, m.x, m.y, if (m.hero) "objective" else "monster", mhp, -1, why)
+    }
+
+    // A monster fights back only inside the round indicator on the ground around it (seen as a
+    // wide ellipse because of the camera tilt); step out and it stops and heals. Measured on
+    // your screenshots: about 0.6 screen heights across and 0.27 up / down. Stay well inside.
+    private fun inLeash(s: GameState, m: Seen): Boolean {
+        val self = s.self ?: return true
+        val dx = (self.x - m.x) * s.aspect / 0.5f
+        val dy = (self.y - m.y) / 0.22f
+        return dx * dx + dy * dy <= 1f
+    }
+
+    // Fighting an enemy HERO: melee walks up close and stays there; ranged keeps a safe distance
+    // at the edge of its attack range, steps back if the enemy gets too close (kiting), and
+    // steps in if it is out of range.
+    private fun heroSpacing(s: GameState, p: HeroProfile, t: Track, d: Float): Pair<Float, Float> {
+        if (!p.ranged) return if (d > p.attackRange * 0.8f) toward(s, t.x, t.y) else (0f to 0f)
+        return when {
+            d < p.attackRange * 0.55f -> away(s, listOf(t))
+            d > p.attackRange -> toward(s, t.x, t.y)
+            else -> 0f to 0f
+        }
     }
 
     // Lane route from base: EXP = up then right, Gold = right then up, Mid = your push direction.
@@ -199,9 +1034,11 @@ object TacticalEngine {
         val travelling = s.sinceSpawnMs < Cfg.laneTravelSec * 1000L
         fun t(v: Pair<Float, Float>, what: String) = Triple(v.first, v.second, what)
         return when (s.lane) {
-            Lane.EXP -> if (travelling) t(0f to -1f, "going up to the lane") else t(1f to 0f, "pushing right")
-            Lane.GOLD -> if (travelling) t(1f to 0f, "going right to the lane") else t(0f to -1f, "pushing up")
-            Lane.MID -> t(pushVector(), "pushing ${Cfg.pushDir}")
+            Lane.EXP, Lane.GOLD, Lane.MID -> laneByMap(s) ?: when (s.lane) {
+                Lane.EXP -> if (travelling) t(0f to -1f, "going up to the lane") else t(1f to 0f, "pushing right")
+                Lane.GOLD -> if (travelling) t(1f to 0f, "going right to the lane") else t(0f to -1f, "pushing up")
+                else -> t(pushVector(), "pushing ${Cfg.pushDir}")
+            }
             Lane.JUNGLE, Lane.ROAM -> {
                 if (s.allies.isNotEmpty() && !travelling) {
                     val ax = s.allies.map { it.x }.average().toFloat()
@@ -210,6 +1047,106 @@ object TacticalEngine {
                     t(mx to my, "joining the team")
                 } else t(norm(1f, -1f), if (s.lane == Lane.JUNGLE) "heading into the jungle" else "heading to mid")
             }
+        }
+    }
+
+    // With your minimap position: walk the lane (EXP: up the left edge then along the top,
+    // gold: along the bottom then up the right edge, mid: straight) to the next enemy tower,
+    // and wait at the edge of its range for your minions.
+    private fun laneByMap(s: GameState): Triple<Float, Float, String>? {
+        val me = s.minimapSelf ?: return null
+        val target = TowerLogic.laneTarget(s, s.lane) ?: return null
+        val corner = when (s.lane) {
+            Lane.EXP -> if (me.second > 0.15f && me.first < 0.5f) (0.08f to 0.08f) else null
+            Lane.GOLD -> if (me.first < 0.85f && me.second > 0.5f) (0.92f to 0.92f) else null
+            else -> null
+        }
+        if (corner != null) {
+            val (mx, my) = mapDir(me, corner)
+            return Triple(mx, my, "walking to the ${s.lane.label}")
+        }
+        val dist = kotlin.math.hypot(target.x - me.first, target.y - me.second)
+        val what = if (target.bonus) "bonus tower" else if (s.towers.isEmpty()) "enemy base" else "next enemy tower"
+        if (dist < TowerLogic.range() + 0.03f) {
+            // no standing around at the tower: walk back along the lane to meet our next wave
+            val home = s.allyTowers.minByOrNull { kotlin.math.hypot(it.first - me.first, it.second - me.second) } ?: (0.1f to 0.9f)
+            val (bx, by) = mapDir(me, home)
+            return Triple(bx, by, "meeting our next minion wave (the $what needs minions)")
+        }
+        val (mx, my) = mapDir(me, target.x to target.y)
+        return Triple(mx, my, "pushing to the $what")
+    }
+
+    // walk on the minimap from `me` to `to`, around walls when the wall map knows the way
+    // A thin wall straight ahead with a long way round: go straight and jump it (see wallHop).
+    private fun mapDir(me: Pair<Float, Float>, to: Pair<Float, Float>): Pair<Float, Float> {
+        val straight = norm(to.first - me.first, to.second - me.second)
+        val sd = kotlin.math.hypot(to.first - me.first, to.second - me.second)
+        val wm = com.example.mlbbresearch.vision.WallMap
+        if (Cfg.wallHop && wm.thinWallAhead(me, straight.first, straight.second, minOf(0.15f, sd)) &&
+            wm.distance(me, to) > sd * 1.35f + 0.04f
+        ) {
+            pendingHop = true
+            return straight
+        }
+        return wm.direction(me, to) ?: straight
+    }
+
+    // MOBA rule: run home towards your own tower (it shoots the chasers), not just "away",
+    // unless that way leads through the enemies
+    private fun retreatDir(s: GameState, from: List<Track>): Pair<Float, Float> {
+        val (ax, ay) = away(s, from)
+        val me = s.minimapSelf ?: return ax to ay
+        val home = s.allyTowers.minByOrNull { kotlin.math.hypot(it.first - me.first, it.second - me.second) } ?: (0.1f to 0.9f)
+        // to the nearest allied tower (around walls), unless that way runs into the enemies
+        val (tx, ty) = com.example.mlbbresearch.vision.WallMap.direction(me, home) ?: mapDir(me, home)
+        if (from.isEmpty()) return tx to ty
+        if (tx * ax + ty * ay < -0.2f) return ax to ay
+        return norm(ax * 0.25f + tx * 0.75f, ay * 0.25f + ty * 0.75f)
+    }
+
+    // How each brain option is played. null = nothing special, carry on with the normal steps.
+    private fun brainFight(s: GameState, p: HeroProfile, o: FightOption, t: Track, hp: Float, alliesNear: Int): TacticalDecision? {
+        val d = s.distToSelf(t.x, t.y)
+        val tag = "brain: ${o.label}"
+        return when (o) {
+            FightOption.ALL_IN -> {
+                if (d > p.engageRange * 1.4f) return null
+                val casts = ArrayList<String>()
+                if (d <= p.attackRange * 1.3f) casts.add("attack")
+                for (sk in p.combo) if (sk != "ult" && CooldownTracker.ready(sk, p)) casts.add(sk)
+                if (CooldownTracker.ready("ult", p) && d <= p.engageRange) casts.add("ult")
+                chaseDash(s, p, d)?.let { if (it !in casts) casts.add(it) }
+                val (mx, my) = heroSpacing(s, p, t, d)
+                TacticalDecision(Intent.ENGAGE, mx, my, casts, t.x, t.y, "enemy #${t.id}", t.hp, t.id,
+                    "$tag, target HP ${(t.hp * 100).toInt()}%")
+            }
+            FightOption.POKE -> {
+                // only ranged heroes poke (a melee hero cannot hit from there): fall back to the rules
+                if (!p.ranged) return null
+                // stay near the edge of skill range: skills yes, walking into them no
+                val casts = ArrayList<String>()
+                if (d <= p.engageRange) for (sk in p.combo) if (sk != "ult" && CooldownTracker.ready(sk, p)) casts.add(sk)
+                if (d <= p.attackRange) casts.add("attack")
+                val (mx, my) = when {
+                    d < p.engageRange * 0.7f && p.attackRange < p.engageRange * 0.7f -> away(s, listOf(t))
+                    d > p.engageRange -> toward(s, t.x, t.y)
+                    else -> 0f to 0f
+                }
+                TacticalDecision(Intent.ENGAGE, mx, my, casts, t.x, t.y, "enemy #${t.id}", t.hp, t.id,
+                    "$tag, ${(d * 100).toInt()} away")
+            }
+            FightOption.GROUP -> {
+                if (s.allies.isEmpty()) return null
+                val ax = s.allies.map { it.x }.average().toFloat()
+                val ay = s.allies.map { it.y }.average().toFloat()
+                val casts = if (d <= p.attackRange * 1.2f) listOf("attack") else emptyList()
+                val (mx, my) = if (s.distToSelf(ax, ay) > 0.15f) toward(s, ax, ay) else (0f to 0f)
+                TacticalDecision(Intent.GROUP, mx, my, casts, t.x, t.y, "enemy #${t.id}", t.hp, t.id,
+                    "$tag ($alliesNear near)")
+            }
+            FightOption.FARM -> null          // skip the fight, the farming steps follow
+            FightOption.RETREAT, FightOption.RULES -> null
         }
     }
 
@@ -247,6 +1184,16 @@ object TacticalEngine {
     }
 
     // Direction towards the enemy base, set on the Player page
+    // Nothing to decide (your HP bar hidden for a moment): never stand still - walk towards the
+    // enemy base (around walls, by the minimap), else the push direction, else towards the middle
+    fun fallbackMove(s: GameState): TacticalDecision {
+        val me = s.minimapSelf
+        val goal = (if (me != null) s.towers.minByOrNull { hypot(it.x - me.first, it.y - me.second) } else null)?.let { it.x to it.y } ?: s.enemyBase
+        val dir = if (me != null && goal != null) com.example.mlbbresearch.vision.WallMap.direction(me, goal) ?: mapDir(me, goal)
+            else pushVector().takeIf { it.first != 0f || it.second != 0f } ?: me?.let { norm(0.5f - it.first, 0.5f - it.second) } ?: norm(1f, -1f)
+        return TacticalDecision(Intent.PUSH, dir.first, dir.second, emptyList(), -1f, -1f, "-", -1f, -1, "keep moving (nothing seen this moment)")
+    }
+
     fun pushVector(): Pair<Float, Float> = when (Cfg.pushDir) {
         "up-right" -> norm(1f, -1f)
         "down-left" -> norm(-1f, 1f)
@@ -267,7 +1214,7 @@ object TacticalEngine {
     // Keeps an intent for at least 0.6 s so the hero does not jitter between choices
     private fun hold(now: Long, d: TacticalDecision, force: Boolean = false): TacticalDecision {
         if (d.intent != held) {
-            if (!force && now - heldSince < 600 && held != Intent.IDLE && held != Intent.PUSH) {
+            if (!force && now - heldSince in 0..(if (Cfg.fastMode) 300 else 600) && held != Intent.IDLE && held != Intent.PUSH) {
                 // keep moving the old way, but still allow attacks/skills
                 return TacticalDecision(held, d.moveX, d.moveY, d.casts, d.targetX, d.targetY, d.targetLabel,
                     d.targetHp, d.targetId, d.reason)

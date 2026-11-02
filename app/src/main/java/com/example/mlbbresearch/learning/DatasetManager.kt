@@ -18,21 +18,44 @@ object DatasetManager {
         "id,ts,hero,intent,actions,self_hp,allies,enemies,minions,target_id,target_hp,plan,aggression,reward", done
     )
 
-    // "Learn from me" recordings: features are the 17 numbers of Features.of, casts a bit mask
+    // your recorded play (Coach): features = the 17 numbers of Features.of, features2 = the 32 of
+    // Features2.of (empty in rows recorded before v25), casts a bit mask. Train the tactical
+    // network on it with notebooks/train_tactical_policy.ipynb.
     fun exportDemos(ctx: Context, done: (String) -> Unit) = exportTable(
-        ctx, "demos", "mlbb-my-play", "id,ts,hero,features,move_x,move_y,casts", done
+        ctx, "demos", "mlbb-my-play", "id,ts,hero,features,move_x,move_y,casts,features2,died", done, heroType = true
     )
 
-    private fun exportTable(ctx: Context, table: String, prefix: String, cols: String, done: (String) -> Unit) {
+    // live matches you watched: the same columns as mlbb-my-play (the notebook reads both), plus
+    // source = live, the watched player's role and the match time (-1 = clock not read)
+    fun exportLive(ctx: Context, done: (String) -> Unit) = exportTable(
+        ctx, "live_demos", "mlbb-live", "id,ts,hero,features,move_x,move_y,casts,features2,source,lane,match_sec,died", done, heroType = true
+    )
+
+    // fight moments for the small tactical model (notebooks/train_tactical_llm.ipynb): the summary
+    // it is shown, the option played, who chose it (1 = you) and how it went (the Brain's score)
+    fun exportFights(ctx: Context, done: (String) -> Unit) = exportTable(
+        ctx, "fights", "mlbb-fights", "id,ts,hero,lane,summary,option,by_you,reward,died", done
+    )
+
+    // heroType: adds "hero_type" - the hero's 11 type numbers (role, ranged, starts fights, protects,
+    // late / early game; PolicyNet.HeroType), so the notebook's all-heroes network knows what hero it is
+    private fun exportTable(ctx: Context, table: String, prefix: String, cols: String, done: (String) -> Unit, heroType: Boolean = false) {
         ExperienceRecorder.onDb({ db ->
-            val sb = StringBuilder(cols).append('\n')
+            val sb = StringBuilder(cols).append(if (heroType) ",hero_type" else "").append('\n')
+            val heroCol = cols.split(",").indexOf("hero")
+            val typeCache = HashMap<String, String>()
             var rows = 0
             db.rawQuery("SELECT $cols FROM $table ORDER BY id", null).use { c ->
                 while (c.moveToNext()) {
                     for (i in 0 until c.columnCount) {
                         if (i > 0) sb.append(',')
                         val v = c.getString(i) ?: ""
-                        sb.append(if (v.contains(',')) "\"$v\"" else v)
+                        // standard CSV quoting (summaries hold commas, line breaks)
+                        sb.append(if (v.contains(',') || v.contains('"') || v.contains('\n')) "\"" + v.replace("\"", "\"\"") + "\"" else v)
+                    }
+                    if (heroType) {
+                        val h = if (heroCol >= 0) c.getString(heroCol) ?: "" else ""
+                        sb.append(",\"").append(typeCache.getOrPut(h) { HeroType.of(h).joinToString(",") { "%.0f".format(Locale.US, it) } }).append('"')
                     }
                     sb.append('\n')
                     rows++

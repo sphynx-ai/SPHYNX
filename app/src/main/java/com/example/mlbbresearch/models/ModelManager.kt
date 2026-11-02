@@ -1,85 +1,75 @@
 package com.example.mlbbresearch.models
 
 import android.content.Context
-import android.net.Uri
-import android.provider.OpenableColumns
 import com.example.mlbbresearch.ai.AiRuntime
 import com.example.mlbbresearch.ai.GemmaEngine
+import com.example.mlbbresearch.ai.TacticalLlmEngine
 import com.example.mlbbresearch.core.Cfg
-import com.example.mlbbresearch.core.Diag
 import kotlinx.coroutines.launch
 import java.io.File
 
-// Keeps the Gemma 3n E2B model file (.litertlm) inside the app and loads it.
+// The two language-model slots and their .litertlm files (copied in from the MLBB-Research
+// folder by AutoFolder):
+//   STRATEGIC: Gemma 4 E2B (recommended) or Gemma 3n E2B - big, GPU first, asked now and then
+//   TACTICAL:  a small Gemma (Gemma 3 270M, or 1B) - CPU, text only, asked ~3 times a second
+//              in fights; its answer is only advice that the Kotlin scores check first
+// Which slot a file goes to: "270m" / "1b" / "tactic" in its name, or under 1 GB = tactical;
+// anything else = strategic (a Gemma 4 file wins over an older one when both are there).
 object ModelManager {
 
-    const val MODEL_PAGE = "https://huggingface.co/google/gemma-3n-E2B-it-litert-lm"
+    const val MODEL_PAGE = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm"
+    const val SMALL_MODEL_PAGE = "https://huggingface.co/litert-community?search_models=gemma-3-270m"
 
-    @Volatile var copyStatus: String = ""
-        private set
-    @Volatile var copying = false
-        private set
+    fun modelFile(ctx: Context): File {
+        val dir = ctx.applicationContext.filesDir
+        val f = File(dir, "gemma-strategic.litertlm")
+        // (older versions kept the file under this name)
+        val old = File(dir, "gemma-3n-e2b.litertlm")
+        if (!f.exists() && old.exists()) { old.renameTo(f); if (Cfg.raw("llm_name_strategic") == null) Cfg.setRaw("llm_name_strategic", "Gemma 3n E2B") }
+        return f
+    }
+    fun tacticalFile(ctx: Context) = File(ctx.applicationContext.filesDir, "gemma-tactical.litertlm")
 
-    fun modelFile(ctx: Context) = File(ctx.applicationContext.filesDir, "gemma-3n-e2b.litertlm")
+    // which slot a .litertlm file belongs to
+    fun isTactical(name: String, size: Long): Boolean {
+        val n = name.lowercase()
+        if (n.contains("e2b") || n.contains("e4b") || n.contains("3n")) return false
+        return n.contains("270m") || n.contains("tactic") || Regex("(^|[^0-9])1b").containsMatchIn(n) || size in 1..1_000_000_000L
+    }
+    // a newer strategic model is preferred over an older one
+    fun strategicRank(name: String): Int {
+        val n = name.lowercase()
+        return when {
+            n.contains("gemma-4") || n.contains("gemma4") || n.contains("gemma_4") -> 3
+            n.contains("3n") -> 2
+            else -> 1
+        }
+    }
+    fun prettyName(name: String): String {
+        val n = name.lowercase()
+        return when {
+            n.contains("gemma-4") || n.contains("gemma4") || n.contains("gemma_4") -> if (n.contains("e4b")) "Gemma 4 E4B" else "Gemma 4 E2B"
+            n.contains("3n") -> if (n.contains("e4b")) "Gemma 3n E4B" else "Gemma 3n E2B"
+            n.contains("270m") -> "Gemma 3 270M"
+            Regex("(^|[^0-9])1b").containsMatchIn(n) -> "Gemma 3 1B"
+            else -> name.substringBeforeLast('.')
+        }
+    }
+    fun strategicName(): String = Cfg.raw("llm_name_strategic") ?: "Gemma"
+    fun tacticalName(): String = Cfg.raw("llm_name_tactical") ?: "small Gemma"
 
     fun status(ctx: Context): String {
         val f = modelFile(ctx)
-        return when {
-            copying -> copyStatus
-            f.exists() -> "model file ready (${f.length() / 1048576} MB)"
-            else -> "no model file yet"
-        }
+        return if (f.exists()) "${strategicName()} (${f.length() / 1048576} MB)" else "no model file yet"
     }
-
-    // Copies the chosen file into the app (the model must be readable by path for LiteRT-LM)
-    fun import(ctx: Context, uri: Uri, done: (String?) -> Unit) {
-        if (copying) return
-        val app = ctx.applicationContext
-        val name = queryName(app, uri)
-        if (name != null && !name.endsWith(".litertlm", ignoreCase = true)) {
-            done("That file is \"$name\". LiteRT-LM needs a .litertlm model file.")
-            return
-        }
-        AiRuntime.emergencyStop("replacing the model")
-        copying = true
-        copyStatus = "copying..."
-        Thread {
-            var err: String? = null
-            try {
-                AiRuntime.scope.launch { GemmaEngine.unload() }
-                val tmp = File(app.filesDir, "model.tmp")
-                app.contentResolver.openInputStream(uri)!!.use { input ->
-                    tmp.outputStream().use { out ->
-                        val buf = ByteArray(1 shl 20)
-                        var done2 = 0L
-                        while (true) {
-                            val n = input.read(buf)
-                            if (n <= 0) break
-                            out.write(buf, 0, n)
-                            done2 += n
-                            copyStatus = "copying... ${done2 / 1048576} MB"
-                        }
-                    }
-                }
-                val dst = modelFile(app)
-                dst.delete()
-                if (!tmp.renameTo(dst)) throw IllegalStateException("could not save the model")
-                // old MediaPipe model from the previous version is no longer used
-                File(app.filesDir, "player_model.task").delete()
-                Diag.info("Model copied (${dst.length() / 1048576} MB)")
-            } catch (e: Exception) {
-                err = e.message ?: e.toString()
-                Diag.error("Model copy failed", e)
-            }
-            copying = false
-            copyStatus = ""
-            done(err)
-        }.start()
+    fun tacticalStatus(ctx: Context): String {
+        val f = tacticalFile(ctx)
+        return if (f.exists()) "${tacticalName()} (${f.length() / 1048576} MB)" else "no small model file yet"
     }
 
     fun load(ctx: Context, done: (String?) -> Unit) {
         val f = modelFile(ctx)
-        if (!f.exists()) { done("Choose the model file first"); return }
+        if (!f.exists()) { done("No model file yet (put the .litertlm file in the MLBB-Research folder)"); return }
         if (GemmaEngine.loading) return
         AiRuntime.scope.launch {
             val err = GemmaEngine.load(ctx.applicationContext, f.absolutePath, Cfg.useGpu)
@@ -87,39 +77,16 @@ object ModelManager {
         }
     }
 
-    fun delete(ctx: Context) {
-        AiRuntime.scope.launch { GemmaEngine.unload() }
-        modelFile(ctx).delete()
-    }
-
-    // Optional trained detector (.tflite made by notebooks/train_mlbb_detector.ipynb)
-    fun importDetector(ctx: Context, uri: Uri, done: (String?) -> Unit) {
-        val app = ctx.applicationContext
-        val name = queryName(app, uri)
-        if (name != null && !name.endsWith(".tflite", ignoreCase = true)) {
-            done("That file is \"$name\". The detector must be a .tflite file.")
-            return
-        }
-        Thread {
-            var err: String? = null
-            try {
-                val dst = com.example.mlbbresearch.vision.ObjectDetector.modelFile(app)
-                app.contentResolver.openInputStream(uri)!!.use { input -> dst.outputStream().use { input.copyTo(it) } }
-                Diag.info("Detector copied (${dst.length() / 1024} KB)")
-                err = com.example.mlbbresearch.vision.ObjectDetector.load(app)
-            } catch (e: Exception) {
-                err = e.message ?: e.toString()
-                Diag.error("Detector copy failed", e)
-            }
+    // the small tactical model: CPU, text only (the GPU is left to the game and the big model)
+    fun loadTactical(ctx: Context, done: (String?) -> Unit) {
+        val f = tacticalFile(ctx)
+        if (!f.exists()) { done("No small model file yet (put e.g. the Gemma 3 270M .litertlm file in the MLBB-Research folder)"); return }
+        if (TacticalLlmEngine.loading || TacticalLlmEngine.ready) { done(null); return }
+        AiRuntime.scope.launch {
+            val err = TacticalLlmEngine.load(ctx.applicationContext, f.absolutePath, preferGpu = false, textOnly = true)
             done(err)
-        }.start()
+        }
     }
 
-    private fun queryName(ctx: Context, uri: Uri): String? = try {
-        ctx.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
-            if (c.moveToFirst()) c.getString(0) else null
-        }
-    } catch (e: Exception) {
-        null
-    }
+    fun unloadTactical() { AiRuntime.scope.launch { TacticalLlmEngine.unload() } }
 }
