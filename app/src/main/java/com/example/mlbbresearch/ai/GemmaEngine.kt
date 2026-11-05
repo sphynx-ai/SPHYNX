@@ -95,19 +95,21 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
     }
 
     // Asks Gemma one question, optionally with a screenshot. Returns the text reply.
-    suspend fun ask(prompt: String, image: Bitmap? = null, temperature: Double = 0.2): String = withContext(dispatcher) {
+    // v37.01 workload reduction: fast sampler (topK=16, topP=0.85), no-thinking instruction, and 512px JPEG at quality 70.
+    suspend fun ask(prompt: String, image: Bitmap? = null, temperature: Double = 0.15): String = withContext(dispatcher) {
         val e = engine ?: throw IllegalStateException("the $label model is not loaded")
         val t0 = System.currentTimeMillis()
         val conv = e.createConversation(
-            ConversationConfig(samplerConfig = SamplerConfig(topK = 40, topP = 0.95, temperature = temperature))
+            ConversationConfig(samplerConfig = SamplerConfig(topK = 16, topP = 0.85, temperature = temperature))
         )
         active = conv
         try {
+            val fastPrompt = if ("Do not think" in prompt) prompt else "$prompt Do not think; answer directly."
             // text first, then the image (the order LiteRT-LM's guide asks for)
             val contents = if (image != null && visionOk) {
-                Contents.of(Content.Text(prompt), Content.ImageBytes(jpeg(image)))
+                Contents.of(Content.Text(fastPrompt), Content.ImageBytes(jpeg(image)))
             } else {
-                Contents.of(Content.Text(prompt))
+                Contents.of(Content.Text(fastPrompt))
             }
             val reply = clean(conv.sendMessage(contents).toString())
             lastLatencyMs = System.currentTimeMillis() - t0
@@ -139,10 +141,10 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
     }
 
     private fun jpeg(b: Bitmap): ByteArray {
-        val w = 768
-        val small = if (b.width > w) Bitmap.createScaledBitmap(b, w, b.height * w / b.width, true) else b
+        val w = 512
+        val small = if (b.width > w) Bitmap.createScaledBitmap(b, w, (b.height * w / b.width).coerceAtLeast(1), true) else b
         val out = ByteArrayOutputStream()
-        small.compress(Bitmap.CompressFormat.JPEG, 80, out)
+        small.compress(Bitmap.CompressFormat.JPEG, 70, out)
         return out.toByteArray()
     }
 }

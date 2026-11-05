@@ -14,7 +14,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 // Zips the detector training pictures, ready to upload to the training notebooks (or Roboflow).
-// No daily limit: a collector saves until its CAPACITY (minimap 1500, screen 1000 pictures since
+// No daily limit: a collector saves until its CAPACITY (minimap 300, screen 300 pictures since
 // the last zip); then the batch is zipped, the zipped pictures are removed from the folder (the
 // zip holds them, the phone keeps its space), and that collector's switch turns OFF. Turn it on
 // again (Learn page) and it collects the next batch. "Zip now" on the Learn page zips early.
@@ -24,8 +24,8 @@ import java.util.zip.ZipOutputStream
 object DatasetZipper {
 
     enum class Kind(val folder: String, val prefix: String, val zipName: String, val key: String, val capacity: Int, val label: String) {
-        MINIMAP("dataset", "mm_", "mlbb-minimap-dataset", "zip_last_mm", 1500, "minimap"),
-        SCREEN("screen_dataset", "sc_", "mlbb-screen-dataset", "zip_last_sc", 1000, "screen")
+        MINIMAP("dataset", "mm_", "mlbb-minimap-dataset", "zip_last_mm", 300, "minimap"),
+        SCREEN("screen_dataset", "sc_", "mlbb-screen-dataset", "zip_last_sc", 300, "screen")
     }
 
     // pictures saved since the last zip

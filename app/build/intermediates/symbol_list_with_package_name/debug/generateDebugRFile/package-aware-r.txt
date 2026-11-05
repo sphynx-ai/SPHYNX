@@ -1,0 +1,7 @@
+com.example.mlbbresearch
+drawable ic_mlbb_bg
+drawable ic_mlbb_fg
+mipmap ic_mlbb
+string app_name
+string bot_service_desc
+xml accessibility_config

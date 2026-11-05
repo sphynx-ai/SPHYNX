@@ -108,7 +108,7 @@ object Features2 {
             val l = hypot(dx, dy)
             if (l > 1e-3f) { f[a] = dx / l; f[a + 1] = dy / l }
         }
-        dir(com.example.mlbbresearch.game.JungleNav.targetPos ?: s.camps.minByOrNull { me?.let { m -> hypot(it.x - m.first, it.y - m.second) } ?: 0f }?.let { it.x to it.y }, 34)
+        dir(com.example.mlbbresearch.game.JungleNav.targetPos ?: s.camps.filter { !it.enemy }.minByOrNull { me?.let { m -> hypot(it.x - m.first, it.y - m.second) } ?: 0f }?.let { it.x to it.y }, 34)
         dir(s.towers.minByOrNull { me?.let { m -> hypot(it.x - m.first, it.y - m.second) } ?: 0f }?.let { it.x to it.y }, 36)
         f[38] = prev.first; f[39] = prev.second
         return f
@@ -162,14 +162,14 @@ object DemoRecorder {
         sumMy += v.hud.motionY
         frames++
         for ((k, b) in v.skillBrightness) {
-            val base = baseline[k] ?: b
-            baseline[k] = if (b > base) b else base * 0.995f + b * 0.005f
+            val clamped = b.coerceAtMost(165f)
+            val base = baseline[k] ?: clamped
+            baseline[k] = if (clamped > base) clamped else base * 0.985f + clamped * 0.015f
             val prev = previous[k] ?: b
             previous[k] = b
-            // a cast: the button goes dark. While the AI plays, only one the AI did NOT press is
-            // yours (coach mode); never on the shop / death screens (no hero = no buttons to read)
-            if (v.self != null && base > 40f && b < base * 0.72f && prev >= base * 0.82f &&
-                (!aiPlaying || com.example.mlbbresearch.controller.ActionExecutor.aiCastAgo(k) > 800)
+            // Only record manual casts when Player AI is OFF (prevents 0.5s-0.8s AI skill holds from triggering Coach pause or false cooldown locks)
+            if (!aiPlaying && v.self != null && base > 40f && b < base * 0.65f && prev >= base * 0.78f &&
+                com.example.mlbbresearch.controller.ActionExecutor.aiCastAgo(k) > 2200
             ) {
                 val bit = Casts.bySlot[k] ?: continue
                 pendingCasts = pendingCasts or bit
@@ -185,6 +185,7 @@ object DemoRecorder {
         if (now - lastRecord < 180) return
         lastRecord = now
         if (s.self == null) return
+        if (com.example.mlbbresearch.game.GameStateTracker.matchId == 0L) return     // only inside a match (v36.90)
 
         // movement: the camera follows your hero, so its motion is where you walked.
         // Averaged over the frames since the last row; mostly one way = walking that way.
@@ -213,6 +214,7 @@ object DemoRecorder {
         val values = ContentValues().apply {
             put("ts", now)
             put("hero", s.ownHero ?: "unknown")
+            put("match_id", com.example.mlbbresearch.game.GameStateTracker.matchId)
             put("features", f.joinToString(",") { "%.3f".format(Locale.US, it) })
             put("features2", f2.joinToString(",") { "%.3f".format(Locale.US, it) })
             put("move_x", mx)
@@ -334,6 +336,8 @@ object DemoRecorder {
         pendingCasts = 0
         sumMx = 0f; sumMy = 0f; frames = 0
     }
+
+    fun resetCounts() { total = 0; recorded = 0; ImitationPolicy.unload() }
 
     fun clear(done: () -> Unit) {
         ExperienceRecorder.onDb({ db -> db.delete("demos", null, null) }) {

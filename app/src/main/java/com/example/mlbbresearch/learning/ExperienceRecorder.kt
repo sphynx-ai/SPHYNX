@@ -11,7 +11,7 @@ import java.util.concurrent.Executors
 
 // Saves what the AI saw and did (one row about twice a second) into a local SQLite
 // database. PerformanceEvaluator later scores each row: did it help or hurt?
-class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "experiences.db", null, 6) {
+class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "experiences.db", null, 7) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE experiences (" +
@@ -22,6 +22,10 @@ class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "exp
         createDemos(db)
         createLive(db)
         createFights(db)
+        addMatchIds(db)
+    }
+    fun addMatchIds(db: SQLiteDatabase) {
+        for (t in listOf("experiences", "demos", "fights")) try { db.execSQL("ALTER TABLE $t ADD COLUMN match_id INTEGER DEFAULT 0") } catch (e: Exception) { }
     }
 
     // v6: fight moments for the small tactical model: the summary it is shown, the option played
@@ -61,6 +65,9 @@ class ExperienceDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "exp
         if (oldVersion in 2..4) try { db.execSQL("ALTER TABLE demos ADD COLUMN died INTEGER DEFAULT 0") } catch (e: Exception) { }
         if (oldVersion == 4) try { db.execSQL("ALTER TABLE live_demos ADD COLUMN died INTEGER DEFAULT 0") } catch (e: Exception) { }
         if (oldVersion < 6) createFights(db)
+        // v7: every row carries its match (loading screen -> end scoreboard), so the hero locked on the
+        // end scoreboard can relabel the whole match
+        if (oldVersion < 7) addMatchIds(db)
     }
 }
 
@@ -81,11 +88,14 @@ object ExperienceRecorder {
     fun record(s: GameState, d: TacticalDecision, plan: String, aggression: Float) {
         val now = System.currentTimeMillis()
         if (now - lastRecord < 500) return
+        // only inside a match: loading screen -> end-of-match screen (v36.90)
+        if (com.example.mlbbresearch.game.GameStateTracker.matchId == 0L) return
         lastRecord = now
         val h = db ?: return
         val values = ContentValues().apply {
             put("ts", now)
             put("hero", s.ownHero ?: "unknown")
+            put("match_id", com.example.mlbbresearch.game.GameStateTracker.matchId)
             put("intent", d.intent.name)
             put("actions", d.casts.joinToString(","))
             put("self_hp", s.selfHp)
@@ -146,13 +156,30 @@ object ExperienceRecorder {
     // one judged fight moment (kept to the newest 30 000)
     @Volatile var fights = -1L
         private set
+    // the end scoreboard locked this match's hero: every row of the match gets it (v36.90)
+    fun relabel(matchId: Long, hero: String) {
+        if (matchId == 0L) return
+        val h = db ?: return
+        io.execute {
+            try {
+                val w = h.writableDatabase
+                var n = 0
+                for (t in listOf("experiences", "demos", "fights"))
+                    n += w.update(t, ContentValues().apply { put("hero", hero) }, "match_id = ?", arrayOf(matchId.toString()))
+                Diag.info("Match $matchId: $n recorded moments relabelled as $hero")
+            } catch (e: Exception) { Diag.error("Relabel match", e) }
+        }
+    }
+
     fun recordFight(ts: Long, hero: String, lane: String, summary: String, option: String, byYou: Boolean, reward: Float, died: Boolean) {
+        if (com.example.mlbbresearch.game.GameStateTracker.matchId == 0L) return
         val h = db ?: return
         io.execute {
             try {
                 val w = h.writableDatabase
                 w.insert("fights", null, ContentValues().apply {
                     put("ts", ts); put("hero", hero); put("lane", lane); put("summary", summary); put("option", option)
+                    put("match_id", com.example.mlbbresearch.game.GameStateTracker.matchId)
                     put("by_you", if (byYou) 1 else 0); put("reward", reward); put("died", if (died) 1 else 0)
                 })
                 if (fights < 0 || fights % 500 == 0L) {
@@ -164,6 +191,19 @@ object ExperienceRecorder {
             }
         }
     }
+    // Learn page buttons (v36.91): the fight moments only, or every moment recorded in your matches
+    // (the AI's decisions, your play, the fights) - live-match moments have their own button
+    fun clearFights(done: () -> Unit) = onDb({ db -> db.delete("fights", null, null) }) { fights = 0; done() }
+    fun clearAllMoments(done: (Int) -> Unit) = onDb({ db ->
+        listOf("experiences", "demos", "fights").sumOf { t -> try { db.delete(t, null, null) } catch (e: Exception) { 0 } }
+    }) { n ->
+        fights = 0; count = 0
+        DemoRecorder.resetCounts()
+        PerformanceEvaluator.reset()
+        Diag.info("Deleted all recorded moments: ${n ?: 0}")
+        done(n ?: 0)
+    }
+
     fun refreshFights() = io.execute {
         fights = try { db?.readableDatabase?.rawQuery("SELECT COUNT(*) FROM fights", null)?.use { c -> if (c.moveToFirst()) c.getLong(0) else 0L } ?: 0L } catch (e: Exception) { 0L }
     }

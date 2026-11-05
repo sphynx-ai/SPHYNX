@@ -29,7 +29,8 @@ class MapTower(val x: Float, val y: Float, val bonus: Boolean) {
 }
 
 // buff = big magenta camp icon, else a small green / cyan camp icon. Positions 0..1 inside the map.
-class Camp(val x: Float, val y: Float, val buff: Boolean)
+// enemy = on the ENEMY side of the river (a jungler may invade it)
+class Camp(val x: Float, val y: Float, val buff: Boolean, val enemy: Boolean = false)
 
 object MinimapAnalyzer {
     // Minimap area as fractions of the screen: left, top, right, bottom
@@ -261,11 +262,13 @@ object MinimapAnalyzer {
         val out = ArrayList<Camp>()
         fun add(bl: ButtonDetector.Blob, buff: Boolean) {
             val (x, y) = inMap(bl)
-            if (y < x + 0.03f) return                        // enemy side of the river
+            val enemy = y < x - 0.03f                        // the enemy side of the river
+            if (!enemy && y < x + 0.03f) return              // on the river itself
             if (x < 0.15f || y > 0.88f) return               // EXP / gold lane edges
+            if (enemy && (y < 0.12f || x > 0.85f)) return    // their EXP / gold lane edges
             if (kotlin.math.abs(x + y - 1f) < 0.08f) return  // mid lane
-            if (me != null && kotlin.math.hypot(x - me.first, y - me.second) < 0.07f) return
-            out.add(Camp(x, y, buff))
+            if (me != null && kotlin.math.hypot(x - me.first, y - me.second) < 0.032f) return
+            out.add(Camp(x, y, buff, enemy))
         }
         for (bl in ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { isMagenta(it) }) if (bl.count >= 8) add(bl, true)
         for (bl in green) if (bl.w / mw < 0.035f && bl.count in 3..10) add(bl, false)

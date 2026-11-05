@@ -5,36 +5,33 @@ import com.example.mlbbresearch.game.ComboBook
 import com.example.mlbbresearch.game.ComboStep
 import com.example.mlbbresearch.game.CooldownTracker
 import com.example.mlbbresearch.game.GameState
+import com.example.mlbbresearch.game.HeroKit
 import com.example.mlbbresearch.game.HeroProfile
 import com.example.mlbbresearch.game.Passive
 import com.example.mlbbresearch.game.SkillBook
 import com.example.mlbbresearch.game.SpellDb
+import com.example.mlbbresearch.game.UltRule
 
-// Plays your hero's combo step by step - and THINKS before every step instead of firing the
-// whole sequence blindly:
-//  - each skill only when the target is inside THAT skill's range (else walk in first)
-//  - the ultimate only when it is worth it: the ready skills can kill (lethal estimate), a
-//    teamfight (2+ enemies), or the engine asked for it; an enemy about to die to basic
-//    attacks does not get the ultimate (kill confirmation)
-//  - a passive that powers up the next basic attack after a skill: a basic attack is woven
-//    in after every skill
-//  - the previous skill must have really gone off (its button went dark) before the next one;
-//    one that did not fire is tried once more (the execution learns the right way to cast it)
-//  - INTERRUPTED (and the engine reassesses) when: the target is gone or escaped out of
-//    range, it reached its tower, another enemy shows up, your HP dropped hard, the fight
-//    state is no longer "engaging", or 6 s passed
+// Continuous skill combo runner (v37.06):
+// - Executes each step of your hero's combo in sequence (with 0.5s Tap, 0.3s+0.3s Short Aim, or 0.3s+0.5s Long Aim holds)
+// - Full support for complex multi-phase heroes:
+//   * Suyou (Tap Mortal vs Hold Immortal per skill)
+//   * Hirara (2-skill drag combo s1<->s2; advances past paired skill when dragged together)
+//   * Sora (swipe Ultimate left/right + transformed s1 > s2 reset)
+//   * Julian (dynamic 2-skill setup -> 3rd Enhanced skill -> empowered basic attacks)
+//   * Fanny (double Steel Cable wall-grapple s2 > s2 -> Cut Throat ult -> Tornado Strike s1)
+//   * Gusion (s2 throw -> ult reset -> s2 throw -> s1 mark -> s2 recall -> s1 blink -> a -> ult dash -> a)
+//   * Ling (s2 -> a -> ult 1.45s air leap -> 4x s2 across the 4 Field Eye blades -> s1 -> a)
 object ComboRunner {
 
     private var steps: List<ComboStep> = emptyList()
     private var idx = 0
     private var nextAt = 0L
     private var startedAt = 0L
-    private var startHp = 1f
-    private var startEnemies = 0
+    private var lastEnemySeenAt = 0L
     private var targetId = -1
     private var lastSlot: String? = null
     private var lastSlotAt = 0L
-    private var retried = false
     private val used = HashSet<String>()
 
     @Volatile var status = "-"
@@ -49,94 +46,216 @@ object ComboRunner {
         lastSlot = null
     }
 
+    // Called by ActionExecutor when Hirara drags one skill onto another (consuming both in one gesture)
+    @Synchronized
+    fun onPairedSkillConsumed(otherSlot: String) {
+        if (running && idx < steps.size && steps[idx].slot == otherSlot) {
+            idx++
+        }
+    }
+
     private fun stop(why: String) {
-        if (running) status = "combo interrupted: $why"
+        if (running) status = "combo ended: $why"
         reset()
+    }
+
+    private fun buildComboSteps(hero: String?, kit: com.example.mlbbresearch.game.HeroSkills, s: GameState, targetDist: Float): List<ComboStep> {
+        // Dynamic form-aware / enhanced combo for Julian, Selena, and Roger
+        val overrideText = ComboBook.dynamicComboText(hero, s.enemiesWithin(0.55f).size, s.selfHp, targetDist)
+        var st = ComboBook.steps(hero, overrideText).filter { it.slot == "a" || it.slot == "spell" || HeroKit.has(hero, it.slot) }
+        if (st.none { it.slot != "a" }) {
+            st = HeroKit.slots(hero).map { ComboStep(it, 600L) }
+        }
+        // For standard heroes without custom multi-phase recasts, weave a basic attack after every skill
+        if (hero !in HeroKit.MULTI_PHASE_HEROES) {
+            st = st.flatMapIndexed { i, x ->
+                if (x.slot != "a" && st.getOrNull(i + 1)?.slot != "a") listOf(x, ComboStep("a", 220L)) else listOf(x)
+            }
+            val dash = kit.escape?.slot
+            if (kit.has(Passive.AFTER_DASH_BONUS) && dash != null && st.any { it.slot == dash }) {
+                st = st.filter { it.slot == dash }.take(1) + st.filterIndexed { i, x -> !(x.slot == dash && i == st.indexOfFirst { it.slot == dash }) }
+            }
+        }
+        return st
     }
 
     fun apply(d: TacticalDecision, s: GameState, p: HeroProfile): TacticalDecision {
         if (!Cfg.useCombos) return d
         val now = s.ts
-        if (d.intent != Intent.ENGAGE) {
+        // Only abort immediately on an actual retreat / recall emergency
+        if (d.intent == Intent.RETREAT || d.intent == Intent.RECALL || Utility.state == Utility.State.RETREATING) {
             if (running) stop(d.intent.name.lowercase())
             return d
         }
         val kit = SkillBook.get(s.ownHero)
-        val target = s.enemies.firstOrNull { it.id == d.targetId }
-        val dist = if (d.targetX >= 0f) s.distToSelf(d.targetX, d.targetY) else 9f
+        // Find the target (re-acquire nearest enemy within 0.65f if track ID changed during a dash)
+        val trackedTarget = s.enemies.firstOrNull { it.id == (if (d.targetId >= 0) d.targetId else targetId) }
+            ?: s.enemies.filter { s.distToSelf(it.x, it.y) <= 0.65f }.minByOrNull { s.distToSelf(it.x, it.y) }
+
+        if (d.intent != Intent.ENGAGE && !running) return d
+        if (trackedTarget != null) {
+            lastEnemySeenAt = now
+            targetId = trackedTarget.id
+        }
+
+        val tx = trackedTarget?.x ?: d.targetX
+        val ty = trackedTarget?.y ?: d.targetY
+        val thp = trackedTarget?.hp ?: d.targetHp
+        val dist = if (tx >= 0f) s.distToSelf(tx, ty) else 9f
+
         if (!running) {
-            var st = ComboBook.steps(s.ownHero)
-            // passive: enhanced basic attack after each skill -> weave one in
-            if (kit.has(Passive.WEAVE_ATTACK)) st = st.flatMapIndexed { i, x ->
-                if (x.slot != "a" && st.getOrNull(i + 1)?.slot != "a") listOf(x, ComboStep("a", 380L)) else listOf(x)
+            val st = buildComboSteps(s.ownHero, kit, s, dist)
+            val firstReadyIdx = st.indexOfFirst {
+                it.slot != "a" && it.slot != "spell" && (CooldownTracker.ready(it.slot, p) || HeroKit.canRecastNow(s.ownHero, it.slot))
             }
-            // passive: bonus after a dash -> open with the dash when it is in the combo
-            val dash = kit.escape?.slot
-            if (kit.has(Passive.AFTER_DASH_BONUS) && dash != null && st.any { it.slot == dash }) {
-                st = st.filter { it.slot == dash }.take(1) + st.filterIndexed { i, x -> !(x.slot == dash && i == st.indexOfFirst { it.slot == dash }) }
-            }
-            val first = st.firstOrNull { it.slot != "a" } ?: return d
-            if (!CooldownTracker.ready(first.slot, p)) return d      // wait for the opener
-            // the opener must reach the target
-            val r = kit[first.slot]?.range ?: p.engageRange
-            if (dist > r * 1.15f) { status = "walking into ${first.slot} range"; return d }
-            steps = st; idx = 0; nextAt = now; startedAt = now
-            startHp = s.selfHp; startEnemies = s.enemiesWithin(0.7f).size; targetId = d.targetId
-            used.clear(); lastSlot = null; retried = false
+            if (firstReadyIdx < 0) return d
+            val firstSlot = st[firstReadyIdx].slot
+            val r = maxOf(kit[firstSlot]?.range ?: p.engageRange, p.engageRange)
+            if (dist > r * 1.35f) { status = "walking into $firstSlot range"; return d }
+            steps = st
+            idx = firstReadyIdx
+            nextAt = now
+            startedAt = now
+            lastEnemySeenAt = now
+            used.clear()
+            lastSlot = null
             status = "combo started: ${ComboBook.format(st)}"
         }
 
-        // ---- reassess before every step ----
+        // Reassess before every step (allow up to 12s for 10-dagger Gusion / 4-blade Ling combos)
         when {
-            now - startedAt > 6000 -> { stop("took too long"); return d }
-            d.targetId != targetId || target == null && now - startedAt > 400 -> { stop("target changed or gone"); return d }
-            s.selfHp >= 0f && startHp - s.selfHp > 0.3f -> { stop("HP dropped ${(startHp - s.selfHp).times(100).toInt()}%"); return d }
-            s.enemiesWithin(0.7f).size > startEnemies -> { stop("another enemy showed up"); return d }
-            target != null && com.example.mlbbresearch.game.TowerLogic.enemyUnderTower(s, target) && target.hp > 0.1f -> { stop("target reached its tower"); return d }
-            Utility.state == Utility.State.RETREATING -> { stop("survival too low"); return d }
+            now - startedAt > 12_000 -> { stop("completed cycle"); return d }
+            trackedTarget == null && now - lastEnemySeenAt > 1400 -> { stop("target gone"); return d }
+            trackedTarget != null && com.example.mlbbresearch.game.TowerLogic.enemyUnderTower(s, trackedTarget) && trackedTarget.hp > 0.15f && s.selfHp < 0.45f -> {
+                stop("target under enemy tower"); return d
+            }
+        }
+
+        // While Ling is airborne during Tempest of Blades (1.45s), steer landing center directly onto the enemy and wait to land before firing the 4 blade dashes!
+        if (s.ownHero == "Ling" && HeroKit.lingInAirNow()) {
+            status = "Ling airborne (Tempest of Blades): tracking target for 4-blade landing"
+            val self = s.self
+            val moveVec = if (self != null && tx >= 0f) {
+                val dx = (tx - self.x) * s.aspect; val dy = ty - self.y
+                val l = kotlin.math.hypot(dx, dy).coerceAtLeast(1e-3f)
+                (dx / l) to (dy / l)
+            } else d.moveX to d.moveY
+            return TacticalDecision(
+                Intent.ENGAGE, moveVec.first, moveVec.second, emptyList(),
+                tx, ty, if (trackedTarget != null) "enemy #${trackedTarget.id}" else d.targetLabel,
+                thp, if (trackedTarget != null) trackedTarget.id else d.targetId,
+                d.reason + " | Ling ult airborne"
+            )
         }
 
         val casts = ArrayList<String>()
         if (now >= nextAt) {
-            // did the last skill really go off? (its button goes dark) - one more try if not
-            val ls = lastSlot
-            if (ls != null && ls != "a" && now - lastSlotAt in 300..1500 && CooldownTracker.lookReady(ls) && !retried) {
-                retried = true
-                casts.add(ls); lastSlotAt = now
-                nextAt = now + 150
-                status = "combo: $ls did not go off, again"
-            } else {
-                retried = false
-                val burst = kit.burst { CooldownTracker.ready(it, p) && it !in used }
-                val lethal = d.targetHp in 0f..(burst + 0.05f)
-                val teamfight = s.enemiesWithin(0.6f).size >= 2
-                // kill confirmation: almost dead and in basic attack reach = no ultimate needed
-                val confirmKill = d.targetHp in 0f..0.06f && dist <= p.attackRange * 1.2f
-                val ultOk = ("ult" in d.casts || lethal || teamfight) && !confirmKill
-                while (idx < steps.size) {
-                    val st = steps[idx++]
-                    val inRange = st.slot == "a" || st.slot == "spell" || dist <= (kit[st.slot]?.range ?: p.engageRange) * 1.2f
-                    val ok = inRange && when (st.slot) {
-                        "a" -> dist <= p.attackRange * 1.4f
-                        "ult" -> ultOk && (CooldownTracker.ready("ult", p) || "ult" in used)
-                        "spell" -> s.spell in SpellDb.offensive && CooldownTracker.ready("spell", p)
-                        else -> CooldownTracker.ready(st.slot, p) || st.slot in used
+            val burst = kit.burst { CooldownTracker.ready(it, p) && it !in used }
+            val lethal = thp in 0f..(burst + 0.12f)
+            val teamfight = s.enemiesWithin(0.65f).size >= 2
+            val finisherUlt = p.ult == UltRule.EXECUTE && s.ownHero !in HeroKit.MULTI_PHASE_HEROES
+            val confirmKill = thp in 0f..0.05f && dist <= p.attackRange * 1.15f
+            val ultOk = if (finisherUlt) thp in 0f..0.52f || lethal
+                else ("ult" in d.casts || lethal || teamfight || CooldownTracker.lowCdUlt(s.ownHero) || s.ownHero in HeroKit.MULTI_PHASE_HEROES || thp <= 0.72f) && !confirmKill
+
+            var burstN = 0
+            var span = 0L
+            var guard = 0
+            while (idx < steps.size && burstN < 1 && guard++ < steps.size + 2) {
+                val st = steps[idx]
+                if (st.slot == "a") {
+                    idx++
+                    if (dist <= p.attackRange * 1.55f && "attack" !in casts) {
+                        casts.add("attack")
+                        span = com.example.mlbbresearch.controller.CastTiming.ATTACK_HOLD_MS + 45L
+                        burstN++
+                        break
                     }
-                    if (!ok) continue
-                    casts.add(if (st.slot == "a") "attack" else st.slot)
-                    used.add(st.slot)
-                    lastSlot = st.slot; lastSlotAt = now
-                    // the next step as soon as the game takes it (its cast animation), not a fixed pause
-                    nextAt = now + (st.waitMs * 0.4f).toLong().coerceIn(80L, 350L)
+                    continue
+                }
+                val skillRange = maxOf(kit[st.slot]?.range ?: p.engageRange, p.engageRange)
+                val inRange = st.slot == "spell" || dist <= skillRange * 1.38f || HeroKit.canRecastNow(s.ownHero, st.slot)
+                val isReady = when (st.slot) {
+                    "ult" -> (ultOk && CooldownTracker.ready("ult", p)) || HeroKit.canRecastNow(s.ownHero, "ult")
+                    "spell" -> s.spell in SpellDb.offensive && CooldownTracker.ready("spell", p)
+                    else -> CooldownTracker.ready(st.slot, p) || HeroKit.canRecastNow(s.ownHero, st.slot)
+                }
+                if (!isReady) {
+                    idx++
+                    continue
+                }
+                if (!inRange) {
+                    status = "combo ${idx + 1}/${steps.size}: stepping into ${st.slot} range"
                     break
                 }
-                status = "combo ${idx}/${steps.size}: ${ComboBook.format(steps)}" + if (!ultOk && steps.any { it.slot == "ult" }) " (ultimate saved)" else ""
+                idx++
+                casts.add(st.slot)
+                used.add(st.slot)
+                lastSlot = st.slot
+                lastSlotAt = now
+                burstN++
+                val mode = SkillBook.castMode(s.ownHero, st.slot)
+                val longRange = com.example.mlbbresearch.controller.ActionExecutor.isLongRangeSkill(s.ownHero, st.slot, false)
+                span += when {
+                    s.ownHero == "Ling" && st.slot == "ult" -> 1480L // Wait 1.45s air-leap before chaining the 4 Field Eye blades
+                    s.ownHero == "Ling" && st.slot == "s2" && HeroKit.lingHasBladesNow() -> 620L
+                    s.ownHero == "Fanny" && st.slot == "s2" -> 580L
+                    HeroKit.shouldRecastTap(s.ownHero, st.slot) -> com.example.mlbbresearch.controller.CastTiming.TAP_HOLD_MS + 40L
+                    else -> com.example.mlbbresearch.controller.CastTiming.gap(s.ownHero, st.slot, mode, longRange)
+                }
+                break
+            }
+            if (burstN > 0) {
+                nextAt = now + span.coerceIn(180L, 1500L)
+                status = "combo ${idx}/${steps.size}: ${ComboBook.format(steps)}"
             }
         }
-        // keep hitting between skills (and while they cool down) whenever the target is in reach
-        if ("attack" !in casts && ("attack" in d.casts || dist <= p.attackRange * 1.3f)) casts.add("attack")
-        if (!running) { status = "combo done: reassessing"; reset() }
-        return TacticalDecision(d.intent, d.moveX, d.moveY, casts, d.targetX, d.targetY, d.targetLabel,
-            d.targetHp, d.targetId, d.reason + if (running) " | combo ${idx}/${steps.size}" else "")
+
+        // Basic-attack reliant heroes (Zilong, Argus, Thamuz, Layla, Miya, Marksmen, etc.) ALWAYS keep basic attack active on every frame!
+        val baReliant = com.example.mlbbresearch.game.HeroDb.isBasicAttackReliant(s.ownHero)
+        val allowAutoWeave = baReliant || s.ownHero !in setOf("Fanny", "Gusion", "Ling") || !running || HeroKit.julianEmpoweredNow()
+        if (allowAutoWeave && "attack" !in casts && ("attack" in d.casts || dist <= maxOf(p.attackRange * 1.65f, 0.36f))) {
+            casts.add("attack")
+        }
+
+        // Loop combo if the enemy is still in fight range and skills are ready
+        if (!running && trackedTarget != null && dist <= p.engageRange * 1.3f) {
+            val nextReady = HeroKit.slots(s.ownHero).any { CooldownTracker.ready(it, p) || HeroKit.canRecastNow(s.ownHero, it) }
+            if (nextReady) {
+                steps = buildComboSteps(s.ownHero, kit, s, dist)
+                idx = 0
+                used.clear()
+                startedAt = now
+            } else {
+                status = "combo done: basic attacking"
+                reset()
+            }
+        } else if (!running) {
+            status = "combo done: reassessing"
+            reset()
+        }
+
+        val stopCombatDist = if (p.ranged) p.attackRange * 0.95f else maxOf(p.attackRange * 1.25f, 0.22f)
+        val moveVec = if (d.moveX == 0f && d.moveY == 0f && trackedTarget != null && dist > stopCombatDist) {
+            val self = s.self
+            if (self != null) {
+                val dx = (tx - self.x) * s.aspect; val dy = ty - self.y
+                val l = kotlin.math.hypot(dx, dy).coerceAtLeast(1e-3f)
+                (dx / l) to (dy / l)
+            } else 0f to 0f
+        } else d.moveX to d.moveY
+
+        return TacticalDecision(
+            Intent.ENGAGE,
+            moveVec.first,
+            moveVec.second,
+            casts,
+            tx,
+            ty,
+            if (trackedTarget != null) "enemy #${trackedTarget.id}" else d.targetLabel,
+            thp,
+            if (trackedTarget != null) trackedTarget.id else d.targetId,
+            d.reason + if (running) " | combo ${idx}/${steps.size}" else ""
+        )
     }
 }

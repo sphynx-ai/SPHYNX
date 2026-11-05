@@ -1,0 +1,6 @@
+int drawable ic_mlbb_bg 0x0
+int drawable ic_mlbb_fg 0x0
+int mipmap ic_mlbb 0x0
+int string app_name 0x0
+int string bot_service_desc 0x0
+int xml accessibility_config 0x0

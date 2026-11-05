@@ -41,6 +41,7 @@ object LevelReader {
     private var pendingN = 0
     private var stableSince = 0L
     private var upgradeShown = false
+    private var upgradeHiddenAt = 0L
     private var upgradeEdges = 0
     private val templates = HashMap<Int, BooleanArray>()
     private var loaded = false
@@ -63,10 +64,12 @@ object LevelReader {
     fun update(px: IntArray, w: Int, h: Int, self: Seen, upgradeReady: Boolean, now: Long) {
         load()
         // a new skill point: the "+" shows up again (the first one is level 1's point)
-        if (upgradeReady && !upgradeShown) {
+        // (v36.89: a "+" back within 1.5 s of hiding is the same one flickering - not a new point)
+        if (upgradeReady && !upgradeShown && now - upgradeHiddenAt > 1500) {
             upgradeEdges++
             if (upgradeEdges > 1) levelUp(now, "skill point")
         }
+        if (!upgradeReady && upgradeShown) upgradeHiddenAt = now
         upgradeShown = upgradeReady
 
         xp = ring(px, w, h, self)
@@ -96,7 +99,8 @@ object LevelReader {
 
     private fun afterRead(g: Glyph, now: Long) {
         // two digits = 10 or more; one digit = 9 or less
-        if (g.wide && level < 10) setLevel(10, now, "two-digit badge")
+        // (v36.94: only from level 8 - your log had 6 -> 7 and 2 -> 7 from a misread "wide" badge)
+        if (g.wide && level in 8..9) setLevel(10, now, "two-digit badge")
         if (!g.wide && g.count >= 3 && level >= 10 && !known) setLevel(9, now, "one-digit badge")
         match(g)?.let { if (it != level) setLevel(it, now, "remembered badge") }
         // seen for 4 s at this level: remember what this level's badge looks like
@@ -115,8 +119,37 @@ object LevelReader {
         setLevel(level + 1, now, why)
     }
 
+    // the highest level reachable by this match time (v36.89: the count ran up to 15 at level 12): fast
+    // early (a jungler is level 4 by 1:30), then about a level a minute; generous on purpose
+    fun cap(): Int {
+        // (only when the app saw the loading screen: started mid-match, the clock would be too short)
+        if (!com.example.mlbbresearch.game.GameStateTracker.clockFromStart()) return 15
+        val sec = com.example.mlbbresearch.game.GameStateTracker.state.matchSec
+        if (sec <= 0) return 15
+        // Never cap below Level 4 so fast junglers / Practice Mode heroes reaching Level 4 early are always recognised at Level 4 (v37.10)
+        val c = if (sec <= 90) 4 + sec / 30 else 7 + (sec - 90) / 45
+        return c.coerceIn(4, 15)
+    }
+
+    // the level READ on the in-game scoreboard (your row's portrait): it is the truth - also downward -
+    // and the badge seen now is remembered as that level's (a wrongly remembered one is replaced)
+    fun correct(l: Int) {
+        if (l !in 1..15) return
+        // a reading far below the count or above what the match time allows is a misread (your log: 7 -> 1)
+        if (l < level - 3 || l > cap()) { Diag.info("Scoreboard level $l ignored (counted $level, at most ${cap()} by now)"); return }
+        val now = System.currentTimeMillis()
+        if (l != level) Diag.info("Level ${level} -> $l (read on the scoreboard)")
+        level = l; known = true; lastUpAt = now
+        stable?.let { g -> if (g.wide == (l >= 10)) {
+            load()
+            for (k in templates.keys.toList()) if (k != l && diff(templates[k]!!, g.bits) < 0.3f) { templates.remove(k); Cfg.setRaw("lvl_tpl_$k", null) }
+            templates[l] = g.bits
+            Cfg.setRaw("lvl_tpl_$l", g.bits.joinToString("") { if (it) "1" else "0" })
+        } }
+    }
+
     private fun setLevel(l: Int, now: Long, why: String) {
-        val v = l.coerceIn(1, 15)
+        val v = l.coerceIn(1, cap())
         // a hero's level never goes down in a match: a lower reading is a misread (e.g. the badge
         // "11" is two thin digits and looked like one digit -> "9"). reset() starts each match at 1.
         if (v < level) return
@@ -147,6 +180,8 @@ object LevelReader {
         9 to "00000000000000000000000000000000000000000000000011100000001001000000010010000000011100000000001000000001100000",
         12 to "00000000000000000000000000000000000000000000001100111000001000001000010000100000100010000001001000001111011110"
     ).mapValues { (_, v) -> BooleanArray(v.length) { v[it] == '1' } }
+
+    fun forgetCache() { templates.clear(); loaded = false }
 
     private fun load() {
         if (loaded) return

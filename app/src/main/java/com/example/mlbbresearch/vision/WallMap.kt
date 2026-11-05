@@ -163,6 +163,34 @@ object WallMap {
         if (blocked[i] >= 2) wall = wall.copyOf().also { it[i] = true }
     }
 
+    @Synchronized
+    fun markSceneryWall(wx: Float, wy: Float) {
+        val gx = (wx * G).toInt(); val gy = (wy * G).toInt()
+        if (gx !in 0 until G || gy !in 0 until G) return
+        val i = gy * G + gx
+        blocked[i] = maxOf(blocked[i], 2)
+        if (!wall[i]) wall = wall.copyOf().also { it[i] = true }
+    }
+
+    @Synchronized
+    fun clearWallCell(wx: Float, wy: Float) {
+        val gx = (wx * G).toInt(); val gy = (wy * G).toInt()
+        if (gx !in 0 until G || gy !in 0 until G) return
+        val i = gy * G + gx
+        blocked[i] = 0
+        if (wall[i]) wall = wall.copyOf().also { it[i] = false }
+    }
+
+    @Synchronized
+    fun markSceneryBush(wx: Float, wy: Float) {
+        val gx = (wx * G).toInt(); val gy = (wy * G).toInt()
+        if (gx !in 0 until G || gy !in 0 until G) return
+        val i = gy * G + gx
+        seen[i] = maxOf(seen[i], 4)
+        bushN[i] = maxOf(bushN[i], seen[i])
+        terrain[i] = Terrain.BUSH
+    }
+
     fun isWall(x: Float, y: Float): Boolean {
         val gx = (x * G).toInt(); val gy = (y * G).toInt()
         if (gx !in 0 until G || gy !in 0 until G) return true

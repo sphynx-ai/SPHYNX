@@ -29,6 +29,9 @@ import java.io.InputStream
 //   policy_<Hero>.tflite / policy_info_<Hero>.json   one hero's network (or policy_all.tflite)
 //   groq_key.txt / groq.txt         Groq API key (first line)  -> applied
 //   groq_model.txt                  Groq model name (optional) -> applied
+//   kaggle.json                     Kaggle API key -> cloud training (Learn page)
+//   roboflow_key.txt                Roboflow key (optional) -> sent with minimap cloud training
+//   mlbb-online-meta.json / mlbb-online-skills.json   what Groq found (saved by the app) -> read back
 // A file is only copied again when it changed (size or date), so big files are not copied
 // on every start.
 object AutoFolder {
@@ -59,7 +62,10 @@ object AutoFolder {
         scan(ctx, done)
     }
 
-    private class Entry(val name: String, val size: Long, val modified: Long, val open: () -> InputStream?)
+    class Entry(val name: String, val size: Long, val modified: Long, val open: () -> InputStream?)
+
+    // every file in the folder (and the app's own folder): cloud training reads its inputs from here
+    fun files(ctx: Context): List<Entry> = list(ctx.applicationContext)
 
     private fun list(ctx: Context): List<Entry> {
         val out = ArrayList<Entry>()
@@ -126,6 +132,16 @@ object AutoFolder {
                     val n = z.name.substringAfterLast('/').lowercase()
                     when {
                         z.isDirectory -> {}
+                        // the fight-choice network rides in the same zip
+                        n == "fight_choice.tflite" -> {
+                            val dst = com.example.mlbbresearch.learning.FightNet.file(app)
+                            val tmp = File(dst.parentFile, dst.name + ".tmp")
+                            tmp.outputStream().use { zip.copyTo(it) }
+                            dst.delete(); tmp.renameTo(dst)
+                            com.example.mlbbresearch.learning.FightNet.load(app)
+                            names.add("fight-choice network")
+                        }
+                        n == "fight_choice_info.json" -> com.example.mlbbresearch.learning.FightNet.saveInfo(zip.readBytes().toString(Charsets.UTF_8))
                         n.endsWith(".tflite") && n.startsWith("policy_") -> {
                             val k = policyKey(n)
                             val dst = com.example.mlbbresearch.learning.PolicyNet.fileFor(app, k)
@@ -273,9 +289,45 @@ object AutoFolder {
                                         found.add("detector class names")
                                     }
                                 }
+                                // the other online models that share Groq's work
+                                n.startsWith("gemini") && n.endsWith(".txt") && !n.contains("model") -> {
+                                    val key = text(e).lines().map { it.trim() }.firstOrNull { it.isNotEmpty() } ?: ""
+                                    if (key.isNotEmpty() && key != Cfg.geminiKey) { Cfg.geminiKey = key; found.add("Gemini API key") }
+                                }
+                                // the small model's quality report (its notebook writes it next to the model)
+                                n == "tactical_llm_info.json" -> {
+                                    val t = text(e)
+                                    if (t != Cfg.raw("tactical_llm_info")) { Cfg.setRaw("tactical_llm_info", t); found.add("small model quality report") }
+                                }
+                                n.startsWith("cerebras") && n.endsWith(".txt") && !n.contains("model") -> {
+                                    val key = text(e).lines().map { it.trim() }.firstOrNull { it.isNotEmpty() } ?: ""
+                                    if (key.isNotEmpty() && key != Cfg.cerebrasKey) { Cfg.cerebrasKey = key; found.add("Cerebras API key") }
+                                }
+                                n in setOf("gemini_flash_model.txt", "gemini_mid_model.txt", "gemini_lite_model.txt", "cerebras_model.txt", "groq_model2.txt") -> {
+                                    val m = text(e).lines().map { it.trim() }.firstOrNull { it.isNotEmpty() } ?: ""
+                                    val k = n.removeSuffix(".txt")
+                                    if (m.isNotEmpty() && m != Cfg.raw(k)) { Cfg.setRaw(k, m); found.add("$k: $m") }
+                                }
                                 n.startsWith("groq") && n.endsWith(".txt") && !n.contains("model") -> {
                                     val key = text(e).lines().map { it.trim() }.firstOrNull { it.isNotEmpty() } ?: ""
                                     if (key.isNotEmpty() && key != Cfg.groqKey) { Cfg.groqKey = key; found.add("Groq API key") }
+                                }
+                                // the online meta / skills Groq found, kept in the folder (survives a reinstall)
+                                com.example.mlbbresearch.learning.OnlineBackup.isBackup(e.name) -> {
+                                    val sig = "${e.name}:${e.size}:${e.modified}"
+                                    if (Cfg.raw("auto_sig_online_${e.name}") != sig) {
+                                        val k = com.example.mlbbresearch.learning.OnlineBackup.restore(e.name, text(e))
+                                        Cfg.setRaw("auto_sig_online_${e.name}", sig)
+                                        if (k > 0) found.add("online data restored ($k from ${e.name})")
+                                    }
+                                }
+                                // Kaggle API key (kaggle.com > Settings > API > Create New Token): cloud training
+                                n == "kaggle.json" -> {
+                                    val o = org.json.JSONObject(text(e))
+                                    val u = o.optString("username").trim(); val k = o.optString("key").trim()
+                                    if (u.isNotEmpty() && k.isNotEmpty() && (u != Cfg.kaggleUser || k != Cfg.kaggleKey)) {
+                                        Cfg.kaggleUser = u; Cfg.kaggleKey = k; found.add("Kaggle key ($u)")
+                                    }
                                 }
                                 n == "groq_model.txt" -> {
                                     val m = text(e).trim()

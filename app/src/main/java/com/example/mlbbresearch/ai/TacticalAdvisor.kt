@@ -35,13 +35,18 @@ object TacticalAdvisor {
     @Volatile private var advice: FightOption? = null
     @Volatile private var adviceAt = 0L
 
-    val active: Boolean get() = Cfg.tacticalLlmOn && TacticalLlmEngine.ready
+    // the notebook's report (tactical_llm_info.json): a model that only learned to repeat the most
+    // common answer gives no advice (ModelQuality)
+    val weakReason: String? get() = com.example.mlbbresearch.learning.ModelQuality.weakReason(Cfg.raw("tactical_llm_info"))
+    val active: Boolean get() = Cfg.tacticalLlmOn && TacticalLlmEngine.ready && weakReason == null
 
     // The moment in a few short lines (the fine-tuning notebook writes the same format)
-    fun summary(s: GameState, p: HeroProfile): String {
+    // ready: skills ready (null = yours; a live match passes the watched player's)
+    fun summary(s: GameState, p: HeroProfile, readyOverride: List<String>? = null): String {
         val near = s.enemiesWithin(0.9f).sortedBy { s.distToSelf(it.x, it.y) }
-        val sc = Deliberation.last
-        val ready = listOf("s1", "s2", "ult").filter { CooldownTracker.ready(it, p) }
+        // the fight scores always (also while YOU play and in live matches: they help the model a lot)
+        val sc = try { Deliberation.score(s, p) } catch (e: Exception) { Deliberation.last }
+        val ready = readyOverride?.filter { it != "spell" } ?: com.example.mlbbresearch.game.HeroKit.slots(s.ownHero).filter { CooldownTracker.ready(it, p) }
         val me = s.minimapSelf
         val underTower = me != null && s.towers.any { kotlin.math.hypot(it.x - me.first, it.y - me.second) < com.example.mlbbresearch.game.TowerLogic.range() }
         return buildString {
@@ -50,7 +55,7 @@ object TacticalAdvisor {
             append(", time ").append(if (s.matchSec >= 0) "%d:%02d".format(s.matchSec / 60, s.matchSec % 60) else "?")
             append("\nme: HP ").append((s.selfHp * 100).toInt()).append("%, level ").append(s.level)
             append(", ready: ").append(if (ready.isEmpty()) "none" else ready.joinToString(" "))
-            if (s.spell != null) append(", spell ").append(s.spell).append(if (CooldownTracker.ready("spell", p)) " ready" else " used")
+            if (s.spell != null) append(", spell ").append(s.spell).append(if (readyOverride?.contains("spell") ?: CooldownTracker.ready("spell", p)) " ready" else " used")
             append("\nenemies close: ").append(near.size)
             if (near.isNotEmpty()) append(" (HP ").append(near.joinToString(" ") { "${(it.hp * 100).toInt()}%" }).append(")")
             append(", nearest ").append(if (near.isEmpty()) "-" else if (s.distToSelf(near[0].x, near[0].y) <= p.attackRange * 1.2f) "in reach" else "outside reach")
@@ -103,24 +108,7 @@ object TacticalAdvisor {
     fun validated(s: GameState, p: HeroProfile): FightOption? {
         val a = advice ?: return null
         if (!active || System.currentTimeMillis() - adviceAt > VALID_MS || s.enemiesWithin(0.9f).isEmpty()) return null
-        val sc = Deliberation.last
-        val hp = s.selfHp
-        val why: String? = when (a) {
-            FightOption.RULES -> null
-            FightOption.ALL_IN -> when {
-                hp in 0f..0.2f -> "all in at ${(hp * 100).toInt()}% HP"
-                sc != null && sc.attack < sc.retreat -> "all in while the scores favour leaving (%.2f < %.2f)".format(sc.attack, sc.retreat)
-                else -> null
-            }
-            FightOption.POKE -> if (!HeroDb.isRanged(s.ownHero)) "poke with a melee hero" else null
-            FightOption.FARM -> when {
-                s.enemyMinions.isEmpty() && s.monsters.isEmpty() -> "farm with nothing to farm"
-                sc != null && sc.r > 0.5f -> "farm at risk %.2f".format(sc.r)
-                else -> null
-            }
-            FightOption.RETREAT -> if (hp > 0.6f && sc != null && sc.retreat < 0.3f) "retreat with nothing to fear" else null
-            FightOption.GROUP -> if (s.allies.isEmpty()) "group with no ally on screen" else null
-        }
+        val why = check(a, s)
         if (why != null) {
             rejected++
             lastNote = "rejected ${a.name.lowercase()}: $why"
@@ -131,9 +119,33 @@ object TacticalAdvisor {
         return a
     }
 
+    // THE KOTLIN CHECKS for any fight advice (the small model's or the fight-choice network's):
+    // the reason to reject it, or null when it may be played
+    fun check(a: FightOption, s: GameState): String? {
+        val sc = Deliberation.last
+        val hp = s.selfHp
+        return when (a) {
+            FightOption.RULES -> null
+            FightOption.ALL_IN -> when {
+                hp in 0f..0.2f -> "all in at ${(hp * 100).toInt()}% HP"
+                sc != null && sc.attack < sc.retreat -> "all in while the scores favour leaving (%.2f < %.2f)".format(sc.attack, sc.retreat)
+                else -> null
+            }
+            FightOption.POKE -> if (!com.example.mlbbresearch.game.SkillBook.canPoke(s.ownHero)) "poke with a melee hero that has no ranged skill" else null
+            FightOption.FARM -> when {
+                s.enemyMinions.isEmpty() && s.monsters.isEmpty() -> "farm with nothing to farm"
+                sc != null && sc.r > 0.5f -> "farm at risk %.2f".format(sc.r)
+                else -> null
+            }
+            FightOption.RETREAT -> if (hp > 0.6f && sc != null && sc.retreat < 0.3f) "retreat with nothing to fear" else null
+            FightOption.GROUP -> if (s.allies.isEmpty()) "group with no ally on screen" else null
+        }
+    }
+
     fun text(): String {
         if (!Cfg.tacticalLlmOn) return "Small tactical model: off"
         if (!TacticalLlmEngine.ready) return "Small tactical model: ${TacticalLlmEngine.state}"
+        weakReason?.let { return "Small tactical model: TOO WEAK, NOT USED ($it) - retrain with more varied fights" }
         return "Small tactical model (${com.example.mlbbresearch.models.ModelManager.tacticalName()}): asked $asked, used $used, " +
             "rejected by the checks $rejected; last answer \"$lastAnswer\" in $lastMs ms\n   $lastNote"
     }

@@ -16,7 +16,10 @@ import com.example.mlbbresearch.vision.TowerRing
 import com.example.mlbbresearch.vision.VisionResult
 import java.util.concurrent.Executors
 
-// Training pictures for the WHOLE-SCREEN detector: every 10 s in a match (zipped at 1000, see DatasetZipper) the
+// Training pictures for the WHOLE-SCREEN detector: ONLY about 1 s after a skill or a basic attack
+// (v36.53), when the effects have faded, with the app's own drawings hidden - clean pictures of the
+// creeps / heroes being fought. A monster shows its HP bar only once it is hit, which is exactly
+// when its box can be drawn (zipped when full, see DatasetZipper) the
 // whole picture is saved with boxes ALREADY DRAWN from what the app's colour vision found:
 //   heroes (yours / ally / enemy) and minions (ally / enemy)  - from their HP bars
 //   monsters BY NAME (JungleDb)                                - monster bars: lord / turtle by the
@@ -35,7 +38,16 @@ object ScreenDatasetCollector {
     private val io = Executors.newSingleThreadExecutor { r -> Thread(r, "screen-dataset") }
     private var ctx: Context? = null
     private var lastAt = 0L
-    private var quiet = 0
+    private var shotAt = 0L
+    private var lastSkillAt = 0L
+    private var lastHitAt = 0L
+    private var lastTargetHp = -1f
+    private var lastTargetN = 0
+    private val btnBase = HashMap<String, Float>()
+    private val btnPrev = HashMap<String, Float>()
+    private val speciesAt = HashMap<String, Long>()
+    @Volatile var attackShots = 0
+        private set
     @Volatile var status = "-"
         private set
 
@@ -116,15 +128,58 @@ object ScreenDatasetCollector {
         if (!Cfg.collectScreenDataset || !inMatch) return
         val c = ctx ?: return
         val now = System.currentTimeMillis()
-        if (now - lastAt < 10_000) return
+        // ---- WHEN (v36.53): only ~1 s after a skill or a basic attack, once its effects have faded ----
+        // A skill (yours or the AI's: its button goes dark) is followed by a picture when its effects
+        // are gone: 1.0 s after a skill / the spell, 1.5 s after the ultimate; a newer skill restarts
+        // the wait (no picture full of effects). Hitting something (a target's HP bar dropping, or the
+        // AI's basic attack) gives a picture 1 s later. Nothing else is pictured.
+        for ((k, br) in v.skillBrightness) {
+            if (k !in setOf("s1", "s2", "ult", "spell")) continue
+            val base = maxOf(btnBase[k] ?: br, br).let { if (br < it) it * 0.995f + br * 0.005f else it }
+            btnBase[k] = base
+            val prev = btnPrev[k] ?: br; btnPrev[k] = br
+            val aiCast = com.example.mlbbresearch.controller.ActionExecutor.aiCastAgo(k) < 600
+            if (v.self != null && base > 40f && (aiCast || br < base * 0.72f && prev >= base * 0.82f)) {
+                if (now - lastSkillAt > 300) {
+                    lastSkillAt = now
+                    // (only when a picture may be taken by then: no hiding the app's drawings for nothing)
+                    if (now - lastAt >= 1_500L) {
+                        shotAt = now + if (k == "ult") 1500L else 1000L      // effects first fade
+                        com.example.mlbbresearch.controller.OverlayManager.requestClean(shotAt - 400, shotAt + 600)
+                    } else shotAt = 0L
+                }
+            }
+        }
+        val targets = colourMonsters + v.all.filter { it.team == Team.ENEMY }
+        val hpNow = targets.sumOf { it.hp.toDouble() }.toFloat()
+        val hit = targets.isNotEmpty() && targets.size == lastTargetN && lastTargetHp >= 0f && hpNow < lastTargetHp - 0.005f
+        lastTargetHp = if (targets.isEmpty()) -1f else hpNow; lastTargetN = targets.size
+        val aiAttacking = com.example.mlbbresearch.controller.ActionExecutor.aiCastAgo("attack") < 300
+        if ((hit || aiAttacking && targets.isNotEmpty()) && shotAt == 0L && now - lastSkillAt > 1000 && now - lastAt >= 1_500L) {
+            shotAt = now + 1000L
+            com.example.mlbbresearch.controller.OverlayManager.requestClean(shotAt - 400, shotAt + 600)
+        }
+        val attacking = hit || aiAttacking
+        if (attacking) lastHitAt = now
+        if (shotAt == 0L || now < shotAt) return
+        if (now - shotAt > 700) { shotAt = 0L; return }                   // the moment passed
+        // clean: the app's drawings hidden, no new skill since, no kill banner, the camera not panning
+        if (!com.example.mlbbresearch.controller.OverlayManager.cleanNow() || now - lastSkillAt < 900) return
+        if (kotlin.math.abs(v.hud.motionX) + kotlin.math.abs(v.hud.motionY) > 0.35f) return
+        if (com.example.mlbbresearch.vision.ScreenReader.announcement(px, w, h)) return
+        shotAt = 0L
+        val kinds = colourMonsters.map { it.species.ifEmpty { if (it.hero) "boss" else "creep" } }.toSet()
+        val newKind = kinds.any { now - (speciesAt[it] ?: 0L) > 8_000 }
+        if (now - lastAt < (if (newKind) 2_500L else 5_000L)) return
         val day = (now / 86_400_000L).toString()
         if (Cfg.raw("sds_day") != day) { Cfg.setRaw("sds_day", day); Cfg.setRaw("sds_count", "0") }
         var saved = Cfg.raw("sds_count")?.toIntOrNull() ?: 0
         lastAt = now
         val boxes = boxes(v, mini, atBuff, matchSec, colourMonsters, colourRing)
-        // mostly pictures with units / monsters / towers in them; now and then a quiet one
-        val busy = boxes.any { ScreenDetector.CLASSES[it.cls] !in setOf("bush", "wall", "hero_self") }
-        if (!busy && ++quiet % 4 != 0) return
+        // only pictures with units / monsters / towers in them
+        if (boxes.none { ScreenDetector.CLASSES[it.cls] !in setOf("bush", "wall", "hero_self") }) return
+        val recentHit = now - lastHitAt < 2500
+        if (recentHit) { attackShots++; for (k in kinds) speciesAt[k] = now }
         val copy = IntArray(w * h) { px[it] or (0xff shl 24) }
         io.execute {
             try {
@@ -143,7 +198,8 @@ object ScreenDatasetCollector {
                 Cfg.setRaw("sds_count", saved.toString())
                 DatasetZipper.saved(c, DatasetZipper.Kind.SCREEN)
                 status = "${DatasetZipper.count(DatasetZipper.Kind.SCREEN)} of ${DatasetZipper.Kind.SCREEN.capacity} pictures " +
-                    "(zipped at ${DatasetZipper.Kind.SCREEN.capacity}; last: ${boxes.size} boxes)"
+                    "(zipped at ${DatasetZipper.Kind.SCREEN.capacity}; last: ${boxes.size} boxes" +
+                    (if (recentHit) ", 1 s after hitting ${kinds.joinToString().ifEmpty { "an enemy" }}" else ", after a skill") + "; $attackShots while attacking this session)"
             } catch (t: Throwable) {
                 Diag.error("Screen dataset picture", t)
                 status = "saving failed (see Logs)"

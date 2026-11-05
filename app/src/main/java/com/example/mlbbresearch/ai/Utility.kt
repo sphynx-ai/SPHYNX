@@ -54,7 +54,11 @@ object Utility {
         v -= near.sumOf { (6.0 + 12.0 * it.hp) }.toFloat()
         // enemies missing from the minimap may be waiting nearby (after the first minute)
         val onMap = if (s.map.fromDetector) s.map.enemies.size else s.minimapEnemies
-        if (s.matchSec > 60) v -= (5 - onMap.coerceIn(0, 5) - near.size).coerceAtLeast(0) * 2.5f
+        // (dead enemies are not hiding anywhere - the red respawn countdowns at the top, v36.86)
+        val deadE = com.example.mlbbresearch.vision.DeathTimers.enemiesDeadNow()
+        if (s.matchSec > 60) v -= (5 - deadE - onMap.coerceIn(0, 5) - near.size).coerceAtLeast(0) * 2.5f
+        // fewer enemies alive = less danger; fewer allies alive = less help
+        v += deadE * 4f - com.example.mlbbresearch.vision.DeathTimers.alliesDeadNow() * 3f
         // enemies close on the minimap but not on screen: in a bush or the fog, about to arrive
         val hidden = (com.example.mlbbresearch.game.MapIntel.enemiesNear(s, 0.15f) - s.enemies.size).coerceAtLeast(0)
         v -= hidden * 8f
@@ -81,6 +85,7 @@ object Utility {
         val why = ArrayList<String>()
         fun add(x: Float, w: String) { if (x != 0f) { v += x; why.add((if (x > 0) "+" else "") + x.toInt() + " " + w) } }
         add((1f - t.hp) * 35f, "target HP ${(t.hp * 100).toInt()}%")
+        if (com.example.mlbbresearch.game.EnemyIntel.dashedRecently(t, s.ts)) add(12f, "it just used its dash (cannot escape now)")
         // can the ready skills finish it?
         val burst = k.burst { ready(it, p) } + 0.08f
         if (t.hp <= burst) add(15f, "killable with ready skills")
@@ -94,10 +99,15 @@ object Utility {
         val hiddenNear = (com.example.mlbbresearch.game.MapIntel.enemiesNear(s, 0.15f) - s.enemies.size).coerceAtLeast(0)
         if (hiddenNear > 0) add(-15f * hiddenNear, "$hiddenNear enemy hidden nearby (minimap)")
         if (com.example.mlbbresearch.game.MapIntel.gank(s)) add(-15f, "enemy coming on the minimap")
+        // enemies dead (respawn countdowns): nobody of theirs can come to help; allies dead: less help
+        val deadE = com.example.mlbbresearch.vision.DeathTimers.enemiesDeadNow()
+        val deadA = com.example.mlbbresearch.vision.DeathTimers.alliesDeadNow()
+        if (deadE > 0) add(6f * deadE, "$deadE enemy dead")
+        if (deadA > deadE) add(-6f * (deadA - deadE), "${deadA - deadE} more allies dead than enemies")
         val extra = s.enemiesWithin(0.6f).size - 1
         if (extra > 0) add(-25f * extra, "$extra more enemies")
         val esc = k.escape
-        if (HeroDb.role(s.ownHero) != Role.TANK && (esc == null || !ready(esc.slot, p))) add(-15f, "no escape ready")
+        if (HeroDb.role(s.ownHero) != Role.TANK && (esc == null || !ready(esc.slot, p))) add(-5f, "no escape ready")
         // under its tower the tower shoots YOU first (even with our minions there)
         val ring = s.towerRing
         val inRing = ring.zone != com.example.mlbbresearch.vision.TowerRing.Zone.NONE &&
@@ -125,7 +135,7 @@ object Utility {
         add(kd.coerceIn(-4, 4) * 3f, "K/D trend")
         // vision not sure about this enemy: no risky decision on it
         val c = confidence(t, s.ts)
-        if (c < 0.8f) add(-(1f - c) * 30f, "uncertain sighting")
+        if (c < 0.6f) add(-(0.6f - c) * 15f, "new sighting")
         lastWhy = why.joinToString(", ")
         return v
     }
@@ -166,17 +176,15 @@ object Utility {
         val now = s.ts
         lastSurvival = surv; lastEngage = engage
         val want = when {
-            threat && surv < 30f -> State.RETREATING
-            state == State.RETREATING && threat && surv < 50f -> State.RETREATING     // until clearly safe
-            engage >= 50f || state == State.ENGAGING && engage >= 35f && now - since < 8000 -> State.ENGAGING
+            threat && surv < 26f -> State.RETREATING
+            state == State.RETREATING && threat && surv < 42f -> State.RETREATING     // until clearly safe
+            engage >= 34f || state == State.ENGAGING && engage >= 20f && now - since < 8000 -> State.ENGAGING
             objective -> State.OBJECTIVE
-            // 25-49 waits for a better moment; below 25 (a bad fight) keeps away unless very safe
-            threat && (engage >= 25f || surv < 70f) -> State.POSITIONING
+            threat && (engage >= 18f || surv < 55f) -> State.POSITIONING
             else -> State.FARMING
         }
-        // small switches wait 0.6 s (no flip-flopping); retreating is at once
-        // (being hit right now: no waiting - fight back or get out at once)
-        if (want != state && (want == State.RETREATING || now - since > 600 || now < since ||
+        // Engaging and retreating take effect immediately so skills never stall waiting 500ms
+        if (want != state && (want == State.ENGAGING || want == State.RETREATING || now - since > 350 || now < since ||
                 GameStateTracker.hurtRecently(now))) { state = want; since = now }
         return state
     }

@@ -25,13 +25,13 @@ object Speed {
         java.util.Locale.US, total(), vision, wait, decide, touch)
 }
 
-// The last 2 minutes of every engine's and model's speed, one sample a second (Speed page).
+// The last 5 minutes of every engine's and model's speed, one sample a second (Speed page, v36.86: was 2 min).
 object SpeedLog {
     // budget: the value that is still fine (green under 60%, amber up to it, red above);
     // higherIsBetter for frame rates
     class Series(val name: String, val unit: String, val budget: Float, val color: String, val group: String,
                  val higherIsBetter: Boolean = false, val read: () -> Float) {
-        val values = FloatArray(120)
+        val values = FloatArray(300)
         var count = 0; private set
         private var head = 0
         fun add(v: Float) { values[head] = v; head = (head + 1) % values.size; if (count < values.size) count++ }

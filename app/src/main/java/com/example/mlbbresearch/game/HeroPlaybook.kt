@@ -107,7 +107,7 @@ object HeroPlaybook {
         nonUlt.filter { it !== escape || !keepEscape }.sortedByDescending { it.damage }.forEach { add(it) }
         if (ult != UltRule.DEFENSIVE) add(ultS)
         if (!keepEscape) add(escape)
-        for (s in listOf("s1", "s2", "ult")) if (s !in order && !(keepEscape && s == escape?.slot) && !(ult == UltRule.DEFENSIVE && s == "ult")) order.add(s)
+        for (s in HeroKit.slots(h)) if (s !in order && !(keepEscape && s == escape?.slot) && !(ult == UltRule.DEFENSIVE && s == "ult")) order.add(s)
         val combo = (order + "a").joinToString(" > ")
         val engage = maxOf(base.engageRange, (opener?.range ?: 0f) * 1.05f).coerceAtMost(0.7f)
 
@@ -157,7 +157,7 @@ object HeroPlaybook {
     fun adapt(p: HeroProfile, ultFixed: Boolean): HeroProfile {
         val pb = of(p.name)
         if (!pb.learned) return p
-        val order = pb.combo.split(">").map { it.trim() }.filter { it in setOf("s1", "s2", "ult") }.ifEmpty { p.combo }
+        val order = pb.combo.split(">").map { it.trim() }.filter { it in HeroKit.slots(p.name) }.ifEmpty { p.combo }
         return HeroProfile(p.name, p.role, p.damage, p.attackRange, maxOf(p.attackRange * 1.1f, pb.engageRange), p.retreatHp,
             order, pb.waveClear ?: p.waveClearSkill, pb.escape ?: p.escapeSkill, if (ultFixed) p.ult else pb.ult, p.cooldownSec, p.ranged)
     }
@@ -169,9 +169,9 @@ object HeroPlaybook {
         var casts = casts0
         val fight = d.intent == Intent.ENGAGE || d.intent == Intent.AMBUSH
         if (fight) {
-            // fragile hero, enemy still healthy, nobody to help: keep the dash for leaving
+            // only withhold an escape skill on a fragile hero when own HP is low (< 40%) and enemy is near full HP (> 75%)
             val esc = pb.escape
-            if (pb.keepEscape && esc != null && esc in casts && esc != pb.opener && d.targetHp > 0.35f && s.alliesWithin(0.5f).isEmpty())
+            if (pb.keepEscape && esc != null && esc in casts && esc != pb.opener && s.selfHp in 0f..0.40f && d.targetHp > 0.75f && s.alliesWithin(0.5f).isEmpty())
                 casts = casts.filter { it != esc }
             // the self-buff first, as soon as the target is about to be in reach
             pb.buff?.let { b -> if (ready(b) && d.targetX >= 0f && s.distToSelf(d.targetX, d.targetY) <= p.attackRange * 1.4f) casts = listOf(b) + casts.filter { it != b } }

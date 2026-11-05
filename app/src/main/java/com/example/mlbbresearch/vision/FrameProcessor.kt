@@ -95,6 +95,18 @@ object FrameProcessor {
         // a kill / first blood banner is up: ignore that area (its red lines are not enemies)
         val banner = ScreenReader.announcement(px, w, h)
         val hint = ScreenReader.classify(px, w, h)
+        // the end-of-match scoreboard: your highlighted row's hero verifies and locks the detection (v36.87)
+        if (hint == ScreenHint.RESULT_BOARD && frameNo % 5 == 0L) try { EndBoard.observe(px, w, h) } catch (e: Exception) { }
+        // the loading screen: your card = the one with the GREEN name (v36.92), and its spell icon vs the 12 wiki pictures (v37.00)
+        if (hint == ScreenHint.LOADING && frameNo % 5 == 1L) try {
+            val green = com.example.mlbbresearch.game.PlayerName.greenCard(px, w, h)
+                ?.also { com.example.mlbbresearch.game.GameStateTracker.loadingGreen = it }
+                ?: com.example.mlbbresearch.game.GameStateTracker.loadingGreen
+            if (green != null) PortraitMatch.observeLoadingSpell(px, w, h, green)
+        } catch (e: Exception) { }
+        // the match-end screens show your hero's portrait: Victory / Defeat (centre) and MVP (bottom) - v36.92
+        if (hint == ScreenHint.RESULT_SPLASH && frameNo % 10 == 2L) try { EndBoard.observePortrait(px, w, h, 0.5f, 0.264f, 0.022f, "Victory/Defeat screen") } catch (e: Exception) { }
+        if (hint == ScreenHint.RESULT_STATS && frameNo % 10 == 2L) try { EndBoard.observePortrait(px, w, h, 0.4525f, 0.761f, 0.014f, "MVP screen") } catch (e: Exception) { }
         // watching someone's live match: their screen has no buttons of yours, but its own overlays
         val live = hint == ScreenHint.LIVE || hint == ScreenHint.LIVE_DEAD
         // the minimap changes slowly: its full analysis every 3rd frame is enough (faster frames)
@@ -116,21 +128,49 @@ object FrameProcessor {
             kotlin.math.abs(u.x - self.x) < 0.05f && u.barTop > self.barBottom - 0.01f && u.barTop < self.y + 0.14f
         // a minion / monster must be seen on two frames in a row at about the same place:
         // a single-frame flash (effects, skill colours) is not a target
-        fun steady(u: Seen) = prevSmall.any { it.team == u.team && kotlin.math.abs(it.x - u.x) < 0.04f && kotlin.math.abs(it.y - u.y) < 0.05f }
+        // Neutral monsters (creeps/buffs) are accepted immediately on frame 1 so there is zero delay starting camp attacks
+        fun steady(u: Seen) = u.team == Team.NEUTRAL || prevSmall.any { it.team == u.team && kotlin.math.abs(it.x - u.x) < 0.04f && kotlin.math.abs(it.y - u.y) < 0.05f }
         val small = seen.filter { !it.hero && it.team != Team.SELF && !onSelf(it) }
         val steadySmall = small.filter { steady(it) }
         prevSmall = small
         val aspect = w.toFloat() / h
         val tracks = enemyTracker.update(seen.filter { it.team == Team.ENEMY && it.hero }, t0, aspect)
 
+        // the active item / Conceal buttons: showing and lit? (ActiveItems presses them)
+        if (hint == ScreenHint.NONE && self != null && frameNo % 3 == 1L) com.example.mlbbresearch.controller.ActiveItems.observe(px, w, h)
+        // which skill buttons the screen shows (normal / large HUD, 2-3-4 skills)
+        if (hint == ScreenHint.NONE && self != null && frameNo % 10 == 5L) ScreenKit.observe(px, w, h)
+        // which hero you play: its skill icons against learned looks and the wiki pictures (HeroVerifier)
+        if (hint == ScreenHint.NONE && self != null && frameNo % 15 == 7L) try { HeroVerifier.observe(px, w, h) } catch (e: Exception) { }
+        // which battle spell you have: its button icon against the 12 wiki spell pictures + 3 Blessed Retributions (v37.00)
+        if (hint == ScreenHint.NONE && self != null && frameNo % 12 == 6L && com.example.mlbbresearch.game.GameStateTracker.matchStartAt != 0L) try {
+            PortraitMatch.observeSpellButton(px, w, h)
+        } catch (e: Exception) { }
+        // how many enemies / allies are dead: the red respawn countdowns next to the score (v36.86)
+        if ((hint == ScreenHint.NONE || hint == ScreenHint.LIVE) && frameNo % 5 == 3L) try { DeathTimers.observe(px, w, h) } catch (e: Exception) { }
+        // portraits and spell icons against the wiki's pictures (v36.88 / v37.00): the in-game scoreboard (only while match is running), and the minimap
+        // icon as a last resort while neither the model nor the learned portrait knows the hero
+        if (hint == ScreenHint.SCOREBOARD && frameNo % 10 == 4L && com.example.mlbbresearch.game.GameStateTracker.matchStartAt != 0L) try {
+            PortraitMatch.observeScoreboard(px, w, h)
+        } catch (e: Exception) { }
+        if (hint == ScreenHint.NONE && self != null && frameNo % 30 == 11L && com.example.mlbbresearch.game.GameStateTracker.modelHero == null &&
+            com.example.mlbbresearch.game.GameStateTracker.portraitHero == null) mini.selfIcon?.let { ic -> try { PortraitMatch.observeMinimap(px, w, h, ic) } catch (e: Exception) { } }
         val brightness = HashMap<String, Float>()
         if (hint == ScreenHint.LIVE) {
             // their skill / spell icons in the panel (they darken while cooling down)
-            for ((k, c) in ScreenReader.LIVE_ICONS) brightness[k] = ScreenReader.iconColour(px, w, h, c.first, c.second)
-        } else if (Cfg.readCooldownsFromScreen || trackPlayer) {
-            for (k in listOf("s1", "s2", "ult", "spell", "recall", "regen")) {
-                val (fx, fy) = Layout.get(k)
-                brightness[k] = ringBrightness(px, w, h, fx, fy)
+            if (frameNo % 5 == 2L) ScreenReader.readLiveKit(px, w, h)
+            for ((k, c) in ScreenReader.liveIcons(ScreenReader.liveKit)) brightness[k] = ScreenReader.iconColour(px, w, h, c.first, c.second)
+            // which hero is being watched: its skill icons in the panel (HeroVerifier)
+            if (frameNo % 15 == 7L) try { HeroVerifier.observeLive(px, w, h) } catch (e: Exception) { }
+        } else {
+            // Always measure the Basic Attack button glow/dim state on every frame so continuous basic-attack heroes know when it dims
+            val (ax, ay) = Layout.get("attack")
+            brightness["attack"] = attackRingBrightness(px, w, h, ax, ay)
+            if (Cfg.readCooldownsFromScreen || trackPlayer) {
+                for (k in listOf("s1", "s2", "s3", "ult", "spell", "recall", "regen")) {
+                    val (fx, fy) = Layout.get(k)
+                    brightness[k] = ringBrightness(px, w, h, fx, fy)
+                }
             }
         }
 
@@ -267,6 +307,36 @@ object FrameProcessor {
 
     // Brightness of a ring inside a button, around (not at) its centre: a cooling-down skill is
     // dark there, while its countdown digits sit in the very middle and would look bright.
+    // 3-Stage Basic Attack button activation detector (v37.10, calibrated on user screenshots 1000032040/41/42):
+    // Samples 5 concentric rings across the inner emblem and outer glow rim around Layout.get("attack"):
+    //  - Stage 1 (Idle, 1000032040): meanLum ~112.8, glowPct ~1.7%, cyanPct ~41.7% -> score ~124.7
+    //  - Stage 2 (Pressed/Glowing, 1000032041): meanLum ~186.6, glowPct ~62.5%, cyanPct ~67.5% -> score ~259.7
+    //  - Stage 3 (Dimmed after release, 1000032042): meanLum ~98.6, glowPct ~0.0%, cyanPct ~9.2% -> score ~100.9
+    private fun attackRingBrightness(px: IntArray, w: Int, h: Int, fx: Float, fy: Float): Float {
+        var sum = 0f
+        var n = 0
+        var glowPx = 0
+        var cyanPx = 0
+        for (r in floatArrayOf(0.008f, 0.015f, 0.022f, 0.030f, 0.038f)) for (i in 0 until 24) {
+            val a = i * Math.PI * 2 / 24
+            val x = (fx * w + Math.cos(a) * r * w).toInt()
+            val y = (fy * h + Math.sin(a) * r * w).toInt()
+            if (x !in 0 until w || y !in 0 until h) continue
+            val p = px[y * w + x]
+            val pr = (p shr 16) and 0xff; val pg = (p shr 8) and 0xff; val pb = p and 0xff
+            val lum = (pr * 3 + pg * 6 + pb) / 10
+            sum += lum
+            if (pb >= 215 && pg >= 205 && pr >= 120) glowPx++
+            if (pb >= 155 && pg >= 140 && pb > pr + 40) cyanPx++
+            n++
+        }
+        if (n == 0) return 0f
+        val meanLum = sum / n
+        val glowPct = glowPx * 100f / n
+        val cyanPct = cyanPx * 100f / n
+        return meanLum + glowPct * 1.0f + cyanPct * 0.25f
+    }
+
     private fun ringBrightness(px: IntArray, w: Int, h: Int, fx: Float, fy: Float): Float {
         var sum = 0
         var n = 0
@@ -297,7 +367,7 @@ object FrameProcessor {
         for (s in all) {
             // a red bar where yours sits is YOUR passive bar, not a unit (see ownBars)
             if (s.team == Team.ENEMY && kotlin.math.abs(s.barLeft - 0.471f) < 0.015f && s.barTop in 0.36f..0.43f) continue
-            if (s.team == Team.ENEMY && s.hero && !(badgeDark(px, w, h, s) >= 0.3f && enemyNearOnMap)) {
+            if (s.team == Team.ENEMY && s.hero && badgeDark(px, w, h, s) < 0.28f) {
                 // an enemy TOWER's bar is red without a badge too: near an enemy tower on the
                 // minimap it is the tower (a structure), not a monster
                 if (nearEnemyTower) { out.add(s.copy(hero = false)); continue }

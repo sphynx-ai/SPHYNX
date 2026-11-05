@@ -13,8 +13,13 @@ class Track(
     var vy: Float = 0f,
     var lastSeen: Long,
     val firstSeen: Long,
-    var minHpSeen: Float
+    var minHpSeen: Float,
+    var dashAt: Long = 0L     // when it last moved far faster than walking: a dash / blink / Flicker
 )
+
+// walking moves a hero about 0.25-0.4 screen heights a second on screen (plus the camera); a dash,
+// blink or Flicker covers that in a fraction of the time
+const val DASH_SPEED = 1.1f
 
 class EnemyDetector {
     private val tracks = ArrayList<Track>()
@@ -25,7 +30,7 @@ class EnemyDetector {
         val unused = enemyHeroes.toMutableList()
         for (t in tracks) {
             var best: Seen? = null
-            var bestD = 0.14f
+            var bestD = 0.24f
             for (s in unused) {
                 val d = hypot((s.x - t.x) * aspect, s.y - t.y)
                 if (d < bestD) { bestD = d; best = s }
@@ -33,6 +38,8 @@ class EnemyDetector {
             if (best != null) {
                 unused.remove(best)
                 val dt = ((now - t.lastSeen).coerceAtLeast(1)) / 1000f
+                // a burst of speed (in screen heights per second) well above walking = a mobility skill
+                if (dt < 0.4f && bestD / dt > DASH_SPEED) t.dashAt = now
                 t.vx = 0.6f * t.vx + 0.4f * (best.x - t.x) / dt
                 t.vy = 0.6f * t.vy + 0.4f * (best.y - t.y) / dt
                 t.x = best.x
@@ -45,8 +52,8 @@ class EnemyDetector {
         for (s in unused) {
             tracks.add(Track(nextId++, s.x, s.y, s.hp, lastSeen = now, firstSeen = now, minHpSeen = s.hp))
         }
-        tracks.removeAll { now - it.lastSeen > 700 }
-        return tracks.map { Track(it.id, it.x, it.y, it.hp, it.vx, it.vy, it.lastSeen, it.firstSeen, it.minHpSeen) }
+        tracks.removeAll { now - it.lastSeen > 1200 }
+        return tracks.map { Track(it.id, it.x, it.y, it.hp, it.vx, it.vy, it.lastSeen, it.firstSeen, it.minHpSeen, it.dashAt) }
     }
 
     fun clear() = tracks.clear()

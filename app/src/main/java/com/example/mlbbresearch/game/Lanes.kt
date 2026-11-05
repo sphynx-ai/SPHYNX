@@ -15,6 +15,8 @@ object SpellDb {
         if (raw.isNullOrBlank()) return null
         val n = raw.lowercase().filter { it.isLetter() }
         if (n.isEmpty()) return null
+        // Ice / Flame / Bloody Retribution (the jungle item's kinds) are Retribution to the AI
+        if (n.endsWith("retribution")) return "Retribution"
         return names.firstOrNull { it.lowercase() == n }
             ?: names.firstOrNull { n.startsWith(it.lowercase().take(5)) }
     }

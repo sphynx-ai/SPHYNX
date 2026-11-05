@@ -59,7 +59,10 @@ class GameState(
     val xp: Float = -1f,                      // EXP ring 0..1 towards the next level (-1 unknown)
     val enemyLevel: Int = -1,                 // level of the nearest enemy hero, -1 unknown
     val towerRing: com.example.mlbbresearch.vision.TowerRing.Ring = com.example.mlbbresearch.vision.TowerRing.NONE,
-    val map: MapIntel.Info = MapIntel.Info.NONE        // heroes / objectives on the minimap (YOLO detector)
+    val map: MapIntel.Info = MapIntel.Info.NONE,       // heroes / objectives on the minimap (YOLO detector)
+    // your bar's shield / armour / stored energy (HeroKit bar models); selfHp already counts it
+    val selfExtra: Float = 0f,
+    val selfHpRaw: Float = -1f
 ) {
     val creeps: List<Seen> get() = monsters.filter { !it.hero }
     val boss: Seen? get() = monsters.filter { it.hero }.minByOrNull { distToSelf(it.x, it.y) }
@@ -87,6 +90,8 @@ class GameState(
         sb.append(", allies near ").append(allies.size)
         sb.append(", enemy minions ").append(enemyMinions.size)
         sb.append(", enemies on minimap ").append(minimapEnemies)
+        if (com.example.mlbbresearch.vision.DeathTimers.fresh()) sb.append(", enemies dead ").append(com.example.mlbbresearch.vision.DeathTimers.enemiesDead)
+            .append(" (alive ").append(5 - com.example.mlbbresearch.vision.DeathTimers.enemiesDead).append("), allies dead ").append(com.example.mlbbresearch.vision.DeathTimers.alliesDead)
         sb.append(", lane ").append(lane.label)
         if (spell != null) sb.append(", spell ").append(spell)
         if (monsters.isNotEmpty()) sb.append(", monsters ").append(monsters.size)

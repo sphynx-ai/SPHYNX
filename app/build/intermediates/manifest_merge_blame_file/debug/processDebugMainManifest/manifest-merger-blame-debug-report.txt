@@ -1,0 +1,190 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<!-- Full file: replace your whole AndroidManifest.xml with this -->
+3<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+4    package="com.example.mlbbresearch"
+5    android:versionCode="1"
+6    android:versionName="1.0" >
+7
+8    <uses-sdk
+8-->INJECTED
+9        android:minSdkVersion="30"
+9-->INJECTED
+10        android:targetSdkVersion="36" />
+10-->INJECTED
+11
+12    <!-- Screen capture runs as a foreground service with a notification -->
+13    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+13-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:6:5-77
+13-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:6:22-74
+14    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+14-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:7:5-94
+14-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:7:22-91
+15    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+15-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:8:5-77
+15-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:8:22-74
+16    <!-- Only used if your phone refuses the accessibility overlay for the floating icon -->
+17    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+17-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:10:5-78
+17-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:10:22-75
+18    <!-- Internet is used ONLY when you tap "Get my hero's combo online" (Player page) -->
+19    <uses-permission android:name="android.permission.INTERNET" />
+19-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:12:5-67
+19-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:12:22-64
+20
+21    <queries>
+21-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:23:5-25:15
+22        <package android:name="com.itsaky.androidide" />
+22-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:24:9-57
+22-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:24:18-54
+23    </queries>
+24
+25    <uses-permission android:name="com.itsaky.androidide.permission.BIND_LOG_SERVICE" />
+25-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:28:5-89
+25-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:28:22-86
+26    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+26-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:30:5-87
+26-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:30:22-84
+27
+28    <permission
+28-->[androidx.core:core:1.9.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/0ff0de468a0a532d8a0dc3e3d81c70c0/transformed/core-1.9.0/AndroidManifest.xml:22:5-24:47
+29        android:name="com.example.mlbbresearch.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+29-->[androidx.core:core:1.9.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/0ff0de468a0a532d8a0dc3e3d81c70c0/transformed/core-1.9.0/AndroidManifest.xml:23:9-81
+30        android:protectionLevel="signature" />
+30-->[androidx.core:core:1.9.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/0ff0de468a0a532d8a0dc3e3d81c70c0/transformed/core-1.9.0/AndroidManifest.xml:24:9-44
+31
+32    <uses-permission android:name="com.example.mlbbresearch.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+32-->[androidx.core:core:1.9.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/0ff0de468a0a532d8a0dc3e3d81c70c0/transformed/core-1.9.0/AndroidManifest.xml:26:5-97
+32-->[androidx.core:core:1.9.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/0ff0de468a0a532d8a0dc3e3d81c70c0/transformed/core-1.9.0/AndroidManifest.xml:26:22-94
+33
+34    <application
+34-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:14:5-54:19
+35        android:name="com.example.mlbbresearch.app.MainApplication"
+35-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:15:9-44
+36        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+36-->[androidx.core:core:1.9.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/0ff0de468a0a532d8a0dc3e3d81c70c0/transformed/core-1.9.0/AndroidManifest.xml:28:18-86
+37        android:debuggable="true"
+38        android:extractNativeLibs="false"
+38-->INJECTED
+39        android:icon="@mipmap/ic_mlbb"
+39-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:17:9-39
+40        android:label="MLBB Research"
+40-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:16:9-38
+41        android:largeHeap="true"
+41-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:19:9-33
+42        android:roundIcon="@mipmap/ic_mlbb" >
+42-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:18:9-44
+43
+44        <!-- Lets LiteRT-LM use the phone's GPU (optional: falls back to CPU) -->
+45        <uses-native-library
+45-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:22:9-85
+46            android:name="libOpenCL.so"
+46-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:22:30-57
+47            android:required="false" />
+47-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:22:58-82
+48        <uses-native-library
+48-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:22:9-85
+49            android:name="libvndksupport.so"
+49-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:22:30-57
+50            android:required="false" />
+50-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:22:58-82
+51
+52        <!-- configChanges: rotating the phone no longer restarts the app -->
+53        <activity
+53-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:26:9-35:20
+54            android:name="com.example.mlbbresearch.app.MainActivity"
+54-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:27:13-45
+55            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density|fontScale"
+55-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:30:13-131
+56            android:exported="true"
+56-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:28:13-36
+57            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" >
+57-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:29:13-75
+58            <intent-filter>
+58-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:31:13-34:29
+59                <action android:name="android.intent.action.MAIN" />
+59-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:32:17-69
+59-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:32:25-66
+60
+61                <category android:name="android.intent.category.LAUNCHER" />
+61-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:33:17-77
+61-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:33:27-74
+62            </intent-filter>
+63        </activity>
+64
+65        <service
+65-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:37:9-48:19
+66            android:name="com.example.mlbbresearch.controller.AccessibilityController"
+66-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:38:13-63
+67            android:exported="false"
+67-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:39:13-37
+68            android:label="MLBB Research"
+68-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:40:13-42
+69            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" >
+69-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:41:13-79
+70            <intent-filter>
+70-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:42:13-44:29
+71                <action android:name="android.accessibilityservice.AccessibilityService" />
+71-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:43:17-92
+71-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:43:25-89
+72            </intent-filter>
+73
+74            <meta-data
+74-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:45:13-47:64
+75                android:name="android.accessibilityservice"
+75-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:46:17-60
+76                android:resource="@xml/accessibility_config" />
+76-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:47:17-61
+77        </service>
+78        <service
+78-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:50:9-53:63
+79            android:name="com.example.mlbbresearch.capture.ScreenCaptureService"
+79-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:51:13-57
+80            android:exported="false"
+80-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:52:13-37
+81            android:foregroundServiceType="mediaProjection" />
+81-->/storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:53:13-60
+82
+83        <provider
+83-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:33:9-37:40
+84            android:name="com.itsaky.androidide.logsender.utils.LogSenderInstaller"
+84-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:34:13-84
+85            android:authorities="com.example.mlbbresearch.logsender-installer"
+85-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:35:13-71
+86            android:enabled="@bool/logsender_enabled"
+86-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:36:13-54
+87            android:exported="false" />
+87-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:37:13-37
+88
+89        <service
+89-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:39:9-42:56
+90            android:name="com.itsaky.androidide.logsender.LogSenderService"
+90-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:40:13-76
+91            android:exported="false"
+91-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:41:13-37
+92            android:foregroundServiceType="dataSync" />
+92-->[logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:42:13-53
+93
+94        <provider
+94-->[androidx.emoji2:emoji2:1.2.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/9589c924cbb629260198451b4dff2a64/transformed/emoji2-1.2.0/AndroidManifest.xml:24:9-32:20
+95            android:name="androidx.startup.InitializationProvider"
+95-->[androidx.emoji2:emoji2:1.2.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/9589c924cbb629260198451b4dff2a64/transformed/emoji2-1.2.0/AndroidManifest.xml:25:13-67
+96            android:authorities="com.example.mlbbresearch.androidx-startup"
+96-->[androidx.emoji2:emoji2:1.2.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/9589c924cbb629260198451b4dff2a64/transformed/emoji2-1.2.0/AndroidManifest.xml:26:13-68
+97            android:exported="false" >
+97-->[androidx.emoji2:emoji2:1.2.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/9589c924cbb629260198451b4dff2a64/transformed/emoji2-1.2.0/AndroidManifest.xml:27:13-37
+98            <meta-data
+98-->[androidx.emoji2:emoji2:1.2.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/9589c924cbb629260198451b4dff2a64/transformed/emoji2-1.2.0/AndroidManifest.xml:29:13-31:52
+99                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+99-->[androidx.emoji2:emoji2:1.2.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/9589c924cbb629260198451b4dff2a64/transformed/emoji2-1.2.0/AndroidManifest.xml:30:17-75
+100                android:value="androidx.startup" />
+100-->[androidx.emoji2:emoji2:1.2.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/9589c924cbb629260198451b4dff2a64/transformed/emoji2-1.2.0/AndroidManifest.xml:31:17-49
+101            <meta-data
+101-->[androidx.lifecycle:lifecycle-process:2.4.1] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/54355b72cfad8dda20256f9c91150212/transformed/lifecycle-process-2.4.1/AndroidManifest.xml:31:13-33:52
+102                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+102-->[androidx.lifecycle:lifecycle-process:2.4.1] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/54355b72cfad8dda20256f9c91150212/transformed/lifecycle-process-2.4.1/AndroidManifest.xml:32:17-78
+103                android:value="androidx.startup" />
+103-->[androidx.lifecycle:lifecycle-process:2.4.1] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/54355b72cfad8dda20256f9c91150212/transformed/lifecycle-process-2.4.1/AndroidManifest.xml:33:17-49
+104        </provider>
+105    </application>
+106
+107</manifest>

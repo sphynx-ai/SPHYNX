@@ -89,7 +89,7 @@ object Brain {
             when (o) {
                 FightOption.GROUP -> s.allies.isNotEmpty()
                 // only ranged heroes can poke; a melee hero has to be up close to hit
-                FightOption.POKE -> com.example.mlbbresearch.game.HeroDb.isRanged(s.ownHero)
+                FightOption.POKE -> com.example.mlbbresearch.game.SkillBook.canPoke(s.ownHero)
                 FightOption.FARM -> s.enemyMinions.isNotEmpty() || s.monsters.isNotEmpty()
                 else -> true
             }
@@ -123,6 +123,19 @@ object Brain {
     @Synchronized
     fun observeUser(s: GameState, mx: Float, my: Float, casts: Int) {
         if (!Cfg.smartFights || !Cfg.brainLearnsFromYou || s.self == null) return
+        observeChoice(s, mx, my, casts, null)
+    }
+
+    // A LIVE MATCH you watch: the same reading of what that player chose in each fight (often a
+    // strong player), scored by how it went - more and better fight moments for the small model.
+    // ready = THEIR skills ready (from the live panel), for the summary the model is shown.
+    @Synchronized
+    fun observeWatched(s: GameState, mx: Float, my: Float, casts: Int, ready: List<String>) {
+        if (!Cfg.smartFights || !Cfg.liveLearn || s.self == null) return
+        observeChoice(s, mx, my, casts, ready)
+    }
+
+    private fun observeChoice(s: GameState, mx: Float, my: Float, casts: Int, ready: List<String>?) {
         val now = s.ts
         if (now - lastUserSample < HOLD_MS) return
         val e = s.enemiesWithin(0.9f).minByOrNull { s.distToSelf(it.x, it.y) } ?: return
@@ -140,15 +153,23 @@ object Brain {
             val al = hypot(ax, ay).coerceAtLeast(1e-3f)
             (mx * ax + my * ay) / al
         } else 0f
+        // CLEAR choices only: a moment that does not show one is not labelled at all (before, every
+        // unclear moment near minions became FARM - two thirds of the moments, and the small model
+        // learned to answer FARM to everything)
+        val p = com.example.mlbbresearch.game.HeroDb.profile(s.ownHero)
+        val enemyInReach = s.distToSelf(e.x, e.y) <= p.attackRange * 1.2f
+        val attacking = (casts and Casts.ATTACK) != 0
+        val farmInReach = s.minionsWithin(p.attackRange * 1.4f).isNotEmpty() || s.monsters.any { s.distToSelf(it.x, it.y) <= p.attackRange * 1.4f }
         val option = when {
             toward > 0.5f -> FightOption.ALL_IN
             toward < -0.5f && toAllies > 0.5f -> FightOption.GROUP
             toward < -0.5f -> FightOption.RETREAT
-            skills -> FightOption.POKE
-            s.enemyMinions.isNotEmpty() -> FightOption.FARM
+            skills && !enemyInReach -> FightOption.POKE                     // skills from range
+            (skills || attacking) && enemyInReach -> FightOption.ALL_IN     // trading blows up close
+            attacking && farmInReach && !enemyInReach -> FightOption.FARM   // hitting minions / monsters, enemy not in reach
             else -> return
         }
-        queue(s, option, context(s), true)
+        queue(s, option, context(s), true, ready)
     }
 
     // another adviser (the small tactical model) picked this option and the checks allowed it:
@@ -163,9 +184,9 @@ object Brain {
         queue(s, o, context(s), false)
     }
 
-    private fun queue(s: GameState, o: FightOption, x: FloatArray, byYou: Boolean) {
+    private fun queue(s: GameState, o: FightOption, x: FloatArray, byYou: Boolean, ready: List<String>? = null) {
         // the same summary the small tactical model is shown: the fight moments it trains on
-        val summary = try { com.example.mlbbresearch.ai.TacticalAdvisor.summary(s, com.example.mlbbresearch.game.HeroDb.profile(s.ownHero)) } catch (e: Exception) { "" }
+        val summary = try { com.example.mlbbresearch.ai.TacticalAdvisor.summary(s, com.example.mlbbresearch.game.HeroDb.profile(s.ownHero), ready) } catch (e: Exception) { "" }
         pending.add(Pending(s.ts, s.ownHero ?: "unknown", o, x, byYou, s.selfHp,
             s.enemiesWithin(1.2f).associate { it.id to it.hp }, s.enemyMinions.size, summary, s.lane.name))
         if (pending.size > 50) pending.removeAt(0)
@@ -187,6 +208,7 @@ object Brain {
             if (now - p.at < EVAL_MS && !died) continue
             it.remove()
             val r = reward(p, s, died)
+            ABCompare.fight(r, died, p.byYou)            // small model on vs off comparison
             for (key in listOf(p.hero, "all")) update(modelFor(key, own = true), p.option, p.x, r)
             learnedThisSession++
             changed = true
@@ -278,6 +300,10 @@ object Brain {
     } catch (e: Exception) {
         null
     }
+
+    // read again from storage (after the learned backup was restored)
+    @Synchronized
+    fun forgetCache() = models.clear()
 
     @Synchronized
     fun saveAll() {

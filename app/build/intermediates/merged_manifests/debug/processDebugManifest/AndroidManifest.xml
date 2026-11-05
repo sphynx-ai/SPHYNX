@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!-- Full file: replace your whole AndroidManifest.xml with this --><manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionCode="1" android:versionName="1.0" package="com.example.mlbbresearch">
+        
+    <uses-sdk android:minSdkVersion="30" android:targetSdkVersion="36"/>
+        
+    <!-- Screen capture runs as a foreground service with a notification -->
+        
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+        
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
+        
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+        
+    <!-- Only used if your phone refuses the accessibility overlay for the floating icon -->
+        
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+        
+    <!-- Internet is used ONLY when you tap "Get my hero's combo online" (Player page) -->
+        
+    <uses-permission android:name="android.permission.INTERNET"/>
+        
+    <queries>
+                
+        <package android:name="com.itsaky.androidide"/>
+            
+    </queries>
+        
+    <uses-permission android:name="com.itsaky.androidide.permission.BIND_LOG_SERVICE"/>
+        
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+        
+    <permission android:name="com.example.mlbbresearch.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" android:protectionLevel="signature"/>
+        
+    <uses-permission android:name="com.example.mlbbresearch.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"/>
+        
+    <application android:appComponentFactory="androidx.core.app.CoreComponentFactory" android:debuggable="true" android:extractNativeLibs="false" android:icon="@mipmap/ic_mlbb" android:label="MLBB Research" android:largeHeap="true" android:name="com.example.mlbbresearch.app.MainApplication" android:roundIcon="@mipmap/ic_mlbb">
+                
+        <!-- Lets LiteRT-LM use the phone's GPU (optional: falls back to CPU) -->
+                
+        <uses-native-library android:name="libOpenCL.so" android:required="false"/>
+                
+        <uses-native-library android:name="libvndksupport.so" android:required="false"/>
+                
+        <!-- configChanges: rotating the phone no longer restarts the app -->
+                
+        <activity android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density|fontScale" android:exported="true" android:name="com.example.mlbbresearch.app.MainActivity" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+                        
+            <intent-filter>
+                                
+                <action android:name="android.intent.action.MAIN"/>
+                                
+                <category android:name="android.intent.category.LAUNCHER"/>
+                            
+            </intent-filter>
+                    
+        </activity>
+                
+        <service android:exported="false" android:label="MLBB Research" android:name="com.example.mlbbresearch.controller.AccessibilityController" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+                        
+            <intent-filter>
+                                
+                <action android:name="android.accessibilityservice.AccessibilityService"/>
+                            
+            </intent-filter>
+                        
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_config"/>
+                    
+        </service>
+                
+        <service android:exported="false" android:foregroundServiceType="mediaProjection" android:name="com.example.mlbbresearch.capture.ScreenCaptureService"/>
+                
+        <provider android:authorities="com.example.mlbbresearch.logsender-installer" android:enabled="@bool/logsender_enabled" android:exported="false" android:name="com.itsaky.androidide.logsender.utils.LogSenderInstaller"/>
+                
+        <service android:exported="false" android:foregroundServiceType="dataSync" android:name="com.itsaky.androidide.logsender.LogSenderService"/>
+                
+        <provider android:authorities="com.example.mlbbresearch.androidx-startup" android:exported="false" android:name="androidx.startup.InitializationProvider">
+                        
+            <meta-data android:name="androidx.emoji2.text.EmojiCompatInitializer" android:value="androidx.startup"/>
+                        
+            <meta-data android:name="androidx.lifecycle.ProcessLifecycleInitializer" android:value="androidx.startup"/>
+                    
+        </provider>
+            
+    </application>
+    
+</manifest>
