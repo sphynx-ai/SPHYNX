@@ -79,12 +79,45 @@ object Cfg {
     var retriMeansJungle: Boolean get() = true; set(v) {}
     var laneTravelSec: Int get() = i("lane_travel", 12); set(v) = put("lane_travel", v)
     var useCombos: Boolean get() = true; set(v) {}
+    // Automatic selection of skill combo based on the live combat situation (Burst, Chase, Poke, Pre-Lv4, Retreat) (v37.11)
+    var autoSituationalCombo: Boolean get() = b("auto_sit_combo", true); set(v) = put("auto_sit_combo", v)
     var aimSkills: Boolean get() = true; set(v) {}
     var comboUrl: String get() = s("combo_url", "https://mobile-legends.fandom.com/wiki/{hero}"); set(v) = put("combo_url", v)
-    fun heroCombo(hero: String): String? = prefs.getString("combo_" + hero.lowercase(), null)
-    fun setHeroCombo(hero: String, v: String?) {
-        if (v == null) prefs.edit().remove("combo_" + hero.lowercase()).apply() else put("combo_" + hero.lowercase(), v)
+    private fun normHeroKey(hero: String): String = hero.trim().lowercase().filter { it.isLetterOrDigit() }
+
+    // Manual skill combo entered by the user for a specific hero (v37.11).
+    // If non-blank, the AI uses this manual combo; if blank/null, the AI uses the built-in optimized combo library.
+    fun manualCombo(hero: String?): String? {
+        if (hero.isNullOrBlank()) return null
+        val k1 = "manual_combo_" + normHeroKey(hero)
+        val k2 = "combo_" + hero.trim().lowercase()
+        return prefs.getString(k1, null)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: prefs.getString(k2, null)?.trim()?.takeIf { it.isNotEmpty() }
     }
+
+    fun setManualCombo(hero: String?, v: String?) {
+        if (hero.isNullOrBlank()) return
+        val k1 = "manual_combo_" + normHeroKey(hero)
+        val k2 = "combo_" + hero.trim().lowercase()
+        val clean = v?.trim().orEmpty()
+        if (clean.isEmpty()) {
+            prefs.edit().remove(k1).remove(k2).apply()
+        } else {
+            put(k1, clean)
+            put(k2, clean)
+        }
+    }
+
+    fun heroCombo(hero: String): String? = manualCombo(hero)
+    fun setHeroCombo(hero: String, v: String?) = setManualCombo(hero, v)
+
+    // Scenery & Minimap synchronization calibration settings (v37.11)
+    var sceneryAutoSync: Boolean get() = b("scenery_auto_sync", true); set(v) = put("scenery_auto_sync", v)
+    var cameraHeightMode: String get() = s("cam_height_mode", "high"); set(v) = put("cam_height_mode", v) // "high", "low", "wide"
+    var sceneryScaleX: Float get() = f("scenery_scale_x", 0.158f); set(v) = put("scenery_scale_x", v)
+    var sceneryScaleY: Float get() = f("scenery_scale_y", 0.112f); set(v) = put("scenery_scale_y", v)
+    var sceneryOffsetX: Float get() = f("scenery_off_x", 0f); set(v) = put("scenery_off_x", v)
+    var sceneryOffsetY: Float get() = f("scenery_off_y", 0f); set(v) = put("scenery_off_y", v)
     var detectMonsters: Boolean get() = true; set(v) {}
     var takeObjectives: Boolean get() = true; set(v) {}
     // Retribution on a monster when its HP is below this (%), turtle / lord and small creeps

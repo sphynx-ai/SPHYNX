@@ -4,29 +4,32 @@ import com.example.mlbbresearch.ai.Intent
 import com.example.mlbbresearch.ai.TacticalDecision
 import com.example.mlbbresearch.core.Cfg
 import com.example.mlbbresearch.core.Diag
+import com.example.mlbbresearch.vision.MinimapAnalyzer
+import com.example.mlbbresearch.vision.Seen
 import com.example.mlbbresearch.vision.TowerRing
 import com.example.mlbbresearch.vision.WallMap
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
 import kotlin.math.hypot
 
-// IN-GAME 3D SCENERY CALIBRATION & WORLD MEMORY (v37.09):
-// Memorizes the actual 3D in-game map (not just the minimap):
-//  - 3D Walls & Monster Pit back-walls (64x64 world grid, synced into WallMap A* pathfinding)
-//  - 3D Bushes seen on screen (world coordinates)
-//  - Monster Pits (exact world position, walkable pit-entrance stand spot so the hero never gets stuck
-//    behind the horseshoe pit wall, and screen direction to the creep inside the pit)
-//  - Towers (memorized from 3D TowerRing detections on screen)
-//  - Autonomous 28-waypoint Practice Mode Roam Tour: walks the whole map once, memorizes every key
-//    area into persistent storage ("scenery_map_v1"), and uses it in every match.
+// IN-GAME 3D SCENERY & MINIMAP SYNCHRONIZATION + WORLD MEMORY (v37.11):
+// Synchronizes the 3D screen camera view with the 2D minimap and memorizes the entire map:
+//  - Perspective-foreshortened 3D-to-Minimap projection (accounts for MLBB ~52° camera tilt, where
+//    the top of the screen spans wider world ground than the bottom of the screen)
+//  - Live Landmark Auto-Synchronization: aligns 3D screen Tower Rings, Monster Bars, and Bushes with
+//    their Minimap counterparts to continuously calibrate scale (scaleX, scaleY) and offset (offX, offY)
+//  - Bidirectional WallMap <-> SceneryMap fusion so 3D walls, monster pit back-walls, and bushes stay
+//    permanently synchronized with minimap A* pathfinding
+//  - Autonomous 28-waypoint Practice Mode Roam Tour
 object SceneryMap {
 
     const val G = 64
-    private const val SCREEN_SPAN_X = 0.16f
-    private const val SCREEN_SPAN_Y = 0.10f
     private const val CFG_KEY = "scenery_map_v1"
+    // Perspective tilt factor: top of screen (sy < self.y) spans ~24% wider world distance than bottom
+    private const val PERSP_TILT = 0.24f
 
     class PitSpot(
         var x: Float,
@@ -52,13 +55,16 @@ object SceneryMap {
         private set
     @Volatile var status = "ready"
         private set
+    @Volatile var syncAnchors = 0
+        private set
+    @Volatile var lastSyncDrift = 0f
+        private set
     private var loaded = false
     private var lastSaveAt = 0L
     private var waypointArrivedAt = 0L
     private var waypointStartedAt = 0L
 
-    // Default MLBB monster pits with open-mouth entrance stand-spots (so even before roaming,
-    // the hero enters pits from their open side instead of getting stuck on the back wall)
+    // Default MLBB monster pits with open-mouth entrance stand-spots
     private val defaultPits = listOf(
         PitSpot(0.27f, 0.56f, 0.29f, 0.58f, -0.5f, -0.5f, "purple_buff", true),
         PitSpot(0.52f, 0.77f, 0.50f, 0.75f, 0.5f, 0.5f, "orange_buff", true),
@@ -70,7 +76,6 @@ object SceneryMap {
         PitSpot(0.67f, 0.68f, 0.64f, 0.65f, 0.5f, 0.6f, "lord_bot", false)
     )
 
-    // 28 waypoints covering every lane, river bush, monster pit, and jungle corridor in Practice Mode
     class Waypoint(val x: Float, val y: Float, val name: String)
     val tourWaypoints: List<Waypoint> = listOf(
         Waypoint(0.18f, 0.82f, "Ally Base Gate"),
@@ -102,6 +107,186 @@ object SceneryMap {
         Waypoint(0.62f, 0.38f, "Mid Lane Enemy Tower"),
         Waypoint(0.50f, 0.50f, "Center River Return")
     )
+
+    // Perspective-foreshortened projection from 3D screen (sx, sy) to 2D minimap world coordinates (0..1)
+    fun projectToWorld(me: Pair<Float, Float>, self: Seen, sx: Float, sy: Float): Pair<Float, Float> {
+        val scaleX = Cfg.sceneryScaleX.coerceIn(0.11f, 0.22f)
+        val scaleY = Cfg.sceneryScaleY.coerceIn(0.07f, 0.16f)
+        val offX = Cfg.sceneryOffsetX.coerceIn(-0.04f, 0.04f)
+        val offY = Cfg.sceneryOffsetY.coerceIn(-0.04f, 0.04f)
+        val dy = sy - self.y
+        val dx = sx - self.x
+        // Isometric camera perspective: upper screen (dy < 0) covers wider horizontal & vertical ground
+        val persp = (1f - dy * PERSP_TILT).coerceIn(0.82f, 1.24f)
+        val wx = (me.first + offX + dx * scaleX * persp).coerceIn(0.02f, 0.98f)
+        val wy = (me.second + offY + dy * scaleY * persp).coerceIn(0.02f, 0.98f)
+        return wx to wy
+    }
+
+    // Inverse projection from 2D minimap world coordinates (wx, wy) to 3D screen fractions (sx, sy)
+    fun worldToScreen(me: Pair<Float, Float>, self: Seen, wx: Float, wy: Float): Pair<Float, Float> {
+        val scaleX = Cfg.sceneryScaleX.coerceIn(0.11f, 0.22f)
+        val scaleY = Cfg.sceneryScaleY.coerceIn(0.07f, 0.16f)
+        val offX = Cfg.sceneryOffsetX.coerceIn(-0.04f, 0.04f)
+        val offY = Cfg.sceneryOffsetY.coerceIn(-0.04f, 0.04f)
+        val dwy = wy - (me.second + offY)
+        val dyApprox = (dwy / scaleY).coerceIn(-0.5f, 0.5f)
+        val persp = (1f - dyApprox * PERSP_TILT).coerceIn(0.82f, 1.24f)
+        val sx = (self.x + (wx - (me.first + offX)) / (scaleX * persp)).coerceIn(0f, 1f)
+        val sy = (self.y + dwy / (scaleY * persp)).coerceIn(0f, 1f)
+        return sx to sy
+    }
+
+    // Cycles Camera Height preset ("high" = MLBB High Camera Height, "low" = Low Camera Height, "wide" = Tablet/Wide)
+    fun cycleCameraPreset(): String {
+        val next = when (Cfg.cameraHeightMode) {
+            "high" -> "low"
+            "low" -> "wide"
+            else -> "high"
+        }
+        Cfg.cameraHeightMode = next
+        when (next) {
+            "high" -> { Cfg.sceneryScaleX = 0.158f; Cfg.sceneryScaleY = 0.112f }
+            "low" -> { Cfg.sceneryScaleX = 0.134f; Cfg.sceneryScaleY = 0.095f }
+            "wide" -> { Cfg.sceneryScaleX = 0.172f; Cfg.sceneryScaleY = 0.124f }
+        }
+        return cameraPresetLabel()
+    }
+
+    fun cameraPresetLabel(): String = when (Cfg.cameraHeightMode) {
+        "low" -> "Low camera height (13.4% x 9.5%)"
+        "wide" -> "Wide / tablet camera (17.2% x 12.4%)"
+        else -> "High camera height (15.8% x 11.2%)"
+    }
+
+    fun resetSyncCalibration(): String {
+        Cfg.cameraHeightMode = "high"
+        Cfg.sceneryScaleX = 0.158f
+        Cfg.sceneryScaleY = 0.112f
+        Cfg.sceneryOffsetX = 0f
+        Cfg.sceneryOffsetY = 0f
+        syncAnchors = 0
+        lastSyncDrift = 0f
+        return "Reset scenery-minimap sync to defaults"
+    }
+
+    fun syncStatus(): String =
+        "Camera: ${cameraPresetLabel()} · Auto-sync: ${if (Cfg.sceneryAutoSync) "ON" else "OFF"}\n" +
+            "Scale: %.1f%% x %.1f%% · Offset: %+.2f%%, %+.2f%% · Anchors matched: %d (drift %.2f%%)".format(
+                Locale.US,
+                Cfg.sceneryScaleX * 100f, Cfg.sceneryScaleY * 100f,
+                Cfg.sceneryOffsetX * 100f, Cfg.sceneryOffsetY * 100f,
+                syncAnchors, lastSyncDrift * 100f
+            )
+
+    // Synchronizes 3D screen landmarks (towers, camps/pits, bushes) with 2D minimap landmarks
+    fun syncWithMinimap(s: GameState, forceManual: Boolean = false): Int {
+        val me = s.minimapSelf ?: return 0
+        val self = s.self ?: return 0
+        if (!Cfg.sceneryAutoSync && !forceManual) return 0
+
+        var errSumX = 0f
+        var errSumY = 0f
+        var scaleRatioXSum = 0f
+        var scaleRatioYSum = 0f
+        var scaleSamples = 0
+        var count = 0
+
+        fun addAnchor(sx: Float, sy: Float, mapX: Float, mapY: Float, maxMatchDist: Float) {
+            val (projX, projY) = projectToWorld(me, self, sx, sy)
+            val errX = mapX - projX
+            val errY = mapY - projY
+            val d = hypot(errX, errY)
+            if (d <= maxMatchDist) {
+                errSumX += errX
+                errSumY += errY
+                count++
+                val dx = sx - self.x
+                val dy = sy - self.y
+                val persp = (1f - dy * PERSP_TILT).coerceIn(0.82f, 1.24f)
+                if (abs(dx) >= 0.12f) {
+                    val impliedX = (mapX - (me.first + Cfg.sceneryOffsetX)) / (dx * persp)
+                    if (impliedX in 0.11f..0.22f) { scaleRatioXSum += impliedX; scaleSamples++ }
+                }
+                if (abs(dy) >= 0.12f) {
+                    val impliedY = (mapY - (me.second + Cfg.sceneryOffsetY)) / (dy * persp)
+                    if (impliedY in 0.07f..0.16f) { scaleRatioYSum += impliedY }
+                }
+            }
+        }
+
+        // 1) 3D TowerRing on screen <-> nearest Minimap Tower
+        if (s.towerRing.zone != TowerRing.Zone.NONE && s.towers.isNotEmpty()) {
+            val (px, py) = projectToWorld(me, self, s.towerRing.cx, s.towerRing.cy)
+            val nearTower = s.towers.minByOrNull { hypot(it.x - px, it.y - py) }
+            if (nearTower != null) {
+                addAnchor(s.towerRing.cx, s.towerRing.cy, nearTower.x, nearTower.y, 0.055f)
+            }
+        }
+
+        // 2) 3D Monsters on screen <-> Minimap Camps & Boss Pits
+        val allMapCamps = s.camps.map { it.x to it.y } + MinimapAnalyzer.PITS + defaultPits.map { it.x to it.y }
+        for (m in s.monsters) {
+            val (px, py) = projectToWorld(me, self, m.x, m.y)
+            val nearCamp = allMapCamps.minByOrNull { hypot(it.first - px, it.second - py) }
+            if (nearCamp != null) {
+                addAnchor(m.x, m.y, nearCamp.first, nearCamp.second, 0.050f)
+            }
+        }
+
+        // 3) 3D Bushes on screen <-> Minimap Bush cells in WallMap
+        if (WallMap.ready) {
+            for (b in s.bushes) {
+                val (px, py) = projectToWorld(me, self, b.x, b.y)
+                val nearBush = WallMap.nearestBush(px to py, 0.045f)
+                if (nearBush != null) {
+                    addAnchor(b.x, b.y, nearBush.first, nearBush.second, 0.045f)
+                }
+            }
+        }
+
+        if (count > 0) {
+            val meanErrX = errSumX / count
+            val meanErrY = errSumY / count
+            lastSyncDrift = hypot(meanErrX, meanErrY)
+            val alpha = if (forceManual) 0.55f else 0.08f
+            Cfg.sceneryOffsetX = (Cfg.sceneryOffsetX + meanErrX * alpha).coerceIn(-0.035f, 0.035f)
+            Cfg.sceneryOffsetY = (Cfg.sceneryOffsetY + meanErrY * alpha).coerceIn(-0.035f, 0.035f)
+            if (scaleSamples > 0 && scaleRatioXSum > 0f) {
+                val targetScaleX = (scaleRatioXSum / scaleSamples).coerceIn(0.12f, 0.20f)
+                Cfg.sceneryScaleX = Cfg.sceneryScaleX * (1f - alpha * 0.5f) + targetScaleX * (alpha * 0.5f)
+            }
+            syncAnchors += count
+        }
+        return count
+    }
+
+    // One-tap manual sync called from Player / Setup page
+    fun syncNow(s: GameState): String {
+        val matched = syncWithMinimap(s, forceManual = true)
+        reapplyToWallMap()
+        saveNow()
+        return if (matched > 0) {
+            "Synced $matched 3D scenery landmark(s) with minimap (drift ${"%.2f".format(Locale.US, lastSyncDrift * 100f)}%)"
+        } else {
+            "Fused saved 3D scenery (${summary()}) with minimap"
+        }
+    }
+
+    // Re-applies memorized 3D walls and bushes onto WallMap whenever WallMap.update() refreshes the 40x40 minimap grid
+    fun reapplyToWallMap() {
+        ensureLoaded()
+        for (i in 0 until G * G) {
+            if (walls[i]) {
+                val wx = (i % G + 0.5f) / G
+                val wy = (i / G + 0.5f) / G
+                WallMap.markSceneryWall(wx, wy)
+            }
+        }
+        for ((bx, by) in bushes) {
+            WallMap.markSceneryBush(bx, by)
+        }
+    }
 
     @Synchronized
     fun ensureLoaded() {
@@ -242,12 +427,15 @@ object SceneryMap {
         return "${wCount} walls, ${bushes.size} bushes, ${pits.size} pits, ${towers.size} towers"
     }
 
-    // Observe the actual 3D screen scenery every frame and map it into world coordinates
+    // Observe the actual 3D screen scenery every frame, synchronize landmarks with the minimap, and map into world coordinates
     fun observe(s: GameState) {
         ensureLoaded()
         val me = s.minimapSelf ?: return
         val self = s.self ?: return
         val now = s.ts
+
+        // Synchronize 3D landmarks against minimap landmarks first so projection scale & offset are locked
+        syncWithMinimap(s, forceManual = false)
 
         // 0) Where the hero is standing right now is walkable ground, never a wall!
         val selfGx = (me.first * G).toInt().coerceIn(0, G - 1)
@@ -258,12 +446,11 @@ object SceneryMap {
 
         var changed = false
 
-        // 1) Project 3D screen walls (40x20 grid) into world coordinates around `me`
+        // 1) Project 3D screen walls (40x20 grid) into world coordinates around `me` using perspective projection
         val sw = s.screenWalls
         if (sw.size >= 40 * 20) {
             for (gy in 1 until 19) for (gx in 1 until 39) {
                 if (!sw[gy * 40 + gx]) continue
-                // Require at least 2 adjacent wall cells so stray effects are not memorized as walls
                 var neighbors = 0
                 if (sw[gy * 40 + gx - 1]) neighbors++
                 if (sw[gy * 40 + gx + 1]) neighbors++
@@ -273,8 +460,7 @@ object SceneryMap {
                 val sx = (gx + 0.5f) / 40f
                 val sy = (gy + 0.5f) / 20f
                 if (hypot(sx - self.x, sy - self.y) < 0.07f) continue
-                val wx = (me.first + (sx - self.x) * SCREEN_SPAN_X).coerceIn(0.02f, 0.98f)
-                val wy = (me.second + (sy - self.y) * SCREEN_SPAN_Y).coerceIn(0.02f, 0.98f)
+                val (wx, wy) = projectToWorld(me, self, sx, sy)
                 val wgx = (wx * G).toInt().coerceIn(0, G - 1)
                 val wgy = (wy * G).toInt().coerceIn(0, G - 1)
                 if (wgx == selfGx && wgy == selfGy) continue
@@ -291,8 +477,7 @@ object SceneryMap {
 
         // 2) Project 3D screen bushes into world coordinates
         for (b in s.bushes) {
-            val wx = (me.first + (b.x - self.x) * SCREEN_SPAN_X).coerceIn(0.02f, 0.98f)
-            val wy = (me.second + (b.y - self.y) * SCREEN_SPAN_Y).coerceIn(0.02f, 0.98f)
+            val (wx, wy) = projectToWorld(me, self, b.x, b.y)
             if (bushes.none { hypot(it.first - wx, it.second - wy) < 0.025f }) {
                 bushes.add(wx to wy)
                 WallMap.markSceneryBush(wx, wy)
@@ -300,11 +485,9 @@ object SceneryMap {
             }
         }
 
-        // 3) Project 3D screen monsters (creeps, buffs, Turtle/Lord) into memorized Monster Pits
-        //    along with the hero's current walkable stand-spot!
+        // 3) Project 3D screen monsters into memorized Monster Pits along with walkable entrance stand-spot
         for (m in s.monsters) {
-            val wx = (me.first + (m.x - self.x) * SCREEN_SPAN_X).coerceIn(0.04f, 0.96f)
-            val wy = (me.second + (m.y - self.y) * SCREEN_SPAN_Y).coerceIn(0.04f, 0.96f)
+            val (wx, wy) = projectToWorld(me, self, m.x, m.y)
             val dx = (m.x - self.x) * s.aspect
             val dy = m.y - self.y
             val dl = hypot(dx, dy).coerceAtLeast(1e-3f)
@@ -329,8 +512,7 @@ object SceneryMap {
 
         // 4) Project 3D enemy tower rings seen on screen into memorized Towers
         if (s.towerRing.zone != TowerRing.Zone.NONE) {
-            val wx = (me.first + (s.towerRing.cx - self.x) * SCREEN_SPAN_X).coerceIn(0.02f, 0.98f)
-            val wy = (me.second + (s.towerRing.cy - self.y) * SCREEN_SPAN_Y).coerceIn(0.02f, 0.98f)
+            val (wx, wy) = projectToWorld(me, self, s.towerRing.cx, s.towerRing.cy)
             if (towers.none { hypot(it.first - wx, it.second - wy) < 0.04f }) {
                 towers.add(wx to wy)
                 changed = true
@@ -342,7 +524,7 @@ object SceneryMap {
         }
     }
 
-    // Best walkable entrance / stand-spot for a camp at (campX, campY) so the hero enters the pit cleanly
+    // Best walkable entrance / stand-spot for a camp at (campX, campY)
     fun pitStandSpot(campX: Float, campY: Float): Pair<Float, Float> {
         ensureLoaded()
         val p = pits.minByOrNull { hypot(it.x - campX, it.y - campY) }
@@ -376,10 +558,10 @@ object SceneryMap {
         if (waypointStartedAt == 0L) waypointStartedAt = now
         val dist = hypot(wp.x - me.first, wp.y - me.second)
 
-        // Arrived at waypoint (or spent > 9s trying to reach a blocked point): pause 350ms to scan 3D scenery, then advance!
         if (dist < 0.045f || now - waypointStartedAt > 9500L) {
             if (waypointArrivedAt == 0L) {
                 waypointArrivedAt = now
+                syncWithMinimap(s, forceManual = true)
                 saveNow()
             }
             if (now - waypointArrivedAt < 350L) {
@@ -408,7 +590,6 @@ object SceneryMap {
             (rx / l) to (ry / l)
         }
         val casts = ArrayList<String>()
-        // Use mobility/dash skill to speed up roaming when off cooldown
         HeroDb.dashSlot(s.ownHero)?.let { dash ->
             if (dash != "ult" && CooldownTracker.ready(dash, p)) casts.add(dash)
         }

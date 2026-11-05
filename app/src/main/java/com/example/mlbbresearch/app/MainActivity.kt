@@ -840,21 +840,119 @@ class MainActivity : Activity() {
         val enemyInfo = text("", 13f)
         upd { enemyInfo.text = com.example.mlbbresearch.game.EnemyIntel.text() }
 
-        title("SKILL COMBOS")
-        val comboInfo = text("", 13f)
-        upd {
-            val h = GameStateTracker.ownHero()
-            val (combo, from) = ComboBook.text(h)
-            comboInfo.text = "Combo for ${h ?: "unknown hero"}: $combo ($from)\nNow: ${ComboRunner.status}"
+        title("SKILL COMBOS (MANUAL OR BUILT-IN)")
+        text("Uses your Manual Combo if set for the selected hero; if Manual Combo is empty, uses the Built-In Optimized Multi-Combo Library (online combo overrides are disabled).", 12f, color = "#9AA0A6")
+        switch("Automatic situational combo selection (Burst / Chase / Poke / Pre-Lv4 / Retreat)", Cfg.autoSituationalCombo) {
+            Cfg.autoSituationalCombo = it
         }
-        text("Automatic: the online guide's combo, what Coach learned from you, or one built from the hero's skills.", 12f, color = "#9AA0A6")
+        fun selectedComboHero(): String? =
+            Cfg.manualHero.trim().takeIf { it.isNotEmpty() }?.let { HeroDb.match(it) ?: it }
+                ?: GameStateTracker.ownHero()
+                ?: HeroDb.match(Cfg.myHero)
 
-        title("IN-GAME SCENERY CALIBRATION")
-        text("Roams the actual in-game map once in Practice Mode to memorize 3D bushes, walls, monster pit entrances, and towers so the AI never gets stuck on monster pits or walls.", 12f, color = "#9AA0A6")
+        val comboCard = card()
+        val comboInfo = cardText(comboCard, 13f, true)
+        val comboBuiltInList = cardNote(comboCard)
+        val manualComboBox = field("Manual skill combo for selected hero (empty = use Built-In, e.g. s1 > s2 > a > ult > a)", Cfg.manualCombo(selectedComboHero()).orEmpty(), false) { }
+        manualComboBox.imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_DONE
+        var lastComboHeroLoaded: String? = selectedComboHero()
+        var variantIdx = 0
+
+        fun saveManualComboForHero(rawText: String) {
+            val h = selectedComboHero()
+            if (h == null) {
+                toast("Select or enter a hero under YOUR HERO first")
+                return
+            }
+            val cleaned = rawText.trim()
+            if (cleaned.isEmpty()) {
+                Cfg.setManualCombo(h, null)
+                toast("$h: Manual combo cleared — using Built-In combos")
+            } else {
+                val parsed = ComboBook.parse(cleaned)
+                if (parsed.isEmpty()) {
+                    toast("Use s1, s2, s3, ult, a (basic attack), or spell separated by >")
+                    return
+                }
+                val formatted = ComboBook.format(parsed)
+                Cfg.setManualCombo(h, formatted)
+                manualComboBox.setText(formatted)
+                toast("$h: Saved Manual Combo ($formatted)")
+            }
+        }
+        manualComboBox.setOnEditorActionListener { v, _, _ -> saveManualComboForHero(v.text.toString()); false }
+
+        fun appendComboToken(tok: String) {
+            val cur = manualComboBox.text.toString().trim()
+            val next = if (cur.isEmpty()) tok else "$cur > $tok"
+            manualComboBox.setText(next)
+            manualComboBox.setSelection(next.length)
+        }
+        val quickRow1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(4), 0, 0) }
+        for ((lbl, tok) in listOf("+ S1" to "s1", "+ S2" to "s2", "+ S3" to "s3", "+ Ult" to "ult", "+ BA (a)" to "a", "+ Spell" to "spell")) {
+            quickRow1.addView(Button(this).apply {
+                text = lbl; isAllCaps = false; textSize = 11.5f; styleButton(this)
+                setPadding(dp(6), dp(4), dp(6), dp(4))
+                setOnClickListener { appendComboToken(tok) }
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
+        }
+        content.addView(quickRow1)
+
+        btn("Save manual combo for this hero") { saveManualComboForHero(manualComboBox.text.toString()) }
+        btn("Clear manual combo (use Built-In)") {
+            val h = selectedComboHero()
+            if (h != null) Cfg.setManualCombo(h, null)
+            manualComboBox.setText("")
+            toast("${h ?: "Hero"}: using Built-In optimized combos")
+        }
+        btn("Copy next Built-In combo variant into box") {
+            val h = selectedComboHero()
+            val vars = ComboBook.allVariants(h)
+            if (vars.isNotEmpty()) {
+                val (vName, vSeq) = vars[variantIdx % vars.size]
+                variantIdx++
+                manualComboBox.setText(vSeq)
+                toast("${h ?: "Hero"} ($vName): $vSeq")
+            }
+        }
+        btn("Test active combo now") {
+            toast(ActionExecutor.testCombo())
+        }
+        upd {
+            val h = selectedComboHero()
+            if (h != lastComboHeroLoaded) {
+                lastComboHeroLoaded = h
+                variantIdx = 0
+                if (!manualComboBox.hasFocus()) {
+                    manualComboBox.setText(Cfg.manualCombo(h).orEmpty())
+                }
+            }
+            val (combo, from) = ComboBook.text(h)
+            val vars = ComboBook.allVariants(h)
+            comboInfo.text = "Hero: ${h ?: "unknown"}  ·  Active: $combo\nSource: $from\nRunner: ${ComboRunner.status}"
+            comboBuiltInList.text = "Situational Built-In Combos for ${h ?: "hero"}:\n" +
+                ComboBook.describeAllCombos(h) +
+                (if (vars.isNotEmpty()) "\n\nAll Built-In Variants (${vars.size}):\n" + vars.joinToString("\n") { "• ${it.first}: ${it.second}" } else "")
+        }
+
+        title("IN-GAME SCENERY & MINIMAP SYNCHRONIZATION")
+        text("Synchronizes 3D screen scenery (towers, monster pits, bushes, walls) with the 2D minimap on every frame and memorizes the entire map.", 12f, color = "#9AA0A6")
+        switch("Auto-sync 3D screen scenery with minimap landmarks", Cfg.sceneryAutoSync) { Cfg.sceneryAutoSync = it }
         val sceneryInfo = text("", 13f)
+        val camPresetBtn = btn("") {
+            val lbl = com.example.mlbbresearch.game.SceneryMap.cycleCameraPreset()
+            toast("Camera preset: $lbl")
+        }
+        btn("Sync 3D Scenery & Minimap Now") {
+            val msg = com.example.mlbbresearch.game.SceneryMap.syncNow(GameStateTracker.state)
+            toast(msg)
+        }
         val roamBtn = btn("") {
             val msg = com.example.mlbbresearch.game.SceneryMap.toggleRoam()
             toast(msg)
+        }
+        btn("Reset scenery-minimap sync offsets") {
+            toast(com.example.mlbbresearch.game.SceneryMap.resetSyncCalibration())
         }
         btn("Clear saved map scenery") {
             com.example.mlbbresearch.game.SceneryMap.clear()
@@ -862,8 +960,11 @@ class MainActivity : Activity() {
         }
         upd {
             val active = com.example.mlbbresearch.game.SceneryMap.roamActive
+            camPresetBtn.text = "Camera Height: ${com.example.mlbbresearch.game.SceneryMap.cameraPresetLabel()}  (tap to change)"
             roamBtn.text = if (active) "Stop scenery calibration roam" else "Start scenery calibration roam (Practice Mode)"
-            sceneryInfo.text = "Memorized: ${com.example.mlbbresearch.game.SceneryMap.summary()}\nStatus: ${com.example.mlbbresearch.game.SceneryMap.status}"
+            sceneryInfo.text = "Memorized: ${com.example.mlbbresearch.game.SceneryMap.summary()}\n" +
+                "Roam status: ${com.example.mlbbresearch.game.SceneryMap.status}\n" +
+                com.example.mlbbresearch.game.SceneryMap.syncStatus()
         }
 
         title("JUNGLE, TURTLE & LORD")
@@ -2296,6 +2397,18 @@ class MainActivity : Activity() {
             }, 5000)
         }
         btn("Clear the samples of this icon type") { com.example.mlbbresearch.vision.MinimapColors.clear(kinds[kindIdx]); toast("Cleared") }
+
+        title("SCENERY & MINIMAP SYNCHRONIZATION")
+        text("Aligns the 3D camera ground view with the minimap using visible towers, jungle pits, and bushes.", 12f, color = "#9AA0A6")
+        switch("Auto-sync 3D scenery with minimap", Cfg.sceneryAutoSync) { Cfg.sceneryAutoSync = it }
+        val setupSyncInfo = text("", 12.5f)
+        val setupCamBtn = btn("") { toast(com.example.mlbbresearch.game.SceneryMap.cycleCameraPreset()) }
+        btn("Sync Scenery & Minimap Now") { toast(com.example.mlbbresearch.game.SceneryMap.syncNow(GameStateTracker.state)) }
+        btn("Start / Stop Practice Mode Scenery Roam") { toast(com.example.mlbbresearch.game.SceneryMap.toggleRoam()) }
+        upd {
+            setupCamBtn.text = "Camera Height: ${com.example.mlbbresearch.game.SceneryMap.cameraPresetLabel()}  (tap to change)"
+            setupSyncInfo.text = com.example.mlbbresearch.game.SceneryMap.syncStatus() + "\nMemorized: " + com.example.mlbbresearch.game.SceneryMap.summary()
+        }
 
         title("Presets")
         val active = text("", 13f)

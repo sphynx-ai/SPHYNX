@@ -108,7 +108,7 @@ object HeroPlaybook {
         if (ult != UltRule.DEFENSIVE) add(ultS)
         if (!keepEscape) add(escape)
         for (s in HeroKit.slots(h)) if (s !in order && !(keepEscape && s == escape?.slot) && !(ult == UltRule.DEFENSIVE && s == "ult")) order.add(s)
-        val combo = (order + "a").joinToString(" > ")
+        val combo = ComboBook.text(h).first
         val engage = maxOf(base.engageRange, (opener?.range ?: 0f) * 1.05f).coerceAtMost(0.7f)
 
         val spike = meta?.powerSpike?.takeIf { it.isNotBlank() } ?: when {
