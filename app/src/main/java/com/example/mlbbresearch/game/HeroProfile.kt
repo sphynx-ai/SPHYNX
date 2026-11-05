@@ -15,8 +15,6 @@ enum class UltRule {
     BUFF         // self-buff while fighting at close range
 }
 
-// How the tactical engine plays a hero. Ranges are in screen-height units.
-// Cooldowns are rough estimates; the app also tracks when it last used each skill.
 class HeroProfile(
     val name: String,
     val role: Role,
@@ -24,12 +22,12 @@ class HeroProfile(
     val attackRange: Float,
     val engageRange: Float,
     val retreatHp: Float,
-    val combo: List<String>,          // skill order when fighting
-    val waveClearSkill: String?,      // skill used on a minion wave
-    val escapeSkill: String?,         // skill used to run away
+    val combo: List<String>,
+    val waveClearSkill: String?,
+    val escapeSkill: String?,
     val ult: UltRule,
     val cooldownSec: Map<String, Float>,
-    val ranged: Boolean = false       // attacks from a distance (can poke heroes and keep away)
+    val ranged: Boolean = false
 )
 
 object HeroDb {
@@ -37,26 +35,31 @@ object HeroDb {
     private val roles: Map<String, Role> = buildMap {
         fun add(r: Role, vararg names: String) = names.forEach { put(it, r) }
         add(Role.TANK, "Tigreal", "Franco", "Akai", "Johnson", "Grock", "Hylos", "Uranus", "Belerick", "Khufra",
-            "Atlas", "Baxia", "Lolita", "Minotaur", "Gatotkaca", "Barats", "Edith", "Fredrinn", "Gloo")
+            "Atlas", "Baxia", "Lolita", "Minotaur", "Gatotkaca", "Barats", "Edith", "Fredrinn", "Gloo", "Marcel")
         add(Role.FIGHTER, "Thamuz", "Balmond", "Alucard", "Chou", "Freya", "Zilong", "Sun", "Martis", "Paquito",
             "Yu Zhong", "Terizla", "X.Borg", "Dyrroth", "Badang", "Aldous", "Leomord", "Lapu-Lapu", "Masha",
-            "Silvanna", "Khaleed", "Arlott", "Yin", "Cici", "Ruby", "Argus", "Jawhead", "Hilda", "Guinevere", "Aulus")
+            "Silvanna", "Khaleed", "Arlott", "Yin", "Cici", "Ruby", "Argus", "Jawhead", "Hilda", "Guinevere", "Aulus",
+            "Alpha", "Bane", "Julian", "Lukas", "Minsitthar", "Phoveus", "Roger", "Sora")
         add(Role.ASSASSIN, "Saber", "Karina", "Fanny", "Hayabusa", "Natalia", "Lancelot", "Gusion", "Helcurt",
-            "Ling", "Benedetta", "Aamon", "Joy", "Nolan", "Hanzo", "Yi Sun-shin", "Selena", "Suyou")
+            "Ling", "Benedetta", "Aamon", "Joy", "Nolan", "Hanzo", "Yi Sun-shin", "Selena", "Suyou", "Hirara")
         add(Role.MAGE, "Eudora", "Alice", "Nana", "Kagura", "Cyclops", "Aurora", "Vale", "Lunox", "Harley",
             "Odette", "Zhask", "Pharsa", "Kadita", "Cecilion", "Luo Yi", "Yve", "Valir", "Chang'e", "Xavier",
-            "Novaria", "Lylia", "Vexana", "Zhuxin", "Esmeralda", "Gord")
+            "Novaria", "Lylia", "Vexana", "Zhuxin", "Esmeralda", "Gord", "Harith", "Valentina", "Zetian")
         add(Role.MARKSMAN, "Layla", "Miya", "Bruno", "Clint", "Granger", "Moskov", "Beatrix", "Brody", "Claude",
-            "Wanwan", "Karrie", "Irithel", "Lesley", "Hanabi", "Melissa", "Natan", "Ixia", "Popol and Kupa")
+            "Wanwan", "Karrie", "Irithel", "Lesley", "Hanabi", "Melissa", "Natan", "Ixia", "Popol and Kupa", "Kimmy", "Obsidia")
         add(Role.SUPPORT, "Rafaela", "Estes", "Angela", "Diggie", "Floryn", "Mathilda", "Kaja", "Faramis",
-            "Carmilla", "Chip")
+            "Carmilla", "Chip", "Kalea")
     }
 
-    private val magicOverride = setOf("Karina", "Gusion", "Selena", "Natan", "Esmeralda")
+    private val magicOverride = setOf(
+        "Karina", "Gusion", "Selena", "Natan", "Esmeralda",
+        "Aamon", "Joy", "Julian", "Silvanna", "Guinevere", "Phoveus", "Kimmy",
+        // Magic-damage Tanks:
+        "Uranus", "Belerick", "Hylos", "Gloo", "Atlas", "Johnson", "Gatotkaca", "Baxia", "Edith"
+    )
 
-    // Heroes that heal or sustain a lot (anti-heal items help against them)
     val sustain = setOf("Estes", "Rafaela", "Angela", "Floryn", "Alucard", "Uranus", "Esmeralda", "Ruby",
-        "Yu Zhong", "Thamuz", "Lapu-Lapu")
+        "Yu Zhong", "Thamuz", "Lapu-Lapu", "Julian", "Alice", "Fredrinn", "Freya", "Suyou")
 
     val allNames: List<String> get() = roles.keys.sorted()
 
@@ -64,7 +67,6 @@ object HeroDb {
 
     private val byNorm = roles.keys.associateBy { norm(it) }
 
-    // Turns whatever Gemma wrote ("thamuz", "Thamus", "X Borg") into a real hero name, or null
     fun match(raw: String?): String? {
         if (raw.isNullOrBlank()) return null
         val n = norm(raw)
@@ -80,18 +82,43 @@ object HeroDb {
         return if (bestD <= allowed) best else null
     }
 
-    // The skill that dashes / leaps / blinks, used to chase and to escape. Common picks below
-    // (check them); others use a role default; you can set it per hero on the Player page.
+    // Complete dash / mobility table for all 131 heroes in HeroDb (v37.07)
     private val dashTable = mapOf(
-        "Thamuz" to "s2", "Saber" to "s2", "Gusion" to "s2", "Lancelot" to "s1", "Alucard" to "s1",
-        "Chou" to "s2", "Zilong" to "s2", "Hayabusa" to "s2", "Fanny" to "s1", "Ling" to "s1",
-        "Karina" to "ult", "Natalia" to "s1", "Balmond" to "s1", "Freya" to "s1", "Tigreal" to "s2",
-        "Akai" to "s1", "Brody" to "s2", "Granger" to "s2", "Lesley" to "s1", "Clint" to "s2",
-        "Miya" to "ult", "Benedetta" to "s2", "Paquito" to "s1", "Aldous" to "ult", "Martis" to "s2",
-        "Ruby" to "s2", "Yu Zhong" to "s2", "Khufra" to "s1", "Franco" to "none", "Layla" to "none",
-        "Eudora" to "none", "Nana" to "none", "Vexana" to "none", "Badang" to "none", "Sun" to "none",
-        "Masha" to "s2", "Kagura" to "s2", "Harley" to "s2", "Wanwan" to "s1", "Beatrix" to "none",
-        "Fredrinn" to "s1", "Claude" to "s1", "Minotaur" to "s1", "Mathilda" to "ult", "Lylia" to "ult"
+        // Tanks
+        "Tigreal" to "s2", "Franco" to "none", "Akai" to "s1", "Johnson" to "ult", "Grock" to "ult",
+        "Hylos" to "none", "Uranus" to "s2", "Belerick" to "none", "Khufra" to "s1", "Atlas" to "s2",
+        "Baxia" to "s1", "Lolita" to "s1", "Minotaur" to "s1", "Gatotkaca" to "ult", "Barats" to "none",
+        "Edith" to "s2", "Fredrinn" to "s2", "Gloo" to "s2", "Marcel" to "s2",
+        // Fighters
+        "Thamuz" to "s2", "Balmond" to "s1", "Alucard" to "s1", "Chou" to "s2", "Freya" to "s1",
+        "Zilong" to "s2", "Sun" to "s2", "Martis" to "s2", "Paquito" to "s2", "Yu Zhong" to "s3",
+        "Terizla" to "ult", "X.Borg" to "ult", "Dyrroth" to "s2", "Badang" to "s2", "Aldous" to "ult",
+        "Leomord" to "s2", "Lapu-Lapu" to "s2", "Masha" to "ult", "Silvanna" to "ult", "Khaleed" to "s1",
+        "Arlott" to "s2", "Yin" to "s2", "Cici" to "s2", "Ruby" to "s2", "Argus" to "s1",
+        "Jawhead" to "ult", "Hilda" to "s1", "Guinevere" to "s2", "Aulus" to "s1", "Alpha" to "ult",
+        "Bane" to "none", "Julian" to "s2", "Lukas" to "s2", "Minsitthar" to "s1", "Phoveus" to "ult",
+        "Roger" to "ult", "Sora" to "s1",
+        // Assassins
+        "Saber" to "s2", "Karina" to "ult", "Fanny" to "s2", "Hayabusa" to "s2", "Natalia" to "s1",
+        "Lancelot" to "s1", "Gusion" to "s2", "Helcurt" to "s1", "Ling" to "s2", "Benedetta" to "s2",
+        "Aamon" to "none", "Joy" to "s2", "Nolan" to "s2", "Hanzo" to "s2", "Yi Sun-shin" to "s1",
+        "Selena" to "s2", "Suyou" to "s1", "Hirara" to "s1",
+        // Mages
+        "Eudora" to "none", "Alice" to "s1", "Nana" to "none", "Kagura" to "s2", "Cyclops" to "none",
+        "Aurora" to "none", "Vale" to "none", "Lunox" to "ult", "Harley" to "s2", "Odette" to "ult",
+        "Zhask" to "none", "Pharsa" to "s3", "Kadita" to "s1", "Cecilion" to "none", "Luo Yi" to "none",
+        "Yve" to "none", "Valir" to "none", "Chang'e" to "none", "Xavier" to "none", "Novaria" to "s2",
+        "Lylia" to "ult", "Vexana" to "none", "Zhuxin" to "ult", "Esmeralda" to "ult", "Gord" to "none",
+        "Harith" to "s2", "Valentina" to "s2", "Zetian" to "none",
+        // Marksmen
+        "Layla" to "none", "Miya" to "ult", "Bruno" to "s2", "Clint" to "s2", "Granger" to "s2",
+        "Moskov" to "s1", "Beatrix" to "s2", "Brody" to "s2", "Claude" to "s2", "Wanwan" to "none",
+        "Karrie" to "s2", "Irithel" to "ult", "Lesley" to "s2", "Hanabi" to "none", "Melissa" to "s1",
+        "Natan" to "ult", "Ixia" to "none", "Popol and Kupa" to "none", "Kimmy" to "s2", "Obsidia" to "s2",
+        // Supports
+        "Rafaela" to "none", "Estes" to "none", "Angela" to "none", "Diggie" to "none", "Floryn" to "none",
+        "Mathilda" to "s2", "Kaja" to "s2", "Faramis" to "s1", "Carmilla" to "none", "Chip" to "s2",
+        "Kalea" to "s2"
     )
 
     fun dashSlot(hero: String?): String? {
@@ -113,8 +140,24 @@ object HeroDb {
 
     fun role(name: String?): Role = name?.let { roles[it] } ?: Role.UNKNOWN
 
+    fun wikiDamage(name: String?): String? = name?.let { Cfg.raw("herodmg_" + it.lowercase().filter { c -> c.isLetterOrDigit() }) }
+    fun damageText(name: String?): String {
+        val w = wikiDamage(name)?.lowercase()
+        return when {
+            w != null && "physical" in w && "magic" in w -> "Physical + Magic (wiki)"
+            w != null && "magic" in w -> "Magic (wiki)"
+            w != null && "physical" in w -> "Physical (wiki)"
+            else -> (if (damage(name) == Damage.MAGIC) "Magic" else "Physical") + " (by role - read from the wiki when the Library learns it)"
+        }
+    }
+
     fun damage(name: String?): Damage {
         if (name == null) return Damage.PHYSICAL
+        wikiDamage(name)?.lowercase()?.let { w ->
+            val p = w.indexOf("physical"); val m = w.indexOf("magic")
+            if (p >= 0 && (m < 0 || p < m)) return Damage.PHYSICAL
+            if (m >= 0) return Damage.MAGIC
+        }
         if (name in magicOverride) return Damage.MAGIC
         return when (role(name)) {
             Role.MAGE, Role.SUPPORT -> Damage.MAGIC
@@ -122,7 +165,6 @@ object HeroDb {
         }
     }
 
-    // Safe, well-known picks per role, used when the AI's own suggestion is not a real hero
     val fallbackPicks: Map<Role, List<String>> = mapOf(
         Role.TANK to listOf("Tigreal", "Franco", "Akai"),
         Role.FIGHTER to listOf("Thamuz", "Balmond", "Freya"),
@@ -134,55 +176,114 @@ object HeroDb {
 
     private val ultOverride = mapOf(
         "Thamuz" to UltRule.BUFF,
+        "Alucard" to UltRule.BUFF,
+        "Freya" to UltRule.BUFF,
+        "Zilong" to UltRule.BUFF,
+        "Sun" to UltRule.BUFF,
+        "Argus" to UltRule.DEFENSIVE,
+        "Aulus" to UltRule.ENGAGE,
+        "Leomord" to UltRule.BUFF,
         "Balmond" to UltRule.EXECUTE,
+        "Dyrroth" to UltRule.EXECUTE,
+        "Martis" to UltRule.EXECUTE,
         "Tigreal" to UltRule.TEAMFIGHT,
+        "Atlas" to UltRule.TEAMFIGHT,
+        "Khufra" to UltRule.TEAMFIGHT,
+        "Minotaur" to UltRule.TEAMFIGHT,
+        "Gatotkaca" to UltRule.TEAMFIGHT,
+        "Belerick" to UltRule.TEAMFIGHT,
+        "Carmilla" to UltRule.TEAMFIGHT,
         "Estes" to UltRule.DEFENSIVE,
         "Rafaela" to UltRule.DEFENSIVE,
         "Angela" to UltRule.DEFENSIVE,
-        "Floryn" to UltRule.DEFENSIVE
+        "Floryn" to UltRule.DEFENSIVE,
+        "Diggie" to UltRule.DEFENSIVE,
+        "Faramis" to UltRule.DEFENSIVE,
+        "Lylia" to UltRule.DEFENSIVE,
+        "Miya" to UltRule.BUFF,
+        "Karrie" to UltRule.BUFF,
+        "Irithel" to UltRule.BUFF,
+        "Claude" to UltRule.ENGAGE,
+        "Natan" to UltRule.ENGAGE,
+        "Popol and Kupa" to UltRule.BUFF,
+        // Complex / Transformation / Multi-phase heroes:
+        "Julian" to UltRule.ENGAGE,
+        "Gusion" to UltRule.ENGAGE,
+        "Suyou" to UltRule.ENGAGE,
+        "Sora" to UltRule.ENGAGE,
+        "Ling" to UltRule.ENGAGE,
+        "Fanny" to UltRule.ENGAGE,
+        "Selena" to UltRule.ENGAGE,
+        "Roger" to UltRule.ENGAGE,
+        "Lapu-Lapu" to UltRule.ENGAGE,
+        "Edith" to UltRule.ENGAGE,
+        "Yu Zhong" to UltRule.ENGAGE,
+        "Lukas" to UltRule.ENGAGE,
+        "Yin" to UltRule.ENGAGE,
+        "Hanzo" to UltRule.ENGAGE,
+        "Kagura" to UltRule.ENGAGE,
+        "Lunox" to UltRule.ENGAGE,
+        "Chou" to UltRule.ENGAGE,
+        "Paquito" to UltRule.ENGAGE,
+        "Hayabusa" to UltRule.ENGAGE,
+        "Lancelot" to UltRule.ENGAGE,
+        "Benedetta" to UltRule.ENGAGE,
+        "Joy" to UltRule.ENGAGE,
+        "Nolan" to UltRule.ENGAGE,
+        "Harith" to UltRule.BUFF
     )
 
-    // the hero's profile, played the way its skills work (HeroPlaybook) when they are known
     fun profile(hero: String?): HeroProfile = HeroPlaybook.adapt(baseProfile(hero), ultFixed = hero != null && hero in ultOverride)
 
-    // from the role alone (also the starting point of the playbook)
     fun baseProfile(hero: String?): HeroProfile {
         val name = hero ?: "Unknown"
         val role = role(hero)
         val dmg = damage(hero)
-        val cds = mapOf("s1" to 6f, "s2" to 8f, "ult" to 35f, "spell" to 100f, "recall" to 0f, "regen" to 40f)
+        val cds = mapOf("s1" to 6f, "s2" to 8f, "s3" to 10f, "ult" to 35f, "spell" to 100f, "recall" to 0f, "regen" to 40f)
         val base = when (role) {
-            Role.TANK -> HeroProfile(name, role, dmg, 0.16f, 0.45f, 0.22f, listOf("s1", "s2", "ult"), "s1", null, UltRule.TEAMFIGHT, cds)
-            Role.FIGHTER -> HeroProfile(name, role, dmg, 0.16f, 0.42f, 0.28f, listOf("s1", "s2", "ult"), "s2", null, UltRule.ENGAGE, cds)
-            Role.ASSASSIN -> HeroProfile(name, role, dmg, 0.16f, 0.40f, 0.35f, listOf("s1", "s2", "ult"), "s1", "s2", UltRule.EXECUTE, cds)
-            Role.MAGE -> HeroProfile(name, role, dmg, 0.36f, 0.45f, 0.40f, listOf("s1", "s2", "ult"), "s1", null, UltRule.EXECUTE, cds)
-            Role.MARKSMAN -> HeroProfile(name, role, dmg, 0.40f, 0.45f, 0.40f, listOf("s1", "s2", "ult"), "s1", null, UltRule.EXECUTE, cds)
-            Role.SUPPORT -> HeroProfile(name, role, dmg, 0.32f, 0.40f, 0.35f, listOf("s1", "s2", "ult"), null, null, UltRule.TEAMFIGHT, cds)
-            Role.UNKNOWN -> HeroProfile(name, role, dmg, 0.20f, 0.40f, 0.30f, listOf("s1", "s2", "ult"), "s1", null, UltRule.ENGAGE, cds)
+            Role.TANK -> HeroProfile(name, role, dmg, 0.16f, 0.45f, 0.22f, HeroKit.slots(hero), "s1", dashSlot(hero), UltRule.TEAMFIGHT, cds)
+            Role.FIGHTER -> HeroProfile(name, role, dmg, 0.16f, 0.42f, 0.28f, HeroKit.slots(hero), "s2", dashSlot(hero), UltRule.ENGAGE, cds)
+            Role.ASSASSIN -> HeroProfile(name, role, dmg, 0.16f, 0.42f, 0.35f, HeroKit.slots(hero), "s1", dashSlot(hero), UltRule.EXECUTE, cds)
+            Role.MAGE -> HeroProfile(name, role, dmg, 0.36f, 0.45f, 0.40f, HeroKit.slots(hero), "s1", dashSlot(hero), UltRule.EXECUTE, cds)
+            Role.MARKSMAN -> HeroProfile(name, role, dmg, 0.40f, 0.45f, 0.40f, HeroKit.slots(hero), "s1", dashSlot(hero), UltRule.EXECUTE, cds)
+            Role.SUPPORT -> HeroProfile(name, role, dmg, 0.32f, 0.40f, 0.35f, HeroKit.slots(hero), "s1", dashSlot(hero), UltRule.TEAMFIGHT, cds)
+            Role.UNKNOWN -> HeroProfile(name, role, dmg, 0.20f, 0.40f, 0.30f, HeroKit.slots(hero), "s1", dashSlot(hero), UltRule.ENGAGE, cds)
         }
-        // melee (close range) or ranged decides the attack range and how heroes are fought
         val ranged = isRanged(hero)
         val range = when {
-            ranged && base.attackRange < 0.3f -> 0.32f       // a ranged hero of a melee role
-            !ranged && base.attackRange > 0.2f -> 0.16f      // a melee hero of a ranged role
+            ranged && base.attackRange < 0.3f -> 0.34f
+            !ranged && base.attackRange > 0.2f -> 0.16f
             else -> base.attackRange
         }
         return HeroProfile(base.name, base.role, base.damage, range, maxOf(base.engageRange, range * 1.1f), base.retreatHp,
             base.combo, base.waveClearSkill, base.escapeSkill, ultOverride[hero] ?: base.ult, base.cooldownSec, ranged)
     }
 
-    // Ranged = marksmen, mages and these; everyone else fights up close (melee).
-    private val rangedExtra = setOf("Estes", "Rafaela", "Angela", "Floryn", "Faramis", "Diggie", "Chip", "Yi Sun-shin", "Kimmy", "Natan")
-    private val meleeExtra = setOf<String>()
+    // Basic-attack reliant heroes (Fighters, Marksmen, and Basic-Attack Mages/Tanks) that need continuous basic attack holds (v37.09)
+    val basicAttackReliant = setOf(
+        "Zilong", "Argus", "Thamuz", "Layla", "Miya", "Freya", "Sun", "Masha", "Aulus", "Aldous",
+        "Leomord", "Roger", "Badang", "Minsitthar", "Alucard", "Bane", "Julian", "Silvanna", "Cici",
+        "Bruno", "Clint", "Moskov", "Beatrix", "Brody", "Claude", "Wanwan", "Karrie", "Irithel",
+        "Lesley", "Hanabi", "Melissa", "Natan", "Ixia", "Popol and Kupa", "Kimmy", "Obsidia",
+        "Zhask", "Edith", "Harith", "Chang'e", "Belerick", "Yi Sun-shin", "Natalia", "Helcurt", "Karina"
+    )
 
+    fun isBasicAttackReliant(hero: String?): Boolean =
+        hero != null && (hero in basicAttackReliant || role(hero) == Role.MARKSMAN)
+
+    private val rangedExtra = setOf("Estes", "Rafaela", "Angela", "Floryn", "Faramis", "Diggie", "Chip", "Yi Sun-shin", "Kimmy", "Natan", "Cici", "Bane")
+    private val meleeExtra = setOf("Esmeralda", "Alice", "Guinevere", "Silvanna", "Kadita", "Karina", "Gusion", "Joy", "Aamon", "Julian", "Kaja", "Kalea")
+
+    // Dynamic ranged/melee check: adapts in real time when Roger, Selena, or Edith transforms!
     fun isRanged(hero: String?): Boolean {
         if (hero != null) when (Cfg.heroRange(hero)) { "ranged" -> return true; "melee" -> return false }
+        HeroKit.rangedNow(hero)?.let { return it }
         if (hero in rangedExtra) return true
         if (hero in meleeExtra) return false
         return role(hero) == Role.MARKSMAN || role(hero) == Role.MAGE
     }
 
-    fun rangeSource(hero: String?): String = if (hero != null && Cfg.heroRange(hero) != "auto") "your choice" else "auto, from the role"
+    fun rangeSource(hero: String?): String = if (hero != null && Cfg.heroRange(hero) != "auto") "your choice" else "auto, from the role / form"
 
     private fun distance(a: String, b: String): Int {
         val dp = IntArray(b.length + 1) { it }
@@ -199,8 +300,6 @@ object HeroDb {
     }
 }
 
-// Primary builds per role. Editable on the Build page. Every item is in the wiki's current list
-// (ItemDb); a typed item that is not is shown as outdated and left out (names are corrected).
 object BuildBook {
     val defaults: Map<Role, String> = mapOf(
         Role.FIGHTER to "Warrior Boots, War Axe, Hunter Strike, Queen's Wings, Brute Force Breastplate, Immortality",
@@ -212,14 +311,47 @@ object BuildBook {
         Role.UNKNOWN to "Warrior Boots, War Axe, Dominance Ice, Radiant Armor, Brute Force Breastplate, Immortality"
     )
 
-    fun primary(role: Role): List<String> =
-        Cfg.roleBuild(role.name, defaults[role] ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    fun primary(role: Role): List<String> {
+        val raw = Cfg.roleBuild(role.name, defaults[role] ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            .mapNotNull { ItemDb.canonical(it) }.filter { ItemClass.isAdvanced(it) || it in ItemDb.retributions }
+        return if (role == Role.TANK) raw.filter { ItemClass.isDefensiveOrBoots(it) }.ifEmpty {
+            defaults[Role.TANK]!!.split(",").map { it.trim() }
+        } else raw
+    }
+
+    fun forHero(hero: String?, candidates: List<String>? = null): List<String> {
+        val role = HeroDb.role(hero)
+        val dmg = HeroDb.damage(hero)
+        val base = (candidates?.takeIf { it.isNotEmpty() } ?: primary(role))
             .mapNotNull { ItemDb.canonical(it) }
+            .filter { ItemClass.isAdvanced(it) || it in ItemDb.retributions }
+        val filtered = if (role == Role.TANK) {
+            base.filter { ItemClass.fitsTank(it, dmg) }
+        } else {
+            base.filter { ItemClass.fitsStrict(it, dmg) }
+        }.distinct()
+        if (filtered.size >= 6) return filtered.take(6)
+        val fallbackPool = if (role == Role.TANK) {
+            listOf("Tough Boots", "Dominance Ice", "Antique Cuirass", "Guardian Helmet", "Radiant Armor", "Immortality", "Thunder Belt", "Oracle", "Cursed Helmet", "Blade Armor")
+        } else if (dmg == Damage.MAGIC) {
+            listOf("Arcane Boots", "Enchanted Talisman", "Lightning Truncheon", "Holy Crystal", "Divine Glaive", "Blood Wings", "Glowing Wand", "Genius Wand")
+        } else {
+            listOf("Warrior Boots", "War Axe", "Hunter Strike", "Blade of Despair", "Malefic Roar", "Immortality", "Queen's Wings", "Brute Force Breastplate")
+        }
+        val out = ArrayList(filtered)
+        for (fb in fallbackPool) {
+            if (out.size >= 6) break
+            if (fb in out) continue
+            if (fb.contains("Boots") && out.any { it.contains("Boots") || it.contains("Shoes") }) continue
+            out.add(fb)
+        }
+        return out.take(6)
+    }
+
     fun outdated(role: Role): List<String> =
         ItemDb.outdated(Cfg.roleBuild(role.name, defaults[role] ?: "").split(",").map { it.trim() })
 }
 
-// Secondary (counter) items picked from the enemy team's make-up
 object CounterRules {
     class Pick(val item: String, val reason: String)
 
@@ -240,7 +372,6 @@ object CounterRules {
             out.add(Pick("Antique Cuirass", "$physical physical-damage enemies"))
             out.add(Pick("Dominance Ice", "armour and slows their attack speed"))
         }
-        // anti-heal (only items in the current list; magic damage has no listed anti-heal item)
         if (healers.isNotEmpty()) {
             val anti = when {
                 myRole == Role.TANK || myRole == Role.SUPPORT -> "Dominance Ice"
@@ -256,6 +387,6 @@ object CounterRules {
             out.add(Pick("Immortality", "$burst assassins: second life"))
             out.add(Pick("Winter Crown", "freeze to survive burst (if it fits your build)"))
         }
-        return out.filter { ItemDb.isCurrent(it.item) }.distinctBy { it.item }
+        return out.filter { ItemDb.isCurrent(it.item) && ItemClass.isAdvanced(it.item) }.distinctBy { it.item }
     }
 }

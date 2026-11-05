@@ -37,6 +37,29 @@ import kotlin.math.abs
 // Colours avoid red/green/blue so the AI's own vision never mistakes them for HP bars.
 class OverlayManager(private val ctx: Context) {
 
+    // CLEAN PICTURES (v36.53): the screen picture collector asks for a moment with nothing of the
+    // app's on the game (boxes, touch dots, floating icon / window are screen-recorded too)
+    companion object {
+        @Volatile var cleanFrom = 0L; private set
+        @Volatile var cleanUntil = 0L; private set
+        @Volatile private var current: OverlayManager? = null
+        private val main = Handler(Looper.getMainLooper())
+        fun cleanNow(): Boolean = System.currentTimeMillis() in cleanFrom..cleanUntil
+        fun requestClean(from: Long, until: Long) {
+            cleanFrom = from; cleanUntil = until
+            val now = System.currentTimeMillis()
+            main.postDelayed({ current?.applyClean() }, (from - now).coerceAtLeast(0L))
+            main.postDelayed({ current?.applyClean() }, (until - now).coerceAtLeast(0L) + 20L)
+        }
+    }
+    init { current = this }
+
+    private fun applyClean() {
+        val a = if (cleanNow()) 0f else 1f
+        icon?.alpha = a; panel?.alpha = a
+        pointer?.invalidate()
+    }
+
     private val wm = ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val ui = Handler(Looper.getMainLooper())
     private val density = ctx.resources.displayMetrics.density
@@ -48,10 +71,13 @@ class OverlayManager(private val ctx: Context) {
     private var badge: TextView? = null
     private var iconLp: WindowManager.LayoutParams? = null
     private var panel: LinearLayout? = null
-    private var panelText: TextView? = null
+    // the status lines (v36.87): one single-line row per line - rows are never removed while the window
+    // is open and a row changes only when its text does, so nothing jumps and scrolling stays smooth
+    private var panelLines: LinearLayout? = null
     private var panelLp: WindowManager.LayoutParams? = null
     private var power: TextView? = null
     private var panelPower: TextView? = null
+    private var comboBtn: TextView? = null
     private var calib: FrameLayout? = null
 
     @Volatile var markersOn = false
@@ -106,7 +132,7 @@ class OverlayManager(private val ctx: Context) {
         for (v in listOf<View?>(icon, panel, pointer)) {
             if (v != null) try { wm.removeView(v) } catch (e: Exception) { }
         }
-        icon = null; panel = null; pointer = null; badge = null; panelText = null; power = null; panelPower = null
+        icon = null; panel = null; pointer = null; badge = null; panelLines = null; power = null; panelPower = null; comboBtn = null
         ScreenMasks.overlay = emptyList()
     }
 
@@ -118,6 +144,7 @@ class OverlayManager(private val ctx: Context) {
         when (a) {
             is Act.Tap -> pv.addTouch(a.x * w, a.y * h, a.x * w, a.y * h, false)
             is Act.Drag -> pv.addTouch(a.x1 * w, a.y1 * h, a.x2 * w, a.y2 * h, true)
+            is Act.SkillAim -> pv.addTouch(a.x1 * w, a.y1 * h, a.x2 * w, a.y2 * h, true)
             is Act.Joy -> pv.addTouch(a.cx * w, a.cy * h, a.x * w, a.y * h, true)
             Act.JoyRelease -> {}
         }
@@ -218,7 +245,7 @@ class OverlayManager(private val ctx: Context) {
         val header = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         header.addView(TextView(ctx).apply {
             text = "MLBB AI  (drag me)"
-            setTextColor(Color.WHITE); textSize = 13f; setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE); textSize = 11.5f; setTypeface(null, Typeface.BOLD)
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         header.addView(TextView(ctx).apply {
             text = "—"; textSize = 16f; setTextColor(Color.WHITE)
@@ -226,26 +253,60 @@ class OverlayManager(private val ctx: Context) {
             setOnClickListener { collapse() }
         })
         pn.addView(header)
-        val body = TextView(ctx).apply { setTextColor(Color.WHITE); textSize = 11.5f }
-        pn.addView(ScrollView(ctx).apply { addView(body) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        val body = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        pn.addView(ScrollView(ctx).apply {
+            isSmoothScrollingEnabled = true; isVerticalScrollBarEnabled = true
+            overScrollMode = View.OVER_SCROLL_NEVER; isFillViewport = true
+            addView(body, android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         val bottom = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         bottom.addView(TextView(ctx).apply {
             text = "■ STOP ALL"
-            setTextColor(Color.WHITE); textSize = 13f; setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE); textSize = 10.5f; setTypeface(null, Typeface.BOLD)
             gravity = Gravity.CENTER
-            setPadding(dp(10), dp(6), dp(10), dp(6))
-            background = GradientDrawable().apply { setColor(Color.parseColor("#C62828")); cornerRadius = dp(8).toFloat() }
+            setPadding(dp(6), dp(3), dp(6), dp(3))
+            background = GradientDrawable().apply { setColor(Color.parseColor("#C62828")); cornerRadius = dp(6).toFloat() }
             setOnClickListener { AiRuntime.emergencyStop("status window") }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        val ppw = TextView(ctx).apply {
-            setTextColor(Color.WHITE); textSize = 13f; setTypeface(null, Typeface.BOLD)
+        // TEST COMBO: your hero's combo once, in bursts (disabled when Player is on - v37.01)
+        val cBtn = TextView(ctx).apply {
+            text = "⚔ COMBO"
+            setTextColor(Color.WHITE); textSize = 10.5f; setTypeface(null, Typeface.BOLD)
             gravity = Gravity.CENTER
-            setPadding(dp(10), dp(6), dp(10), dp(6))
+            setPadding(dp(6), dp(3), dp(6), dp(3))
+            background = GradientDrawable().apply { setColor(Color.parseColor("#3949AB")); cornerRadius = dp(6).toFloat() }
+            setOnClickListener {
+                if (AiRuntime.playerOn) {
+                    android.widget.Toast.makeText(ctx, "Test combo is disabled while Player is on", android.widget.Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                val msg = com.example.mlbbresearch.controller.ActionExecutor.testCombo()
+                android.widget.Toast.makeText(ctx, msg, android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+        comboBtn = cBtn
+        bottom.addView(cBtn, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(4) })
+        val roamBtn = TextView(ctx).apply {
+            text = "🗺 ROAM"
+            setTextColor(Color.WHITE); textSize = 10.5f; setTypeface(null, Typeface.BOLD)
+            gravity = Gravity.CENTER
+            setPadding(dp(6), dp(3), dp(6), dp(3))
+            background = GradientDrawable().apply { setColor(Color.parseColor("#00695C")); cornerRadius = dp(6).toFloat() }
+            setOnClickListener {
+                val msg = com.example.mlbbresearch.game.SceneryMap.toggleRoam()
+                android.widget.Toast.makeText(ctx, msg, android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+        bottom.addView(roamBtn, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(4) })
+        val ppw = TextView(ctx).apply {
+            setTextColor(Color.WHITE); textSize = 10.5f; setTypeface(null, Typeface.BOLD)
+            gravity = Gravity.CENTER
+            setPadding(dp(6), dp(3), dp(6), dp(3))
             setOnClickListener { toggleAi() }
         }
-        bottom.addView(ppw, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(6) })
+        bottom.addView(ppw, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(4) })
         val handle = TextView(ctx).apply {
-            text = "◢"; textSize = 22f; setTextColor(Color.parseColor("#9AA0A6"))
+            text = "◢"; textSize = 16f; setTextColor(Color.parseColor("#9AA0A6"))
             setPadding(dp(16), 0, 0, 0)
         }
         bottom.addView(handle)
@@ -270,7 +331,7 @@ class OverlayManager(private val ctx: Context) {
         addOverlay(pn, plp)
         addOverlay(ic, ilp)
         icon = ic; iconLp = ilp; badge = b; power = pw; panelPower = ppw
-        panel = pn; panelLp = plp; panelText = body
+        panel = pn; panelLp = plp; panelLines = body
         refresh()
     }
 
@@ -304,6 +365,22 @@ class OverlayManager(private val ctx: Context) {
         refresh()
     }
 
+    // fill the rows: one per line, single line each (… when too long); extra rows kept blank so the
+    // height never shrinks under your finger; a row is touched only when its text changed
+    private fun setLines(text: String) {
+        val box = panelLines ?: return
+        val lines = text.split('\n')
+        while (box.childCount < lines.size) box.addView(TextView(box.context).apply {
+            setTextColor(Color.WHITE); textSize = 11.5f; maxLines = 1; isSingleLine = true
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        for (i in 0 until box.childCount) {
+            val tv = box.getChildAt(i) as TextView
+            val t = lines.getOrNull(i) ?: ""
+            if (tv.text.toString() != t) tv.text = t
+        }
+    }
+
     private fun collapse() {
         val i = iconLp ?: return
         val p = panelLp ?: return
@@ -326,7 +403,15 @@ class OverlayManager(private val ctx: Context) {
         panelPower?.background = GradientDrawable().apply {
             setColor(Color.parseColor(if (on) "#455A64" else "#2E7D32")); cornerRadius = dp(8).toFloat()
         }
-        if (panel?.visibility == View.VISIBLE) panelText?.text = AiRuntime.panelText()
+        // Disable Test combo button in the floating window whenever Player is on (v37.01)
+        val comboAllowed = !AiRuntime.playerOn
+        comboBtn?.isEnabled = comboAllowed
+        comboBtn?.alpha = if (comboAllowed) 1f else 0.42f
+        comboBtn?.text = if (comboAllowed) "⚔ COMBO" else "⚔ COMBO (off)"
+        comboBtn?.background = GradientDrawable().apply {
+            setColor(Color.parseColor(if (comboAllowed) "#3949AB" else "#455A64")); cornerRadius = dp(6).toFloat()
+        }
+        if (panel?.visibility == View.VISIBLE) setLines(AiRuntime.panelText())
         pointer?.invalidate()
         // tell vision where our own windows are, so it ignores them
         val (rsw, rsh) = com.example.mlbbresearch.core.ScreenGeom.size(ctx)
@@ -410,7 +495,20 @@ class OverlayManager(private val ctx: Context) {
     // A full-screen layer over MLBB: drag each yellow marker onto its button, or tap
     // Auto-detect to let the app find them. Save writes them; Cancel throws them away.
 
-    private val groups = listOf("game" to "In-game buttons", "shop" to "Shop screen", "select" to "Hero select")
+    private val groups = listOf(
+        "skills2" to "2-skill buttons",
+        "skills3" to "3-skill buttons",
+        "skills4" to "4-skill buttons",
+        "game" to "In-game HUD (joystick / attack / spell)",
+        "large" to "In-game buttons (large HUD)",
+        "shop" to "Shop screen",
+        "select" to "Hero select"
+    )
+
+    fun startCalibrationGroup(groupKey: String) {
+        val idx = groups.indexOfFirst { it.first == groupKey }.takeIf { it >= 0 } ?: 0
+        startCalibration(idx)
+    }
 
     fun startCalibration(groupIndex: Int = 0) {
         stopCalibration()
@@ -419,7 +517,7 @@ class OverlayManager(private val ctx: Context) {
         val (group, groupLabel) = groups[gi]
         val controls = Layout.defaults.filter { it.group == group }
         val pos = LinkedHashMap<String, FloatArray>()
-        for (c in controls) { val (x, y) = Layout.get(c.key); pos[c.key] = floatArrayOf(x, y) }
+        for (c in controls) { val (x, y) = Layout.point(c.key); pos[c.key] = floatArrayOf(x, y) }
 
         val root = FrameLayout(ctx)
         val view = CalibView(ctx, controls, pos)
@@ -445,12 +543,12 @@ class OverlayManager(private val ctx: Context) {
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(6) })
         barBtn("Auto-detect", "#1565C0") { autoDetect(root, view, pos, info) }
         barBtn("Next screen", "#455A64") {
-            for ((k, p) in pos) Layout.setPoint(k, p[0], p[1])
+            Layout.saveGroup(group, pos)
             startCalibration((gi + 1) % groups.size)
         }
-        barBtn("Save", "#2E7D32") {
-            for ((k, p) in pos) Layout.setPoint(k, p[0], p[1])
-            Toast.makeText(ctx, "Button positions saved", Toast.LENGTH_SHORT).show()
+        barBtn("Save $groupLabel", "#2E7D32") {
+            Layout.saveGroup(group, pos)
+            Toast.makeText(ctx, "Saved $groupLabel", Toast.LENGTH_SHORT).show()
             stopCalibration()
         }
         barBtn("Cancel", "#C62828") { stopCalibration() }
@@ -625,6 +723,7 @@ class OverlayManager(private val ctx: Context) {
             val w = rw.toFloat()
             val h = rh.toFloat()
             val now = System.currentTimeMillis()
+            if (cleanNow()) return          // a clean picture is being taken: draw nothing
             val o = screenOffset()
             c.save()
             c.translate(-o[0].toFloat(), -o[1].toFloat())
@@ -674,7 +773,7 @@ class OverlayManager(private val ctx: Context) {
             if (markersOn) {
                 boxPaint.color = Color.parseColor("#FFD600")
                 for (ctl in Layout.defaults) {
-                    val (fx, fy) = Layout.get(ctl.key)
+                    val (fx, fy) = Layout.point(ctl.key)
                     c.drawCircle(fx * w, fy * h, 16f * density, boxPaint)
                     c.drawText(ctl.label, fx * w + 18f * density, fy * h, textPaint)
                 }

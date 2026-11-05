@@ -51,7 +51,7 @@ object JungleNav {
             ?: lastSelf?.takeIf { now - lastSelfAt < 3000 } ?: run { status = "your minimap icon is not visible"; return null }
 
         skipped.entries.removeAll { it.value < now }
-        val camps = s.camps.filter { (skipped[cell(it)] ?: 0L) < now && hypot(it.x - me.first, it.y - me.second) <= maxDist }
+        val camps = s.camps.filter { !it.enemy && (skipped[cell(it)] ?: 0L) < now && hypot(it.x - me.first, it.y - me.second) <= maxDist }
         // the target camp's icon is hidden under YOUR icon when you stand on it: it is not gone
         val hidden = target?.takeIf { t ->
             hypot(t.x - me.first, t.y - me.second) < 0.09f && camps.none { hypot(it.x - t.x, it.y - t.y) < 0.05f }
@@ -71,27 +71,22 @@ object JungleNav {
         val t = keep ?: camps.minByOrNull { WallMap.distance(me, it.x to it.y) - if (it.buff) (if (opening) 0.3f else 0.15f) else 0f }!!
         if (t !== keep && t !== target) { target = t; arrivedAt = 0L; sawMonsterAt = 0L }
 
-        val d = hypot(t.x - me.first, t.y - me.second)
-        if (d < 0.09f) {
-            // At the camp (close enough that the attack button locks on to the monsters: their
-            // HP bars only show once they are hit, so attacking starts before any bar is seen).
-            // The kill is confirmed by the MONSTER DETECTOR: monsters were seen on screen and now
-            // none are left for 1.5 s. (The minimap icon is not used: your own icon covers it.)
-            // If no monster shows up after 6 s of attacking, the camp is empty: move on.
+        // Use memorized pit entrance stand-spot from SceneryMap so the hero walks into the open mouth of the monster pit
+        val stand = SceneryMap.pitStandSpot(t.x, t.y)
+        val d = minOf(hypot(t.x - me.first, t.y - me.second), hypot(stand.first - me.first, stand.second - me.second))
+        val creepInReach = s.creeps.any { s.distToSelf(it.x, it.y) <= 0.36f }
+        if (d < 0.068f || creepInReach) {
             if (arrivedAt == 0L) arrivedAt = now
             if (s.creeps.isNotEmpty() || s.boss != null) sawMonsterAt = now
-            val killed = sawMonsterAt > 0 && now - sawMonsterAt > 1500
-            // no monster here: leave fast (no standing around)
-            val giveUp = if (sawMonsterAt > 0) now - arrivedAt > 40_000 else now - arrivedAt > 6_000
-            // THINK AHEAD: while this camp dies, the next one is already chosen
+            val killed = sawMonsterAt > 0 && now - sawMonsterAt > 1200
+            val giveUp = if (sawMonsterAt > 0) now - arrivedAt > 40_000 else now - arrivedAt > 6_500
             next = camps.filter { hypot(it.x - t.x, it.y - t.y) > 0.05f }
                 .minByOrNull { WallMap.distance(t.x to t.y, it.x to it.y) }
             if (killed || giveUp) {
-                skipped[cell(t)] = now + if (t.buff) 120_000 else 70_000     // respawn time
+                skipped[cell(t)] = now + if (t.buff) 120_000 else 70_000
                 arrivedAt = 0L
                 sawMonsterAt = 0L
                 if (killed) campsKilled++
-                // go straight on to the camp planned while fighting
                 val n = next
                 target = n
                 next = null
@@ -100,18 +95,24 @@ object JungleNav {
                     return null
                 }
                 status = (if (killed) "camp killed" else "no monster here") + ", on to the next camp"
-                val (dx, dy) = WallMap.direction(me, n.x to n.y) ?: norm(n.x - me.first, n.y - me.second)
+                val nextStand = SceneryMap.pitStandSpot(n.x, n.y)
+                val (dx, dy) = WallMap.direction(me, nextStand) ?: norm(nextStand.first - me.first, nextStand.second - me.second)
                 return Triple(dx, dy, "to the next jungle ${if (n.buff) "buff" else "camp"}")
             }
             atCamp = true
             status = "killing a ${if (t.buff) "buff" else "camp"} (${(now - arrivedAt) / 1000}s" +
-                (if (sawMonsterAt > 0) ", monsters seen)" else ", looking for the monsters)")
-            return Triple(0f, 0f, "killing the camp")
+                (if (sawMonsterAt > 0) ", monsters seen)" else ", starting attack on creep)")
+            // Once inside the pit (d < 0.044f) or a creep is already on screen, stand completely still (0f, 0f) so the monster never resets!
+            if (d < 0.044f || creepInReach || sawMonsterAt > 0) {
+                return Triple(0f, 0f, "killing the camp")
+            }
+            val (stepX, stepY) = WallMap.direction(me, stand) ?: norm(stand.first - me.first, stand.second - me.second)
+            return Triple(stepX, stepY, "stepping into ${if (t.buff) "buff" else "camp"} pit")
         }
 
-        // walk around walls (path from the minimap wall map), straight if there is none yet
-        val path = WallMap.direction(me, t.x to t.y)
-        val (dx, dy) = path ?: norm(t.x - me.first, t.y - me.second)
+        // walk around walls to the pit entrance stand-spot
+        val path = WallMap.direction(me, stand)
+        val (dx, dy) = path ?: norm(stand.first - me.first, stand.second - me.second)
         status = "walking to a ${if (t.buff) "buff" else "camp"} (${(d * 100).toInt()}% of the map away" +
             (if (path != null) ", around walls)" else ")")
         return Triple(dx, dy, "to a jungle ${if (t.buff) "buff" else "camp"}")

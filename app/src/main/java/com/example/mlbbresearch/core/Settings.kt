@@ -32,9 +32,12 @@ object Cfg {
     var useGpu: Boolean get() = b("gpu", true); set(v) = put("gpu", v)
     // the small tactical language model (second slot): off until you turn it on (Model page)
     var tacticalLlmOn: Boolean get() = b("tactical_llm", false); set(v) = put("tactical_llm", v)
+    // the fight-choice network (numeric, from the tactical-network notebook) advises in fights
+    var fightNetOn: Boolean get() = b("fight_net", false); set(v) = put("fight_net", v)
 
     // ---- player ----
-    var myHero: String get() = s("my_hero", ""); set(v) = put("my_hero", v)
+    var myHero: String get() = s("my_hero", ""); set(v) = put("my_hero", v)        // the last hero you played (automatic)
+    var manualHero: String get() = s("manual_hero", ""); set(v) = put("manual_hero", v) // chosen by you: beats detection
     var showTouches: Boolean get() = b("touches", true); set(v) = put("touches", v)
     var showDetections: Boolean get() = b("show_det", true); set(v) = put("show_det", v)
     var strategyEverySec: Int get() = i("strat_sec", 8); set(v) = put("strat_sec", v)
@@ -86,7 +89,7 @@ object Cfg {
     var takeObjectives: Boolean get() = true; set(v) {}
     // Retribution on a monster when its HP is below this (%), turtle / lord and small creeps
     var retriBossPct: Int get() = i("retri_boss", 12); set(v) = put("retri_boss", v)
-    var retriCreepPct: Int get() = i("retri_creep", 35); set(v) = put("retri_creep", v)
+    var retriCreepPct: Int get() = i("retri_creep", 20); set(v) = put("retri_creep", v)
 
     // ---- match type: "standard" (pick hero, spell, emblem) or "ranked" (ban & pick) ----
     var matchMode: String get() = s("match_mode", "standard"); set(v) = put("match_mode", v)
@@ -97,6 +100,13 @@ object Cfg {
 
     // ---- online meta (Groq API) ----
     var groqKey: String get() = s("groq_key", ""); set(v) = put("groq_key", v)
+    var geminiKey: String get() = s("gemini_key", ""); set(v) = put("gemini_key", v)       // gemini_key.txt
+    var cerebrasKey: String get() = s("cerebras_key", ""); set(v) = put("cerebras_key", v) // cerebras_key.txt
+    // AUTOMATIC online requests (hero meta / skills / enemy skills / weekly patch meta / online draft):
+    // OFF by default - online questions are then asked only when you press a button
+    var autoOnline: Boolean get() = b("auto_online", false); set(v) = put("auto_online", v)
+    var kaggleUser: String get() = s("kaggle_user", ""); set(v) = put("kaggle_user", v)
+    var kaggleKey: String get() = s("kaggle_key", ""); set(v) = put("kaggle_key", v)
     // openai/gpt-oss-120b (default) and -20b search the web with Groq's browser search tool;
     // other models answer from memory only. An old saved "groq/compound" moves to the new default.
     var groqModel: String
@@ -107,6 +117,9 @@ object Cfg {
     var useOnlineMeta: Boolean get() = b("online_meta", true); set(v) = put("online_meta", v)
     var onlineAuto: Boolean get() = b("online_auto", true); set(v) = put("online_auto", v)
     var onlineDraft: Boolean get() = b("online_draft", true); set(v) = put("online_draft", v)
+    // web search costs Groq's free tier a lot (one search ~100-300K tokens; the daily limit is ~200K):
+    // only the patch meta searches by default; heroes, skills and the draft answer from the model + the saved patch
+    var heroWebSearch: Boolean get() = b("hero_web_search", false); set(v) = put("hero_web_search", v)
     var metaMaxAgeDays: Int get() = i("meta_age", 7); set(v) = put("meta_age", v)
 
     // ---- kills, towers, farming ----
@@ -192,5 +205,19 @@ object Cfg {
     fun raw(k: String): String? = prefs.getString(k, null)
     fun setRaw(k: String, v: String?) {
         if (v == null) prefs.edit().remove(k).apply() else put(k, v)
+    }
+
+    // ---- for the learned-data backup (OnlineBackup) ----
+    fun all(): Map<String, *> = prefs.all
+    fun has(k: String) = prefs.contains(k)
+    fun putAny(k: String, v: Any) = put(k, v)
+    fun putLong(k: String, v: Long) = prefs.edit().putLong(k, v).apply()
+    // the listener is kept here (SharedPreferences holds it weakly)
+    private var watcher: SharedPreferences.OnSharedPreferenceChangeListener? = null
+    fun watch(onChange: (String) -> Unit) {
+        watcher?.let { prefs.unregisterOnSharedPreferenceChangeListener(it) }
+        val w = SharedPreferences.OnSharedPreferenceChangeListener { _, k -> if (k != null) onChange(k) }
+        watcher = w
+        prefs.registerOnSharedPreferenceChangeListener(w)
     }
 }

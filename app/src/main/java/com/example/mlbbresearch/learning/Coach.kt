@@ -17,10 +17,6 @@ import kotlin.math.max
 //    until the target is that close) and which skill you use on minion waves and camps
 //  - JOYSTICK: how long you hold one direction before turning (the AI walks as steadily)
 //  - every moment you play is also saved for "play like me" (your moves mixed into the AI's)
-//
-// How it knows you are playing, without seeing your finger: the system cancels the AI's own
-// touch when you touch the screen; the camera moves a different way than the AI is steering;
-// or a skill button goes dark that the AI did not press.
 object Coach {
 
     @Volatile var lastUserAt = 0L
@@ -30,11 +26,13 @@ object Coach {
 
     fun userActive(): Boolean {
         val now = System.currentTimeMillis()
-        return now - max(lastUserAt, AccessibilityController.userTouchAt) < 1200
+        // Never pause the AI mid-combo unless a real touch cancellation occurred outside AI casts
+        if (com.example.mlbbresearch.ai.ComboRunner.running) return false
+        return now - max(lastUserAt, AccessibilityController.userTouchAt) < 900
     }
 
     // how long one joystick direction is held before turning (learned from you), ms
-    val holdMs: Long get() = (Cfg.raw("coach_hold_ms")?.toLongOrNull() ?: 900L).coerceIn(300L, 2500L)
+    val holdMs: Long get() = (Cfg.raw("coach_hold_ms")?.toLongOrNull() ?: 300L).coerceIn(300L, 2500L)
 
     // ---- your skill casts ----
     private class Cast(val slot: String, val at: Long, val vsHero: Boolean)
@@ -43,6 +41,8 @@ object Coach {
     // a skill button went dark that the AI did not press = you cast it
     @Synchronized
     fun onUserCast(slot: String, s: GameState) {
+        // While Player is on, skill buttons dimming after 0.5s-0.8s holds are from the AI's own casts
+        if (com.example.mlbbresearch.ai.AiRuntime.playerOn) return
         val now = System.currentTimeMillis()
         lastUserAt = now
         val hero = s.ownHero ?: return
@@ -82,7 +82,6 @@ object Coach {
     }
 
     // ---- your joystick ----
-    private var mismatch = 0
     private var segDirX = 0f
     private var segDirY = 0f
     private var segStart = 0L
@@ -97,14 +96,9 @@ object Coach {
         if (hero != null && chain.isNotEmpty() && now - chain.last().at > 2500) endChain(hero)
         val mx = s.hud.motionX; val my = s.hud.motionY
         val ml = hypot(mx, my)
-        // the camera moves (your hero walks) a way the AI is not steering = your thumb
-        if (!youPlay && ml > 0.5f && now - ActionExecutor.lastAiCastAt > 900) {
-            val (ax, ay) = ActionExecutor.steering()
-            val agree = (ax != 0f || ay != 0f) && (mx * ax + my * ay) / ml > 0.3f
-            mismatch = if (agree) 0 else mismatch + 1
-            if (mismatch >= 3) lastUserAt = now
-        } else mismatch = 0
-        if (!userActive() || ml <= 0.5f) { segStart = 0L; return }
+        // Do NOT infer human joystick takeover from camera motion mismatch while Player is on
+        // (dashes, knockbacks, and attack stops move the camera differently than the joystick)
+        if (!youPlay || ml <= 0.5f) { segStart = 0L; return }
         // you are walking: how long do you keep one direction before turning?
         val dx = mx / ml; val dy = my / ml
         if (segStart == 0L) { segStart = now; segDirX = dx; segDirY = dy; return }

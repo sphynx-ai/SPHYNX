@@ -20,6 +20,15 @@ object MatchLog {
         Cfg.setRaw("match_log", keep.toString())
     }
 
+    // the end scoreboard locked the hero of the match just logged (v36.90)
+    fun relabelLast(hero: String) {
+        val arr = try { JSONArray(Cfg.raw("match_log") ?: "[]") } catch (e: Exception) { return }
+        if (arr.length() == 0) return
+        val o = arr.getJSONObject(arr.length() - 1)
+        if (System.currentTimeMillis() - o.optLong("t") > 10 * 60_000) return
+        o.put("hero", hero); Cfg.setRaw("match_log", arr.toString())
+    }
+
     private class Row(val hero: String, val lane: String, val k: Int, val d: Int, val a: Int, val lvl: Int, val sec: Int, val ai: Boolean, val win: Boolean?)
 
     private fun rows(): List<Row> {

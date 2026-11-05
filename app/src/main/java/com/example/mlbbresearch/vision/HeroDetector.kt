@@ -18,7 +18,9 @@ data class Seen(
     val barTop: Float,
     val barRight: Float,
     val barBottom: Float,
-    val species: String = ""  // NEUTRAL only: JungleDb id (lord, turtle, molten_fiend, thunder_fenrir, ...)
+    val species: String = "",  // NEUTRAL only: JungleDb id (lord, turtle, molten_fiend, thunder_fenrir, ...)
+    val extra: Float = 0f      // heroes: the light part right after the HP colour = shield / armour /
+                               // stored energy, as a share of the whole bar (HeroKit bar models)
 )
 
 // Finds HP bars by colour: green = you, blue = allies, red = enemies, orange/yellow = monsters.
@@ -32,6 +34,22 @@ object HeroDetector {
     private const val GREEN = 3
     private const val NEUTRAL = 4
 
+    // on while the hero is Masha (HeroKit): her bar is dark green
+    @Volatile var darkGreenSelf = false
+
+    // MASHA's bar (v36.56, from your screenshots): three HP layers on top of each other, each its own
+    // green - 3 = dark (18,94,4), 2 = medium (74,139,45), 1 = bright (131,242,23; the last layer, no
+    // "x" label). The top layer drains first and shows the layer under it. 0 = not a Masha green.
+    fun mashaLayer(r: Int, g: Int, b: Int): Int = when {
+        g >= 160 && r <= 145 && b <= 125 && g - max(r, b) >= 55 -> 1
+        r <= 45 && g in 60..150 && b <= 40 && g - max(r, b) >= 50 -> 3
+        r in 45..110 && g in 100..170 && b in 20..75 && g - r >= 45 && g - b >= 60 -> 2
+        else -> 0
+    }
+    // on while the hero's bar shows a shield / armour / stored energy after the HP (Esmeralda,
+    // X.Borg, Fredrinn: HeroKit): wider dividers are stepped over on your own bar
+    @Volatile var specialBar = false
+
     // off = monsters are not looked for (set by Cfg.detectMonsters)
     @Volatile var neutralOn = true
 
@@ -44,6 +62,8 @@ object HeroDetector {
         if (r >= 170 && g <= 95 && b <= 95 && r - max(g, b) >= 95) return RED
         if (b >= 165 && r <= 110 && g <= 205 && b - r >= 85) return BLUE
         if (g >= 160 && r <= 145 && b <= 125 && g - max(r, b) >= 55) return GREEN
+        // Masha's own bar is DARK green (17,93,5 on your screenshot): only while she is played
+        if (darkGreenSelf && mashaLayer(r, g, b) > 0) return GREEN
         if (neutralOn && MonsterDetector.matches(r, g, b)) return NEUTRAL
         return NONE
     }
@@ -53,6 +73,22 @@ object HeroDetector {
         val g = (p shr 8) and 0xff
         val b = p and 0xff
         return (r * 3 + g * 6 + b) / 10
+    }
+
+    // the light segment after the HP colour: near-white / pale grey (shield) or pale gold (armour)
+    private fun isExtraBar(p: Int, armour: Boolean = false): Boolean {
+        val r = (p shr 16) and 0xff
+        val g = (p shr 8) and 0xff
+        val b = p and 0xff
+        val mx = max(r, max(g, b))
+        val mn = min(r, min(g, b))
+        val whiteish = mn >= 150 && mx - mn < 50
+        val gold = r >= 190 && g >= 150 && b <= 130 && r - b >= 80
+        // X.Borg's armour (measured on your screenshot: 164,103,82)
+        val salmon = r in 125..235 && g in 70..150 && b in 50..125 && r - g >= 40 && r - b >= 55
+        // (pale gold / salmon only on your own bar while playing such a hero: an enemy bar's
+        // just-lost HP flashes light red)
+        return whiteish || armour && (gold || salmon)
     }
 
     private fun isEmptyBar(p: Int): Boolean {
@@ -69,6 +105,7 @@ object HeroDetector {
         val minRun = max(4, (w * 0.008f).toInt())
         val maxBarH = max(3, (h * 0.024f).toInt())
         val longPiece = (w * 0.02f).toInt()
+        val mergeGap = max(3, w / 450)
         val exclPx = excl.map { intArrayOf((it[0] * w).toInt(), (it[1] * h).toInt(), (it[2] * w).toInt(), (it[3] * h).toInt()) }
 
         val active = ArrayList<Blob>()
@@ -87,7 +124,11 @@ object HeroDetector {
                         // HP bars have thin dark tick marks every few hundred HP: a gap of up to
                         // 2 px between two runs of the same colour is one bar, not two
                         val last = rowRuns.lastOrNull()
-                        if (last != null && last[2] == cls && start - last[1] <= 3) last[1] = x - 1
+                        // (the bar's bigger segment dividers are ~5 px on a 2712-wide screen: v36.55)
+                        // (only for your green bar, between two long pieces; other bars keep the 3 px rule)
+                        val gap = start - last.let { it?.get(1) ?: -99 }
+                        if (last != null && last[2] == cls && (gap <= 3 || cls == GREEN && gap <= mergeGap &&
+                                last[1] - last[0] + 1 >= longPiece && x - start >= (if (specialBar) 4 else longPiece))) last[1] = x - 1
                         else rowRuns.add(intArrayOf(start, x - 1, cls))
                     }
                     cls = c
@@ -160,6 +201,37 @@ object HeroDetector {
             // measure it to get HP %. It ends where the frame ends or the colour changes.
             var empty = 0
             var x = bl.maxX + 1
+            // SHIELD / ARMOUR / STORED ENERGY (v36.54): a hero's bar can show a light (white / pale /
+            // golden) segment right after the HP colour - a shield (Esmeralda and any shielded hero),
+            // X.Borg's armour, Fredrinn's stored crystalline energy. It is measured on its own (it is
+            // not HP and not lost HP) and the grey empty part is measured after it.
+            var extraW = 0
+            if (bl.cls != NEUTRAL) {
+                // (a blended edge pixel or a tick mark of up to 2 px may sit between the HP colour and it)
+                val stop = min(w - 1, bl.minX + (w * 0.079f).toInt() + 2)
+                // a column of the segment: light across the bar's height (not a thin digit stroke)
+                // (some bars are bright only in their upper rows: X.Borg's armour - the middle row and one
+                // of the rows just above / below it)
+                val y1 = (cy - 2).coerceAtLeast(bl.minY); val y2 = (cy + 2).coerceAtMost(bl.maxY)
+                val arm = bl.cls == GREEN && specialBar
+                fun extraAt(xx: Int) = isExtraBar(px[cy * w + xx], arm) && (isExtraBar(px[y1 * w + xx], arm) || isExtraBar(px[y2 * w + xx], arm)) && framed(px, w, h, bl, xx)
+                val k0 = (0..(if (bl.cls == GREEN && specialBar) mergeGap + 3 else 2)).firstOrNull { k -> x + k <= stop && extraAt(x + k) } ?: 99
+                var xx = if (k0 == 99) x else x + k0
+                if (k0 != 99) extraW = k0
+                while (xx <= stop) {
+                    if (extraAt(xx)) { extraW++; xx++; continue }
+                    // a divider inside the segment (X.Borg's armour has them): step over it
+                    val sk = (1..(if (arm) mergeGap else 2)).firstOrNull { xx + it <= stop && extraAt(xx + it) } ?: break
+                    extraW += sk; xx += sk
+                }
+                if (extraW - (if (k0 == 99) 0 else k0) >= 3) {
+                    // and the whole bar (HP + segment + empty) must be a hero bar's standard width
+                    var e2 = 0; var x2 = xx
+                    while (x2 <= stop && isEmptyBar(px[cy * w + x2])) { e2++; x2++ }
+                    val whole = (bw + extraW + e2).toFloat() / w
+                    if (whole in 0.064f..0.083f) x = xx else extraW = 0
+                } else extraW = 0
+            }
             // every hero's HP bar has the same full width on screen (about 7.7% of its width): the grey
             // empty part never reaches past that, so a dark bush or wall right after a full bar
             // is not read as lost HP
@@ -181,7 +253,7 @@ object HeroDetector {
             while (x <= limit) {
                 if (!emptyAt(x)) {
                     // the bar has thin black tick marks every few hundred HP: step over them
-                    val skip = (1..3).firstOrNull { x + it <= limit && emptyAt(x + it) } ?: break
+                    val skip = (1..(if (bl.cls == GREEN && specialBar) mergeGap else 3)).firstOrNull { x + it <= limit && emptyAt(x + it) } ?: break
                     empty += skip
                     x += skip
                     continue
@@ -189,8 +261,22 @@ object HeroDetector {
                 empty++
                 x++
             }
-            val total = bw + empty
-            val hp = (bw.toFloat() / total).coerceIn(0f, 1f)
+            val total = bw + extraW + empty
+            var hp = (bw.toFloat() / total).coerceIn(0f, 1f)
+            // Masha: her whole HP = (layers under the top one + the top one's part) / 3
+            if (bl.cls == GREEN && darkGreenSelf) {
+                fun layerAt(xx: Int): Int { val p = px[cy * w + xx]; return mashaLayer((p shr 16) and 0xff, (p shr 8) and 0xff, p and 0xff) }
+                val top = (bl.minX..min(bl.minX + 4, bl.maxX)).map { layerAt(it) }.filter { it > 0 }.maxOrNull() ?: 1
+                var run = 0; var xx = bl.minX
+                while (xx <= bl.maxX) {
+                    if (layerAt(xx) == top) { run++; xx++; continue }
+                    // the bar's tick marks / dividers inside one layer
+                    val sk = (1..mergeGap).firstOrNull { xx + it <= bl.maxX && layerAt(xx + it) == top } ?: break
+                    run += sk; xx += sk
+                }
+                hp = (((top - 1) + run.toFloat() / total) / 3f).coerceIn(0f, 1f)
+            }
+            val extraFrac = (extraW.toFloat() / total).coerceIn(0f, 1f)
             val team = when (bl.cls) { GREEN -> Team.SELF; BLUE -> Team.ALLY; NEUTRAL -> Team.NEUTRAL; else -> Team.ENEMY }
             // monsters: a bar about twice a hero's width belongs to the turtle or the lord
             val hero = if (team == Team.NEUTRAL) total >= heroMinW * 2f else total >= heroMinW
@@ -204,7 +290,8 @@ object HeroDetector {
                     y = (bl.maxY.toFloat() / h + bodyBelowFrac).coerceAtMost(1f),
                     hp = hp,
                     barLeft = left, barTop = bl.minY.toFloat() / h,
-                    barRight = right, barBottom = bl.maxY.toFloat() / h
+                    barRight = right, barBottom = bl.maxY.toFloat() / h,
+                    extra = extraFrac
                 )
             )
         }

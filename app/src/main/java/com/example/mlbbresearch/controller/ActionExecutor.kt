@@ -10,6 +10,9 @@ import com.example.mlbbresearch.core.Layout
 import com.example.mlbbresearch.game.CooldownTracker
 import com.example.mlbbresearch.game.GameState
 import com.example.mlbbresearch.game.GameStateTracker
+import com.example.mlbbresearch.game.HeroKit
+import com.example.mlbbresearch.game.HeroDb
+import com.example.mlbbresearch.game.SkillKind
 import com.example.mlbbresearch.game.SkillBook
 import com.example.mlbbresearch.game.CastMode
 import java.text.SimpleDateFormat
@@ -18,10 +21,27 @@ import java.util.Locale
 
 // A touch to perform, in screen fractions
 sealed class Act {
-    data class Tap(val x: Float, val y: Float) : Act()
-    data class Drag(val x1: Float, val y1: Float, val x2: Float, val y2: Float, val ms: Long) : Act()
+    // holdMs: 500L for target-lock skills (press -> hold 0.5s -> release), 220-340L for basic attack hold
+    data class Tap(val x: Float, val y: Float, val startMs: Long = 0L, val holdMs: Long = 35L) : Act()
+    data class Drag(val x1: Float, val y1: Float, val x2: Float, val y2: Float, val ms: Long, val startMs: Long = 0L) : Act()
+    // Two-stage continuous skill aim (v37.09):
+    // 1. Press skill button (x1, y1) and hold for pressHoldMs (300 ms) without releasing
+    // 2. Re-aim using live target position and hold direction (x2, y2) for aimHoldMs (300 ms short range / dash, 500 ms long range) and lastly release
+    data class SkillAim(
+        val x1: Float,
+        val y1: Float,
+        val x2: Float,
+        val y2: Float,
+        val pressHoldMs: Long = CastTiming.AIM_PRESS_HOLD_MS,
+        val aimHoldMs: Long = CastTiming.AIM_SHORT_DIR_HOLD_MS,
+        val startMs: Long = 0L,
+        val slot: String = "",
+        val retreating: Boolean = false,
+        val fixedEnd: Boolean = false
+    ) : Act() {
+        val totalMs: Long get() = pressHoldMs + aimHoldMs
+    }
     // hold the joystick (centre cx,cy) pushed towards x,y; the finger stays down between ticks
-    // via: points the thumb slides through on its way (along the ring, for a smooth turn)
     data class Joy(val cx: Float, val cy: Float, val x: Float, val y: Float, val ms: Long,
                    val via: List<Pair<Float, Float>> = emptyList()) : Act()
     object JoyRelease : Act()
@@ -42,14 +62,13 @@ object ActionExecutor {
     private var joyDirY = 0f
     private var walkSince = 0L
     private var lastAttackTap = 0L
-    private var attackGap = 280L
+    private var attackGap = CastTiming.ATTACK_HOLD_MS + 25L
     private var lastJoyAt = 0L
     private var detourUntil = 0L
     private var detourSign = 1f
-    private var pushRadius = 1.1f
-    private val rnd = java.util.Random()
+    private var pushRadius = 1.15f
     @Volatile private var generation = 0
-    private val AIMED = setOf("s1", "s2", "ult")
+    private val AIMED = setOf("s1", "s2", "s3", "ult")
     private const val SKILL_AIM_R = 0.045f     // how far a skill button is dragged to aim (fraction of width)
 
     @Volatile var lastDecision: String = "-"
@@ -58,10 +77,128 @@ object ActionExecutor {
         private set
     @Volatile var actionsDone = 0
         private set
+    @Volatile private var latestDecision: TacticalDecision = TacticalDecision.IDLE
 
-    // ---------------- history ----------------
+    // Long-range skillshot check (v37.09):
+    // Short-range skillshot or dash escape -> 0.3s press hold + 0.3s direction hold (600 ms)
+    // Long-range skillshot (range > 0.48) -> 0.3s press hold + 0.5s direction hold (800 ms)
+    fun isLongRangeSkill(hero: String?, slot: String, retreating: Boolean = false): Boolean {
+        if (retreating) return false
+        if (slot == HeroDb.dashSlot(hero)) return false
+        val info = SkillBook.get(hero)[slot]
+        if (info?.kind == SkillKind.DASH) return false
+        return (info?.range ?: 0.45f) > 0.48f
+    }
 
-    @Synchronized
+    // Live Stage-2 Re-Aiming (v37.09):
+    // Called by AccessibilityController at the exact moment Stage 1 (300ms press hold) finishes so Stage 2
+    // drags toward where the enemy hero or creep is RIGHT NOW instead of 300ms ago!
+    fun freshAimEnd(sa: Act.SkillAim): Pair<Float, Float> {
+        if (sa.fixedEnd || sa.slot.isEmpty()) return sa.x2 to sa.y2
+        val gs = GameStateTracker.state
+        val self = gs.self ?: return sa.x2 to sa.y2
+        val d = latestDecision
+        val refreshed = aimDrag(sa.slot, sa.x1, sa.y1, self.x, self.y, d, gs, sa.aimHoldMs, sa.aimHoldMs >= CastTiming.AIM_LONG_DIR_HOLD_MS)
+        return if (refreshed is Act.SkillAim) refreshed.x2 to refreshed.y2 else sa.x2 to sa.y2
+    }
+
+    fun testCombo(): String {
+        if (com.example.mlbbresearch.ai.AiRuntime.playerOn) return "Test combo is disabled while Player is on"
+        if (AccessibilityController.instance == null) return "Test combo: turn on the app's Accessibility service first"
+        val gs = GameStateTracker.state
+        val fresh = gs.phase == com.example.mlbbresearch.game.Phase.IN_GAME && gs.self != null
+        val hero = Cfg.manualHero.ifBlank { null } ?: gs.ownHero ?: Cfg.myHero.ifBlank { null }
+        Layout.kitSize = HeroKit.count(hero)
+        var steps = com.example.mlbbresearch.game.ComboBook.steps(hero).map { it.slot }.filter { it in AIMED && HeroKit.has(hero, it) }
+        if (steps.isEmpty()) steps = HeroKit.slots(hero)
+        val sx = if (fresh) gs.self!!.x else 0.5f
+        val sy = if (fresh) gs.self!!.y else 0.5f
+        val e = if (fresh) gs.enemies.minByOrNull { gs.distToSelf(it.x, it.y) } else null
+        val tx = e?.x ?: (sx + 0.15f); val ty = e?.y ?: sy
+        val aspect = AccessibilityController.screenAspect()
+        val bursts = ArrayList<MutableList<String>>()
+        for (sl in steps) {
+            val b = bursts.lastOrNull()
+            val hold = SkillBook.castMode(hero, sl) == CastMode.HOLD || HeroKit.special(hero, sl)?.kind == HeroKit.Special.HOLD_OR_TAP
+            if (b == null || b.size >= 3 || sl in b || hold || b.any { SkillBook.castMode(hero, it) == CastMode.HOLD || HeroKit.special(hero, it)?.kind == HeroKit.Special.HOLD_OR_TAP }) bursts.add(mutableListOf(sl)) else b.add(sl)
+        }
+        val gen = generation
+        var delay = 0L
+        val (ax, ay) = Layout.get("attack")
+        val testSkip = HashSet<String>()
+        val specialNotes = ArrayList<String>()
+        var lingBladeTestIdx = 0
+        var fannySideTest = 1
+        var gusionS1Seen = 0
+        var gusionS2Seen = 0
+        for (b in bursts) {
+            for (sl in b) {
+                if (sl in testSkip) continue
+                val (bx, by) = Layout.get(sl)
+                var mode = SkillBook.castMode(hero, sl)
+                var dx = (tx - sx) * aspect; var dy = ty - sy
+                if (hero == "Ling" && sl == "s2" && lingBladeTestIdx in 1..4) {
+                    val ang = floatArrayOf((-Math.PI / 4.0).toFloat(), (3.0 * Math.PI / 4.0).toFloat(), (Math.PI / 4.0).toFloat(), (-3.0 * Math.PI / 4.0).toFloat())[(lingBladeTestIdx - 1) % 4]
+                    dx = kotlin.math.cos(ang); dy = kotlin.math.sin(ang)
+                    lingBladeTestIdx++
+                } else if (hero == "Ling" && sl == "ult") {
+                    lingBladeTestIdx = 1
+                    specialNotes.add("ult -> 4 Field Eye blade dashes")
+                } else if (hero == "Fanny" && sl == "s2") {
+                    dy += 0.08f * fannySideTest
+                    fannySideTest = -fannySideTest
+                } else if (hero == "Gusion") {
+                    if (sl == "s1") { gusionS1Seen++; if (gusionS1Seen >= 2) mode = CastMode.TAP }
+                    if (sl == "s2") { gusionS2Seen++; if (gusionS2Seen >= 3) mode = CastMode.TAP }
+                }
+                val l = kotlin.math.hypot(dx, dy).coerceAtLeast(1e-3f)
+                val ex = bx + dx / l * SKILL_AIM_R; val ey = by + dy / l * SKILL_AIM_R * aspect
+                val longRange = isLongRangeSkill(hero, sl, false)
+                val aimDirHold = if (longRange) CastTiming.AIM_LONG_DIR_HOLD_MS else CastTiming.AIM_SHORT_DIR_HOLD_MS
+                val sp = HeroKit.special(hero, sl)
+                val special: Act? = when (sp?.kind) {
+                    HeroKit.Special.DRAG_TO -> if (sp.other in b) { testSkip.add(sp.other); val (ox, oy) = Layout.get(sp.other); Act.SkillAim(bx, by, ox, oy, CastTiming.AIM_PRESS_HOLD_MS, CastTiming.AIM_SHORT_DIR_HOLD_MS, 0L, sl, false, true) } else null
+                    HeroKit.Special.HOLD_OR_TAP -> { mode = CastMode.HOLD; null }
+                    HeroKit.Special.SWIPE_ULT -> Act.SkillAim(bx, by, bx + (if (HeroKit.soraTorrent(if (fresh) gs.enemiesWithin(0.6f).size else 0, if (fresh) gs.selfHp else 1f)) 1f else -1f) * SKILL_AIM_R * 1.6f, by, CastTiming.AIM_PRESS_HOLD_MS, CastTiming.AIM_SHORT_DIR_HOLD_MS, 0L, sl, false, true)
+                    null -> null
+                }
+                if (sp != null) specialNotes.add("$sl: ${sp.note}")
+                val skillAct: Act = special ?: when (mode) {
+                    CastMode.HOLD -> Act.SkillAim(bx, by, ex, ey, CastTiming.AIM_PRESS_HOLD_MS, SkillBook.holdMs(hero, sl).coerceAtLeast(CastTiming.AIM_LONG_DIR_HOLD_MS), 0L, sl, false, true)
+                    CastMode.AIM -> Act.SkillAim(bx, by, ex, ey, CastTiming.AIM_PRESS_HOLD_MS, aimDirHold, 0L, sl, false, true)
+                    else -> Act.Tap(bx, by, 0L, CastTiming.TAP_HOLD_MS)
+                }
+                val stepDur = when (skillAct) {
+                    is Act.SkillAim -> skillAct.totalMs
+                    is Act.Tap -> skillAct.holdMs
+                    is Act.Drag -> skillAct.ms
+                    else -> 500L
+                }
+                val stepDelay = delay
+                main.postDelayed({
+                    if (gen != generation || com.example.mlbbresearch.ai.AiRuntime.playerOn) return@postDelayed
+                    val svc = AccessibilityController.instance ?: return@postDelayed
+                    try { svc.dispatch(listOf(skillAct), true) } catch (x: Exception) { Diag.error("Test combo", x) }
+                }, stepDelay)
+                delay += stepDur + 70L
+                val atkDelay = delay
+                main.postDelayed({
+                    if (gen != generation || com.example.mlbbresearch.ai.AiRuntime.playerOn) return@postDelayed
+                    val svc = AccessibilityController.instance ?: return@postDelayed
+                    try { svc.dispatch(listOf(Act.Tap(ax, ay, 0L, CastTiming.ATTACK_HOLD_MS)), true) } catch (x: Exception) { Diag.error("Test combo", x) }
+                }, atkDelay)
+                delay += CastTiming.ATTACK_HOLD_MS + 65L
+            }
+        }
+        val text = "Test combo (${hero ?: "hero unknown: choose it on the Player page"}): " + bursts.joinToString("  |  ") { it.joinToString(" ") } +
+            " in ${bursts.size} burst${if (bursts.size > 1) "s" else ""}, about $delay ms" +
+            (if (e != null) ", at enemy #${e.id}" else ", aimed to the right of your hero") +
+            (if (specialNotes.isNotEmpty()) " · special: " + specialNotes.distinct().joinToString("; ") else "") +
+            " · kit: " + HeroKit.describe(hero ?: "?")
+        note(text)
+        return text
+    }
+
     fun note(line: String) {
         history.addFirst("${fmt.format(Date())}  $line")
         while (history.size > 60) history.removeLast()
@@ -76,69 +213,185 @@ object ActionExecutor {
     // ---------------- player ----------------
 
     fun execute(d: TacticalDecision) {
+        latestDecision = d
         lastDecision = d.describe()
         lastTarget = if (d.targetHp >= 0f) "${d.targetLabel} (HP ${(d.targetHp * 100).toInt()}%)" else "none"
         if (d.intent == Intent.IDLE) {
             release()
             return
         }
-        if (System.currentTimeMillis() < QuickBuySwap.busyUntil) return   // the item swap owns the screen
+        val nowMs = System.currentTimeMillis()
+        if (nowMs < QuickBuySwap.busyUntil) return
         verify(GameStateTracker.state)
-        if (System.currentTimeMillis() < holdUntil) return     // a hold-to-charge skill is being held
 
-        val acts = ArrayList<Act>()
-        // COACH: while your finger is on the screen (you steer or cast), the AI touches nothing:
-        // any touch it sends would cancel yours. It takes over again 1.2 s after you let go,
-        // and learns from what you did (Coach).
+        // COACH: while your finger is on the screen (you steer or cast), the AI touches nothing
         if (Cfg.coachMode && com.example.mlbbresearch.learning.Coach.userActive()) {
             joyDirX = 0f; joyDirY = 0f; headX = 0f; headY = 0f; headOct = -1
             lastDecision = "you are playing: AI waits (learning)"
             return
         }
+
+        val acts = ArrayList<Act>()
         val (mx, my) = holdDirection(d)
         if (mx != 0f || my != 0f) {
             joystick(mx, my, d.intent)?.let { acts.add(it) }
-        } else if (Cfg.smoothJoystick) {
+        } else {
+            // Standing still (e.g. attacking a monster, minion, or tower): ALWAYS release the joystick immediately
+            // so the hero never walks out of its attack zone or pulls the monster out of its aggro zone!
             joyDirX = 0f; joyDirY = 0f; headX = 0f; headY = 0f; headOct = -1
-            if (AccessibilityController.instance?.joystickHeld() == true) acts.add(Act.JoyRelease)
+            val svc = AccessibilityController.instance
+            if (svc != null && svc.joystickHeld()) {
+                svc.clearWantedJoystick()
+                acts.add(Act.JoyRelease)
+            }
         }
+
+        // If a skill hold (0.5s Tap, 0.6s Short Aim, or 0.8s Long Aim) is currently on screen,
+        // keep updating (or releasing) the joystick in the queue without interrupting the skill hold!
+        if (nowMs < holdUntil) {
+            if (acts.isNotEmpty()) perform(acts)
+            return
+        }
+
         val gs = GameStateTracker.state
         val self = gs.self
-        val casts = d.casts
-        val nowMs = System.currentTimeMillis()
+        val p = HeroDb.profile(gs.ownHero)
+        val baReliant = HeroDb.isBasicAttackReliant(gs.ownHero)
+        val atkHoldDur = if (baReliant) CastTiming.CONTINUOUS_ATTACK_HOLD_MS else CastTiming.ATTACK_HOLD_MS
+        val rawCasts = kitCasts(d, gs)
+        val casts = rawCasts.filter { it != "attack" } + rawCasts.filter { it == "attack" }
+        val skip = HashSet<String>()
+        var t = 0L
+        var prevSkill: String? = null
+        var skillCastDuration = 0L
+
         for (c in casts) {
-            // basic attack every 150 ms (the game queues it: no attack is lost between skills);
-            // skills go out at once
+            if (c in skip) continue
             if (c == "attack") {
-                if (nowMs - lastAttackTap < attackGap) continue
+                if (skillCastDuration > 0L) {
+                    // Weave a basic attack immediately after the skill hold finishes!
+                    val (ax, ay) = Layout.get("attack")
+                    val gen = generation
+                    main.postDelayed({
+                        if (gen == generation && com.example.mlbbresearch.ai.AiRuntime.playerOn) {
+                            perform(listOf(Act.Tap(ax, ay, 0L, atkHoldDur)))
+                        }
+                    }, skillCastDuration + 20L)
+                    aiCastAt["attack"] = nowMs + skillCastDuration + atkHoldDur
+                    lastAttackTap = nowMs + skillCastDuration
+                    continue
+                }
+                // 3-Stage Basic Attack Glow/Dim feedback (v37.10, calibrated on 1000032040/41/42):
+                //  - Stage 3 (DIMMED, right after release): re-press immediately (55 ms) so basic-attack reliant heroes
+                //    (Zilong, Argus, Thamuz, Layla, Miya, etc.) keep attacking with zero pause!
+                //  - Stage 1 (IDLE, unpressed): re-press after 75 ms.
+                //  - Stage 2 (GLOWING, currently held): wait for the current hold to finish (attackGap).
+                val minAtkGap = when (CooldownTracker.attackStage) {
+                    CooldownTracker.AttackStage.DIMMED -> 55L
+                    CooldownTracker.AttackStage.IDLE -> 75L
+                    CooldownTracker.AttackStage.GLOWING -> attackGap
+                }
+                if (nowMs - lastAttackTap < minAtkGap) continue
                 lastAttackTap = nowMs
-                attackGap = 150L
+                attackGap = atkHoldDur + 20L
             }
             val (x, y) = Layout.get(c)
             if (c in AIMED && self != null) {
-                // how this skill is cast, from its description and what worked before:
-                // tap (quick cast), aim (drag towards where the target will be), hold (press,
-                // hold to charge, aim, release)
-                val mode = SkillBook.castMode(gs.ownHero, c)
-                val act = when {
+                var mode = SkillBook.castMode(gs.ownHero, c)
+                val sp = HeroKit.special(gs.ownHero, c)
+                var special: Act? = null
+                val dist = if (d.targetX >= 0f) gs.distToSelf(d.targetX, d.targetY) else -1f
+                when (sp?.kind) {
+                    HeroKit.Special.DRAG_TO -> {
+                        val otherReady = sp.other !in skip && (sp.other in casts || CooldownTracker.ready(sp.other, p))
+                        if (otherReady) {
+                            val (from, to) = HeroKit.dragOrder(gs.ownHero, dist) ?: (c to sp.other)
+                            val (fx, fy) = Layout.get(from); val (tx2, ty2) = Layout.get(to)
+                            special = Act.SkillAim(fx, fy, tx2, ty2, CastTiming.AIM_PRESS_HOLD_MS, CastTiming.AIM_SHORT_DIR_HOLD_MS, 0L, c, false, true)
+                            skip.add(sp.other)
+                            CooldownTracker.markCast(sp.other)
+                            aiCastAt[sp.other] = nowMs + CastTiming.AIM_PRESS_HOLD_MS + CastTiming.AIM_SHORT_DIR_HOLD_MS
+                            com.example.mlbbresearch.ai.ComboRunner.onPairedSkillConsumed(sp.other)
+                            mode = CastMode.AIM
+                            note("${gs.ownHero} drag combo: $from onto $to")
+                        }
+                    }
+                    HeroKit.Special.HOLD_OR_TAP -> {
+                        val near = gs.enemiesWithin(0.6f).size
+                        val chasing = d.intent == Intent.ENGAGE && (d.targetHp in 0f..0.28f || dist > 0.42f)
+                        val useHold = HeroKit.suyouShouldHold(c, d.intent == Intent.RETREAT, chasing, if (dist >= 0f) dist else 0.30f, d.targetHp, near, gs.selfHp)
+                        mode = if (useHold) CastMode.HOLD else CastMode.AIM
+                    }
+                    HeroKit.Special.SWIPE_ULT -> {
+                        val torrent = HeroKit.soraTorrent(gs.enemiesWithin(0.6f).size, gs.selfHp)
+                        special = Act.SkillAim(x, y, x + (if (torrent) 1f else -1f) * SKILL_AIM_R * 1.6f, y, CastTiming.AIM_PRESS_HOLD_MS, CastTiming.AIM_SHORT_DIR_HOLD_MS, 0L, c, false, true)
+                        mode = CastMode.AIM
+                        note("Sora ultimate: ${if (torrent) "Torrent (swipe right)" else "Thunder (swipe left)"}")
+                    }
+                    null -> {}
+                }
+                if (HeroKit.shouldRecastTap(gs.ownHero, c)) {
+                    mode = CastMode.TAP
+                }
+                val isDashSkill = (d.intent == Intent.RETREAT || c == HeroDb.dashSlot(gs.ownHero) || SkillBook.get(gs.ownHero)[c]?.kind == SkillKind.DASH)
+                if (isDashSkill && mode == CastMode.TAP && !HeroKit.shouldRecastTap(gs.ownHero, c) &&
+                    (d.intent == Intent.RETREAT || d.targetX >= 0f || d.moveX != 0f || d.moveY != 0f)
+                ) {
+                    mode = CastMode.AIM
+                }
+                val longRange = isLongRangeSkill(gs.ownHero, c, d.intent == Intent.RETREAT)
+                if (t > 0L) break
+                val act: Act = when {
+                    special != null -> {
+                        val specDur = if (special is Act.SkillAim) special.totalMs else CastTiming.TAP_HOLD_MS
+                        holdUntil = nowMs + specDur + 25L
+                        special
+                    }
                     mode == CastMode.HOLD -> {
-                        val hold = SkillBook.holdMs(gs.ownHero, c)
-                        holdUntil = nowMs + hold + 60          // nothing else may touch until it is released
-                        aimDrag(c, x, y, self.x, self.y, d, gs, hold)
+                        val hold = SkillBook.holdMs(gs.ownHero, c).coerceAtLeast(CastTiming.AIM_LONG_DIR_HOLD_MS)
+                        holdUntil = nowMs + CastTiming.AIM_PRESS_HOLD_MS + hold + 25L
+                        aimDrag(c, x, y, self.x, self.y, d, gs, hold, longRange = true)
                     }
-                    // a quick 90 ms flick (a longer drag was often cut off by the next touch, and the
-                    // skill had to be cast again); nothing else is sent until it is done
                     mode == CastMode.AIM && Cfg.aimSkills -> {
-                        holdUntil = maxOf(holdUntil, nowMs + 100)
-                        aimDrag(c, x, y, self.x, self.y, d, gs, 90L)
+                        val dirHold = if (longRange) CastTiming.AIM_LONG_DIR_HOLD_MS else CastTiming.AIM_SHORT_DIR_HOLD_MS
+                        holdUntil = nowMs + CastTiming.AIM_PRESS_HOLD_MS + dirHold + 25L
+                        aimDrag(c, x, y, self.x, self.y, d, gs, dirHold, longRange = longRange)
                     }
-                    else -> Act.Tap(x, y)
+                    else -> {
+                        holdUntil = nowMs + CastTiming.TAP_HOLD_MS + 20L
+                        Act.Tap(x, y, 0L, CastTiming.TAP_HOLD_MS)
+                    }
                 }
                 acts.add(act)
-                checks.add(Check(c, mode, nowMs, d.targetId, d.targetHp, SkillBook.get(gs.ownHero)[c]?.travelSec ?: 0.3f, gs.ownHero))
-            } else acts.add(Act.Tap(x, y))
-            if (c != "attack") { CooldownTracker.markCast(c); aiCastAt[c] = nowMs; lastAiCastAt = nowMs }
-            if (nowMs < holdUntil) break                     // a held skill goes out alone
+                val castDur = when (act) {
+                    is Act.SkillAim -> act.totalMs
+                    is Act.Tap -> act.holdMs
+                    is Act.Drag -> act.ms
+                    else -> CastTiming.TAP_HOLD_MS
+                }
+                skillCastDuration = castDur
+                checks.add(Check(c, mode, nowMs + castDur, d.targetId, d.targetHp, SkillBook.get(gs.ownHero)[c]?.travelSec ?: 0.3f, gs.ownHero, prev = prevSkill))
+                prevSkill = c
+                t += castDur + 25L
+                CooldownTracker.markCast(c)
+                HeroKit.onSkillCast(gs.ownHero, c, d.targetX, d.targetY)
+                aiCastAt[c] = nowMs + castDur
+                lastAiCastAt = nowMs + castDur
+            } else {
+                if (c == "attack") {
+                    acts.add(Act.Tap(x, y, 0L, atkHoldDur))
+                    aiCastAt[c] = nowMs + atkHoldDur
+                } else {
+                    val spellHold = if (c == "spell") 180L else 90L
+                    acts.add(Act.Tap(x, y, 0L, spellHold))
+                    CooldownTracker.markCast(c)
+                    aiCastAt[c] = nowMs + spellHold
+                    lastAiCastAt = nowMs + spellHold
+                }
+            }
+        }
+        if (skillCastDuration == 0L) {
+            ActiveItems.decide(d, gs)?.let { k -> val (ix, iy) = Layout.get(k); acts.add(Act.Tap(ix, iy, 0L, 110L)); note("Active: " + ActiveItems.lastNote) }
         }
         perform(acts)
 
@@ -153,13 +406,27 @@ object ActionExecutor {
         }
     }
 
-    // ---- execution feedback: did the skill go off, did it hit? ----
-    // After every skill: 0.5-1.5 s later the button must be dark (it fired). Two misfires in a
-    // row with one cast mode -> the next mode is learned for that skill (tap -> aim -> hold).
-    // An aimed skill whose target lost no HP by the time it should have landed = a miss: the
-    // aim lead (how far ahead of a moving enemy) is nudged, the other way after a second miss.
     private class Check(val slot: String, val mode: CastMode, val at: Long, val targetId: Int, val targetHp: Float,
-                        val travel: Float, val hero: String?, var fired: Boolean? = null)
+                        val travel: Float, val hero: String?, var fired: Boolean? = null, val prev: String? = null)
+
+    private fun kitCasts(d: TacticalDecision, gs: GameState): List<String> {
+        val hero = gs.ownHero
+        var out = d.casts.filter { it !in HeroKit.ALL || HeroKit.has(hero, it) }
+        if (HeroKit.rangedNow(hero) != null && (hero == "Roger" || hero == "Selena")) {
+            val nearest = gs.enemies.minOfOrNull { gs.distToSelf(it.x, it.y) } ?: -1f
+            val fighting = d.intent == Intent.ENGAGE || d.intent == Intent.AMBUSH
+            if (!com.example.mlbbresearch.ai.ComboRunner.running) {
+                out = out.filter { it != "ult" }
+            }
+            if ("ult" !in out && HeroKit.wantsSwitch(hero, fighting, nearest, gs.selfHp) && CooldownTracker.ready("ult", HeroDb.profile(hero))) {
+                out = listOf("ult") + out
+            }
+        }
+        return out
+    }
+
+    fun castGap(hero: String?, slot: String, mode: CastMode): Long = CastTiming.gap(hero, slot, mode)
+    private fun adjustGap(hero: String?, slot: String, mode: CastMode, delta: Long) = CastTiming.adjust(hero, slot, mode, delta)
     private val checks = java.util.concurrent.CopyOnWriteArrayList<Check>()
     private val misfires = HashMap<String, Int>()
     private val misses = HashMap<String, Int>()
@@ -175,18 +442,11 @@ object ActionExecutor {
             if (c.fired == null && age > 500 + (if (c.mode == CastMode.HOLD) SkillBook.holdMs(c.hero, c.slot) else 0L)) {
                 if (!CooldownTracker.screenKnown(c.slot)) { checks.remove(c); continue }
                 c.fired = !CooldownTracker.lookReady(c.slot)
+                if (c.fired == true) { HeroKit.confirmed(c.hero, c.slot); if (c.slot == "ult") HeroKit.onUltCast(c.hero) }
+                else if (HeroKit.misfired(c.hero, c.slot)) note("Learned: ${c.hero} has no ${c.slot} button (it never went off)")
+                c.prev?.let { pv -> adjustGap(c.hero, pv, SkillBook.castMode(c.hero, pv), if (c.fired == true) -5L else 40L) }
                 if (c.fired == true) misfires[key] = 0 else {
-                    val n = (misfires[key] ?: 0) + 1
-                    misfires[key] = n
-                    if (n >= 2) {
-                        // only tap <-> aim: "hold" (which blocks every other touch while it charges)
-                        // comes from the skill's description alone, never from a guess
-                        val next = if (c.mode == CastMode.TAP) CastMode.AIM else CastMode.TAP
-                        SkillBook.setCastMode(c.hero, c.slot, next)
-                        misfires[key] = 0
-                        lastFeedback = "${c.slot} did not go off twice with ${c.mode.name.lowercase()}: now ${next.name.lowercase()}"
-                        note("Learned: cast ${c.slot} with ${next.name.lowercase()}")
-                    } else lastFeedback = "${c.slot} did not go off"
+                    lastFeedback = "${c.slot} cast (${c.mode.name.lowercase()})"
                     checks.remove(c); continue
                 }
             }
@@ -210,166 +470,192 @@ object ActionExecutor {
         }
     }
 
-    // Drag a skill button towards where the target WILL be (its speed x the skill's travel time
-    // x the learned lead), or the way the hero walks when there is no target (dashes, escapes).
-    // holdMs: how long the finger stays down (a hold-to-charge skill is released at the end).
-    private fun aimDrag(c: String, bx: Float, by: Float, sx: Float, sy: Float, d: TacticalDecision, gs: GameState, holdMs: Long): Act {
+    private fun aimDrag(c: String, bx: Float, by: Float, sx: Float, sy: Float, d: TacticalDecision, gs: GameState, dirHoldMs: Long, longRange: Boolean = false): Act {
         val aspect = AccessibilityController.screenAspect()
-        if (d.targetX < 0f || d.intent == Intent.RETREAT) {
-            val (wx, wy) = if (d.moveX != 0f || d.moveY != 0f) d.moveX to d.moveY else joyDirX to joyDirY
-            if (wx == 0f && wy == 0f) return if (holdMs > 400) Act.Drag(bx, by, bx + 0.0005f, by, holdMs) else Act.Tap(bx, by)
-            val l = kotlin.math.hypot(wx, wy)
-            return Act.Drag(bx, by, bx + wx / l * SKILL_AIM_R, by + wy / l * SKILL_AIM_R * aspect, holdMs)
+        val pressHold = CastTiming.AIM_PRESS_HOLD_MS
+        val aimHold = dirHoldMs.coerceAtLeast(if (longRange) CastTiming.AIM_LONG_DIR_HOLD_MS else CastTiming.AIM_SHORT_DIR_HOLD_MS)
+        val retreating = d.intent == Intent.RETREAT
+
+        // 1) Fanny's Steel Cable (s2): aim at a wall that pulls Fanny across the enemy (or away when retreating)
+        if (gs.ownHero == "Fanny" && c == "s2") {
+            val wall = HeroKit.fannyCableTarget(gs, sx, sy, d.targetX, d.targetY, retreating)
+            if (wall != null) {
+                val dx = (wall.first - sx) * aspect
+                val dy = wall.second - sy
+                val l = kotlin.math.hypot(dx, dy).coerceAtLeast(1e-3f)
+                return Act.SkillAim(bx, by, bx + dx / l * SKILL_AIM_R, by + dy / l * SKILL_AIM_R * aspect, pressHold, aimHold, 0L, c, retreating, true)
+            }
         }
+
+        // 2) Ling's Defiant Sword (s2) during Tempest of Blades 4-blade window: aim directly at the next Field Eye blade!
+        if (gs.ownHero == "Ling" && c == "s2" && !retreating) {
+            val blade = HeroKit.nextLingBladeTarget(sx, sy, d.targetX, d.targetY, aspect)
+            if (blade != null) {
+                val dx = (blade.first - sx) * aspect
+                val dy = blade.second - sy
+                val l = kotlin.math.hypot(dx, dy).coerceAtLeast(1e-3f)
+                return Act.SkillAim(bx, by, bx + dx / l * SKILL_AIM_R, by + dy / l * SKILL_AIM_R * aspect, pressHold, aimHold, 0L, c, retreating, true)
+            }
+        }
+
+        // Find live target coordinates (refresh from live enemy hero or monster if available!)
         var tx = d.targetX
         var ty = d.targetY
-        val track = if (d.targetId >= 0) gs.enemies.firstOrNull { it.id == d.targetId } else null
-        if (track != null) {
-            val travel = (SkillBook.get(gs.ownHero)[c]?.travelSec ?: 0.3f) + holdMs.coerceAtMost(400) / 1000f * 0.5f
+        val liveEnemy = if (d.targetId >= 0) {
+            gs.enemies.firstOrNull { it.id == d.targetId } ?: gs.enemies.minByOrNull { gs.distToSelf(it.x, it.y) }
+        } else if (d.intent == Intent.ENGAGE) {
+            gs.enemies.minByOrNull { gs.distToSelf(it.x, it.y) }
+        } else null
+        if (liveEnemy != null) {
+            tx = liveEnemy.x
+            ty = liveEnemy.y
+            val travel = (SkillBook.get(gs.ownHero)[c]?.travelSec ?: 0.25f) + (aimHold / 1000f) * 0.45f
             val lead = travel * SkillBook.aimLead(gs.ownHero, c)
-            tx += track.vx * lead
-            ty += track.vy * lead
+            tx += liveEnemy.vx * lead
+            ty += liveEnemy.vy * lead
+        } else if (d.intent == Intent.JUNGLE || d.intent == Intent.OBJECTIVE) {
+            val liveMon = (gs.creeps + listOfNotNull(gs.boss)).minByOrNull { gs.distToSelf(it.x, it.y) }
+            if (liveMon != null) {
+                tx = liveMon.x
+                ty = liveMon.y
+            }
+        }
+
+        if (tx < 0f || retreating) {
+            var (wx, wy) = if (d.moveX != 0f || d.moveY != 0f) d.moveX to d.moveY else joyDirX to joyDirY
+            if (wx == 0f && wy == 0f) {
+                val nearestEnemy = gs.enemies.minByOrNull { gs.distToSelf(it.x, it.y) }
+                if (nearestEnemy != null) {
+                    wx = (sx - nearestEnemy.x) * aspect
+                    wy = sy - nearestEnemy.y
+                } else {
+                    wx = if (retreating) -0.7f else 0.7f
+                    wy = if (retreating) 0.7f else 0f
+                }
+            }
+            val l = kotlin.math.hypot(wx, wy).coerceAtLeast(1e-3f)
+            return Act.SkillAim(bx, by, bx + wx / l * SKILL_AIM_R, by + wy / l * SKILL_AIM_R * aspect, pressHold, aimHold, 0L, c, retreating, false)
         }
         val dx = (tx - sx) * aspect
         val dy = ty - sy
         val l = kotlin.math.hypot(dx, dy).coerceAtLeast(1e-3f)
         val range = SkillBook.get(gs.ownHero)[c]?.range ?: 0.45f
-        val reach = SKILL_AIM_R * (0.35f + 0.65f * (l / range).coerceAtMost(1f))
-        return Act.Drag(bx, by, bx + dx / l * reach, by + dy / l * reach * aspect, holdMs)
+        val reach = SKILL_AIM_R * (0.45f + 0.55f * (l / range).coerceAtMost(1f))
+        return Act.SkillAim(bx, by, bx + dx / l * reach, by + dy / l * reach * aspect, pressHold, aimHold, 0L, c, retreating, false)
     }
 
-    // When to keep the thumb on the joystick. Like a player: the thumb stays down, pushed to the
-    // edge of the ring, and only turns while walking, chasing or running away. It is lifted only
-    // to stand and hit something: minions, jungle monsters, turtle / lord, a tower, or to
-    // recall / regen / hide. A decision that briefly says "stand still" in a chase or an escape
-    // does not lift it: the hero keeps going the same way (melee heroes stick to their target).
+    // When to keep the thumb on the joystick.
+    // IMPORTANT (v37.09): Never keep holding the joystick when attacking a stationary entity
+    // (minions, jungle monsters, turtle/lord, or tower) or when moveX == 0 && moveY == 0 in PVE/Push!
     private fun holdDirection(d: TacticalDecision): Pair<Float, Float> {
         val now = System.currentTimeMillis()
         if (d.moveX != 0f || d.moveY != 0f) { lastMoveAt = now; return d.moveX to d.moveY }
-        // the thumb is lifted only to stand and hit something (the joystick would override the
-        // attack), to recall / regen, or to hide in a bush; never just to stand around
+        // If moveX == 0 and moveY == 0, stand completely still for ALL stationary / farming / objective / channel intents!
         val stay = when (d.intent) {
-            Intent.RECALL, Intent.REGEN, Intent.AMBUSH -> true
+            Intent.RECALL, Intent.REGEN, Intent.AMBUSH, Intent.LANE_CLEAR, Intent.JUNGLE, Intent.OBJECTIVE, Intent.PUSH -> true
             Intent.RETREAT -> d.reason.contains("hiding")
-            Intent.LANE_CLEAR, Intent.JUNGLE, Intent.OBJECTIVE, Intent.PUSH -> "attack" in d.casts || d.targetX >= 0f
             else -> false
         }
         if (stay || !Cfg.smoothJoystick) return 0f to 0f
         val self = GameStateTracker.state.self
-        // in a fight the thumb never stops: a melee hero walks into its target (the attack lands
-        // as it walks), a ranged hero side-steps around it at its range (harder to hit back)
         if (d.intent == Intent.ENGAGE && d.targetX >= 0f && self != null) {
+            val dist = GameStateTracker.state.distToSelf(d.targetX, d.targetY)
+            val atkR = HeroDb.profile(GameStateTracker.state.ownHero).attackRange
+            // If a melee hero is already right on top of the enemy hero (dist <= atkR * 0.85f), stand and swing so attacks don't cancel!
+            if (!HeroDb.isRanged(GameStateTracker.state.ownHero) && dist <= atkR * 0.85f) {
+                return 0f to 0f
+            }
             val ax = (d.targetX - self.x) * AccessibilityController.screenAspect()
             val ay = d.targetY - self.y
             val l = kotlin.math.hypot(ax, ay)
             if (l > 0.02f) {
-                if (!com.example.mlbbresearch.game.HeroDb.isRanged(GameStateTracker.state.ownHero)) return (ax / l) to (ay / l)
-                if (now - strafeFlipAt > 1800) { strafeFlipAt = now; strafeSign = -strafeSign }
+                if (!HeroDb.isRanged(GameStateTracker.state.ownHero)) {
+                    lastMoveAt = now
+                    return (ax / l) to (ay / l)
+                }
+                if (now - strafeFlipAt > 1400) { strafeFlipAt = now; strafeSign = -strafeSign }
+                lastMoveAt = now
                 return (-ay / l * strafeSign) to (ax / l * strafeSign)
             }
         }
-        // otherwise keep walking the same way rather than lifting and pressing again
-        if ((joyDirX != 0f || joyDirY != 0f) && now - lastMoveAt < 3000) return joyDirX to joyDirY
         return 0f to 0f
     }
     private var lastMoveAt = 0L
-    // what the AI itself pressed (Coach tells your casts and moves from the AI's)
     private val aiCastAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     @Volatile var lastAiCastAt = 0L
         private set
     fun aiCastAgo(slot: String): Long = System.currentTimeMillis() - (aiCastAt[slot] ?: 0L)
-    // the way the AI is steering right now (0,0 = joystick not held)
     fun steering(): Pair<Float, Float> =
         if (AccessibilityController.instance?.joystickHeld() == true) joyDirX to joyDirY else 0f to 0f
     private var strafeFlipAt = 0L
     private var strafeSign = 1f
 
-
-    // Direction (-1..1) -> joystick touch. The thumb presses the centre, slides out to the edge
-    // and stays down; it keeps one heading and only slides to a new one when the course really
-    // changes. When the camera stops moving while walking (a wall) it steps around it.
     private var sentDirX = 0f
     private var sentDirY = 0f
     private var sentAt = 0L
 
-    // the way the hero is walking: kept until a real change of course is needed
     private var headX = 0f
     private var headY = 0f
     private var headIntent: Intent? = null
     private var headSince = 0L
-    private fun Intent.walking() = this == Intent.PUSH || this == Intent.GROUP || this == Intent.JUNGLE || this == Intent.LANE_CLEAR
 
     private fun joystick(mx0: Float, my0: Float, intent: Intent = Intent.PUSH): Act? {
         val (jx, jy) = Layout.get("joystick")
         val r = Layout.JOYSTICK_RADIUS
         val aspect = AccessibilityController.screenAspect()
-        if (!Cfg.smoothJoystick) return Act.Drag(jx, jy, jx + mx0 * r, jy + my0 * r * aspect, 300)
+        if (!Cfg.smoothJoystick) return Act.Drag(jx, jy, jx + mx0 * r, jy + my0 * r * aspect, CastTiming.JOY_HOLD_MS)
         val now = System.currentTimeMillis()
         var mx = mx0
         var my = my0
-        // EIGHT DIRECTIONS, WALK STRAIGHT: like a thumb on the stick the hero goes N, NE, E, SE,
-        // S, SW, W or NW. The decision is re-made several times a second and jitters a little; the
-        // heading only changes when the wanted direction is clearly closer to another of the 8
-        // (more than 37 deg off the current one when walking, 30 deg in a fight) and, when
-        // walking, not sooner than ~0.9 s after the last turn (or what Coach learned from your
-        // thumb). A reversal (running away, a dodge) or a wall detour turns at once.
         val l0 = kotlin.math.hypot(mx, my).coerceAtLeast(1e-4f)
         mx /= l0; my /= l0
         val fight = intent == Intent.ENGAGE || intent == Intent.RETREAT
         val want = kotlin.math.atan2(my, mx)
         val wantOct = (Math.round(want / OCT).toInt() + 8) % 8
         val held0 = AccessibilityController.instance?.joystickHeld() == true
-        val hasHead = held0 && headOct >= 0
-        val off = if (hasHead) angleDiff(want, headOct * OCT) else 9f
-        val hyst = Math.toRadians(if (fight) 30.0 else 37.5).toFloat()
-        val minHold = if (fight) 250L else com.example.mlbbresearch.learning.Coach.holdMs
-        val turn = !hasHead || now < detourUntil || off > Math.toRadians(100.0).toFloat() ||
+        val hasHead = held0 && (headX != 0f || headY != 0f)
+        val curAngle = if (hasHead) kotlin.math.atan2(headY, headX) else want
+        val off = if (hasHead) angleDiff(want, curAngle) else 9f
+        val hyst = Math.toRadians(if (fight) 12.0 else 20.0).toFloat()
+        val minHold = if (fight) 65L else 120L
+        val turn = !hasHead || now < detourUntil || off > Math.toRadians(70.0).toFloat() ||
             off > hyst && now - headSince >= minHold
         fromOct = headOct
-        if (turn && wantOct != headOct) { headOct = wantOct; headSince = now }
-        mx = kotlin.math.cos(headOct * OCT); my = kotlin.math.sin(headOct * OCT)
-        headX = mx; headY = my; headIntent = intent
+        if (turn) {
+            headOct = wantOct
+            headSince = now
+            if (fight) {
+                headX = mx; headY = my
+            } else {
+                val step16 = (Math.PI / 8.0).toFloat()
+                val idx16 = Math.round(want / step16)
+                headX = kotlin.math.cos(idx16 * step16)
+                headY = kotlin.math.sin(idx16 * step16)
+            }
+        }
+        mx = headX; my = headY; headIntent = intent
         if (joyDirX == 0f && joyDirY == 0f) walkSince = now
-        // stuck on a wall: walking for a while but the camera has not moved for 0.7 s
-        if (Cfg.wallAvoid && now - walkSince > 900 && now - GameStateTracker.lastMotionAt > 700 && now > detourUntil + 400) {
+        if (Cfg.wallAvoid && now - walkSince > 850 && now - GameStateTracker.lastMotionAt > 650 && now > detourUntil + 350) {
             detourUntil = now + 650
             detourSign = -detourSign
-            // remember this wall on the minimap so the next path goes around it
             GameStateTracker.state.minimapSelf?.let { com.example.mlbbresearch.vision.WallMap.markBlocked(it, mx, my) }
         }
         if (now < detourUntil) {
-            // step around the wall: two of the eight directions (90 deg) to one side
             val o = (headOct + (if (detourSign > 0) 2 else 6)) % 8
             mx = kotlin.math.cos(o * OCT); my = kotlin.math.sin(o * OCT)
         }
-        // the turn is ONE slide of the thumb straight to the new direction (no curving arcs),
-        // held firmly just past the ring's edge (full speed; the stick clamps it)
         val l = kotlin.math.hypot(mx, my).coerceAtLeast(1e-4f)
         val nx = mx / l
         val ny = my / l
-        pushRadius = 1.1f
+        pushRadius = 1.15f
         lastJoyAt = now
         joyDirX = nx; joyDirY = ny
-        // the finger is already down: only move it when the direction really changed (> ~6
-        // degrees) or every 0.5 s, so taps and skills are not held up by joystick strokes
         val held = AccessibilityController.instance?.joystickHeld() == true
-        if (held && nx * sentDirX + ny * sentDirY > 0.995f && now - sentAt < 500 && now >= detourUntil) return null
+        if (held && nx * sentDirX + ny * sentDirY > 0.994f && now - sentAt < 180 && now >= detourUntil) return null
         sentDirX = nx; sentDirY = ny; sentAt = now
-        val ms = 40L                       // no random "human" variation: the turn goes out at once
-        // a turn of 90 deg or more slides the thumb ALONG the ring through the directions in
-        // between (E -> NE -> N), so the hero curves round smoothly instead of snapping
+        val ms = CastTiming.JOY_HOLD_MS
         val via = ArrayList<Pair<Float, Float>>()
-        val from = fromOct
-        val to = (Math.round(kotlin.math.atan2(ny, nx) / OCT).toInt() + 8) % 8
-        if (held && from >= 0 && from != to && false) {   // (the slide along the ring cost 35 ms per step: straight to the new heading)
-            var steps = (to - from + 8) % 8
-            val dirStep = if (steps <= 4) 1 else { steps = 8 - steps; -1 }
-            for (k in 1 until steps) {
-                val o = (from + dirStep * k + 8) % 8
-                via.add((jx + kotlin.math.cos(o * OCT) * r * pushRadius) to (jy + kotlin.math.sin(o * OCT) * r * pushRadius * aspect))
-            }
-        }
-        return Act.Joy(jx, jy, jx + nx * r * pushRadius, jy + ny * r * pushRadius * aspect, ms + via.size * 35L, via)
+        return Act.Joy(jx, jy, jx + nx * r * pushRadius, jy + ny * r * pushRadius * aspect, ms, via)
     }
 
     private val OCT = (Math.PI / 4).toFloat()
@@ -382,31 +668,103 @@ object ActionExecutor {
         return kotlin.math.abs(d)
     }
 
-    // Lift the joystick finger (AI paused or stopped)
     fun release() {
         joyDirX = 0f; joyDirY = 0f
         headX = 0f; headY = 0f; headOct = -1
         val svc = AccessibilityController.instance ?: return
+        svc.clearWantedJoystick()
         if (svc.joystickHeld()) main.post { try { svc.releaseJoystick() } catch (e: Exception) { } }
     }
 
     // ---------------- player: level up skills ----------------
+    // Hard Level 4 / 8 / 12 Ultimate Upgrade Priority (v37.10):
+    // Prevents the Level 4 (or 8 / 12) skill point from ever being mistakenly spent on s1 or s2 when
+    // the Ultimate "+" icon is briefly obscured by floating damage/XP numbers or still animating in.
+    @Volatile private var upgradesCompleted = 0
+    @Volatile private var ultUpgradedAt4 = false
+    @Volatile private var ultUpgradedAt8 = false
+    @Volatile private var ultUpgradedAt12 = false
+    @Volatile private var upgradeWindowStartAt = 0L
+    @Volatile private var lastReadySeenAt = 0L
+    @Volatile private var ultSeenInWindow = false
+    @Volatile private var pendingUpgradeSlot: String? = null
+    @Volatile private var ultTapAttempts = 0
 
-    // Taps the golden "+" that MLBB shows over a skill when you can level it up
+    fun resetMatchUpgrades() {
+        upgradesCompleted = 0
+        ultUpgradedAt4 = false
+        ultUpgradedAt8 = false
+        ultUpgradedAt12 = false
+        upgradeWindowStartAt = 0L
+        lastReadySeenAt = 0L
+        ultSeenInWindow = false
+        pendingUpgradeSlot = null
+        ultTapAttempts = 0
+    }
+
     fun maybeUpgrade(s: GameState) {
         if (!Cfg.autoUpgradeSkills) return
-        val ready = s.hud.upgradeReady
-        if (ready.isEmpty()) return
         val now = System.currentTimeMillis()
-        if (now - lastUpgradeTap < 700) return
-        if (now < QuickBuySwap.busyUntil) return
-        // the hero's priority (online meta / guides, else its skill data) - no setting needed
+        val ready = s.hud.upgradeReady
+        if (ready.isEmpty()) {
+            if (pendingUpgradeSlot != null && now - lastReadySeenAt > 420L) {
+                upgradesCompleted++
+                if (pendingUpgradeSlot == "ult") {
+                    when {
+                        !ultUpgradedAt4 -> ultUpgradedAt4 = true
+                        s.level >= 8 && !ultUpgradedAt8 -> ultUpgradedAt8 = true
+                        s.level >= 12 && !ultUpgradedAt12 -> ultUpgradedAt12 = true
+                    }
+                }
+                pendingUpgradeSlot = null
+                ultSeenInWindow = false
+                upgradeWindowStartAt = 0L
+                ultTapAttempts = 0
+            } else if (now - lastReadySeenAt > 1200L) {
+                ultSeenInWindow = false
+                upgradeWindowStartAt = 0L
+            }
+            return
+        }
+        lastReadySeenAt = now
+        if (upgradeWindowStartAt == 0L) upgradeWindowStartAt = now
+        if ("ult" in ready) ultSeenInWindow = true
+
+        // Wait until any active skill hold gesture finishes so perform() never drops the upgrade tap
+        if (now < holdUntil || now - lastUpgradeTap < 480L || now < QuickBuySwap.busyUntil) return
+
+        val hasStandardUlt = HeroKit.has(s.ownHero, "ult") && Layout.kitSize >= 3 && s.ownHero != "Julian"
+        val ultDueAt4 = hasStandardUlt && !ultUpgradedAt4 && (s.level >= 4 || upgradesCompleted == 3)
+        val ultDueAt8 = hasStandardUlt && ultUpgradedAt4 && !ultUpgradedAt8 && (s.level >= 8 || upgradesCompleted == 7)
+        val ultDueAt12 = hasStandardUlt && ultUpgradedAt8 && !ultUpgradedAt12 && (s.level >= 12 || upgradesCompleted == 11)
+        val forceUlt = hasStandardUlt && ("ult" in ready || ultSeenInWindow || ((ultDueAt4 || ultDueAt8 || ultDueAt12) && ultTapAttempts < 3))
+
+        // On any level-up, wait 160 ms (3-4 frames) before allowing a non-ult upgrade so the Ultimate "+"
+        // badge has time to finish its pop-in animation and is never beaten by s1/s2 on frame 1!
+        if (!forceUlt && hasStandardUlt && now - upgradeWindowStartAt < 160L) return
+
         val order = com.example.mlbbresearch.game.SkillOrder.of(s.ownHero)
-        val slot = order.firstOrNull { it in ready } ?: return
+        val slot = if (forceUlt) {
+            "ult"
+        } else {
+            order.firstOrNull { it in ready } ?: ready.first()
+        }
+
         lastUpgradeTap = now
-        val (x, y) = Layout.get(slot + "Up")
-        perform(listOf(Act.Tap(x, y)))
-        note("Upgrade skill: $slot")
+        pendingUpgradeSlot = slot
+        if (slot == "ult") {
+            ultTapAttempts++
+            if (ultTapAttempts >= 3 && "ult" !in ready) {
+                when {
+                    ultDueAt4 -> ultUpgradedAt4 = true
+                    ultDueAt8 -> ultUpgradedAt8 = true
+                    ultDueAt12 -> ultUpgradedAt12 = true
+                }
+            }
+        }
+        val (x, y) = com.example.mlbbresearch.vision.ScreenReader.plusPos[slot] ?: Layout.upgradePoint(slot)
+        perform(listOf(Act.Tap(x, y, 0L, 65L)))
+        note("Upgrade skill: $slot" + if (forceUlt && slot == "ult") " (Lv${maxOf(4, s.level)} Ultimate priority)" else "")
     }
 
     // ---------------- standard match: hero, battle spell, emblem ----------------
@@ -460,8 +818,6 @@ object ActionExecutor {
 
     // ---------------- builder (autonomous) ----------------
 
-    // MLBB shows the next item of your in-game build preset (top right) once you can afford it:
-    // tap it to buy. blind = tap even when vision did not see the icon (old Builder behaviour).
     fun maybeQuickBuy(s: GameState, blind: Boolean = false) {
         val now = System.currentTimeMillis()
         if (now - lastQuickBuyTap < (if (blind) 8000 else 2500)) return
@@ -490,11 +846,11 @@ object ActionExecutor {
         }
     }
 
-    // Fast mode sends the touches straight from the AI's thread (no wait for the UI thread)
     fun perform(acts: List<Act>) {
         if (acts.isEmpty()) return
-        // a skill being held to charge: any other touch now would cancel it
-        if (System.currentTimeMillis() < holdUntil && acts.none { it is Act.Drag && (it as Act.Drag).ms > 400 }) return
+        if (System.currentTimeMillis() < holdUntil && acts.none {
+                it is Act.SkillAim || (it is Act.Tap && it.holdMs >= CastTiming.TAP_HOLD_MS) || (it is Act.Drag && it.ms > 400) || it is Act.Joy || it is Act.JoyRelease
+            }) return
         val svc = AccessibilityController.instance ?: return
         val send = {
             try {
@@ -507,7 +863,6 @@ object ActionExecutor {
         if (Cfg.fastMode) send() else main.post { send() }
     }
 
-    // Emergency stop: drop every queued touch
     fun cancelAll() {
         generation++
         main.removeCallbacksAndMessages(null)
@@ -518,9 +873,6 @@ object ActionExecutor {
     }
 }
 
-// Builder: when about to die with a full build and enough gold, sell the last item and
-// cycle Immortality -> Winter Crown -> Rose Gold Meteor -> Feather of Heaven, letting each
-// item's effect trigger before selling it and buying the next.
 object QuickBuySwap {
     @Volatile var busyUntil = 0L
     @Volatile var status = "idle"
@@ -530,9 +882,9 @@ object QuickBuySwap {
         "itemImmortality" to "Immortality",
         "itemWinterCrown" to "Winter Crown",
         "itemRoseGold" to "Rose Gold Meteor",
-        "itemFeather" to "Feather of Heaven"
+        "itemGuardian" to "Guardian Helmet"
     )
-    private val waitMs = mapOf("Immortality" to 1500L, "Winter Crown" to 400L, "Rose Gold Meteor" to 1500L, "Feather of Heaven" to 1500L)
+    private val waitMs = mapOf("Immortality" to 1500L, "Winter Crown" to 400L, "Rose Gold Meteor" to 1500L, "Guardian Helmet" to 1500L)
 
     fun watch(s: GameState) {
         val now = System.currentTimeMillis()

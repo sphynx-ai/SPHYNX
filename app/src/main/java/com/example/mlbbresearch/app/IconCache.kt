@@ -48,11 +48,18 @@ object IconCache {
         "Selena" to 631, "Silvanna" to 901, "Sora" to 1311, "Sun" to 271, "Suyou" to 1261, "Terizla" to 821,
         "Thamuz" to 721, "Tigreal" to 61, "Uranus" to 591, "Vale" to 661, "Valentina" to 1101, "Valir" to 571,
         "Vexana" to 381, "Wanwan" to 891, "X.Borg" to 831, "Xavier" to 1151, "Yi Sun-shin" to 301, "Yin" to 1131,
-        "Yu Zhong" to 951, "Yve" to 1011, "Zetian" to 1291, "Zhask" to 501, "Zhuxin" to 1251, "Zilong" to 161
+        "Yu Zhong" to 951, "Yve" to 1011, "Zetian" to 1291, "Zhask" to 501, "Zhuxin" to 1251, "Zilong" to 161,
+        "Hirara" to 1331, "Dori" to 1341      // (confirmed on the wiki page you saved)
     )
+    private val HERO_ALT: Map<String, List<Int>> = emptyMap()
 
     private val mem = LruCache<String, Bitmap>(220)
-    private val failed = HashSet<String>()
+    // a failed picture is tried again 2 minutes later (v36.63: before, never again until the app
+    // restarted - one moment without internet left every icon as initials)
+    private val failedAt = HashMap<String, Long>()
+    private val failed: Set<String> get() { val now = System.currentTimeMillis(); failedAt.entries.removeAll { now - it.value > 120_000 }; return failedAt.keys }
+    @Volatile var lastProblem = "-"; private set
+    private var problemsLogged = 0
     private val pending = HashMap<String, MutableList<(Bitmap?) -> Unit>>()
     private val io = Executors.newFixedThreadPool(3) { r -> Thread(r, "icons").apply { priority = Thread.MIN_PRIORITY } }
     private val main by lazy { Handler(Looper.getMainLooper()) }
@@ -63,15 +70,22 @@ object IconCache {
     fun heroFile(hero: String): String? {
         val n = heroByNorm[norm(hero)] ?: com.example.mlbbresearch.game.HeroDb.match(hero)?.let { heroByNorm[norm(it)] } ?: return null
         val id = HERO_FILE[n] ?: return null
+        HERO_ALT[n]?.let { ids ->
+            val files = ids.map { "Hero%03d-icon.png".format(it) }
+            return synchronized(this) { files.firstOrNull { it !in failed } ?: files.first() }
+        }
         return "Hero%03d-icon.png".format(id)
     }
     fun itemFile(item: String): String = item.trim().replace(' ', '_') + ".png"
 
-    fun url(file: String): String {
+    // the wiki's picture address (v36.64: the format the wiki uses now - "thumbnail-down"; the old
+    // "scale-to-width-down" one is kept only as a later fallback)
+    fun base(file: String): String {
         val md5 = MessageDigest.getInstance("MD5").digest(file.toByteArray()).joinToString("") { "%02x".format(it) }
         val enc = java.net.URLEncoder.encode(file, "UTF-8").replace("+", "%20")
-        return "https://static.wikia.nocookie.net/mobile-legends/images/${md5[0]}/${md5.substring(0, 2)}/$enc/revision/latest/scale-to-width-down/100"
+        return "https://static.wikia.nocookie.net/mobile-legends/images/${md5[0]}/${md5.substring(0, 2)}/$enc/revision/latest"
     }
+    fun url(file: String): String = base(file) + "/thumbnail-down/width/100/height/100"
 
     // the picture for a file (from memory, the phone, or the wiki), delivered on the main thread
     fun load(ctx: Context, file: String, done: (Bitmap?) -> Unit) {
@@ -85,17 +99,32 @@ object IconCache {
         io.execute {
             val f = File(dir, file)
             var bmp: Bitmap? = if (f.exists()) BitmapFactory.decodeFile(f.path) else null
-            if (bmp == null) bmp = try {
-                val c = URL(url(file)).openConnection() as HttpURLConnection
-                c.connectTimeout = 8000; c.readTimeout = 10000
-                c.setRequestProperty("User-Agent", "MLBB-Research")
-                if (c.responseCode == 200) {
-                    val bytes = c.inputStream.use { it.readBytes() }
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.also { f.writeBytes(bytes) }
-                } else null
-            } catch (e: Exception) { null }
+            // the wiki's small picture, else the full picture, else the wiki's file link (redirects)
+            val tries = listOf(url(file), base(file), base(file) + "/scale-to-width-down/100",
+                "https://mobile-legends.fandom.com/wiki/Special:FilePath/" + java.net.URLEncoder.encode(file, "UTF-8").replace("+", "%20") + "?width=100")
+            val why = ArrayList<String>()
+            for (u in tries) {
+                if (bmp != null) break
+                bmp = try {
+                    val c = URL(u).openConnection() as HttpURLConnection
+                    c.connectTimeout = 8000; c.readTimeout = 10000
+                    c.instanceFollowRedirects = true
+                    // (a browser-like name: some servers refuse unknown programs)
+                    c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Mobile Safari/537.36 MLBB-Research")
+                    c.setRequestProperty("Accept", "image/avif,image/webp,image/png,image/*,*/*;q=0.8")
+                    val code = c.responseCode
+                    if (code == 200) {
+                        val bytes = c.inputStream.use { it.readBytes() }
+                        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.also { f.writeBytes(bytes) } ?: run { why.add("not a picture (${bytes.size} bytes)"); null }
+                    } else { why.add("HTTP $code"); null }
+                } catch (e: Exception) { why.add(e.javaClass.simpleName + (e.message?.let { ": " + it.take(60) } ?: "")); null }
+            }
+            if (bmp == null && why.isNotEmpty()) {
+                lastProblem = "$file: " + why.joinToString(" / ")
+                if (problemsLogged++ < 3) com.example.mlbbresearch.core.Diag.info("Icon not loaded - $lastProblem")
+            }
             val cbs = synchronized(this) {
-                if (bmp == null) failed.add(file) else mem.put(file, bmp)
+                if (bmp == null) failedAt[file] = System.currentTimeMillis() else mem.put(file, bmp)
                 pending.remove(file) ?: mutableListOf()
             }
             main.post { cbs.forEach { it(bmp) } }
@@ -117,7 +146,7 @@ object IconCache {
     }
 
     // an ImageView showing a hero (round) or an item (rounded square)
-    fun view(ctx: Context, name: String, hero: Boolean, sizePx: Int): ImageView {
+    fun view(ctx: Context, name: String, hero: Boolean, sizePx: Int, fileOverride: String? = null): ImageView {
         val iv = ImageView(ctx)
         iv.scaleType = ImageView.ScaleType.CENTER_CROP
         iv.setImageBitmap(placeholder(name, sizePx))
@@ -127,11 +156,115 @@ object IconCache {
                 if (hero) o.setOval(0, 0, v.width, v.height) else o.setRoundRect(0, 0, v.width, v.height, v.width * 0.18f)
             }
         }
-        val file = if (hero) heroFile(name) else itemFile(name)
+        val file = fileOverride ?: if (hero) heroFile(name) else itemFile(name)
         if (file != null) {
             iv.tag = file
             load(ctx, file) { bmp -> if (bmp != null && iv.tag == file) iv.setImageBitmap(bmp) }
         }
         return iv
+    }
+
+    @Volatile var loadingAll = false; private set
+    @Volatile var loadAllStatus = "-"; private set
+
+    @Synchronized
+    fun clearFailures() {
+        failedAt.clear()
+        problemsLogged = 0
+    }
+
+    // Force-loads all icons in the Library (heroes, skills, battle spells + Blessed Retributions, and equipment)
+    // and pre-computes their in-game detection fingerprints (HeroVerifier.wikiPrint).
+    fun forceLoadAll(ctx: Context, done: (String) -> Unit) {
+        if (loadingAll) {
+            done("Already loading all icons ($loadAllStatus)")
+            return
+        }
+        loadingAll = true
+        clearFailures()
+        com.example.mlbbresearch.vision.HeroVerifier.clearWikiCache()
+        val appCtx = ctx.applicationContext
+        val dir = File(appCtx.filesDir, "icons").apply { mkdirs() }
+        Thread({
+            try {
+                val files = LinkedHashSet<String>()
+                // 1) All hero portraits
+                for (h in com.example.mlbbresearch.game.HeroDb.allNames) {
+                    heroFile(h)?.let { files.add(it) }
+                }
+                // 2) All 12 battle spells + 3 Blessed Retributions
+                for (sp in com.example.mlbbresearch.game.SpellDb.names + com.example.mlbbresearch.game.ItemDb.retributions) {
+                    files.add(itemFile(sp))
+                }
+                // 3) All equipment + roaming blessings
+                for (itName in com.example.mlbbresearch.game.ItemDb.current) {
+                    if (!com.example.mlbbresearch.game.ItemClass.isBlessing(itName)) files.add(itemFile(itName))
+                }
+                for (b in com.example.mlbbresearch.game.ItemClass.blessings) {
+                    files.add(b.file)
+                }
+                // 4) All hero skill & passive icons (fetch wiki skill icon names if not known yet)
+                val heroes = com.example.mlbbresearch.game.HeroDb.allNames
+                for ((idx, h) in heroes.withIndex()) {
+                    loadAllStatus = "Scanning hero skill icons (${idx + 1}/${heroes.size}: $h)…"
+                    if (!com.example.mlbbresearch.game.WikiSkills.iconsKnown(h)) {
+                        try { com.example.mlbbresearch.game.WikiSkills.fetchIcons(h) } catch (_: Exception) { }
+                    }
+                    val real = com.example.mlbbresearch.game.WikiSkills.icons(h)
+                    for ((_, fName) in real) files.add(fName)
+                    val kit = com.example.mlbbresearch.game.SkillBook.get(h)
+                    for (sl in com.example.mlbbresearch.game.HeroKit.slots(h)) {
+                        val skName = kit[sl]?.name
+                        if (!skName.isNullOrBlank() && skName != sl && sl !in real &&
+                            com.example.mlbbresearch.game.ItemDb.canonical(skName) == null &&
+                            com.example.mlbbresearch.game.SpellDb.match(skName) == null) {
+                            files.add(itemFile(skName))
+                        }
+                    }
+                }
+                val total = files.size
+                var okCount = 0
+                var doneCount = 0
+                for (file in files) {
+                    doneCount++
+                    loadAllStatus = "Loading icons: $doneCount / $total ($okCount ready)…"
+                    val f = File(dir, file)
+                    var bmp: Bitmap? = if (f.exists()) BitmapFactory.decodeFile(f.path) else null
+                    if (bmp == null) {
+                        val tries = listOf(url(file), base(file), base(file) + "/scale-to-width-down/100",
+                            "https://mobile-legends.fandom.com/wiki/Special:FilePath/" + java.net.URLEncoder.encode(file, "UTF-8").replace("+", "%20") + "?width=100")
+                        for (u in tries) {
+                            if (bmp != null) break
+                            bmp = try {
+                                val c = URL(u).openConnection() as HttpURLConnection
+                                c.connectTimeout = 8000; c.readTimeout = 10000
+                                c.instanceFollowRedirects = true
+                                c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Mobile Safari/537.36 MLBB-Research")
+                                c.setRequestProperty("Accept", "image/avif,image/webp,image/png,image/*,*/*;q=0.8")
+                                if (c.responseCode == 200) {
+                                    val bytes = c.inputStream.use { it.readBytes() }
+                                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.also { f.writeBytes(bytes) }
+                                } else null
+                            } catch (_: Exception) { null }
+                        }
+                    }
+                    if (bmp != null) {
+                        synchronized(this@IconCache) { mem.put(file, bmp); failedAt.remove(file) }
+                        com.example.mlbbresearch.vision.HeroVerifier.wikiPrint(file)
+                        okCount++
+                    }
+                }
+                val msg = "✓ Loaded $okCount / $total icons (heroes, skills, spells & equipment ready for in-game detection)"
+                loadAllStatus = msg
+                com.example.mlbbresearch.core.Diag.info("Library: $msg")
+                main.post { done(msg) }
+            } catch (e: Exception) {
+                val msg = "Load all icons stopped: ${e.message}"
+                loadAllStatus = msg
+                main.post { done(msg) }
+            } finally {
+                loadingAll = false
+            }
+        }, "force-load-icons").start()
     }
 }

@@ -9,13 +9,13 @@ object ItemDb {
     val current: List<String> = listOf(
         "Active - Conceal", "Allow Throw", "Antique Cuirass", "Arcane Boots", "Ares Belt", "Azure Blade",
         "Berserker's Fury", "Black Ice Shield", "Blade Armor", "Blade of Despair", "Blade of the Heptaseas", "Blood Wings",
-        "Bloody Retribution", "Book of Sages", "Boots", "Broken Heart", "Brute Force Breastplate", "Chastise Pauldron",
+        "Book of Sages", "Boots", "Broken Heart", "Brute Force Breastplate", "Chastise Pauldron",
         "Clock of Destiny", "Concentrated Energy", "Corrosion Scythe", "Cursed Helmet", "Dagger", "Demon Hunter Sword",
         "Demon Shoes", "Divine Glaive", "Dominance Ice", "Dreadnaught Armor", "Elegant Gem", "Enchanted Talisman",
-        "Endless Battle", "Exotic Veil", "Expert Gloves", "Feather of Heaven", "Flame Retribution", "Flask of the Oasis",
+        "Endless Battle", "Exotic Veil", "Expert Gloves", "Feather of Heaven", "Flask of the Oasis",
         "Fleeting Time", "Flower of Hope", "Fury Hammer", "Genius Wand", "Glowing Wand", "Golden Staff",
         "Great Dragon Spear", "Guardian Helmet", "Haas' Claws", "Healing Necklace", "Hero's Ring", "Holy Crystal",
-        "Hunter Strike", "Ice Queen Wand", "Ice Retribution", "Immortality", "Iron Hunting Bow", "Javelin",
+        "Hunter Strike", "Ice Queen Wand", "Immortality", "Iron Hunting Bow", "Javelin",
         "Knife", "Lantern of Hope", "Leather Jerkin", "Legion Sword", "Lightning Truncheon", "Magic Blade",
         "Magic Necklace", "Magic Potion", "Magic Resist Cloak", "Magic Shoes", "Magic Wand", "Malefic Gun",
         "Malefic Roar", "Molten Essence", "Mystery Codex", "Mystic Container", "Ogre Tomahawk", "Oracle",
@@ -26,12 +26,38 @@ object ItemDb {
         "Valkyrie's Shield", "Vampire Mallet", "Vitality Crystal", "War Axe", "Warrior Boots", "Wind of Nature",
         "Windtalker", "Winter Crown", "Wishing Lantern"
     )
+    // the jungle item's Retribution kinds: in the game they change the Retribution spell (seen only in
+    // a match), so the Library lists them under SPELLS, not equipment (v36.53). A build that names one
+    // is still accepted.
+    val retributions: List<String> = listOf("Ice Retribution", "Flame Retribution", "Bloody Retribution")
+    // equipment with an ACTIVE skill (a button you press in a match): shown as their own part of the
+    // Library's Equipment page (v36.56). The text is what the item's active does; the Library adds what
+    // it learned online.
+    val actives: Map<String, String> = linkedMapOf(
+        "Winter Crown" to "Frozen: you freeze yourself for a moment - immune to damage, but you cannot move or act. (The AI presses it at very low HP with an enemy on you, and in the low-HP item swap.)",
+        "Wind of Nature" to "Wind Chant: a short immunity to physical damage. (The AI presses it at low HP with physical enemies on you.)",
+    )
+    fun isActive(item: String) = norm(item) in actives.keys.map { norm(it) }
+
+    // the roaming boots' PASSIVE blessings (v36.62, your list) - Conceal is the active one (above)
+    val roamPassives: Map<String, String> = linkedMapOf(
+        "Passive - Encourage" to "Encourage: increases nearby allied heroes' attack speed and adaptive attack. Best for team fights and boosting team damage. Ideal: Hilda, Grock, Minotaur.",
+        "Passive - Favor" to "Favor: periodically restores HP to the lowest-HP nearby allied hero when you use healing or shielding skills. Best for sustaining teammates. Ideal: Rafaela, Estes, Floryn.",
+        "Passive - Dire Hit" to "Dire Hit (revamped): builds Force stacks while moving; at 20 stacks your next skill or basic attack uses them for bonus damage - kill pressure on low-HP heroes. Ideal: Hilda, Natalia, Saber.",
+    )
+    fun isRoamPassive(item: String) = norm(item) in roamPassives.keys.map { norm(it) }
+
+    // what the Library learns online and the backup keeps: the equipment (v36.73: not the roaming
+    // blessings - not equipment - and not the Blessed Retributions, whose text comes from the wiki only)
+    val learnable: List<String> get() = current.filter { !ItemClass.isBlessing(it) }
     private fun norm(s: String) = s.lowercase().filter { it.isLetter() }
-    private val keys = current.map { norm(it) }.toSet()
+    private val keys = (current + retributions).map { norm(it) }.toSet()
 
     fun isCurrent(item: String) = norm(item) in keys
     // the item's exact current name (e.g. "Haas's Claws" -> "Haas' Claws"), null if not current
-    fun canonical(item: String): String? = current.firstOrNull { norm(it) == norm(item) }
+    fun canonical(item: String): String? = (current + retributions).firstOrNull { norm(it) == norm(item) }
+        // "Haas's Claws" / "Haas Claws" -> "Haas' Claws" (the possessive written either way)
+        ?: current.firstOrNull { norm(it.replace("'", "")) == norm(item.replace("'s ", " ").replace("'", "")) }
     fun outdated(items: List<String>) = items.filter { it.isNotBlank() && !isCurrent(it) }
 }
 
@@ -116,7 +142,7 @@ object WikiLanes {
     // Junglers: assassins (fast farm and burst, fall off late), late-game (must farm), hybrid (tough +
     // damage), tank (frontline, slow farm), ranged (fast farm, weak in teamfights)
     val jungleAssassin = setOf("Aamon", "Fanny", "Gusion", "Harley", "Helcurt", "Hayabusa", "Joy", "Karina", "Lancelot", "Ling",
-        "Nolan", "Natalia", "Saber", "Suyou")
+        "Nolan", "Natalia", "Saber", "Suyou", "Hirara")
     val jungleLate = setOf("Aulus", "Hanzo", "Freya", "Roger", "Sun", "Yi Sun-shin", "Yin")
     val jungleHybrid = setOf("Alice", "Alpha", "Alucard", "Balmond", "Dyrroth", "Jawhead", "Julian", "Leomord", "Lukas", "Martis")
     val jungleTank = setOf("Akai", "Barats", "Baxia", "Fredrinn", "Hylos")

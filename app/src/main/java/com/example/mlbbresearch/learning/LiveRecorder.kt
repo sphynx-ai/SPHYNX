@@ -153,6 +153,8 @@ object LiveRecorder {
         f2[31] = if (ready["spell"] != false) 1f else 0f
         lastMx = mx; lastMy = my
         lastAction = DemoRecorder.describe(mx, my, casts)
+        // their fight choice (with an enemy close), scored like yours: fight moments for the small model
+        com.example.mlbbresearch.learning.Brain.observeWatched(s, mx, my, casts, ready.filterValues { it }.keys.toList())
         val values = ContentValues().apply {
             put("ts", now)
             put("hero", s.ownHero ?: "unknown")

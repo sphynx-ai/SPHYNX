@@ -170,6 +170,29 @@ object IconMemory {
     fun matchHero(sig: List<FloatArray>): Pair<String, Float>? =
         heroList().map { it.name to heroDistance(sig, it.prints) }.minByOrNull { it.second }
 
+    // v36.80: the two parts of the look matched SEPARATELY (your priority: in-game model before the
+    // minimap portrait). A part counts only when its best hero is clearly closer than any other hero.
+    // (Thresholds: the portrait is the part the combined check was measured on - same hero up to about
+    // 0.14 - so 0.18; the model's colour histogram is looser: 0.22, margin 0.08.)
+    const val PORTRAIT_MATCH = 0.18f
+    const val MODEL_MATCH = 0.22f
+    fun portraitDistance(a: List<FloatArray>, b: List<FloatArray>): Float =
+        if (a.isEmpty() || b.isEmpty()) Float.MAX_VALUE else distance(a[0], b[0])
+    fun modelDistance(a: List<FloatArray>, b: List<FloatArray>): Float {
+        if (a.size != 2 || b.size != 2 || a[1].size != HIST || b[1].size != HIST) return Float.MAX_VALUE
+        var hist = 0f
+        for (i in 0 until HIST) hist += abs(a[1][i] - b[1][i])
+        return hist / 2f
+    }
+    private fun bestBy(sig: List<FloatArray>, d: (List<FloatArray>, List<FloatArray>) -> Float, limit: Float, margin: Float): String? {
+        val per = heroList().groupBy { it.name }.mapValues { (_, es) -> es.minOf { d(sig, it.prints) } }.entries.sortedBy { it.value }
+        val b = per.getOrNull(0) ?: return null
+        val second = per.getOrNull(1)?.value ?: Float.MAX_VALUE
+        return if (b.value < limit && second - b.value >= margin) b.key else null
+    }
+    @Synchronized fun matchModel(sig: List<FloatArray>): String? = bestBy(sig, ::modelDistance, MODEL_MATCH, 0.08f)
+    @Synchronized fun matchPortrait(sig: List<FloatArray>): String? = bestBy(sig, ::portraitDistance, PORTRAIT_MATCH, 0.06f)
+
     @Synchronized
     fun matchSpell(p: FloatArray): Pair<String, Float>? =
         spellList().map { it.name to distance(p, it.prints[0]) }.minByOrNull { it.second }
@@ -193,7 +216,8 @@ object IconMemory {
     @Synchronized
     fun learnSpell(name: String, p: FloatArray): Boolean {
         val list = spellList()
-        if (list.any { it.name == name && distance(p, it.prints[0]) < SPELL_MATCH * 0.5f }) return false
+        // Do not re-learn if we already have a close print for this spell (stops log/storage churn)
+        if (list.any { it.name == name && distance(p, it.prints[0]) < SPELL_MATCH }) return false
         list.removeAll { distance(p, it.prints[0]) < SPELL_MATCH * 0.5f }
         list.add(Entry(name, listOf(p)))
         while (list.size > 60) list.removeAt(0)
@@ -206,6 +230,9 @@ object IconMemory {
 
     @Synchronized
     fun spellCount(): Int = spellList().map { it.name }.distinct().size
+
+    @Synchronized
+    fun forgetCache() { heroes = null; spells = null }
 
     @Synchronized
     fun forget() {

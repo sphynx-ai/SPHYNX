@@ -184,6 +184,19 @@ object ScreenReader {
         private set
     fun clearResult() { lastResultWin = null }     // at each match start: no stale result
 
+    // the best single row (fraction of matching pixels) between y0 and y1
+    private fun rowMax(px: IntArray, w: Int, h: Int, y0: Float, y1: Float, x0: Float, x1: Float, test: (Int) -> Boolean): Float {
+        var best = 0f
+        val xa = (x0 * w).toInt(); val xb = (x1 * w).toInt()
+        for (y in (y0 * h).toInt() until (y1 * h).toInt().coerceAtMost(h)) {
+            var n = 0; var m = 0
+            var x = xa
+            while (x < xb) { n++; if (test(px[y * w + x])) m++; x += 4 }
+            if (n > 0) best = maxOf(best, m.toFloat() / n)
+        }
+        return best
+    }
+
     fun classify(px: IntArray, w: Int, h: Int): ScreenHint {
         fun f(l: Float, t: Float, r: Float, b: Float, test: (Int) -> Boolean) = fraction(px, w, h, l, t, r, b, 2, test)
 
@@ -200,7 +213,11 @@ object ScreenReader {
         // ---- match end (dark screens with their own buttons): before anything else ----
         val quit = f(0.82f, 0.885f, 0.935f, 0.95f) { isButtonBlue(it) }
         val data = f(0.07f, 0.885f, 0.18f, 0.95f) { isButtonBlue(it) }
-        if (midDark && quit > 0.15f && data > 0.15f) {                       // scoreboard with Data + Quit
+        // (v36.92, your new end scoreboard: Quit moved left and a gold "Return to Lobby" took its place:
+        // measured Data 0.32, new Quit 0.39, gold 0.81)
+        val quitNew = f(0.69f, 0.885f, 0.80f, 0.95f) { isButtonBlue(it) }
+        val returnGold = f(0.82f, 0.885f, 0.935f, 0.95f) { isGold(it) }
+        if (midDark && data > 0.15f && (quit > 0.15f || (quitNew > 0.15f && returnGold > 0.4f))) {   // scoreboard with Data + Quit
             lastResultWin = f(0.40f, 0.03f, 0.60f, 0.13f) { isPaleGold(it) } > 0.05f
             return ScreenHint.RESULT_BOARD
         }
@@ -215,6 +232,11 @@ object ScreenReader {
                 return ScreenHint.RESULT_STATS
             }
         }
+        // the RANK and WIN STREAK screens (v36.92): a gold Continue button bottom right, nothing gold
+        // under it (the Home screen's RANKED button reaches lower: 0.63 there, 0.00-0.07 here). They
+        // were read as hero select before - which could start a "new match" at the end of yours
+        val contGold = f(0.77f, 0.89f, 0.95f, 0.95f) { isGold(it) }
+        if (contGold > 0.45f && f(0.80f, 0.955f, 0.95f, 0.985f) { isGold(it) } < 0.2f) return ScreenHint.RESULT_STATS
         val cornersDark = f(0f, 0f, 0.25f, 0.30f) { isDark(it) } > 0.8f && f(0.75f, 0.70f, 1f, 1f) { isDark(it) } > 0.8f
         val banner = f(0.33f, 0.40f, 0.68f, 0.56f) { isPaleGold(it) }
         if (cornersDark && banner > 0.10f) {                      // the big VICTORY letters
@@ -234,6 +256,16 @@ object ScreenReader {
         if (homeBtn > 0.45f && homeTop > 0.35f) return ScreenHint.HOME
         // lobby: the gold Start Game button (bottom, left of the middle)
         if (homeBtn < 0.2f && f(0.27f, 0.80f, 0.48f, 0.86f) { isGold(it) } > 0.45f) return ScreenHint.LOBBY
+        // searching for a match: the Home screen with its big button turned blue ("Return to Lobby")
+        // and the right side light (measured blue 0.45, right side 43% dark)
+        if (homeBtn < 0.2f && f(0.80f, 0.925f, 0.945f, 0.975f) { isButtonBlue(it) } > 0.3f &&
+            f(0.80f, 0.10f, 0.96f, 0.88f) { isDark(it) } < 0.55f) return ScreenHint.QUEUE
+        // LOADING (v36.92, your new loading screen): the cards of one team stand on a blue band, the
+        // other team's on a red line (measured red line 0.91; any other screen 0.13 at most). The teams'
+        // rows can swap, so a red line under the TOP row counts too
+        val redLow = rowMax(px, w, h, 0.95f, 0.985f, 0.34f, 0.95f) { isRedBar(it) }
+        val redHigh = rowMax(px, w, h, 0.42f, 0.47f, 0.06f, 0.66f) { isRedBar(it) }
+        if (redLow >= 0.6f || redHigh >= 0.6f) return ScreenHint.LOADING
         // match found: the gold Enter button (bottom middle)
         if (homeBtn < 0.2f && f(0.40f, 0.85f, 0.60f, 0.91f) { isGold(it) } > 0.45f) return ScreenHint.QUEUE
 
@@ -243,6 +275,12 @@ object ScreenReader {
         val confirm = f(cx - 0.05f, cy - 0.02f, cx + 0.05f, cy + 0.02f) { isGold(it) }
         val greyBtn = f(0.80f, 0.925f, 0.945f, 0.975f) { isButtonGrey(it) }
         if (confirm > 0.45f) return ScreenHint.HERO_SELECT
+        // hero locked in: the Skins tab with a blue (Unlock / skin) button at the bottom right (measured 0.37)
+        if (f(0.80f, 0.925f, 0.945f, 0.975f) { isButtonBlue(it) } > 0.25f && f(0.80f, 0.10f, 0.96f, 0.88f) { isDark(it) } > 0.55f) {
+            val heroTab = avgLum(px, w, h, 0.80f, 0.01f, 0.87f, 0.065f)
+            val skinsTab = avgLum(px, w, h, 0.88f, 0.01f, 0.95f, 0.065f)
+            return if (skinsTab > heroTab + 10) ScreenHint.HERO_LOCKED else ScreenHint.HERO_SELECT
+        }
         if (greyBtn > 0.6f && f(0.80f, 0.10f, 0.96f, 0.88f) { isDark(it) } > 0.55f) {
             val heroTab = avgLum(px, w, h, 0.80f, 0.01f, 0.87f, 0.065f)
             val skinsTab = avgLum(px, w, h, 0.88f, 0.01f, 0.95f, 0.065f)
@@ -338,9 +376,66 @@ object ScreenReader {
         return if (green + empty < n * 0.8f) -1f else green.toFloat() / n
     }
 
-    // skill / spell icons of the panel (centre x, y)
-    val LIVE_ICONS = linkedMapOf("s1" to (0.417f to 0.946f), "s2" to (0.462f to 0.946f), "ult" to (0.505f to 0.946f),
-        "spell" to (0.564f to 0.946f))
+    // skill / spell icons of the panel (centre x, y) - for a 3-skill hero
+    // v36.71, re-measured on your 4 live screenshots (Hirara, Fredrinn): the skill icons are packed
+    // from the left, one every 0.0387 of the width (2, 3 or 4 of them), the battle spell is always at
+    // 0.564. (The old s2 / ult places, 0.462 / 0.505, were between two icons.)
+    private const val LIVE_Y = 0.941f
+    private val LIVE_SKILL_X = floatArrayOf(0.4156f, 0.4543f, 0.493f, 0.531f)
+    // (a 3-skill hero's icons are spread wider: 0.0435 apart - v36.72, your 2 live screenshots)
+    private val LIVE_SKILL_X3 = floatArrayOf(0.4163f, 0.4599f, 0.5033f)
+    val LIVE_ICONS = linkedMapOf("s1" to (LIVE_SKILL_X3[0] to LIVE_Y), "s2" to (LIVE_SKILL_X3[1] to LIVE_Y), "ult" to (LIVE_SKILL_X3[2] to LIVE_Y),
+        "spell" to (0.564f to LIVE_Y))
+
+    // the icons for a hero with 2 / 3 / 4 skills
+    fun liveIcons(kit: Int): LinkedHashMap<String, Pair<Float, Float>> {
+        val slots = when (kit) { 2 -> listOf("s1", "s2"); 4 -> listOf("s1", "s2", "s3", "ult"); else -> listOf("s1", "s2", "ult") }
+        val m = LinkedHashMap<String, Pair<Float, Float>>()
+        val xs = if (slots.size == 3) LIVE_SKILL_X3 else LIVE_SKILL_X
+        slots.forEachIndexed { i, sl -> m[sl] = xs[i] to LIVE_Y }
+        m["spell"] = 0.564f to LIVE_Y
+        return m
+    }
+
+    // how many skill icons the panel shows (agreed on 3 readings in a row)
+    @Volatile var liveKit = 3; private set
+    private var liveKitCand = 0
+    private var liveKitN = 0
+    fun readLiveKit(px: IntArray, w: Int, h: Int): Int {
+        var n = 0
+        // (the 2/4-skill spots: a 3-skill hero's wider icons still cover the first 3 of them, not the 4th)
+        for (x in LIVE_SKILL_X) { if (iconPresence(px, w, h, x, LIVE_Y) >= 18f) n++ else break }
+        val k = n.coerceIn(2, 4)
+        if (n >= 2) { if (k == liveKitCand) liveKitN++ else { liveKitCand = k; liveKitN = 1 } }
+        if (liveKitN >= 3) liveKit = liveKitCand
+        return liveKit
+    }
+    // an icon (even a dark one cooling down) is textured: brightness spread 28+ on your 6 live
+    // screenshots; an empty spot of the panel is flat (9 or less). (v36.72: the colour test missed
+    // dark cooling icons)
+    private fun iconPresence(px: IntArray, w: Int, h: Int, fx: Float, fy: Float): Float {
+        val cx = (fx * w).toInt(); val cy = (fy * h).toInt(); val r = (0.010f * w).toInt()
+        var sum = 0.0; var sq = 0.0; var t = 0
+        var dx = -r
+        while (dx <= r) {
+            var dy = -r
+            while (dy <= r) {
+                if (dx * dx + dy * dy <= r * r) {
+                    val x = cx + dx; val y = cy + dy
+                    if (x in 0 until w && y in 0 until h) {
+                        val p = px[y * w + x]
+                        val l = 0.3 * ((p shr 16) and 255) + 0.59 * ((p shr 8) and 255) + 0.11 * (p and 255)
+                        sum += l; sq += l * l; t++
+                    }
+                }
+                dy += 2
+            }
+            dx += 2
+        }
+        if (t == 0) return 0f
+        val m = sum / t
+        return kotlin.math.sqrt(maxOf(0.0, sq / t - m * m)).toFloat()
+    }
 
     // how colourful an icon is (average max-min of r, g, b over a disc): a cooling skill is greyed
     // out with its countdown on top. Measured on 7 live screens: ready s1 87 / s2 99 / spell 65-67;
@@ -383,15 +478,56 @@ object ScreenReader {
 
     // ---------------- HUD ----------------
 
+    // Exact detected center of each visible golden "+" upgrade icon on the current frame (v37.10)
+    @Volatile var plusPos: Map<String, Pair<Float, Float>> = emptyMap()
+        private set
+
+    // Searches a bounce/shift-tolerant window around both the calibrated upgrade "+" position and the
+    // relative offset from the skill button so the Ultimate "+" is never missed during its pulse animation
+    // or when Large HUD / custom button layouts are active (v37.10).
+    private fun findUpgradePlus(px: IntArray, w: Int, h: Int, slot: String, key: String): Pair<Float, Float>? {
+        val rad = 0.011f
+        val ry = rad * w / h
+        val (ux, uy) = Layout.upgradePoint(slot)
+        val minGold = if (slot == "ult") 0.24f else 0.30f
+        if (fraction(px, w, h, ux - rad, uy - ry, ux + rad, uy + ry, 1) { isGold(it) } >= minGold) {
+            return ux to uy
+        }
+        val (sx, sy) = Layout.get(slot)
+        val relX = (sx + if (Layout.kitSize == 4) -0.035f else -0.042f).coerceIn(0.05f, 0.95f)
+        val relY = (sy + if (Layout.kitSize == 4) -0.076f else -0.098f).coerceIn(0.05f, 0.95f)
+        val candidates = if (abs(relX - ux) > 0.008f || abs(relY - uy) > 0.008f) listOf(ux to uy, relX to relY) else listOf(ux to uy)
+        var bestPos: Pair<Float, Float>? = null
+        var bestScore = minGold
+        for ((bx, by) in candidates) {
+            for (dy in floatArrayOf(-0.016f, -0.008f, 0f, 0.008f, 0.016f)) {
+                for (dx in floatArrayOf(-0.012f, -0.006f, 0f, 0.006f, 0.012f)) {
+                    val cx = bx + dx
+                    val cy = by + dy
+                    val f = fraction(px, w, h, cx - rad, cy - ry, cx + rad, cy + ry, 1) { isGold(it) }
+                    if (f >= bestScore) {
+                        bestScore = f
+                        bestPos = cx to cy
+                    }
+                }
+            }
+        }
+        return bestPos
+    }
 
     fun hud(px: IntArray, w: Int, h: Int, withMovement: Boolean): HudInfo {
         val ups = HashSet<String>()
-        val rad = 0.011f
-        for ((slot, key) in listOf("s1" to "s1Up", "s2" to "s2Up", "ult" to "ultUp")) {
-            val (x, y) = Layout.get(key)
-            val ry = rad * w / h
-            if (fraction(px, w, h, x - rad, y - ry, x + rad, y + ry, 1) { isGold(it) } > 0.35f) ups.add(slot)
+        val foundPos = HashMap<String, Pair<Float, Float>>()
+        for ((slot, key) in listOf("s1" to "s1Up", "s2" to "s2Up", "s3" to "s3Up", "ult" to "ultUp")) {
+            if (slot == "s3" && Layout.kitSize != 4) continue
+            if (slot == "ult" && Layout.kitSize == 2) continue     // (Hirara: no ultimate - its "+" spot is her Skill 2's)
+            val pos = findUpgradePlus(px, w, h, slot, key)
+            if (pos != null) {
+                ups.add(slot)
+                foundPos[slot] = pos
+            }
         }
+        plusPos = foundPos
         val qb = quickBuyShowing(px, w, h)
 
         var mx = 0f; var my = 0f

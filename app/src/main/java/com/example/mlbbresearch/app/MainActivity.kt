@@ -78,6 +78,7 @@ class MainActivity : Activity() {
     private var downAt = 0L
     private val navButtons = LinkedHashMap<String, Button>()
     private val updaters = ArrayList<() -> Unit>()
+    private var groqWasLimited = false
     private val leaveHooks = ArrayList<() -> Unit>()
     private var defaultText: ColorStateList? = null
     private var page = "home"
@@ -87,9 +88,9 @@ class MainActivity : Activity() {
     private var headerStatus: TextView? = null
     private var navScroll: HorizontalScrollView? = null
 
-    private val pages = listOf("home", "player", "draft", "build", "meta", "model", "learn", "speed", "logs", "setup")
+    private val pages = listOf("home", "player", "draft", "build", "meta", "library", "model", "learn", "speed", "logs", "setup")
     private val labels = mapOf(
-        "home" to "Home", "player" to "Player", "draft" to "Draft", "build" to "Build", "meta" to "Meta",
+        "home" to "Home", "player" to "Player", "draft" to "Draft", "build" to "Build", "meta" to "Meta", "library" to "Library",
         "model" to "Model", "learn" to "Learn", "speed" to "Speed", "logs" to "Logs", "setup" to "Setup"
     )
 
@@ -103,6 +104,15 @@ class MainActivity : Activity() {
                 val on = AiRuntime.anyOn()
                 h.text = if (on) "● " + AiRuntime.statusLine() else "○ AI off"
                 h.setTextColor(Color.parseColor(if (on) T.GREEN else T.MUTED))
+                // Groq resting after its rate limit: a red countdown in the header, on every page
+                val gq = com.example.mlbbresearch.ai.GroqClient
+                if (gq.limited) {
+                    val sp = android.text.SpannableString("  ·  Groq in " + gq.waitText())
+                    sp.setSpan(android.text.style.ForegroundColorSpan(Color.parseColor(T.RED)), 0, sp.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    h.append(sp)
+                }
+                if (groqWasLimited && !gq.limited) toast("Groq is available again")
+                groqWasLimited = gq.limited
             }
             for (u in updaters.toList()) u()
             ui.postDelayed(this, 500)
@@ -205,6 +215,7 @@ class MainActivity : Activity() {
         super.onPause()
         ui.removeCallbacks(refresher)
         for (h in leaveHooks.toList()) h()
+        com.example.mlbbresearch.learning.OnlineBackup.flushLearned()   // learned data into the folder now
     }
 
     // rotation is handled here instead of restarting the app (see android:configChanges)
@@ -281,6 +292,16 @@ class MainActivity : Activity() {
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
     private fun upd(f: () -> Unit) { updaters.add(f); f() }
+    // Groq status for the indicators: colour + text
+    private fun groqIndicator(): Pair<String, String> {
+        val gq = com.example.mlbbresearch.ai.GroqClient
+        return when {
+            !gq.anyKey -> T.MUTED to "Online AI: no key"
+            gq.limited -> T.RED to "All online models resting after their rate limits · available again in ${gq.waitText()} (${gq.availableAtText()})"
+            gq.groqLimited -> T.GREEN to "Online AI available (Groq resting; the other models answer)"
+            else -> T.GREEN to "Online AI available"
+        }
+    }
 
     // ---- look: one dark theme, used by every page ----
     private object T {
@@ -488,6 +509,7 @@ class MainActivity : Activity() {
             "draft" -> draftPage()
             "build" -> buildPage()
             "meta" -> metaPage()
+            "library" -> libraryPage()
             "model" -> modelPage()
             "learn" -> learnPage()
             "speed" -> speedPage()
@@ -610,6 +632,10 @@ class MainActivity : Activity() {
     // =====================================================================
 
     private fun homePage() {
+        // the app version (and the installed build, if the package says something else)
+        val installed = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { null }
+        text("MLBB Research v${com.example.mlbbresearch.core.AppVersion.VERSION} (${com.example.mlbbresearch.core.AppVersion.VERSION})" +
+            (if (installed != null && installed != com.example.mlbbresearch.core.AppVersion.VERSION) " · build $installed" else ""), 12f, color = T.MUTED)
         val c1 = card()
         val status = cardHeader(c1, "", "", T.GREEN)
         val sChip = (status.parent as LinearLayout).getChildAt(1) as TextView
@@ -637,6 +663,11 @@ class MainActivity : Activity() {
             styleButton(capBtn, primary = !ScreenCaptureService.running)
         }
 
+        // VISION TUNING (moved here from the Player page - v36.93)
+        title("VISION TUNING")
+        switch("Show what the AI sees (boxes on the game)", Cfg.showDetections) { Cfg.showDetections = it }
+        switch("Show where the AI touches", Cfg.showTouches) { Cfg.showTouches = it }
+
         title("RUN")
         stageSwitch("Player (plays the hero)", "player") { AiRuntime.playerOn }
         stageSwitch("Drafter (ban & pick)", "draft") { AiRuntime.drafterOn }
@@ -644,7 +675,7 @@ class MainActivity : Activity() {
         switch("Autonomous Drafter + Builder", Cfg.autonomous) { Cfg.autonomous = it }
         switch("Dry run: only show where it would tap", Cfg.dryRun) { Cfg.dryRun = it }
         val mode = text("", 12f, color = T.MUTED)
-        upd { mode.text = "Match: ${if (Cfg.ranked) "Ranked" else "Standard"} (Draft page) · ⏻ on the floating icon toggles the AI in game" }
+        upd { mode.text = "Match: ${if (Cfg.ranked) "Ranked" else "Standard"} (detected by itself) · ⏻ on the floating icon toggles the AI in game" }
 
         title("WHAT THE AI SEES")
         val preview = PreviewView(this)
@@ -671,7 +702,14 @@ class MainActivity : Activity() {
             val s = GameStateTracker.state
             val hero = GameStateTracker.ownHero()
             detected.text = buildString {
-                if (s.selfHp >= 0) append("HP ").append((s.selfHp * 100).toInt()).append("%  ·  ")
+                if (s.selfHp >= 0) {
+                    append("HP ").append(((if (s.selfHpRaw >= 0) s.selfHpRaw else s.selfHp) * 100).toInt()).append("%")
+                    if (s.selfExtra > 0.01f) append(" + ").append(when (com.example.mlbbresearch.game.HeroKit.barModel(s.ownHero)) {
+                        com.example.mlbbresearch.game.HeroKit.BarModel.ARMOR -> "armour"
+                        com.example.mlbbresearch.game.HeroKit.BarModel.STORED -> "stored energy"
+                        else -> "shield" }).append(" ").append((s.selfExtra * 100).toInt()).append("%")
+                    append("  ·  ")
+                }
                 if (s.self != null) append("Level ").append(s.level).append(if (s.enemyLevel > 0) " (enemy ${s.enemyLevel})" else "").append("  ·  ")
                 append(s.lane.label).append("  ·  Spell ").append(s.spell ?: "?")
                 if (s.monsters.isNotEmpty()) append("   Monsters: ").append(s.monsters.size)
@@ -734,24 +772,35 @@ class MainActivity : Activity() {
 
 
         title("YOUR HERO")
-        text("Your hero is recognised from the minimap portrait, the pick screen, or the name below.", 12f, color = "#9AA0A6")
-        val heroBox = field("Hero name (empty = detect)", Cfg.myHero, false) { Cfg.myHero = it }
+        text("Type your hero and press ENTER: an entered hero is ABSOLUTE (beats every detection) and the app learns how it looks from it. Enter an empty box to go back to detection: skill set > hero icon / model > portrait.", 12f, color = "#9AA0A6")
+        fun saveHero(v: String) {
+            val m = HeroDb.match(v)
+            Cfg.manualHero = if (v.isBlank()) "" else m ?: v.trim()
+            if (v.isBlank()) toast("Detection: skill set > hero icon / model > portrait")
+            else if (m == null) toast("Entered \"${v.trim()}\" (not in the hero list: role defaults until its skills are learned online)")
+            else { if (m != Cfg.myHero) Cfg.myHero = m; toast("Entered: $m (absolute)") }
+        }
+        // (typing alone changes nothing: only Enter - the button or the keyboard's Done - sets it)
+        val heroBox = field("My hero (Enter = absolute; empty + Enter = detect)", Cfg.manualHero, false) { }
+        heroBox.imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_DONE
+        heroBox.setOnEditorActionListener { v, _, _ -> saveHero(v.text.toString().trim()); false }
+        btn("Enter") { saveHero(heroBox.text.toString().trim()) }
+        // your in-game name: finds YOUR card on the loading screen and the scoreboard (v36.84)
+        val nameBox = field("My player name (in-game name, as written in the game)", com.example.mlbbresearch.game.PlayerName.get(), false) { }
+        nameBox.imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_DONE
+        fun saveName(v: String) { com.example.mlbbresearch.game.PlayerName.set(v); toast(if (v.isBlank()) "Player name cleared: your card = the first card" else "Player name: $v") }
+        nameBox.setOnEditorActionListener { v, _, _ -> saveName(v.text.toString().trim()); false }
+        btn("Enter name") { saveName(nameBox.text.toString().trim()) }
         val heroInfo = text("", 13f)
         upd {
             val h = GameStateTracker.ownHero()
             val p = HeroDb.profile(h)
             heroInfo.text = "Using: ${h ?: "unknown"} (${GameStateTracker.ownHeroSource()})\n" +
-                "Role ${p.role.name.lowercase()}, ultimate: ${p.ult.name.lowercase()}, retreat below ${(p.retreatHp * 100).toInt()}% HP\n" +
+                "Role ${p.role.name.lowercase()}, ${if (HeroDb.isRanged(h)) "ranged" else "melee"}, dash ${HeroDb.dashSlot(h) ?: "none"}, ultimate: ${p.ult.name.lowercase()}" +
+                (com.example.mlbbresearch.game.CooldownTracker.ultCooldown(h)?.let { " (cooldown ${it.toInt()} s)" } ?: "") + "\n" +
                 "Learned aggression adjust: ${"%+.2f".format(Cfg.learnedBias(h ?: "unknown"))}\n" +
-                "Heroes whose icons are learned: ${IconMemory.heroCount()}"
-        }
-        btn("This is my hero now (learn its look)") {
-            val h = HeroDb.match(heroBox.text.toString())
-            when {
-                h == null -> toast("Type the hero's name first")
-                GameStateTracker.teachHero(h) -> toast("Learned how $h looks")
-                else -> toast("No game frame yet: start the Player or Learn from me during a match, then try again")
-            }
+                "Heroes whose looks are learned: ${IconMemory.heroCount()} (portrait), ${com.example.mlbbresearch.vision.HeroVerifier.learnedCount()} (skill icons)\n" +
+                "Hero check: ${com.example.mlbbresearch.vision.HeroVerifier.status}"
         }
 
         title("BATTLE SPELL")
@@ -763,16 +812,8 @@ class MainActivity : Activity() {
         val spellInfo = text("", 13f)
         upd {
             spellBtn.text = "My battle spell: ${if (Cfg.mySpell == "auto") "detect it" else Cfg.mySpell}  (tap to change)"
-            spellInfo.text = "Detected: ${GameStateTracker.spell() ?: "unknown"} (${GameStateTracker.spellSource()}). " +
+            spellInfo.text = "Using: ${GameStateTracker.spellDisplay() ?: GameStateTracker.spell() ?: "not known yet"} (${GameStateTracker.spellSource()}). " +
                 "Spells whose icon is learned: ${IconMemory.spellCount()}"
-        }
-        btn("This is my spell now (learn its icon)") {
-            val sp = SpellDb.match(Cfg.mySpell)
-            when {
-                sp == null -> toast("Choose the spell with the button above first")
-                GameStateTracker.teachSpell(sp) -> toast("Learned the $sp icon")
-                else -> toast("No game frame yet: start the Player during a match, then try again")
-            }
         }
 
         title("LANE (only one can be on)")
@@ -785,16 +826,19 @@ class MainActivity : Activity() {
         upd {
             val st = GameStateTracker.state
             jungleInfo.text = "Minimap: you ${if (st.minimapSelf != null) "found" else "not found"}, " +
-                "${st.camps.size} of your camps up (${st.camps.count { it.buff }} buffs)\nJungle path: ${com.example.mlbbresearch.game.JungleNav.status}"
+                "${st.camps.count { !it.enemy }} of your camps up (${st.camps.count { it.buff && !it.enemy }} buffs), ${st.camps.count { it.enemy }} enemy camps seen\nJungle path: ${com.example.mlbbresearch.game.JungleNav.status}\n${com.example.mlbbresearch.ai.TacticalEngine.invadeStatus}"
         }
         val laneInfo = text("", 13f)
         upd {
             val (lane, why) = GameStateTracker.lane()
             laneInfo.text = "Playing: ${lane.label} ($why)"
         }
-        field("Seconds from base to your lane", Cfg.laneTravelSec.toString(), true) {
-            it.toIntOrNull()?.let { v -> Cfg.laneTravelSec = v.coerceIn(0, 60) }
-        }
+        val tuneInfo = text("", 12f, color = "#9AA0A6")
+        upd { tuneInfo.text = "Learned by itself: base to lane ${Cfg.laneTravelSec} s, enemy tower range ${Cfg.towerRangePct}% of the minimap" }
+
+        title("ENEMY TEAM")
+        val enemyInfo = text("", 13f)
+        upd { enemyInfo.text = com.example.mlbbresearch.game.EnemyIntel.text() }
 
         title("SKILL COMBOS")
         val comboInfo = text("", 13f)
@@ -803,51 +847,23 @@ class MainActivity : Activity() {
             val (combo, from) = ComboBook.text(h)
             comboInfo.text = "Combo for ${h ?: "unknown hero"}: $combo ($from)\nNow: ${ComboRunner.status}"
         }
-        text("Format: s1 > s2 > a > ult (a = basic attack). Pause in ms: s2(500) > s1.", 12f, color = "#9AA0A6")
-        val comboBox = EditText(this).apply {
-            setText(ComboBook.text(GameStateTracker.ownHero()).first)
-            setTextColor(Color.WHITE)
+        text("Automatic: the online guide's combo, what Coach learned from you, or one built from the hero's skills.", 12f, color = "#9AA0A6")
+
+        title("IN-GAME SCENERY CALIBRATION")
+        text("Roams the actual in-game map once in Practice Mode to memorize 3D bushes, walls, monster pit entrances, and towers so the AI never gets stuck on monster pits or walls.", 12f, color = "#9AA0A6")
+        val sceneryInfo = text("", 13f)
+        val roamBtn = btn("") {
+            val msg = com.example.mlbbresearch.game.SceneryMap.toggleRoam()
+            toast(msg)
         }
-        content.addView(comboBox)
-        fun heroForCombo(): String? = GameStateTracker.ownHero() ?: HeroDb.match(heroBox.text.toString())
-        btn("Save this combo for my hero") {
-            val h = heroForCombo()
-            val steps = ComboBook.parse(comboBox.text.toString())
-            when {
-                h == null -> toast("Your hero is not known yet: type its name above")
-                steps.size < 2 -> toast("Write at least 2 steps, like s1 > s2 > ult")
-                else -> { Cfg.setHeroCombo(h, ComboBook.format(steps)); toast("Saved for $h") }
-            }
+        btn("Clear saved map scenery") {
+            com.example.mlbbresearch.game.SceneryMap.clear()
+            toast("Scenery map cleared")
         }
-        btn("Back to the built-in combo") {
-            heroForCombo()?.let { Cfg.setHeroCombo(it, null); comboBox.setText(ComboBook.text(it).first); toast("Reset") }
-        }
-        text("Downloads a guide's combo (or Gemma builds one from the skills). Online only when you tap.", 12f, color = "#9AA0A6")
-        field("Guide address template ({hero} = hero name)", Cfg.comboUrl, false) { if (it.contains("http")) Cfg.comboUrl = it }
-        val pageBox = field("Guide page address (optional)", "", false) { }
-        val fetchBtn = btn("Get my hero's combo online") {
-            val h = heroForCombo()
-            if (h == null) toast("Your hero is not known yet: type its name above") else {
-                toast("Downloading...")
-                ComboFetcher.fetch(h, pageBox.text.toString().trim()) { msg ->
-                    runOnUiThread { toast(msg); comboBox.setText(ComboBook.text(h).first) }
-                }
-            }
-        }
-        upd { fetchBtn.isEnabled = !ComboFetcher.busy }
-        val pasteBox = EditText(this).apply {
-            hint = "...or paste guide text here"
-            setTextColor(Color.WHITE); setHintTextColor(Color.GRAY)
-            minLines = 2
-        }
-        content.addView(pasteBox)
-        btn("Find the combo in the pasted text") {
-            val h = heroForCombo()
-            if (h == null) toast("Your hero is not known yet: type its name above") else {
-                ComboFetcher.fromPaste(h, pasteBox.text.toString()) { msg ->
-                    runOnUiThread { toast(msg); comboBox.setText(ComboBook.text(h).first) }
-                }
-            }
+        upd {
+            val active = com.example.mlbbresearch.game.SceneryMap.roamActive
+            roamBtn.text = if (active) "Stop scenery calibration roam" else "Start scenery calibration roam (Practice Mode)"
+            sceneryInfo.text = "Memorized: ${com.example.mlbbresearch.game.SceneryMap.summary()}\nStatus: ${com.example.mlbbresearch.game.SceneryMap.status}"
         }
 
         title("JUNGLE, TURTLE & LORD")
@@ -863,12 +879,7 @@ class MainActivity : Activity() {
         upd { lvInfo.text = "Badges remembered: ${com.example.mlbbresearch.vision.LevelReader.templatesKnown} of 15 (levels 1, 2, 9 and 12 are built in)" }
         btn("Forget the remembered level badges") { com.example.mlbbresearch.vision.LevelReader.forgetTemplates(); toast("Forgotten") }
         title("TURTLE & LORD")
-        field("Retribution on turtle / lord below HP (%)", Cfg.retriBossPct.toString(), true) {
-            it.toIntOrNull()?.let { v -> Cfg.retriBossPct = v.coerceIn(1, 60) }
-        }
-        field("Retribution on jungle monsters below HP (%)", Cfg.retriCreepPct.toString(), true) {
-            it.toIntOrNull()?.let { v -> Cfg.retriCreepPct = v.coerceIn(1, 90) }
-        }
+        text("Retribution: Turtle / Lord at ${Cfg.retriBossPct}%, buffs at ${Cfg.retriCreepPct}% (from your rulebook).", 12f, color = "#9AA0A6")
         val objInfo = text("", 13f)
         upd {
             val st = GameStateTracker.state
@@ -879,12 +890,6 @@ class MainActivity : Activity() {
         }
 
         title("BEHAVIOUR")
-        val dirs = listOf("up-right", "right", "down-right", "down", "down-left", "left", "up-left", "up")
-        val dirBtn = btn("") {
-            val i = dirs.indexOf(Cfg.pushDir)
-            Cfg.pushDir = dirs[(i + 1) % dirs.size]
-        }
-        upd { dirBtn.text = "Push towards enemy base: ${Cfg.pushDir}  (tap to change)" }
         val moveInfo = text("", 13f)
         upd {
             val gs = GameStateTracker.state
@@ -912,35 +917,8 @@ class MainActivity : Activity() {
 
         title("KILLS, TOWERS & GOLD")
         text("Priority: low-HP enemies, then camps and minions, then towers (only with your minions). Defend your towers; destroy the base to win.", 12f, color = "#9AA0A6")
-        field("Chase and finish enemy heroes below HP (%)", Cfg.executeHpPct.toString(), true) {
-            it.toIntOrNull()?.let { v -> Cfg.executeHpPct = v.coerceIn(5, 60) }
-        }
-        field("Enemy tower range (% of the minimap width)", Cfg.towerRangePct.toString(), true) {
-            it.toIntOrNull()?.let { v -> Cfg.towerRangePct = v.coerceIn(3, 20) }
-        }
-        val rangeBtn = btn("") {
-            val h = GameStateTracker.ownHero() ?: HeroDb.match(heroBox.text.toString())
-            if (h == null) toast("Your hero is not known yet") else {
-                val opts = listOf("auto", "melee", "ranged")
-                Cfg.setHeroRange(h, opts[(opts.indexOf(Cfg.heroRange(h)) + 1) % opts.size])
-            }
-        }
-        upd {
-            val h = GameStateTracker.ownHero()
-            rangeBtn.text = "Range type of ${h ?: "my hero"}: ${if (HeroDb.isRanged(h)) "RANGED (pokes heroes, keeps distance)" else "MELEE (fights heroes up close)"} " +
-                "(${HeroDb.rangeSource(h)}) - tap to change"
-        }
-        val dashBtn = btn("") {
-            val h = GameStateTracker.ownHero() ?: HeroDb.match(heroBox.text.toString())
-            if (h == null) toast("Your hero is not known yet") else {
-                val opts = listOf("auto", "s1", "s2", "ult", "none")
-                Cfg.setHeroDash(h, opts[(opts.indexOf(Cfg.heroDash(h)) + 1) % opts.size])
-            }
-        }
         val towerInfo = text("", 13f)
         upd {
-            val h = GameStateTracker.ownHero()
-            dashBtn.text = "Dash skill for ${h ?: "my hero"}: ${HeroDb.dashSlot(h) ?: "none"} (${HeroDb.dashSource(h)}) - tap to change"
             val st = GameStateTracker.state
             val n = com.example.mlbbresearch.game.TowerLogic.nearest(st)
             towerInfo.text = "Minimap: ${st.towers.size} enemy towers (${st.towers.count { it.bonus }} bonus), " +
@@ -952,9 +930,7 @@ class MainActivity : Activity() {
         }
 
         title("REGEN & RECALL")
-        field("Regen below HP (%)", Cfg.regenHpPct.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.regenHpPct = v.coerceIn(10, 95) } }
-        field("Recall below HP (%)", Cfg.recallHpPct.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.recallHpPct = v.coerceIn(5, 80) } }
-        text("Regen and Recall stand still; a nearby enemy cancels them.", 12f, color = "#9AA0A6")
+        text("Regen below ${Cfg.regenHpPct}% HP, Recall below ${Cfg.recallHpPct}% (from your rulebook); a nearby enemy cancels them.", 12f, color = "#9AA0A6")
         text("Buys only when no enemy is close. Calibrate the buttons on Setup.", 12f, color = "#9AA0A6")
 
         title("COACH: HELP THE AI, IT LEARNS FROM YOU")
@@ -1022,7 +998,7 @@ class MainActivity : Activity() {
             val h = GameStateTracker.ownHero()
             when {
                 h == null -> toast("Pick a hero first")
-                Cfg.groqKey.isBlank() -> toast("No Groq key: put groq_key.txt in the MLBB-Research folder")
+                !com.example.mlbbresearch.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the MLBB-Research folder")
                 else -> {
                     toast("Learning $h (skills, then the guide)…")
                     com.example.mlbbresearch.game.SkillBook.fetch(h) { m1 ->
@@ -1051,19 +1027,10 @@ class MainActivity : Activity() {
             toast("Started")
         }
         btn("Stop learning all heroes") { com.example.mlbbresearch.game.SkillBook.stopLearnAll() }
-        val paste = field("Or paste: passive: … / s1: … / s2: … / ult: …", "", false) { }
-        btn("Use the pasted descriptions") {
-            val h = GameStateTracker.ownHero()
-            if (h == null) toast("Pick a hero first") else toast(com.example.mlbbresearch.game.SkillBook.fromText(h, paste.text.toString()).take(120))
-        }
-        field("Copy your style after this many moments", Cfg.imitationMinDemos.toString(), true) {
-            it.toIntOrNull()?.let { v -> Cfg.imitationMinDemos = v.coerceIn(50, 100_000) }
-        }
         val learnInfo = text("", 13f)
         DemoRecorder.refreshTotal()
         upd {
-            learnInfo.text = "Recorded moments: ${DemoRecorder.total} (${DemoRecorder.recorded} of you, " +
-                "${DemoRecorder.watched} from heroes you watched this session)\n" +
+            learnInfo.text = "Recorded moments: ${DemoRecorder.total} (${DemoRecorder.recorded} of you this session)\n" +
                 "Last seen from you: ${DemoRecorder.lastAction}\nYour moves: ${ImitationPolicy.status}" +
                 (if (Cfg.coachMode && ImitationPolicy.size > 0) ", similarity now ${(ImitationPolicy.lastMatch * 100).toInt()}%" else "")
         }
@@ -1074,19 +1041,9 @@ class MainActivity : Activity() {
         }
         val cdInfo = text("", 12f, color = "#9AA0A6")
         upd { cdInfo.text = "Buttons now: " + com.example.mlbbresearch.game.CooldownTracker.screenState() }
-        field("Ask Gemma for a new plan every (seconds)", Cfg.strategyEverySec.toString(), true) {
-            it.toIntOrNull()?.let { v -> Cfg.strategyEverySec = v.coerceIn(3, 120) }
-        }
         switch("Send a screenshot with plan questions (slower)", Cfg.strategyWithImage) { Cfg.strategyWithImage = it }
 
-        title("VISION TUNING")
-        switch("Show what the AI sees (boxes on the game)", Cfg.showDetections) { Cfg.showDetections = it }
-        switch("Show where the AI touches", Cfg.showTouches) { Cfg.showTouches = it }
-        field("Hero HP bar min width (% of screen)",
-            Cfg.heroBarMinWidthPct.toString(), true) { it.toFloatOrNull()?.let { v -> Cfg.heroBarMinWidthPct = v.coerceIn(1f, 20f) } }
-        field("Hero body below its bar (% of height)", Cfg.bodyBelowBarPct.toString(), true) {
-            it.toFloatOrNull()?.let { v -> Cfg.bodyBelowBarPct = v.coerceIn(0f, 30f) }
-        }
+        // (Vision tuning moved to the Home page - v36.93)
         btn("Reset learned aggression for this hero") {
             Cfg.setLearnedBias(GameStateTracker.ownHero() ?: "unknown", 0f)
             toast("Reset")
@@ -1099,23 +1056,19 @@ class MainActivity : Activity() {
 
     private fun draftPage() {
         stageSwitch("Drafter running", "draft") { AiRuntime.drafterOn }
-        title("MATCH TYPE (only one can be on)")
-        exclusivePair("Standard match (pick hero, battle spell, emblem)", "Ranked match (ban & pick)", !Cfg.ranked) { std ->
-            Cfg.matchMode = if (std) "standard" else "ranked"
-            if (!std && AiRuntime.drafterOn && !GemmaEngine.ready) toast("Ranked drafting needs the Gemma model (Model page)")
-        }
+        title("MATCH TYPE")
         val phase = text("", 13f, color = "#9AA0A6")
-        upd { phase.text = "Screen now: ${GameStateTracker.state.phase.label}" }
+        upd { phase.text = "Detected by itself on the hero-select screen (a ban stage = ranked): now ${if (Cfg.ranked) "RANKED" else "STANDARD"}" +
+            (if (!GemmaEngine.ready) " (needs the Gemma model to tell them apart)" else "") + "\nScreen now: ${GameStateTracker.state.phase.label}" }
 
         title("STANDARD MATCH")
         text("Picks your hero (and spell / emblem), then confirms. Needs Drafter + Autonomous.", 13f)
-        field("Your hero (also used by the Player)", Cfg.myHero, false) { Cfg.myHero = it }
         switch("Tap my hero", Cfg.stdPickHero) { Cfg.stdPickHero = it }
         switch("Change battle spell", Cfg.stdChangeSpell) { Cfg.stdChangeSpell = it }
         switch("Change emblem set", Cfg.stdChangeEmblem) { Cfg.stdChangeEmblem = it }
         btn("Test the standard pick now") {
             if (AccessibilityController.instance == null) toast("Turn on the accessibility service first")
-            else ActionExecutor.standardSelect(HeroDb.match(Cfg.myHero))
+            else ActionExecutor.standardSelect(GameStateTracker.ownHero())
         }
 
         title("Ranked: team or solo")
@@ -1136,9 +1089,6 @@ class MainActivity : Activity() {
                 syncing = false
             }
         }
-        field("Check the draft screen every (seconds)", Cfg.draftEverySec.toString(), true) {
-            it.toIntOrNull()?.let { v -> Cfg.draftEverySec = v.coerceIn(5, 120) }
-        }
         title("Ban & pick")
         val dcard = card()
         cardHeader(dcard, "Pick")
@@ -1151,6 +1101,14 @@ class MainActivity : Activity() {
             pickGrid.set(picks); banGrid.set(bans)
             t.text = (if (picks.isEmpty() && bans.isEmpty()) "Waiting for a draft screen." else "From $src.") +
                 StrategicAdvisor.draftText.takeIf { it.isNotBlank() }?.let { "\n" + it.lines().filter { l -> l.isNotBlank() }.take(3).joinToString("\n") }.orEmpty()
+        }
+        // the defense to build once the enemy team's damage types are known (v36.73)
+        title("Enemy damage")
+        val defT = text("", 13f)
+        upd {
+            val en = GameStateTracker.enemyTeam
+            defT.text = if (en.isEmpty()) "Shown once the enemy heroes are known." else
+                en.joinToString { "$it (${HeroDb.damageText(it).substringBefore(" (")})" } + "\n" + (com.example.mlbbresearch.game.ItemClass.defenseAgainst(en) ?: "")
         }
         title("AUTONOMOUS RANKED DRAFT")
         text("Ranked: taps the recommended hero and locks in. Keep Dry run on until the marker is right.", 13f)
@@ -1171,6 +1129,45 @@ class MainActivity : Activity() {
         val bChip = (bHead.parent as LinearLayout).getChildAt(1) as TextView
         val buildGrid = IconGrid(bc, hero = false, sizeDp = 44)
         val bNote = cardNote(bc)
+        // ---- experimental builds (BuildLab) ----
+        run {
+            val lab = com.example.mlbbresearch.ai.BuildLab
+            val hero = GameStateTracker.ownHero() ?: HeroDb.match(Cfg.manualHero) ?: HeroDb.match(Cfg.myHero)
+            val xc = card()
+            cardHeader(xc, "Experimental builds", hero ?: "no hero", T.GOLD)
+            cardText(xc, 12f).text = "Builds that try something different from the meta, made from ${hero ?: "your hero"}'s real skills and passive, its kit, " +
+                "how it plays, the original server's patch and meta, and what the Library knows about each item. Real items and spells only."
+            val xs = lab.builds(hero)
+            if (xs.isEmpty()) cardText(xc, 12.5f).text = if (hero == null) "Choose your hero on the Player page first." else "None made yet."
+            else cardText(xc, 11.5f).text = "Made for patch ${lab.madeFor(hero).ifBlank { "?" }}" + (lab.chosen(hero)?.let { " · in use: ${it.name}" } ?: "")
+            for ((i, b) in xs.withIndex()) {
+                xc.addView(TextView(this).apply { text = "${i + 1}. ${b.name}"; textSize = 14.5f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD); setPadding(0, dp(10), 0, dp(2)) })
+                IconGrid(xc, hero = false, sizeDp = 40).set(b.items)
+                cardText(xc, 12f).text = buildString {
+                    append(b.idea)
+                    if (b.spell != null) append("\nSpell: ").append(b.spell)
+                    if (b.emblem.isNotBlank()) append(if (b.spell != null) "  ·  " else "\n").append("Emblem: ").append(b.emblem)
+                    if (b.whenToUse.isNotBlank()) append("\nWhen: ").append(b.whenToUse)
+                    if (b.risk.isNotBlank()) append("\nRisk: ").append(b.risk)
+                }
+                val inUse = lab.chosen(hero)?.name == b.name
+                xc.addView(Button(this).apply {
+                    text = if (inUse) "In use - back to the meta build" else "Use this build"; isAllCaps = false; textSize = 13f
+                    setOnClickListener { if (hero != null) { lab.choose(hero, if (inUse) null else i); show("build") } }
+                })
+            }
+            val gen = Button(this).apply {
+                text = if (lab.busy.isNotEmpty()) "Working on ${lab.busy}…" else if (xs.isEmpty()) "Make experimental builds" else "Make new experimental builds"
+                isAllCaps = false
+                setOnClickListener {
+                    if (hero == null) { toast("Choose your hero on the Player page first"); return@setOnClickListener }
+                    toast("Asking the online model (uses tokens)…")
+                    lab.generate(hero) { m -> runOnUiThread { toast(m); show("build") } }
+                }
+            }
+            styleButton(gen, primary = true)
+            xc.addView(gen)
+        }
         // ---- counter items ----
         val cc = card()
         cardHeader(cc, "Counter items")
@@ -1187,12 +1184,18 @@ class MainActivity : Activity() {
             val hero = GameStateTracker.ownHero()
             val role = HeroDb.role(hero)
             val meta = if (Cfg.useOnlineMeta) com.example.mlbbresearch.game.MetaStore.hero(hero) else null
-            val items = meta?.build?.takeIf { it.isNotEmpty() } ?: BuildBook.primary(role)
+            val xb = com.example.mlbbresearch.ai.BuildLab.chosen(hero)
+            // Advanced equipment only, filtered by hero damage type & tank defensive rule (v37.01)
+            val items = BuildBook.forHero(hero, xb?.items ?: meta?.build?.takeIf { it.isNotEmpty() } ?: BuildBook.primary(role))
             bHead.text = (hero ?: "Your hero") + " build"
-            bChip.text = if (meta != null && meta.build.isNotEmpty()) "online meta" else role.name.lowercase()
+            bChip.text = if (xb != null) "experimental" else if (meta != null && meta.build.isNotEmpty()) "online meta" else role.name.lowercase()
             buildGrid.set(items)
             bNote.text = buildString {
-                if (meta != null) {
+                if (xb != null) {
+                    append(xb.name)
+                    if (xb.spell != null) append("  ·  Spell: ").append(xb.spell)
+                    if (xb.emblem.isNotBlank()) append("  ·  Emblem: ").append(xb.emblem)
+                } else if (meta != null) {
                     if (meta.emblem.isNotBlank()) append("Emblem: ").append(meta.emblem)
                     if (meta.spell != null) append(if (isEmpty()) "" else "  ·  ").append("Spell: ").append(meta.spell)
                 }
@@ -1205,7 +1208,7 @@ class MainActivity : Activity() {
                 enemies.isEmpty() -> "Waiting for the enemy line-up."
                 counters.isEmpty() -> "None needed against " + enemies.joinToString() + "."
                 else -> "Against " + enemies.joinToString() + "."
-            }
+            } + (com.example.mlbbresearch.game.ItemClass.defenseAgainst(enemies)?.let { "\n$it" } ?: "")
             val (picks, bans, src) = draftLists()
             dSrc.text = "Recommended picks"
             pickGrid.set(picks)
@@ -1217,10 +1220,7 @@ class MainActivity : Activity() {
         switch("Auto quick buy when about to die", Cfg.qbOn) { Cfg.qbOn = it }
         switch("Only with a full build", Cfg.qbRequireFull) { Cfg.qbRequireFull = it }
         switch("Only with enough gold", Cfg.qbRequireGold) { Cfg.qbRequireGold = it }
-        field("Minimum gold", Cfg.qbMinGold.toString(), true) { it.toIntOrNull()?.let { v -> Cfg.qbMinGold = v } }
-        field("Swap when HP is below (%)", Cfg.qbHpPercent.toString(), true) {
-            it.toIntOrNull()?.let { v -> Cfg.qbHpPercent = v.coerceIn(5, 90) }
-        }
+        text("Swaps under ${Cfg.qbHpPercent}% HP with ${Cfg.qbMinGold}+ gold: Immortality › Winter Crown › Rose Gold Meteor › Guardian Helmet.", 12f, color = T.MUTED)
         val live = text("", 13f, color = T.MUTED)
         upd {
             val s = GameStateTracker.state
@@ -1230,26 +1230,17 @@ class MainActivity : Activity() {
         btn("Test the swap now (buys and sells for real)") {
             if (AccessibilityController.instance == null) toast("Turn on the accessibility service first") else QuickBuySwap.start()
         }
-        field("Read items & gold every (seconds)", Cfg.buildEverySec.toString(), true) {
-            it.toIntOrNull()?.let { v -> Cfg.buildEverySec = v.coerceIn(10, 300) }
-        }
 
         title("Builds per role")
-        text("Comma separated. Names are checked against the current item list.", 12f, color = T.MUTED)
+        text("Used when the online meta has no build for your hero yet (the hero's own build from the meta comes first).", 12f, color = T.MUTED)
         for (r in Role.values()) {
             if (r == Role.UNKNOWN) continue
-            val box = field(r.name.lowercase().replaceFirstChar { it.uppercase() }, Cfg.roleBuild(r.name, BuildBook.defaults[r] ?: ""), false) { Cfg.setRoleBuild(r.name, it) }
+            text(r.name.lowercase().replaceFirstChar { it.uppercase() }, 13f, bold = true)
             val holder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
             content.addView(holder)
             val grid = IconGrid(holder, hero = false, sizeDp = 32)
-            val warn = text("", 12f, color = T.RED)
-            upd {
-                val typed = box.text.toString().split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                grid.set(typed.mapNotNull { com.example.mlbbresearch.game.ItemDb.canonical(it) })
-                val bad = com.example.mlbbresearch.game.ItemDb.outdated(typed)
-                warn.text = if (bad.isEmpty()) "" else "Not in the game now (left out): " + bad.joinToString()
-                warn.visibility = if (bad.isEmpty()) View.GONE else View.VISIBLE
-            }
+            val items = Cfg.roleBuild(r.name, BuildBook.defaults[r] ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            grid.set(com.example.mlbbresearch.game.ItemClass.advancedOnly(items))
         }
     }
 
@@ -1267,6 +1258,343 @@ class MainActivity : Activity() {
         return Triple(fb, emptyList(), "the built-in list")
     }
 
+
+    // =====================================================================
+    //  LIBRARY: everything the app knows - heroes, battle spells, equipment - with icons
+    // =====================================================================
+
+    private var libTab = "heroes"
+    private var libFilter = ""
+
+    private fun libraryPage() {
+        val ll = com.example.mlbbresearch.learning.LibraryLearner
+        val lc = card()
+        cardHeader(lc, "What the app knows")
+        val lt = cardText(lc, 13f)
+        upd {
+            lt.text = ll.counts() + "\n" + (if (ll.running) "Learning: " else "Last run: ") + ll.progress +
+                com.example.mlbbresearch.app.IconCache.loadAllStatus.takeIf { it != "-" }?.let { "\nIcons: $it" }.orEmpty() +
+                com.example.mlbbresearch.app.IconCache.lastProblem.takeIf { it != "-" }?.let { "\nPictures: $it (tried again every 2 min)" }.orEmpty()
+        }
+        val lb = btn("") {
+            if (ll.running) { ll.stop(); toast("Stopping after the current question") }
+            else ll.start { m -> runOnUiThread { toast(m) } }
+        }
+        upd { lb.text = if (ll.running) "Stop learning" else "Learn the whole database online" }
+        styleButton(lb, primary = true)
+        val loadIconsBtn = btn("") {
+            if (com.example.mlbbresearch.app.IconCache.loadingAll) {
+                toast("Already loading icons: ${com.example.mlbbresearch.app.IconCache.loadAllStatus}")
+            } else {
+                toast("Force-loading all Library icons (heroes, skills, spells & equipment)…")
+                com.example.mlbbresearch.app.IconCache.forceLoadAll(this) { msg ->
+                    runOnUiThread { toast(msg); show("library") }
+                }
+            }
+        }
+        upd {
+            loadIconsBtn.text = if (com.example.mlbbresearch.app.IconCache.loadingAll) "Loading all icons… (${com.example.mlbbresearch.app.IconCache.loadAllStatus})" else "Load all icons"
+            styleButton(loadIconsBtn, primary = !com.example.mlbbresearch.app.IconCache.loadingAll)
+        }
+        text("Skills come from each hero's wiki page (real skills and passive only; the online model just copies them and every name is checked against the page). Every hero's skills and online guide, then every item - skipping what is known, waiting out Groq's limit by itself (all of it takes a few days of the app being open).", 12f, color = T.MUTED)
+
+        // tabs
+        val tabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        for ((k, label) in listOf("heroes" to "Heroes", "spells" to "Spells", "items" to "Equipment", "terms" to "Terms")) {
+            tabs.addView(Button(this).apply {
+                text = label; isAllCaps = false; textSize = 13f
+                background = ripple(if (k == libTab) T.ACCENT else T.SURF2, 16)
+                setTextColor(Color.parseColor(if (k == libTab) "#FFFFFF" else T.TEXT))
+                setOnClickListener { libTab = k; show("library") }
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(3), dp(8), dp(3), dp(4)) })
+        }
+        content.addView(tabs)
+        val search = EditText(this).apply {
+            hint = "Search"; setText(libFilter); setTextColor(c(T.TEXT)); setHintTextColor(c(T.MUTED))
+            background = shape(T.SURF2, 10, T.STROKE); setPadding(dp(12), dp(8), dp(12), dp(8)); isSingleLine = true
+        }
+        content.addView(search, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4) })
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        content.addView(list)
+
+        fun row(name: String, hero: Boolean, status: String, ok: Boolean, onLong: (() -> Unit)? = null,
+                icons: (() -> List<Pair<String, String>>)? = null, file: String? = null, detail: () -> String) {
+            val box = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL; background = shape(T.SURF, 12, T.STROKE); setPadding(dp(10), dp(8), dp(10), dp(8))
+            }
+            val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            val px = dp(40)
+            top.addView(com.example.mlbbresearch.app.IconCache.view(this, name, hero, px, file), LinearLayout.LayoutParams(px, px))
+            val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(10), 0, 0, 0) }
+            col.addView(TextView(this).apply { text = name; textSize = 15f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD) })
+            col.addView(TextView(this).apply { text = (if (ok) "● " else "○ ") + status; textSize = 12f; setTextColor(c(if (ok) T.GREEN else T.MUTED)) })
+            top.addView(col, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            box.addView(top)
+            // the hero's passive and skills as icons (the wiki's skill pictures), shown with the details
+            val strip = android.widget.HorizontalScrollView(this).apply { visibility = View.GONE; isHorizontalScrollBarEnabled = false }
+            val stripRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(8), 0, 0) }
+            strip.addView(stripRow)
+            box.addView(strip)
+            val det = TextView(this).apply { textSize = 12.5f; setTextColor(c(T.TEXT)); setLineSpacing(0f, 1.15f); setPadding(0, dp(8), 0, 0); visibility = View.GONE }
+            box.addView(det)
+            box.setOnClickListener {
+                if (det.visibility == View.GONE) {
+                    det.text = detail(); det.visibility = View.VISIBLE
+                    fun fill() {
+                        val ic = icons?.invoke().orEmpty()
+                        stripRow.removeAllViews()
+                        for ((skill, label) in ic) {
+                            val cell = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(0, 0, dp(10), 0) }
+                            val sz = dp(46)
+                            // "file:<name>" = the real picture read from the wiki page
+                            val file = skill.removePrefix("file:").takeIf { skill.startsWith("file:") }
+                            cell.addView(com.example.mlbbresearch.app.IconCache.view(this@MainActivity, if (file != null) label else skill, false, sz, file), LinearLayout.LayoutParams(sz, sz))
+                            cell.addView(TextView(this@MainActivity).apply { text = label; textSize = 10.5f; setTextColor(c(T.MUTED)); gravity = Gravity.CENTER; maxWidth = dp(70) })
+                            stripRow.addView(cell)
+                        }
+                        strip.visibility = if (ic.isEmpty()) View.GONE else View.VISIBLE
+                    }
+                    fill()
+                    // the real skill pictures are read from the hero's wiki page the first time (no tokens)
+                    if (hero && !com.example.mlbbresearch.game.WikiSkills.iconsKnown(name)) Thread {
+                        val m = try { com.example.mlbbresearch.game.WikiSkills.fetchIcons(name) } catch (e: Exception) { null }
+                        if (m != null) runOnUiThread { if (strip.visibility == View.VISIBLE) fill() }
+                    }.start()
+                } else { det.visibility = View.GONE; strip.visibility = View.GONE }
+            }
+            if (onLong != null) box.setOnLongClickListener { onLong(); true }
+            list.addView(box, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })
+        }
+
+        // the passive's and every skill's picture on the wiki: "<Skill name>.png" (like Fighting_Spirit.png,
+        // The_Power_of_Axe.png on Aulus's page) - only real names learned from the wiki
+        fun heroSkillIcons(h: String): List<Pair<String, String>> {
+            val kit = com.example.mlbbresearch.game.SkillBook.get(h)
+            val out = ArrayList<Pair<String, String>>()
+            // the real pictures from the wiki page (passive + every skill), when read
+            val real = com.example.mlbbresearch.game.WikiSkills.icons(h)
+            if (real.isNotEmpty()) {
+                val hints = com.example.mlbbresearch.game.HeroKit.buttonHints[h]
+                real["passive"]?.let { out.add("file:$it" to "Passive") }
+                // every button of the hero's kit: the wiki picture, else (v36.68) the picture named after
+                // the skill - unless that name is also an item / spell (Layla, Arlott)
+                for (sl in listOf("s1", "s2", "s3", "ult").filter { it in real || it in com.example.mlbbresearch.game.HeroKit.slots(h) }) {
+                    val lb = hints?.get(sl) ?: when (sl) { "s1" -> "Skill 1"; "s2" -> "Skill 2"; "s3" -> "Skill 3"; else -> "Ultimate" }
+                    val f = real[sl]
+                    if (f != null) out.add("file:$f" to lb)
+                    else kit[sl]?.name?.takeIf { n -> n.isNotBlank() && n != sl && com.example.mlbbresearch.game.ItemDb.canonical(n) == null &&
+                        com.example.mlbbresearch.game.SpellDb.match(n) == null }?.let { n -> out.add(n to lb) }
+                }
+                return out
+            }
+            kit.passiveText.substringBefore(" - ").trim().takeIf { it.isNotBlank() && it.length < 40 && kit.passiveText.contains(" - ") }?.let { out.add(it to "Passive") }
+            val hints = com.example.mlbbresearch.game.HeroKit.buttonHints[h]
+            for (sl in com.example.mlbbresearch.game.HeroKit.slots(h)) kit[sl]?.let { k ->
+                if (k.name.isNotBlank() && k.name != sl) out.add(k.name to (hints?.get(sl) ?: when (sl) { "s1" -> "Skill 1"; "s2" -> "Skill 2"; "s3" -> "Skill 3"; else -> "Ultimate" }))
+            }
+            return out
+        }
+
+        fun heroDetail(h: String): String = buildString {
+            ll.lastError(h, "skills")?.takeIf { !com.example.mlbbresearch.game.SkillBook.known(h) }?.let { append("⚠ Skills could not be learned: ").append(it).append('\n') }
+            ll.lastError(h, "guide")?.takeIf { !com.example.mlbbresearch.game.MetaStore.has(h) }?.let { append("⚠ Guide could not be learned: ").append(it).append('\n') }
+            append("(Long-press this hero to learn its skills and guide now.)\n")
+            com.example.mlbbresearch.game.WikiSkills.iconsDebug(h)?.let { d ->
+                val got = com.example.mlbbresearch.game.WikiSkills.icons(h).keys
+                if (com.example.mlbbresearch.game.HeroKit.slots(h).any { it !in got }) append("⚠ Skill pictures on the wiki page: ").append(d).append('\n')
+            }
+            val kit = com.example.mlbbresearch.game.SkillBook.get(h)
+            val pb = com.example.mlbbresearch.game.HeroPlaybook.of(h)
+            append(HeroDb.role(h).name.lowercase()).append(if (HeroDb.isRanged(h)) ", ranged" else ", melee")
+            append(" · dash ").append(HeroDb.dashSlot(h) ?: "none")
+            com.example.mlbbresearch.game.CooldownTracker.ultCooldown(h)?.let { append(" · ultimate cooldown ").append(it.toInt()).append(" s") }
+            val dmgT = HeroDb.damageText(h)
+            append("\nDamage type: ").append(dmgT).append(" · its equipment: ")
+                .append(if (dmgT.startsWith("Physical + Magic")) "Attack or Magic (Adaptive Attack fits both)" else if (dmgT.startsWith("Magic")) "Magic (Magic Power) - Adaptive Attack fits too" else "Attack (Physical Attack) - Adaptive Attack fits too")
+            append("\nPassive: ").append(kit.passiveText.ifBlank { "not learned yet (every hero has its own: learn it from the wiki)" }.take(320))
+            append("\nSkills (").append(kit.source).append("):")
+            append("\nKit: ").append(com.example.mlbbresearch.game.HeroKit.describe(h))
+            for (sl in com.example.mlbbresearch.game.HeroKit.slots(h)) kit[sl]?.let { k ->
+                append("\n• ").append(sl).append(if (k.name.isNotBlank() && k.name != sl) " ${k.name}" else "").append(": ")
+                append(k.kind.name.lowercase()).append(", range ").append((k.range * 100).toInt()).append("%")
+                if (k.hardCc) append(", hard CC") else if (k.slow) append(", slow")
+                if (k.mobility) append(", dash"); if (k.heal) append(", heal"); if (k.shield) append(", shield")
+                append(", ").append(k.mode.name.lowercase())
+                if (k.cooldownSec > 0f) append(", ").append(k.cooldownSec.toInt()).append(" s")
+                com.example.mlbbresearch.game.GameTerms.ccIn(k.description).takeIf { it.isNotEmpty() }?.let { append("\n   crowd control: ").append(it.joinToString()) }
+                if (k.description.isNotBlank() && k.description != k.name) append("\n   ").append(k.description.take(400))
+            }
+            append("\nHP back from hitting: ").append(com.example.mlbbresearch.game.Sustain.describe(h))
+            append("\nPlays as: ").append(pb.style).append(" · combo ").append(pb.combo)
+            val m = com.example.mlbbresearch.game.MetaStore.hero(h)
+            if (m != null) {
+                append("\nGuide (").append(m.patch).append("): build ").append(m.build.joinToString())
+                if (m.emblem.isNotBlank()) append("\nEmblem: ").append(m.emblem)
+                m.spell?.let { append(" · spell ").append(it) }
+                if (m.playstyle.isNotBlank()) append("\nHow to play: ").append(m.playstyle)
+                if (m.counters.isNotEmpty()) append("\nCountered by: ").append(m.counters.joinToString())
+            } else append("\nGuide: not learned yet")
+        }
+
+        val spellUse = mapOf(
+            "Retribution" to "AI: buffs at ${Cfg.retriCreepPct}%, Turtle / Lord at ${Cfg.retriBossPct}%, close hero fights; never minions or small camps",
+            "Execute" to "AI: only to finish a target under the execute line", "Flicker" to "AI: escape, catch a fleeing kill, pass a wall",
+            "Flameshot" to "AI: finish under 30% or push away a chaser", "Petrify" to "AI: 2+ enemies close, or one at under 60%, or running",
+            "Inspire" to "AI: in a fight with the target in reach", "Sprint" to "AI: running, or chasing a low target just out of reach",
+            "Aegis" to "AI: under 45% HP with enemies near", "Revitalize" to "AI: under 50% HP with enemies near",
+            "Purify" to "AI: just hit, enemy close, under 45%", "Vengeance" to "AI: in a fight, just hit, under 75%",
+            "Arrival" to "AI: not used by itself")
+        val q = libFilter.trim().lowercase()
+        fun ok(n: String) = q.isEmpty() || q in n.lowercase()
+        when (libTab) {
+            "heroes" -> for (h in HeroDb.allNames.filter { ok(it) }) {
+                val kit = com.example.mlbbresearch.game.SkillBook.get(h)
+                val skills = com.example.mlbbresearch.game.SkillBook.known(h)
+                val guide = com.example.mlbbresearch.game.MetaStore.has(h)
+                val skillsSt = when {
+                    skills -> if (kit.source.startsWith("wiki")) "from the wiki" else kit.source
+                    com.example.mlbbresearch.game.SkillBook.unverified(h) -> "AI-written, not trusted (re-learn)"
+                    !kit.source.startsWith("role defaults") -> "built in, unchecked"
+                    else -> "not learned"
+                }
+                val errS = if (!skills) ll.lastError(h, "skills") else null
+                val errG = if (!guide) ll.lastError(h, "guide") else null
+                val st = (if (errS != null || errG != null) "⚠ last try failed · " else "") + HeroDb.role(h).name.lowercase() + " · skills " + skillsSt +
+                    " · guide " + (if (guide) "learned" else "not yet")
+                row(h, true, st, skills && guide, onLong = {
+                    toast("Learning $h now (wiki skills + guide)…")
+                    ll.learnOne(h) { m -> runOnUiThread { toast(m); show("library") } }
+                }, icons = { heroSkillIcons(h) }) { heroDetail(h) }
+            }
+            "spells" -> {
+                for (sp in SpellDb.names.filter { ok(it) }) {
+                    val cd = com.example.mlbbresearch.game.SpellInfo.cooldown[sp]
+                    row(sp, false, "cooldown ${cd?.toInt() ?: "?"} s · built in", true) {
+                        (com.example.mlbbresearch.game.SpellInfo.effect[sp] ?: "-") + "\n" + (spellUse[sp] ?: "") +
+                            "\nOn an enemy: " + com.example.mlbbresearch.game.EnemyIntel.spellNote(sp)
+                    }
+                }
+                // the Retribution kinds (from the jungle item; seen only in a match)
+                // (your guide - v36.76 - and the wiki's exact effect text; never an AI's)
+                val ic = com.example.mlbbresearch.game.ItemClass
+                val rs = com.example.mlbbresearch.game.ItemDb.retributions.filter { ok(it) }
+                if (rs.isNotEmpty()) {
+                    list.addView(TextView(this).apply { text = "Blessed Retribution"; textSize = 15f; setTextColor(c(T.ACCENT)); setTypeface(null, Typeface.BOLD); setPadding(dp(4), dp(14), 0, dp(2)) })
+                    list.addView(TextView(this).apply { text = ic.RETRI_INTRO; textSize = 12f; setTextColor(c(T.MUTED)); setPadding(dp(6), 0, 0, dp(2)) })
+                }
+                for (sp in rs) {
+                    val wiki = ic.retributionText(sp)
+                    val guide = ic.retributionGuide[sp]
+                    row(sp, false, "Blessed Retribution · best for: " + (guide?.second?.joinToString(", ") ?: "-"), true) {
+                        (guide?.first?.joinToString("\n") { "• $it" } ?: "") +
+                            "\nBest for: " + (guide?.second?.joinToString(", ") ?: "-") + "\n" +
+                            (if (wiki == null) "Exact effect (wiki): read when the Library learns (\"Learn the whole database online\")."
+                            else "Exact effect (wiki): $wiki") +
+                            "\nAI: used like Retribution (buffs at ${Cfg.retriCreepPct}%, Turtle / Lord at ${Cfg.retriBossPct}%, close hero fights)"
+                    }
+                }
+            }
+            "terms" -> {
+                // the game's own Tutorial > Terms: attributes, states (crowd control by level, buffs), common terms
+                val gt = com.example.mlbbresearch.game.GameTerms
+                for ((title, items) in listOf("Attribute Guide" to gt.attributes, "State Guide (crowd control and buffs)" to gt.states, "Common Terms" to gt.common)) {
+                    val shown = items.filter { ok(it.name) || ok(it.text) }
+                    if (shown.isEmpty()) continue
+                    list.addView(TextView(this).apply { text = title; textSize = 15f; setTextColor(c(T.ACCENT)); setTypeface(null, Typeface.BOLD); setPadding(dp(4), dp(14), 0, dp(2)) })
+                    var group = ""
+                    for (t in shown) {
+                        if (t.group.isNotEmpty() && t.group != group) {
+                            group = t.group
+                            list.addView(TextView(this).apply { text = group; textSize = 12f; setTextColor(c(T.MUTED)); setPadding(dp(6), dp(8), 0, 0) })
+                        }
+                        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = shape(T.SURF, 12, T.STROKE); setPadding(dp(10), dp(8), dp(10), dp(8)) }
+                        box.addView(TextView(this).apply { text = t.name; textSize = 14f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD) })
+                        box.addView(TextView(this).apply { text = t.text; textSize = 12.5f; setTextColor(c(T.TEXT)); setLineSpacing(0f, 1.15f) })
+                        list.addView(box, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(5) })
+                    }
+                }
+            }
+            else -> {
+                // v36.73: Advanced (with its Active-skill items) / Intermediate / Basic, each item with its
+                // stat types; then the roaming boots' blessings (not equipment: no cost, nothing to learn)
+                val idb = com.example.mlbbresearch.game.ItemDb
+                val ic = com.example.mlbbresearch.game.ItemClass
+                fun head(t: String, sub: Boolean = false) = list.addView(TextView(this).apply {
+                    text = t; textSize = if (sub) 13f else 15f; setTextColor(c(if (sub) T.MUTED else T.ACCENT)); setTypeface(null, Typeface.BOLD)
+                    setPadding(dp(if (sub) 6 else 4), dp(if (sub) 8 else 14), 0, dp(2)) })
+                fun itemRow(n: String) {
+                    val inf = ic.info(n)
+                    val lib = com.example.mlbbresearch.game.ItemBook.get(n)
+                    val price = inf.price.takeIf { it >= 0 } ?: lib?.price?.takeIf { it >= 0 }
+                    row(n, false, ic.kindsText(n) + (price?.let { if (it == 0) " · no cost" else " · $it gold" } ?: ""), inf.tier != null) {
+                        "Tier: ${inf.tier?.label ?: "not known yet"} · types: ${ic.kindsText(n)} (from ${inf.source})" +
+                            (ic.wikiStats(n)?.let { "\nStats (wiki): $it" } ?: lib?.let { "\nStats (learned): ${it.stats.ifBlank { "-" }}" } ?: "") +
+                            (idb.actives[n]?.let { "\nActive: $it" } ?: "") +
+                            (lib?.effect?.takeIf { it.isNotBlank() }?.let { "\nEffect: $it" } ?: "") +
+                            (com.example.mlbbresearch.game.Sustain.itemKind(n)?.let { k -> "\nHP back from hitting: $k" } ?: "")
+                    }
+                }
+                val all = idb.current.filter { ok(it) && !ic.isBlessing(it) }
+                val byTier = all.groupBy { ic.tier(it) }
+                val advanced = byTier[com.example.mlbbresearch.game.ItemClass.Tier.ADVANCED].orEmpty()
+                if (advanced.isNotEmpty()) {
+                    head("Advanced equipment (used in builds)")
+                    val acts = advanced.filter { idb.isActive(it) }
+                    if (acts.isNotEmpty()) { head("Active skills (items you press in a match)", true); acts.forEach { itemRow(it) } }
+                    for (k in com.example.mlbbresearch.game.ItemClass.Kind.values()) {
+                        val inK = advanced.filter { !idb.isActive(it) && ic.info(it).kinds.firstOrNull() == k }
+                        if (inK.isNotEmpty() || k == com.example.mlbbresearch.game.ItemClass.Kind.ATTACK || k == com.example.mlbbresearch.game.ItemClass.Kind.MAGIC) {
+                            head(k.label, true)
+                            inK.forEach { itemRow(it) }
+                            // Under Physical Attack: Physical Penetration & Physical Attack Speed classifications (v37.01)
+                            if (k == com.example.mlbbresearch.game.ItemClass.Kind.ATTACK) {
+                                val physPen = all.filter { ic.isPhysicalPenetration(it) }
+                                if (physPen.isNotEmpty()) {
+                                    head("↳ Physical Penetration (under Physical Attack)", true)
+                                    physPen.forEach { itemRow(it) }
+                                }
+                                val physAspd = all.filter { ic.isPhysicalAttackSpeed(it) }
+                                if (physAspd.isNotEmpty()) {
+                                    head("↳ Attack Speed - Physical (best for Marksmen / basic-attack heroes)", true)
+                                    physAspd.forEach { itemRow(it) }
+                                }
+                            }
+                            // Under Magic Power: Magic Penetration & Magic Attack Speed classifications (v37.01)
+                            if (k == com.example.mlbbresearch.game.ItemClass.Kind.MAGIC) {
+                                val magPen = all.filter { ic.isMagicPenetration(it) }
+                                if (magPen.isNotEmpty()) {
+                                    head("↳ Magic Penetration (under Magic Power)", true)
+                                    magPen.forEach { itemRow(it) }
+                                }
+                                val magAspd = all.filter { ic.isMagicAttackSpeed(it) }
+                                if (magAspd.isNotEmpty()) {
+                                    head("↳ Attack Speed - Magic (best for Magic basic-attack heroes)", true)
+                                    magAspd.forEach { itemRow(it) }
+                                }
+                            }
+                        }
+                    }
+                    advanced.filter { !idb.isActive(it) && ic.info(it).kinds.isEmpty() }.takeIf { it.isNotEmpty() }?.let { head("Other", true); it.forEach { n -> itemRow(n) } }
+                }
+                for ((t, label) in listOf(com.example.mlbbresearch.game.ItemClass.Tier.INTERMEDIATE to "Intermediate equipment",
+                        com.example.mlbbresearch.game.ItemClass.Tier.BASIC to "Basic equipment", com.example.mlbbresearch.game.ItemClass.Tier.CONSUMABLE to "Potions")) {
+                    val l = byTier[t].orEmpty()
+                    if (l.isNotEmpty()) { head(label); l.forEach { itemRow(it) } }
+                }
+                byTier[null].orEmpty().takeIf { it.isNotEmpty() }?.let { head("Tier not known yet (read from the wiki when the Library learns)"); it.forEach { n -> itemRow(n) } }
+                // the roaming boots' blessings: not equipment
+                val bl = ic.blessings.filter { ok(it.name) || ok("blessing") || ok("roam") }
+                if (bl.isNotEmpty()) {
+                    head("Roaming boots blessings (not equipment)")
+                    list.addView(TextView(this).apply { text = "No cost: you get one when you buy boots with a roaming blessing as a roamer."; textSize = 12f; setTextColor(c(T.MUTED)); setPadding(dp(6), 0, 0, dp(2)) })
+                    for (b0 in bl) row(b0.name, false, b0.kind, true, file = b0.file) { b0.text }
+                }
+            }
+        }
+        search.setOnEditorActionListener { v, _, _ -> libFilter = v.text.toString(); show("library"); true }
+        search.imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+    }
+
     // =====================================================================
     //  META: online meta through the Groq API
     // =====================================================================
@@ -1278,15 +1606,32 @@ class MainActivity : Activity() {
         switch("Use the online meta", Cfg.useOnlineMeta && Cfg.onlineAuto) {
             Cfg.useOnlineMeta = it; Cfg.onlineAuto = it; Cfg.onlineDraft = it
         }
+        // off = only the patch meta searches the web (one search can use a whole day of the free Groq tier)
+        switch("Web search for each hero (uses many tokens)", Cfg.heroWebSearch) { Cfg.heroWebSearch = it }
+        // OFF by default: nothing is asked online unless you press a button
+        switch("Automatic online updates (uses tokens)", Cfg.autoOnline) { Cfg.autoOnline = it }
+        text("Off: online questions are asked only when you press a button. On: your hero's meta and skills, the enemy heroes' skills, the weekly patch meta and the online draft update by themselves.", 12f, color = T.MUTED)
+        val prov = text("", 12f, color = T.MUTED)
+        upd { prov.text = "Online models: " + com.example.mlbbresearch.ai.GroqClient.providersText() +
+            "\nKeys in the folder: groq_key.txt (two Groq models), gemini_key.txt (Gemini 3.8 Flash, 3.6 Flash, 3.5 Flash-Lite), cerebras_key.txt" +
+            (if (com.example.mlbbresearch.ai.GroqClient.lastProvider != "-") "\nLast answer from: ${com.example.mlbbresearch.ai.GroqClient.lastProvider}" else "") }
+        val gq = com.example.mlbbresearch.ai.GroqClient
+        // rate-limit indicator: green = ready, red = resting after the limit (with a countdown)
+        val lim = text("", 14f, bold = true)
+        upd {
+            val (col, t) = groqIndicator()
+            lim.text = "● " + t; lim.setTextColor(c(col))
+        }
         val st = text("", 13f, color = T.MUTED)
         upd {
-            st.text = (if (Cfg.groqKey.isBlank()) "No Groq key: put groq_key.txt in the MLBB-Research folder." else "Groq ready · ${com.example.mlbbresearch.ai.GroqClient.calls} answers this session") +
+            st.text = (if (!com.example.mlbbresearch.ai.GroqClient.anyKey) "No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the MLBB-Research folder." else "${gq.calls} answers this session" +
+                (if (gq.tokensLeft >= 0) " · ${gq.tokensLeft} tokens left this minute" else "")) +
                 (if (ma.busy.isNotEmpty()) "\nWorking: ${ma.busy}…" else "") +
                 (if (ma.lastMessage.isNotEmpty()) "\n${ma.lastMessage}" else "")
         }
         val upd1 = btn("Update the patch meta") {
             leaveHooks.forEach { it() }
-            if (Cfg.groqKey.isBlank()) toast("No Groq key: put groq_key.txt in the MLBB-Research folder") else {
+            if (!com.example.mlbbresearch.ai.GroqClient.anyKey) toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the MLBB-Research folder") else {
                 toast("Asking Groq (10-30 s)…")
                 ma.updateGeneral { msg -> runOnUiThread { toast(msg) } }
             }
@@ -1297,7 +1642,7 @@ class MainActivity : Activity() {
             leaveHooks.forEach { it() }
             val h = HeroDb.match(heroBox.text.toString()) ?: GameStateTracker.ownHero() ?: HeroDb.match(Cfg.myHero)
             when {
-                Cfg.groqKey.isBlank() -> toast("No Groq key: put groq_key.txt in the MLBB-Research folder")
+                !com.example.mlbbresearch.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the MLBB-Research folder")
                 h == null -> toast("Type a hero name")
                 else -> { toast("Asking Groq about $h (10-30 s)…"); ma.updateHero(h) { msg -> runOnUiThread { toast(msg) } } }
             }
@@ -1406,7 +1751,7 @@ class MainActivity : Activity() {
     }
 
     // =====================================================================
-    //  SPEED: every engine and model, live, with the last 2 minutes
+    //  SPEED: every engine and model, live, with the last 5 minutes
     // =====================================================================
 
     private fun speedPage() {
@@ -1418,6 +1763,32 @@ class MainActivity : Activity() {
         }
         fun gradeColor(g: Int) = c(when (g) { 0 -> T.GREEN; 1 -> T.GOLD; else -> T.RED })
         text("Live speed of every part of the AI. Dashed line = target.", 13f, color = T.MUTED)
+
+        // ---- the phone: CPU, GPU, RAM, ROM (DeviceStats) ----
+        val ds = com.example.mlbbresearch.core.DeviceStats
+        val pc = card()
+        cardHeader(pc, "Phone", "every 2 s", T.ACCENT)
+        fun metric(label: String): Triple<TextView, com.example.mlbbresearch.app.BudgetBar, TextView> {
+            val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, 0) }
+            top.addView(TextView(this).apply { text = label; textSize = 14f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD) },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            val v = TextView(this).apply { textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(c(T.TEXT)) }
+            top.addView(v); pc.addView(top)
+            val bar = com.example.mlbbresearch.app.BudgetBar(this)
+            pc.addView(bar, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(6)).apply { topMargin = dp(5) })
+            val note = TextView(this).apply { textSize = 12f; setTextColor(c(T.MUTED)); setPadding(0, dp(3), 0, 0) }
+            pc.addView(note)
+            return Triple(v, bar, note)
+        }
+        val (cpuV, cpuBar, cpuNote) = metric("CPU (this app)")
+        val cpuSpark = com.example.mlbbresearch.app.Sparkline(this)
+        pc.addView(cpuSpark, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(40)).apply { topMargin = dp(4) })
+        val (gpuV, gpuBar, gpuNote) = metric("GPU")
+        val (ramV, ramBar, ramNote) = metric("RAM (phone in use)")
+        val ramSpark = com.example.mlbbresearch.app.Sparkline(this)
+        pc.addView(ramSpark, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(40)).apply { topMargin = dp(4) })
+        val (romV, romBar, romNote) = metric("ROM (storage in use)")
+        fun level(f: Float) = c(when { f < 0.6f -> T.GREEN; f < 0.85f -> T.GOLD; else -> T.RED })
 
         // ---- the headline: frame to touch, and what it is made of ----
         val total = log.series[0]
@@ -1472,6 +1843,32 @@ class MainActivity : Activity() {
         }
 
         upd {
+            ds.sampleAsync(this)
+            ds.last?.let { p ->
+                cpuV.text = "%.0f%%".format(p.appCpuPct); cpuV.setTextColor(level(p.appCpuPct / 100f))
+                cpuBar.set(p.appCpuPct / 100f, level(p.appCpuPct / 100f))
+                cpuNote.text = "of all ${p.cores} cores" + (if (p.coreLoadPct >= 0f) " · cores at %.0f%% of their top speed".format(p.coreLoadPct) else "") +
+                    (if (p.coreGhz.isNotEmpty()) " · " + p.coreGhz.joinToString(" ") { "%.1f".format(it) } + " GHz" else "") +
+                    "\n(the whole phone's CPU use is closed to apps since Android 8)"
+                cpuSpark.set(ds.history(ds.cpuHistory), 50f, c(T.ACCENT))
+                val gl = p.gpuLoadPct
+                gpuV.text = when { gl != null -> "%.0f%%".format(gl); p.gpuMhz != null -> "%.0f MHz".format(p.gpuMhz); else -> "not readable" }
+                gpuV.setTextColor(if (gl != null) level(gl / 100f) else c(T.MUTED))
+                gpuBar.set((gl ?: 0f) / 100f, if (gl != null) level(gl / 100f) else c(T.STROKE))
+                gpuNote.text = (if (gl != null || p.gpuMhz != null) "whole phone (${p.gpuSource})" + (p.gpuMhz?.takeIf { gl != null }?.let { " · %.0f MHz".format(it) } ?: "") else p.gpuSource) +
+                    "\nRuns on: strategic model " + com.example.mlbbresearch.ai.GemmaEngine.backendName.let { if (it == "-") "not loaded" else it } +
+                    ", small model " + com.example.mlbbresearch.ai.TacticalLlmEngine.backendName.let { if (it == "-") "not loaded" else it } + " · detectors and networks: CPU"
+                val usedRam = (p.ramTotalMb - p.ramAvailMb).toFloat() / p.ramTotalMb.coerceAtLeast(1)
+                ramV.text = "%.1f / %.1f GB".format((p.ramTotalMb - p.ramAvailMb) / 1024f, p.ramTotalMb / 1024f); ramV.setTextColor(level(usedRam))
+                ramBar.set(usedRam, level(usedRam))
+                ramNote.text = "this app: ${p.appRamMb} MB (Java ${p.appJavaMb} MB, native ${p.appNativeMb} MB + models / screen buffers) · free %.1f GB".format(p.ramAvailMb / 1024f) +
+                    (if (p.lowMemory) " · LOW MEMORY: Android may close apps" else "")
+                ramSpark.set(ds.history(ds.ramHistory), (p.ramTotalMb / 4f), c(T.GOLD))
+                val usedRom = (p.romTotalGb - p.romFreeGb) / p.romTotalGb.coerceAtLeast(0.1f)
+                romV.text = "%.0f / %.0f GB".format(p.romTotalGb - p.romFreeGb, p.romTotalGb); romV.setTextColor(level(usedRom))
+                romBar.set(usedRom, level(usedRom))
+                romNote.text = "free %.1f GB · this app's files (models, icons, cache): ${p.appFilesMb} MB".format(p.romFreeGb)
+            } ?: run { cpuV.text = "…"; gpuV.text = "…"; ramV.text = "…"; romV.text = "…" }
             log.tick()
             val t = total.last()
             big.text = if (total.count == 0 || t <= 0f) "–" else fmt(t, "ms")
@@ -1482,7 +1879,7 @@ class MainActivity : Activity() {
             parts.forEachIndexed { i, sr -> legendRows[i].text = fmt(sr.last(), sr.unit) }
             totalSpark.set(total.history(), total.budget, c(total.color))
             totalNote.text = if (total.count == 0) "No samples yet: start the AI in a match." else
-                "2 min: average ${fmt(total.avg(), "ms")}, worst ${fmt(total.max(), "ms")}, target under ${fmt(total.budget, "ms")}"
+                "5 min: average ${fmt(total.avg(), "ms")}, worst ${fmt(total.max(), "ms")}, target under ${fmt(total.budget, "ms")}"
             for (r in rows) {
                 val v = r.sr.last()
                 val used = r.sr.history().any { it > 0f }
@@ -1503,30 +1900,52 @@ class MainActivity : Activity() {
     private fun modelPage() {
         title("FILES")
         text("Put files in Download/MLBB-Research; the app loads them by itself:\n• Gemma 4 E2B (.litertlm) – strategy\n• Gemma 3 270M (.litertlm) – fight advice (optional)\n• mlbb_policies.zip – tactical networks\n• detectors (.tflite + labels) – minimap and screen\n• groq_key.txt – online meta", 13f)
-        val c = card()
-        val st = cardText(c, 14f, true)
+        val mcard = card()
+        val st = cardText(mcard, 14f, true)
         upd {
             val af = com.example.mlbbresearch.models.AutoFolder
             val pn = com.example.mlbbresearch.learning.PolicyNet
-            fun mark(ok: Boolean) = if (ok) "\u2713" else "\u2717"
-            st.text = "Folder: " + (af.treeUri?.let { Uri.decode(it.lastPathSegment ?: "chosen").substringAfter(':') } ?: "not chosen yet") +
-                "\n${af.status}" +
-                "\n\n${mark(GemmaEngine.ready)} Strategic model: ${ModelManager.status(this)}, ${GemmaEngine.state}" +
-                (if (GemmaEngine.calls > 0) " (last answer ${GemmaEngine.lastLatencyMs} ms)" else "") +
-                "\n${mark(TacticalLlmEngine.ready)} Small tactical model: ${ModelManager.tacticalStatus(this)}, " +
-                (if (Cfg.tacticalLlmOn) TacticalLlmEngine.state else "switched off") +
-                (if (Cfg.tacticalLlmOn && TacticalLlmEngine.ready) "\n     " + TacticalAdvisor.text().substringAfter(": ") else "") +
-                "\n${mark(ObjectDetector.ready)} Minimap detector: ${ObjectDetector.state}" +
-                (if (ObjectDetector.ready) ", ${ObjectDetector.lastMs} ms per run" else "") +
-                "\n${mark(com.example.mlbbresearch.vision.ScreenDetector.ready)} Screen detector: ${com.example.mlbbresearch.vision.ScreenDetector.state}" +
-                (if (com.example.mlbbresearch.vision.ScreenDetector.ready) ", ${com.example.mlbbresearch.vision.ScreenDetector.lastMs} ms per run; " +
-                    com.example.mlbbresearch.vision.ScreenIntel.added else "") +
-                "\n${mark(pn.ready)} Tactical network: ${pn.state}" +
-                pn.available(this).let { if (it.isEmpty()) "" else "\n   on the phone: " + it.joinToString() } +
-                (if (pn.ready && pn.agreeRate >= 0f) ", agrees with the rules ${(pn.agreeRate * 100).toInt()}%" else "") +
-                (if (pn.ready) "\n     ${pn.qualityText}" else "") +
-                "\n${mark(Cfg.groqKey.isNotBlank())} Groq key: " + (if (Cfg.groqKey.isBlank()) "not found" else "set") +
-                "\n\nMinimap: " + com.example.mlbbresearch.game.MapIntel.status
+            // a coloured dot per part: green = loaded / running, yellow = loading or loaded but switched off,
+            // red = missing / not loaded
+            val sb = android.text.SpannableStringBuilder()
+            fun line(state: Int, t: String) {
+                if (sb.isNotEmpty()) sb.append("\n")
+                val st0 = sb.length
+                sb.append("●  ")
+                sb.setSpan(android.text.style.ForegroundColorSpan(c(when (state) { 2 -> T.GREEN; 1 -> T.GOLD; else -> T.RED })),
+                    st0, st0 + 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                sb.setSpan(android.text.style.RelativeSizeSpan(1.25f), st0, st0 + 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                sb.append(t)
+            }
+            fun sub(t: String) { sb.append("\n     ").append(t) }
+            line(if (af.treeUri != null) 2 else 0, "Folder: " + (af.treeUri?.let { Uri.decode(it.lastPathSegment ?: "chosen").substringAfter(':') } ?: "not chosen yet"))
+            sub(af.status)
+            sb.append("\n")
+            line(when { GemmaEngine.ready -> 2; GemmaEngine.loading -> 1; else -> 0 },
+                "Strategic model: ${ModelManager.status(this)}, ${GemmaEngine.state}" +
+                (if (GemmaEngine.calls > 0) " (last answer ${GemmaEngine.lastLatencyMs} ms)" else ""))
+            val smallFile = ModelManager.tacticalFile(this).exists()
+            line(when { TacticalLlmEngine.ready && Cfg.tacticalLlmOn -> 2; TacticalLlmEngine.loading -> 1; smallFile -> 1; else -> 0 },
+                "Small tactical model: ${ModelManager.tacticalStatus(this)}, " + (if (Cfg.tacticalLlmOn) TacticalLlmEngine.state else "switched off"))
+            if (Cfg.tacticalLlmOn && TacticalLlmEngine.ready) sub(TacticalAdvisor.text().substringAfter(": "))
+            val sd = com.example.mlbbresearch.vision.ScreenDetector
+            line(when { ObjectDetector.ready && Cfg.detectorOn -> 2; ObjectDetector.ready -> 1; else -> 0 },
+                "Minimap detector: ${ObjectDetector.state}" + (if (ObjectDetector.ready) ", ${ObjectDetector.lastMs} ms per run" else "") +
+                (if (ObjectDetector.ready && !Cfg.detectorOn) " (switched off)" else ""))
+            line(when { sd.ready && Cfg.detectorOn -> 2; sd.ready -> 1; else -> 0 },
+                "Screen detector: ${sd.state}" + (if (sd.ready) ", ${sd.lastMs} ms per run" else "") +
+                (if (sd.ready && !Cfg.detectorOn) " (switched off)" else ""))
+            line(when { pn.ready && Cfg.policyOn -> 2; pn.ready -> 1; else -> 0 },
+                "Tactical network: ${pn.state}" + (if (pn.ready && !Cfg.policyOn) " (switched off)" else "") +
+                (if (pn.ready && pn.agreeRate >= 0f) ", agrees with the rules ${(pn.agreeRate * 100).toInt()}%" else ""))
+            pn.available(this).let { if (it.isNotEmpty()) sub("on the phone: " + it.joinToString()) }
+            if (pn.ready) sub(pn.qualityText)
+            line(when { !com.example.mlbbresearch.ai.GroqClient.anyKey -> 0; com.example.mlbbresearch.ai.GroqClient.limited -> 1; else -> 2 },
+                "Online AI: " + (if (!com.example.mlbbresearch.ai.GroqClient.anyKey) "no key (groq_key.txt, gemini_key.txt, cerebras_key.txt)" else groqIndicator().second))
+            line(if (com.example.mlbbresearch.learning.CloudTrain.ready()) 2 else 0, "Kaggle key: " +
+                (if (com.example.mlbbresearch.learning.CloudTrain.ready()) "set (${Cfg.kaggleUser})" else "not found (kaggle.json)"))
+            sb.append("\n\nMinimap: " + com.example.mlbbresearch.game.MapIntel.status)
+            st.text = sb
         }
         val pick = btn("") {
             @Suppress("DEPRECATION")
@@ -1552,6 +1971,22 @@ class MainActivity : Activity() {
             if (on) ModelManager.loadTactical(this) { err -> runOnUiThread { toast(err ?: "Small tactical model loaded") } }
             else ModelManager.unloadTactical()
         }
+        // the fight-choice network: the fast numeric adviser in the same slot
+        switch("Fight-choice network in fights (fast)", Cfg.fightNetOn) { on ->
+            Cfg.fightNetOn = on
+            if (on && !com.example.mlbbresearch.learning.FightNet.ready) com.example.mlbbresearch.learning.FightNet.load(this)?.let { toast(it) }
+        }
+        val fnInfo = text("", 12f, color = T.MUTED)
+        upd { fnInfo.text = "Network: " + com.example.mlbbresearch.learning.FightNet.info +
+            (if (com.example.mlbbresearch.learning.FightNet.asked > 0) " · last advice: ${com.example.mlbbresearch.learning.FightNet.lastAdvice}" else "") +
+            "\nIt comes in mlbb_policies.zip (Train the tactical networks). When both are on, the network advises first." }
+        // does it help? the AI's matches with each adviser vs none, from your own games
+        title("Fight advisers: on vs off")
+        val ab = card()
+        val abText = cardText(ab, 13f)
+        upd { abText.text = com.example.mlbbresearch.learning.ABCompare.summary() }
+        text("Counts matches the AI plays with the small model on (loaded) or off for the WHOLE match. Same hero and lane both ways gives the fairest numbers.", 12f, color = T.MUTED)
+        btn("Clear the comparison") { com.example.mlbbresearch.learning.ABCompare.clear(); toast("Cleared") }
         // the detector and the tactical network are used together: one switch
         switch("Use the trained models", Cfg.detectorOn && Cfg.policyOn) {
             Cfg.detectorOn = it; Cfg.policyOn = it
@@ -1566,6 +2001,60 @@ class MainActivity : Activity() {
     private fun learnPage() {
         DemoRecorder.refreshTotal()
         com.example.mlbbresearch.learning.LiveRecorder.refreshTotal()
+        // ---- one-tap training in the cloud (Kaggle) ----
+        title("Train in the cloud")
+        val ctc = card()
+        val ctHead = cardHeader(ctc, "Kaggle (free GPU)", "", T.GREEN)
+        val ctChip = (ctHead.parent as LinearLayout).getChildAt(1) as TextView
+        val ctNote = cardNote(ctc)
+        val ct = com.example.mlbbresearch.learning.CloudTrain
+        upd {
+            ctChip.text = if (ct.ready()) "key set" else "no key"
+            ctChip.setTextColor(c(if (ct.ready()) T.GREEN else T.RED))
+            ctNote.text = if (ct.ready()) "Tap a training: inputs upload from Download/MLBB-Research, it trains on Kaggle, results download back and load by themselves."
+                else "Put kaggle.json in the MLBB-Research folder (kaggle.com > Settings > API > Create New Token), then Scan the folder on the Model page."
+        }
+        for (j in com.example.mlbbresearch.learning.CloudTrain.Job.values()) {
+            val jc = card()
+            val jHead = cardHeader(jc, j.label, "", T.ACCENT)
+            val jChip = (jHead.parent as LinearLayout).getChildAt(1) as TextView
+            val jIn = cardNote(jc)
+            val jSt = cardText(jc, 13f)
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(6), 0, 0) }
+            jc.addView(row)
+            val go = Button(this).apply { text = "Train"; styleButton(this, primary = true) }
+            val open = Button(this).apply { text = "Open on Kaggle"; styleButton(this) }
+            row.addView(go, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(8) })
+            row.addView(open, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            go.setOnClickListener { ct.start(this, j) { m -> runOnUiThread { toast(m.take(140)) } } }
+            val ready0 = cardNote(jc)
+            open.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ct.kernelUrl(j)))) }
+            var inputsAt = 0L
+            upd {
+                val run = ct.running(j)
+                jChip.text = if (run) "training" else if (j.gpu) "GPU" else "CPU"
+                jChip.setTextColor(c(if (run) T.GOLD else T.MUTED))
+                val st = ct.status(j)
+                jSt.text = st
+                jSt.setTextColor(c(when { st.startsWith("done") -> T.GREEN; st.startsWith("failed") -> T.RED; else -> T.TEXT }))
+                // the counts are refreshed every 10 s (database counts and the folder listing are slower)
+                if (System.currentTimeMillis() - inputsAt > 10_000) {
+                    inputsAt = System.currentTimeMillis()
+                    ct.refreshCounts()
+                    jIn.text = try { ct.inputsText(this, j) } catch (e: Exception) { "-" }
+                }
+                // green = enough to train on (tap to zip / export, upload and train); red = not yet (cannot be tapped)
+                val rd = ct.readiness(this, j)
+                val can = !run && ct.ready() && rd.ok
+                go.isEnabled = can
+                go.text = when { run -> "Training…"; !ct.ready() -> "Needs kaggle.json"; rd.ok -> "Train"; else -> "Not enough yet" }
+                go.background = ripple(when { run -> T.GOLD; can -> T.GREEN; else -> T.RED }, 12)
+                go.setTextColor(Color.WHITE)
+                go.alpha = if (can || run) 1f else 0.75f
+                ready0.text = rd.text
+            }
+        }
+
         title("Smart fights")
         text("Near an enemy the AI picks: all in, poke, back off, group or farm, scores the result 4 s later and learns what works.", 13f)
         switch("Smart fights (learning AI)", Cfg.smartFights) { Cfg.smartFights = it }
@@ -1623,31 +2112,30 @@ class MainActivity : Activity() {
                 "Aggression adjust for $hero: ${"%+.2f".format(Cfg.learnedBias(hero))}\n" +
                 "Your recorded play (Coach): ${DemoRecorder.total} moments - see the Player page"
         }
-        btn("Export decisions to Downloads (CSV)") {
-            DatasetManager.export(this) { msg -> runOnUiThread { toast(msg) } }
-        }
-        btn("Export my play (CSV)") {
-            DatasetManager.exportDemos(this) { msg -> runOnUiThread { toast(msg) } }
-        }
         ExperienceRecorder.refreshFights()
         val fightInfo = text("", 12f, color = "#9AA0A6")
         upd { fightInfo.text = "Fight moments for the small tactical model: " + (if (ExperienceRecorder.fights < 0) "counting..." else "${ExperienceRecorder.fights}") +
-            " (each fight choice - the AI's, the small model's or yours - with how it went 4 s later)" }
-        btn("Export fight moments (CSV)") {
-            DatasetManager.exportFights(this) { msg -> runOnUiThread { toast(msg) } }
+            " (each fight choice with how it went 4 s later; used by Train)" }
+        btn("Delete all fight moments") {
+            AlertDialog.Builder(this).setTitle("Delete all fight moments?")
+                .setMessage("Every saved fight choice and how it went (used to train the small tactical model). Cannot be undone.")
+                .setPositiveButton("Delete") { _, _ -> ExperienceRecorder.clearFights { runOnUiThread { toast("Fight moments deleted") } } }
+                .setNegativeButton("Cancel", null).show()
+        }
+        btn("Delete all recorded moments") {
+            AlertDialog.Builder(this).setTitle("Delete ALL recorded moments?")
+                .setMessage("Everything recorded in your matches: the AI's saved decisions, your recorded play (Coach / play like me) and the fight moments. Live-match moments are kept (their own button below). Cannot be undone.")
+                .setPositiveButton("Delete all") { _, _ -> ExperienceRecorder.clearAllMoments { n -> runOnUiThread { toast("Deleted $n recorded moments") } } }
+                .setNegativeButton("Cancel", null).show()
         }
 
         title("Live matches")
-        text("Watch someone's live match with learning on: their play is recorded like yours. Export it for the notebook.", 13f)
+        text("Watch someone's live match with learning on: their play is recorded like yours and used by Train.", 13f)
         switch("Learn from live matches", Cfg.liveLearn) { Cfg.liveLearn = it }
-        field("Hero you are watching (e.g. Balmond)", Cfg.liveHero, false) { v ->
-            val m = com.example.mlbbresearch.game.HeroDb.match(v)
-            Cfg.liveHero = m ?: v.trim()
-            if (v.isNotBlank() && m == null) toast("Hero not recognised: saved as typed")
-        }
-        val lanes = listOf("exp", "gold", "mid", "roam", "jungle")
-        val laneBtn = btn("") { Cfg.liveLaneName = lanes[(lanes.indexOf(Cfg.liveLaneName) + 1) % lanes.size] }
-        upd { laneBtn.text = "Their role: ${Cfg.liveLane.label}  (tap to change)" }
+        val liveWho = text("", 13f)
+        upd { liveWho.text = "Watching: ${Cfg.liveHero.ifBlank { "read from the screen when a live match starts" }}" +
+            (if (Cfg.liveHero.isNotBlank()) " · role ${Cfg.liveLane.label}" else "") + " (found by itself)\nSkill icons: " +
+            com.example.mlbbresearch.vision.HeroVerifier.liveStatus + " · looks learned: ${com.example.mlbbresearch.vision.HeroVerifier.learnedLiveCount()}" }
         val liveInfo = text("", 12f, color = "#9AA0A6")
         upd {
             com.example.mlbbresearch.learning.LiveRecorder.let { r ->
@@ -1658,9 +2146,6 @@ class MainActivity : Activity() {
                     "\nPanel: ${r.panel}\nLast seen: ${r.lastAction}\n" else "Not watching a live match\n") +
                     "Live moments: ${r.recorded} this session, ${r.total} saved; deaths seen: ${r.deaths} (the 6 s before each are marked)"
             }
-        }
-        btn("Export live matches (CSV)") {
-            DatasetManager.exportLive(this) { msg -> runOnUiThread { toast(msg) } }
         }
         btn("Delete the live match moments") {
             AlertDialog.Builder(this).setTitle("Delete all live match moments?")
@@ -1675,7 +2160,7 @@ class MainActivity : Activity() {
         btn("Clear the match log") { com.example.mlbbresearch.game.MatchLog.clear(); toast("Cleared") }
 
         title("DETECTOR TRAINING PICTURES")
-        text("Saves labelled pictures while you play (minimap 1500, screen 1000). At capacity it zips them in Download/MLBB-Research and turns the switch off.", 13f)
+        text("Saves labelled pictures while you play (minimap 300, screen 300 per batch). Train zips them by itself; at capacity they are zipped and the switch turns off.", 13f)
         val zk = com.example.mlbbresearch.learning.DatasetZipper
         val swMini = switch("Collect minimap training pictures", Cfg.collectDataset) { Cfg.collectDataset = it }
         val swScreen = switch("Collect whole-screen training pictures", Cfg.collectScreenDataset) { Cfg.collectScreenDataset = it }
@@ -1689,12 +2174,6 @@ class MainActivity : Activity() {
             dsInfo.text = "Minimap: " + line(com.example.mlbbresearch.learning.DatasetZipper.Kind.MINIMAP) +
                 "\nScreen: " + line(com.example.mlbbresearch.learning.DatasetZipper.Kind.SCREEN) +
                 "\nLast zip: " + zk.status
-        }
-        btn("Zip the minimap pictures now") {
-            zk.zipNew(this, com.example.mlbbresearch.learning.DatasetZipper.Kind.MINIMAP, "zipped by hand") { m -> runOnUiThread { toast(m) } }
-        }
-        btn("Zip the screen pictures now") {
-            zk.zipNew(this, com.example.mlbbresearch.learning.DatasetZipper.Kind.SCREEN, "zipped by hand") { m -> runOnUiThread { toast(m) } }
         }
         btn("Delete saved decisions") {
             AlertDialog.Builder(this).setTitle("Delete saved decisions?")
@@ -1759,8 +2238,7 @@ class MainActivity : Activity() {
         upd {
             mark(nt, Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
         }
-        val cap = btn("4. Screen capture") { askScreenCapture() }
-        upd { mark(cap, ScreenCaptureService.running) }
+        // (screen capture: started on the Home page only - v36.86)
         text("POCO/Xiaomi: also allow 'pop-up windows while running in the background' and turn off 'Manage app if unused'.", 12f, color = "#9AA0A6")
 
         title("SCREEN")
@@ -1771,17 +2249,26 @@ class MainActivity : Activity() {
         }
 
         title("CALIBRATE BUTTON POSITIONS")
-        text("Open a match, come back, tap Calibrate: drag the yellow markers onto the buttons (or Auto-detect), then Save.", 12f, color = "#9AA0A6")
-        fun calibrateLater(group: Int) {
+        text("Open a match, come back, tap Calibrate: drag the yellow markers onto the buttons (or Auto-detect), then Save. 2-skill, 3-skill, and 4-skill buttons have separate calibration and separate saves.", 12f, color = "#9AA0A6")
+        fun calibrateGroupLater(groupKey: String) {
             val o = AccessibilityController.instance?.overlay
             if (o == null) { toast("Turn on the accessibility service first"); return }
             if (!ScreenCaptureService.running) toast("Tip: start screen capture first so Auto-detect can see the game")
             toast("Switch to MLBB now: calibration starts in 5 seconds")
-            ui.postDelayed({ o.startCalibration(group) }, 5000)
+            ui.postDelayed({ o.startCalibrationGroup(groupKey) }, 5000)
         }
-        btn("Calibrate in-game buttons on the game") { calibrateLater(0) }
-        btn("Calibrate shop buttons on the game") { calibrateLater(1) }
-        btn("Calibrate hero-select buttons on the game") { calibrateLater(2) }
+        val autoCal = text("", 12f, color = "#9AA0A6")
+        upd { autoCal.text = "Automatic: the first match and hero-select screen place the buttons by themselves (" +
+            com.example.mlbbresearch.game.AutoTune.calStatus + ").\nSaved skill layouts: " +
+            "2-skill ${if (Layout.isGroupSaved("skills2")) "✓ saved" else "default"} · " +
+            "3-skill ${if (Layout.isGroupSaved("skills3")) "✓ saved" else "default"} · " +
+            "4-skill ${if (Layout.isGroupSaved("skills4")) "✓ saved" else "default"}" }
+        btn("Calibrate 2-skill buttons on the game") { calibrateGroupLater("skills2") }
+        btn("Calibrate 3-skill buttons on the game") { calibrateGroupLater("skills3") }
+        btn("Calibrate 4-skill buttons on the game") { calibrateGroupLater("skills4") }
+        btn("Calibrate in-game HUD (joystick / attack / spell)") { calibrateGroupLater("game") }
+        btn("Calibrate shop buttons on the game") { calibrateGroupLater("shop") }
+        btn("Calibrate hero-select buttons on the game") { calibrateGroupLater("select") }
 
         title("MINIMAP ICON CALIBRATION")
         text("Minimap misread? Pick an icon type, tap 'Pick it on the game', then tap that icon on the minimap within 5 s.", 12f, color = "#9AA0A6")
@@ -1849,13 +2336,30 @@ class MainActivity : Activity() {
                 if (on) o.show()
             }
         }
-        var group = ""
-        for (ctl in Layout.defaults) {
-            if (ctl.group != group) {
-                group = ctl.group
-                text(when (group) { "shop" -> "Shop screen"; "select" -> "Hero select"; else -> "In game" }, 13f, true)
+        fun groupTitle(g: String) = when (g) {
+            "skills2" -> "2-skill buttons"
+            "skills3" -> "3-skill buttons"
+            "skills4" -> "4-skill buttons"
+            "large" -> "In-game buttons (large HUD)"
+            "shop" -> "Shop screen"
+            "select" -> "Hero select"
+            else -> "In-game HUD (joystick / attack / spell)"
+        }
+        val groupOrder = listOf("skills2", "skills3", "skills4", "game", "large", "shop", "select")
+        for (grp in groupOrder) {
+            val ctls = Layout.defaults.filter { it.group == grp }
+            if (ctls.isEmpty()) continue
+            text(groupTitle(grp), 13f, true)
+            for (ctl in ctls) {
+                field(ctl.label, Layout.text(ctl.key), false) { v -> if (v != Layout.text(ctl.key)) Layout.set(ctl.key, v) }
             }
-            field(ctl.label, Layout.text(ctl.key), false) { v -> if (v != Layout.text(ctl.key)) Layout.set(ctl.key, v) }
+            if (grp in listOf("skills2", "skills3", "skills4")) {
+                val label = groupTitle(grp)
+                btn("Save $label") {
+                    Layout.saveGroup(grp)
+                    toast("Saved $label")
+                }
+            }
         }
         btn("Reset all positions to defaults") {
             for (ctl in Layout.defaults) Layout.reset(ctl.key)

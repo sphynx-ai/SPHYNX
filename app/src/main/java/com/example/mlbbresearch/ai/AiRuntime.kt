@@ -166,6 +166,7 @@ object AiRuntime {
 
     private fun stopLoops() {
         Brain.saveAll()
+        com.example.mlbbresearch.learning.OnlineBackup.flushLearned()
         visionJob?.cancel(); tacticJob?.cancel(); strategyJob?.cancel()
         visionJob = null; tacticJob = null; strategyJob = null
         TacticalEngine.reset()
@@ -195,12 +196,16 @@ object AiRuntime {
                 com.example.mlbbresearch.core.SpeedLog.tick()
                 if (v != null) {
                     GameStateTracker.update(v)
-                    // a live match you watch is not yours: its casts are not your cooldowns or combos
                     if (learnOn && v.hint != com.example.mlbbresearch.vision.ScreenHint.LIVE && v.hint != com.example.mlbbresearch.vision.ScreenHint.LIVE_DEAD) DemoRecorder.observe(v, aiPlaying = playerOn, s = GameStateTracker.state)
                     if (learnOn && Cfg.liveLearn) com.example.mlbbresearch.learning.LiveRecorder.observe(v)
+                    // Zero-latency reaction (v37.09): run the tactical decision immediately on the fresh vision frame!
+                    if (playerOn && System.currentTimeMillis() - lastFastTacticAt >= 28L) {
+                        lastFastTacticAt = System.currentTimeMillis()
+                        runTacticOnce()
+                    }
                     kotlinx.coroutines.yield()
                 } else {
-                    delay(15)
+                    delay(8)
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -214,9 +219,11 @@ object AiRuntime {
     // ---------- medium: 5 per second ----------
     private var prevPhase = Phase.UNKNOWN
     private var lastDeathMark = 0L
+    @Volatile private var lastFastTacticAt = 0L
+    private val tacticLock = Any()
 
-    private suspend fun tacticLoop() {
-        while (anyOn()) {
+    private fun runTacticOnce() {
+        synchronized(tacticLock) {
             try {
                 val s = GameStateTracker.state
                 val stale = System.currentTimeMillis() - s.ts > 1500
@@ -227,6 +234,9 @@ object AiRuntime {
                     DemoRecorder.markDeath(lastDeathMark)
                 }
                 if (!stale) prevPhase = s.phase
+                // the buttons are found on the screen by themselves the first time (no calibration to do)
+                if (!stale && (s.phase == Phase.IN_GAME && s.self != null || s.phase == Phase.DRAFT || s.phase == Phase.HERO_LOCKED))
+                    com.example.mlbbresearch.game.AutoTune.autoCalibrate(s.phase)
                 // the hero still plays with the big map open; shop / scoreboard pause it
                 val inGame = !stale && (s.phase == Phase.IN_GAME || s.phase == Phase.MAP)
                 if (playerOn && inGame) {
@@ -241,7 +251,13 @@ object AiRuntime {
                     var option = Brain.choose(s)
                     // the small tactical model (if on): its advice, once the Kotlin checks allow it
                     TacticalAdvisor.tick(s, profile)
-                    if (option != null) TacticalAdvisor.validated(s, profile)?.let { a ->
+                    // the fight-choice network (if on) advises first - it answers at once; the small
+                    // model's advice is used when the network is off. Both pass the same Kotlin checks.
+                    val netAdvice = if (option != null && Cfg.fightNetOn && com.example.mlbbresearch.learning.FightNet.usable)
+                        com.example.mlbbresearch.learning.FightNet.advise(TacticalAdvisor.summary(s, profile))?.takeIf { it.second >= 0.4f }?.first
+                            ?.takeIf { TacticalAdvisor.check(it, s) == null } else null
+                    if (netAdvice != null) { if (netAdvice != option) { Brain.adopt(s, netAdvice); option = netAdvice } }
+                    else if (option != null) TacticalAdvisor.validated(s, profile)?.let { a ->
                         if (a != option) { Brain.adopt(s, a); option = a }
                     }
                     var d = TacticalEngine.decide(s, profile, plan, bias, option)
@@ -252,13 +268,15 @@ object AiRuntime {
                     // the trained tactical network (if loaded) learned your play; without it, the
                     // nearest recorded moments of yours are used
                     // (a network trained for another hero is not used: that hero's recorded moments are)
-                    if (Cfg.policyOn && com.example.mlbbresearch.learning.PolicyNet.usableFor(s.ownHero)) {
-                        d = com.example.mlbbresearch.learning.PolicyNet.blend(d, s, profile)
-                    } else if (Cfg.playLikeMe) {
-                        ImitationPolicy.ensureLoaded(hero)
-                        val brainFight = option != null && option != FightOption.RULES
-                        if (!brainFight && d.intent != Intent.RETREAT && d.intent != Intent.RECALL && d.intent != Intent.REGEN) {
-                            d = ImitationPolicy.blend(d, s)
+                    if (!ComboRunner.running) {
+                        if (Cfg.policyOn && com.example.mlbbresearch.learning.PolicyNet.usableFor(s.ownHero)) {
+                            d = com.example.mlbbresearch.learning.PolicyNet.blend(d, s, profile)
+                        } else if (Cfg.playLikeMe) {
+                            ImitationPolicy.ensureLoaded(hero)
+                            val brainFight = option != null && option != FightOption.RULES
+                            if (!brainFight && d.intent != Intent.RETREAT && d.intent != Intent.RECALL && d.intent != Intent.REGEN) {
+                                d = ImitationPolicy.blend(d, s)
+                            }
                         }
                     }
                     d = TacticalEngine.filterCasts(d, s, profile)
@@ -289,13 +307,13 @@ object AiRuntime {
                 } else if (playerOn && !stale && (s.phase == Phase.SHOP || s.phase == Phase.SCOREBOARD || s.phase == Phase.DEAD)) {
                     ActionExecutor.release()
                 }
+                // settings the app learns by itself (tower range, base-to-lane time)
+                if (inGame) com.example.mlbbresearch.game.AutoTune.observe(s)
                 // Player off and you play: everything you do is yours (combos, cast distance, joystick)
                 if (!playerOn && learnOn && inGame) com.example.mlbbresearch.learning.Coach.tick(s, youPlay = true)
                 // your moments: whenever you play yourself, also while helping the AI (coach)
                 if (learnOn && inGame && (!playerOn || com.example.mlbbresearch.learning.Coach.userActive())) DemoRecorder.record(s)
-                // learn from other heroes too: the ally you watch while dead, enemies on screen
-                if (learnOn && !stale && s.phase != Phase.SHOP && s.phase != Phase.SCOREBOARD && s.phase != Phase.MAP &&
-                    s.phase != Phase.DRAFT && s.phase != Phase.LOADING && s.phase != Phase.LIVE) DemoRecorder.recordWatched(s)
+                // (learning from the heroes you watch while dead was removed at your request)
                 // watching another player's live match: their play, recorded like a match of yours
                 if (learnOn && Cfg.liveLearn && !stale && s.phase == Phase.LIVE) com.example.mlbbresearch.learning.LiveRecorder.record(s)
                 if (builderOn && inGame) {
@@ -305,18 +323,24 @@ object AiRuntime {
                 if (drafterOn && !Cfg.ranked && Cfg.autonomous && !stale) standardSelect(s)
                 PerformanceEvaluator.evaluateDue()
                 if (!stale) Brain.evaluateDue(s)
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
             } catch (t: Throwable) {
                 lastError = t.message ?: t.toString()
                 Diag.error("Tactical loop", t)
             }
-            // Fast mode: decide again as soon as vision has a new frame (up to ~25 per second),
-            // instead of every 200 ms. Balanced mode keeps 5 per second (less battery).
-            // decide again the moment vision has a new frame (no fixed pause; 100 ms at most)
-            val seenTs = GameStateTracker.state.ts
-            val start = System.currentTimeMillis()
-            while (GameStateTracker.state.ts == seenTs && System.currentTimeMillis() - start < 100) delay(4)
+        }
+    }
+
+    private suspend fun tacticLoop() {
+        while (anyOn()) {
+            try {
+                if (System.currentTimeMillis() - lastFastTacticAt >= 45L) {
+                    lastFastTacticAt = System.currentTimeMillis()
+                    runTacticOnce()
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Throwable) {}
+            delay(25)
         }
     }
 
@@ -331,18 +355,20 @@ object AiRuntime {
         stdSelectTries++
         val hero = HeroDb.match(Cfg.myHero)
         ActionExecutor.standardSelect(hero)
-        // the AI picked it, so this match's hero is known (and its look gets learned)
-        if (!Cfg.dryRun && Cfg.stdPickHero && hero != null) GameStateTracker.draftedHero = hero
+        // (the hero the AI picks is not taken as known any more: the loading screen tells it - v36.82)
     }
 
     // ---------- slow: Gemma, event-driven ----------
     private suspend fun strategyLoop() {
         while (anyOn()) {
             try {
-                // keep the online meta of the hero you play fresh (Groq, in the background)
+                // keep the patch meta and the online meta of the hero you play fresh (Groq, in the background)
+                MetaAdvisor.autoGeneral()
                 MetaAdvisor.autoUpdate(GameStateTracker.ownHero())
                 // and learn its skills and passive once (descriptions from the web)
                 com.example.mlbbresearch.game.SkillBook.autoFetch(GameStateTracker.ownHero())
+                // and the enemy heroes' skills (what they can do to you), one a minute
+                com.example.mlbbresearch.game.EnemyIntel.learnEnemies()
                 StrategicAdvisor.tick(GameStateTracker.state, playerOn, drafterOn, builderOn)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -378,8 +404,29 @@ object AiRuntime {
         sb.append(" | Phase: ").append(s.phase.label)
         if (s.selfHp >= 0) sb.append(" | my HP ").append((s.selfHp * 100).toInt()).append('%')
         if (s.self != null) sb.append(" | level ").append(s.level).append(if (s.xp >= 0f) " (EXP ${(s.xp * 100).toInt()}%)" else "")
-        sb.append("\nHero: ").append(GameStateTracker.ownHero() ?: "unknown").append(" (").append(GameStateTracker.ownHeroSource()).append(")")
-        sb.append(" | enemies ").append(s.enemies.size).append(" | minions ").append(s.enemyMinions.size)
+        // Exact sequence requested in v37.01, with ✓ when verified:
+        sb.append("\nName: ").append(GameStateTracker.verifiedNamePanel())
+        sb.append("\nHero: ").append(GameStateTracker.verifiedHeroPanel())
+        sb.append("\nSpell: ").append(GameStateTracker.verifiedSpellPanel())
+        val loadName = GameStateTracker.loadingCardName?.let { "✓ $it" }
+            ?: (if (GameStateTracker.loadingGreen != null) "✓ ${com.example.mlbbresearch.game.PlayerName.get().ifBlank { "green name" }}" else "-")
+        val loadHero = GameStateTracker.loadingHero?.let { "✓ $it" } ?: "-"
+        val loadSpell = GameStateTracker.loadingSpell?.let { "✓ $it" }
+            ?: GameStateTracker.gemmaLoadingSpell
+            ?: "-"
+        val loadHeader = if (GameStateTracker.loadingCardName != null || GameStateTracker.loadingHero != null || GameStateTracker.loadingSpell != null || GameStateTracker.gemmaLoadingSpell != null)
+            "✓ card read"
+        else if (com.example.mlbbresearch.game.PlayerName.get().isBlank() && GameStateTracker.loadingGreen == null)
+            "enter your player name to read it"
+        else "not read yet"
+        sb.append("\nLoading screen: ").append(loadHeader)
+        sb.append("\n     1. Name- ").append(loadName)
+        sb.append("\n     2. Hero- ").append(loadHero)
+        sb.append("\n     3. Spell- ").append(loadSpell)
+        sb.append("\nDead: ").append(com.example.mlbbresearch.vision.DeathTimers.text())
+        sb.append("\nPortraits: scoreboard ").append(com.example.mlbbresearch.vision.PortraitMatch.scoreboardStatus)
+            .append(" · minimap ").append(com.example.mlbbresearch.vision.PortraitMatch.minimapStatus)
+        sb.append("\nMatch end: ").append(com.example.mlbbresearch.vision.EndBoard.status)
         if (playerOn) {
             sb.append("\n\nDecision: ").append(ActionExecutor.lastDecision)
             sb.append("\nTarget: ").append(ActionExecutor.lastTarget)
@@ -388,19 +435,19 @@ object AiRuntime {
                 .append(s.lane.label).append(" - ").append(com.example.mlbbresearch.game.RoleProfile.of(s.lane).focus)
             sb.append("\nTimeline: ").append(com.example.mlbbresearch.game.MatchEvents.status(s.matchSec))
             sb.append("\nMap: ").append(com.example.mlbbresearch.game.MapIntel.status)
-            if (com.example.mlbbresearch.learning.PolicyNet.ready) sb.append("\nNetwork: ").append(com.example.mlbbresearch.learning.PolicyNet.last)
-                .append(" | agrees with the rules ").append((com.example.mlbbresearch.learning.PolicyNet.agreeRate * 100).toInt()).append('%')
+            sb.append("\nNetwork: ").append(if (!com.example.mlbbresearch.learning.PolicyNet.ready) "-" else com.example.mlbbresearch.learning.PolicyNet.last +
+                " | agrees with the rules " + (com.example.mlbbresearch.learning.PolicyNet.agreeRate * 100).toInt() + "%")
             sb.append("\nState: ").append(Utility.state.name.lowercase()).append(" | survival ").append(Utility.lastSurvival.toInt())
                 .append(" | engage ").append(Utility.lastEngage.toInt()).append(" (").append(Utility.lastWhy).append(")")
             val p = StrategicAdvisor.plan
             sb.append("\nPlan: ").append(p.plan).append(" (").append("%.1f".format(p.aggression)).append(")")
-            sb.append("\nLane: ").append(s.lane.label).append(" | spell: ").append(s.spell ?: "?")
-            if (Cfg.useCombos) sb.append("\nCombo: ").append(ComboRunner.status)
-            if (Cfg.smartFights) sb.append("\nBrain: ").append(Brain.lastChoice)
-            s.boss?.let { sb.append("\nObjective in sight: HP ").append((it.hp * 100).toInt()).append('%') }
+            sb.append("\nLane: ").append(s.lane.label).append(" | spell: ").append(GameStateTracker.spellDisplay() ?: s.spell ?: "?")
+            sb.append("\nCombo: ").append(if (Cfg.useCombos) ComboRunner.status else "-")
+            sb.append("\nBrain: ").append(if (Cfg.smartFights) Brain.lastChoice else "-")
+            sb.append("\nObjective in sight: ").append(s.boss?.let { "HP ${(it.hp * 100).toInt()}%" } ?: "-")
+            sb.append("\nCan upgrade: ").append(s.hud.upgradeReady.joinToString().ifBlank { "-" })
+            sb.append("\nCoach: ").append(if (Cfg.coachMode) com.example.mlbbresearch.learning.Coach.summary(s.ownHero) + " | like you: " + ImitationPolicy.status else "-")
         }
-        if (playerOn && s.hud.upgradeReady.isNotEmpty()) sb.append("\nCan upgrade: ").append(s.hud.upgradeReady.joinToString())
-        if (playerOn && Cfg.coachMode) sb.append("\nCoach: ").append(com.example.mlbbresearch.learning.Coach.summary(s.ownHero)).append(" | like you: ").append(ImitationPolicy.status)
         if (learnOn) {
             sb.append("\n\nLEARNING FROM YOU").append(if (playerOn) " (paused: Player is on)" else "")
             sb.append("\nYou: ").append(DemoRecorder.lastAction)

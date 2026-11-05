@@ -1074,6 +1074,287 @@ How the small model plays (Model page switch "Small tactical model in fights", o
   each skill, tips) and "Learn this hero (skills + online guide)"
 - crowd control is now also recognised from "kick", "launch", "grab", "charm", "fear", "trap", "imprison"
 
+## One-tap training in the cloud (v36.21)
+
+Google Colab cannot be started by another app (it always waits for someone to press Run all). Kaggle Notebooks can:
+it has an API, free GPUs (about 30 h a week) and runs notebooks unattended. So the four Train buttons use Kaggle.
+
+Once:
+1. make a free account on kaggle.com and verify your phone number there (needed for GPU and internet in notebooks)
+2. kaggle.com > Settings > API > Create New Token: it downloads kaggle.json - put it in Download/MLBB-Research and tap
+   Scan the folder now (Model page)
+3. for the small tactical model: open the Gemma model page on kaggle.com and accept the licence
+4. optional, for the minimap detector: roboflow_key.txt (your Roboflow API key) in the folder adds the public minimap
+   set; without it, only your own pictures are used
+
+Then Learn page > Train in the cloud > Train (minimap detector, screen detector, tactical networks, small tactical model):
+- inputs come from Download/MLBB-Research: picture zips (uploaded once each), fresh exports of your play / live matches /
+  fight moments (made automatically when you tap), and the last results so training continues (minimap_detector_best.pt,
+  screen_detector_best.pt, mlbb_policies.zip)
+- they go to private Kaggle datasets; the notebook is read from this GitHub repository and started on Kaggle (T4 GPU for
+  the detectors and the small model, CPU for the tactical networks)
+- the app checks it every minute (also after a restart) and shows queued / training N min / done / failed
+- results download straight into Download/MLBB-Research and are loaded by the folder scan: mlbb_detector.tflite +
+  labels.txt, mlbb_screen_detector.tflite + screen_labels.txt, mlbb_policies.zip, gemma3-270m-mlbb-tactical.litertlm
+  (plus the detectors' *_best.pt, so the next run continues from them)
+- "Open on Kaggle" shows the run and its log
+- Google Drive is not used by these runs (Kaggle cannot read your Drive); the phone folder is the source. The notebooks
+  still work in Colab by hand as before (their Kaggle mode switches itself off there)
+- notebooks: a first cell detects Kaggle and makes everything unattended (the uploaded files appear as "My Drive /
+  MLBB-Research", downloads go to Kaggle's output, the Roboflow question is answered from roboflow_key.txt, Gemma comes
+  from Kaggle Models); a last cell gathers the results. Tested here: the tactical networks notebook end to end, and the
+  minimap notebook's data preparation without a Roboflow key; the app's Kaggle calls against a stand-in server (request
+  formats taken from Kaggle's official client). Not yet run on Kaggle itself
+- v36.22: the four notebooks are bundled inside the app (app/src/main/assets/notebooks, copies of notebooks/), so cloud
+  training works with a private GitHub repository; after changing a notebook, copy it there too. The app checks there is
+  enough to train on BEFORE uploading: 300+ recorded moments (tactical networks), 150+ fight moments (small model), at
+  least one picture zip (detectors), with a message saying how to get them
+- v36.23: the Train buttons do the preparation themselves: new detector pictures are zipped and your play / live matches /
+  fight moments exported when tapped (the manual Zip now and Export buttons are gone). A Train button is green and
+  tappable only when there is enough: 100+ new pictures or an earlier zip (detectors), 300+ recorded moments (tactical
+  networks), 150+ fight moments (small model); red with the count otherwise. Model page: a coloured dot per part -
+  green loaded / running, yellow loading or loaded but switched off, red missing; plus a Kaggle key line
+- v36.24 (fixes from the first real Kaggle runs): Kaggle unzips uploaded picture zips, so the notebooks' Kaggle cell
+  zips those folders again under their own name (and no longer copies every picture); the Roboflow key is read from
+  roboflow_key.txt without a prompt (Jupyter replaces the password prompt before each cell); the stand-in for Colab's
+  module now has the attribute libraries look up (the small-model run stopped at "google.colab.__spec__ is None")
+- v36.25 (second round of Kaggle runs: the minimap detector trained, the tactical networks are done): the app waits for
+  Kaggle's READY status (5) before starting a notebook - it took status 1 (only received) as ready, so a fresh screen
+  picture upload was not attached yet and that run had no files; it also refuses to start when Kaggle reports a dataset
+  it could not attach. The notebooks stop at once when no files arrived; the Colab stand-in accepts any part a library
+  asks for (the converter imports google.colab.output, which stopped the minimap detector's last step)
+- v36.26: the CSV exports in Download/MLBB-Research count and train even after a reinstall (which empties the app's
+  database): the Train cards count the rows in them (newest play + live export, newest fights export), every play / fight
+  CSV in the folder is uploaded, a new export is made only when the database has new moments, and the notebooks count
+  the same moment once (the small-model notebook already did). Collector batches: minimap 300, whole screen 300 pictures
+- v36.27: what Groq finds online is also saved in Download/MLBB-Research and read back by the folder scan (so a
+  reinstall keeps it): mlbb-online-meta.json (patch meta + every hero's meta) and mlbb-online-skills.json (every hero's
+  learned skills), rewritten a few seconds after new data arrives; on reading back an entry replaces the app's copy only
+  when it is newer, and any copy Android renamed after a reinstall ("... (1).json") is read too
+- v36.28: cloud training fixes. Each training's files now go up as a fresh, uniquely named Kaggle dataset (a new
+  version of the same dataset was reported "ready" before the new files existed, so runs started empty). The app
+  writes the run's uploads into the notebook; the notebook waits up to 3 min for any that are not attached and then
+  fetches them itself. A status check right after starting no longer picks up the previous run's result. After a
+  failed run the picture zips are uploaded again under new names. The minimap notebook trains without a Roboflow key.
+- v36.29: Groq rate-limit indicator. When Groq answers 429 the app reads how long to wait (its retry-after header or
+  "try again in 7m12.5s"), and shows it: a red countdown in the header on every page, a red/green line on the Meta page
+  (with the clock time it is available again) and a yellow/green dot on the Model page. When the wait is over a
+  notification "Groq is available again" appears (and a toast if the app is open). Asks during the wait are not sent
+  (they would only get another 429); automatic updates pause and "learn all heroes" waits instead of skipping.
+- v36.30: Groq uses far fewer tokens. Only "Update the patch meta" searches the web (at most two short searches);
+  hero meta, hero skills and the draft answer from the model's own knowledge plus the saved patch summary (switch
+  "Web search for each hero" on the Meta page turns hero searches back on, one short search each). Every request uses
+  low reasoning effort and a 4096-token answer cap, and a failed search is retried once without search instead of
+  searching twice more.
+- v36.31: all four cloud trainings run at the same time. Preparing / uploading / downloading has one worker per
+  training, and following the runs on Kaggle is one shared timer (a waiting run holds no worker). If Kaggle says all
+  its GPU sessions are in use, the card shows "waiting for a free Kaggle GPU" and the app tries again every 2 min
+  (up to 2 h; the uploads are not repeated). A used-up weekly GPU quota still fails with Kaggle's message.
+- v36.32: the Meta page uses only the ORIGINAL server's latest patch. Every Groq question (patch meta, hero meta,
+  skills, draft) says to ignore the Advanced Server. An answer whose patch is an Advanced Server patch is asked again
+  once, more firmly, and not saved if it still is; sentences, list items and sources about the Advanced Server are
+  removed from answers; an Advanced Server patch saved by an older version is ignored.
+- v36.33: a failed cloud training shows WHY on its card (read from the Kaggle run log: the last error, or a plain
+  instruction for known ones). The small-model notebook stops with a clear message when the Kaggle account has not
+  accepted the Gemma licence yet (kaggle.com/models/google/gemma-3, same account as kaggle.json).
+- v36.34: retraining the tactical networks on Kaggle CONTINUES from your last networks (Kaggle unzipped
+  mlbb_policies.zip and the notebook did not find the trainable copies, so each run started over).
+- v36.35: the small-model training attaches Gemma 3 270M (Kaggle Models, latest version) to the run itself; an
+  unattended Kaggle run may not fetch a model on its own ("New Models cannot be attached in non-interactive
+  sessions"). The notebook uses the attached copy; the model's files are not listed as files from the app.
+- v36.36: your rulebook changes. Last stand (critical HP but a 1v1 you can win: fight). Escape skill / dash /
+  defensive ultimate on the way out only under 20% HP. Ranged heroes step back only inside 30% of their range. Melee
+  heroes may poke with a ranged skill. Supports stand beside their ally. The ultimate's cooldown is MEASURED on screen
+  (and read from skill descriptions): a low-cooldown ultimate (30 s or less) is used on monsters / camps and freely in
+  combos. The combo order comes first (no extra skills thrown in). No attacking from a bush until the fight started.
+  An execute ultimate finishes the kill. Retribution on buffs at 20%. Camp kill confirmed after 1 s; a vanished
+  monster is hit 1 s more. Joystick turns every 0.5 s; fight state switches after 0.5 s. The exposed enemy base is
+  attacked. Emergency swap ends with Guardian Helmet. Learning from heroes you watch while dead is removed.
+  New: junglers invade enemy buffs / camps when the risk is low (healthy, level 4+, survival 60+, 2+ skills ready,
+  no enemy near the camp, at most 2 enemies unaccounted for).
+- v36.37: nothing to type. The app version shows on the Home page. Worked out by itself: your hero and spell
+  (pick screen, then portrait / icon; the last hero you played is remembered), standard or ranked (read on the
+  hero-select screen), the hero you watch in a live match and its role, the enemy tower range (from stepping into
+  a tower's circle), the seconds from base to your lane, the button positions on the first match and hero-select
+  screen (only buttons you never placed yourself), and the patch meta (refreshed when a week old). The rule numbers
+  (Retribution, chase, Regen / Recall, item swap...) come from the rulebook defaults; their fields, the push
+  direction, range / dash buttons, the combo editor, the skill paste box and the tuning fields are gone.
+  Still yours to do (Android or your accounts require it): the permissions, choosing the folder once, the model
+  downloads, groq_key.txt and kaggle.json, and the shop / hero-select tap positions that auto-detect cannot find.
+- v36.38: small-model training. The conversion to the phone's format installs protobuf 6 (litert-lm-builder
+  needs it; Kaggle ships 5) and runs in a fresh Python process. Training balances the answers (the biggest is cut to
+  twice the next, small ones repeated to half of the biggest) and trains longer on small data (8 passes under 600
+  examples), so the model no longer learns to answer FARM to everything.
+- v36.39: your hero and battle spell can be chosen by hand again (Player page) for when detection does not work.
+  Your choice beats detection, and the app learns the hero's look and the spell's icon from it in your matches,
+  so detection can take over later. Leave the hero empty / the spell on "detect it" for automatic.
+- v36.40: Model page "Small model: on vs off". Every match the AI plays is saved with whether the small model was
+  on (and loaded) the whole match: the learning brain's fight scores, deaths, KDA, win / loss and how much of the
+  model's advice was used. It shows the difference in percent and says whether it is real (5+ matches each way,
+  bigger than the normal spread of fight results) or too early to tell.
+- v36.41: better data for the small model. Your fight choices are labelled only when they are clear (walking at /
+  away from the enemy, skills from range, trading blows, hitting minions with the enemy out of reach) - unclear
+  moments are no longer called FARM. The fight scores (attack / retreat / risk) are always in the model's input.
+  Live matches you watch add fight moments too (that player's choices, scored by how they went). The notebook leaves
+  out the old guessed FARM labels.
+- v36.42: 15 heroes were missing from the hero list (so they could not be typed or recognised): Alpha, Bane,
+  Harith, Julian, Kalea, Kimmy, Lukas, Marcel, Minsitthar, Obsidia, Phoveus, Roger, Sora, Valentina, Zetian - all
+  132 heroes are known now. A hero name the app does not know (a brand-new hero) is used as typed, with role
+  defaults until its skills are learned online.
+- v36.43: the screen picture collector also shoots WHILE ATTACKING a monster (every 2.5 s instead of 10 s): when
+  the AI presses attack next to a monster, a monster's HP bar is dropping (you, an ally or anyone hitting it), or you
+  stand still next to one. A monster shows its bar only once it is hit - exactly when its box can be drawn. A new kind
+  of monster is pictured at once, the same kind again after 8 s, so the pictures cover every monster.
+- v36.44: only ONE mlbb-online-meta.json (and mlbb-online-skills.json) in the folder. Every meta / hero update
+  overwrites it through the folder chosen on the Model page; copies Android made after a reinstall
+  ("mlbb-online-meta (1).json" ...) are read in first (nothing is lost) and then deleted.
+- v36.45: faster skills, a fight-choice network, enemy knowledge.
+  COMBO BURSTS: up to 3 combo skills go out in ONE gesture, each when the one before it has been taken (140 ms after
+  an aimed skill, 90 ms after a tapped one, then tuned per hero and skill from which casts really go off), with basic
+  attacks woven between them and the joystick still held; hold-to-charge skills still go alone.
+  FIGHT-CHOICE NETWORK: a small numeric network trained in the tactical-network notebook (same Train button, inside
+  mlbb_policies.zip) from every fight moment, picking all in / poke / farm / retreat / group in well under 1 ms. Model
+  page switch "Fight-choice network in fights"; it advises first, through the same checks as the small model; the
+  on/off panel now compares each adviser with none.
+  ENEMY KNOWLEDGE: the enemy heroes' skills are learned in the background (one a minute); the Player page shows each
+  enemy's likely opener, crowd control, dash and ultimate; ranged heroes keep outside the enemy team's crowd-control
+  reach; an enemy that just dashed is a better target (+12: it cannot escape); a dash AT you makes the AI step aside.
+- v36.46: "⚔ COMBO" on the floating window plays your hero's combo once, in bursts, at the nearest enemy (or straight
+  ahead) - to check the order, aim and speed. The LINE-UP is read from the loading screen (top row = your team, you
+  first on the left; bottom row = the enemies) and checked on the scoreboard (your team left, you on top; enemies
+  right): all 10 heroes and their battle spells (needs the Gemma model). The enemy panel shows each enemy's spell and
+  what it means (Flicker, Execute, Retribution = their jungler, Petrify, Vengeance...); enemy Flicker widens the
+  crowd-control reach the AI keeps away from.
+- v36.47: LIBRARY page - everything the app knows, with icons: Heroes (role, skills: learned / built in / role
+  defaults, online guide, each skill's type / range / crowd control / cast / cooldown, passive, how it plays, build,
+  emblem, counters, measured ultimate cooldown), Spells (cooldown, effect, how the AI uses it, what it means on an
+  enemy), Equipment (type, price, stats, effect). "Learn the whole database online" learns every hero's skills and
+  online guide, then all equipment (12 items per question), skipping what is known and waiting out Groq's limit by
+  itself. Equipment knowledge is kept in mlbb-online-meta.json too.
+- v36.48: MORE ONLINE MODELS share Groq's work: Gemini 3.8 Flash and Gemini 3.5 Flash-Lite (gemini_key.txt, from
+  aistudio.google.com; they search the web with Google Search) and Cerebras gpt-oss-120b (cerebras_key.txt, from
+  cloud.cerebras.ai; fast, no web search). Questions with web search go to Gemini 3.8 Flash -> Groq -> Gemini Flash-Lite
+  -> Cerebras; without search to Cerebras -> Gemini Flash-Lite -> Groq -> Gemini 3.8 Flash. A model without a key or
+  resting after its rate limit is skipped; one that fails hands over. Model names can be changed with
+  gemini_flash_model.txt / gemini_lite_model.txt / cerebras_model.txt. The indicators count only when ALL are resting.
+  AUTOMATIC online requests are now OFF by default (Meta page switch "Automatic online updates"): online questions
+  are asked only when you press a button (Update the patch meta / this hero, Learn skills, Learn the whole database).
+- v36.49: Groq uses TWO models with the same groq_key.txt (Groq's free limits are per model): openai/gpt-oss-120b
+  and openai/gpt-oss-20b (also with Groq's web search; change it with groq_model2.txt). Each rests separately after its
+  own limit. Order with search: Gemini 3.8 Flash -> Groq 120b -> Groq 20b -> Gemini Flash-Lite -> Cerebras; without:
+  Cerebras -> Gemini Flash-Lite -> Groq 20b -> Groq 120b -> Gemini 3.8 Flash.
+- v36.50: a third Gemini model on the same gemini_key.txt: Gemini 3.6 Flash (Google counts free limits per model;
+  change it with gemini_mid_model.txt). Order with search: Gemini 3.8 Flash -> Groq 120b -> Groq 20b -> Gemini 3.6 Flash
+  -> Gemini 3.5 Flash-Lite -> Cerebras; without: Cerebras -> Gemini 3.5 Flash-Lite -> Groq 20b -> Gemini 3.6 Flash ->
+  Groq 120b -> Gemini 3.8 Flash.
+- **v36.51**: play-learned data is backed up too. `mlbb-learned.json` in the MLBB-Research folder holds the learning brain, Coach, measured ultimate cooldowns, combo burst gaps, aim leads, cast modes, learned hero/spell icons, level badges, minimap colours, tower range, lane travel, layout presets, the comparison numbers, the match log and your settings. API keys are not included; they stay in their own .txt files. The file is rewritten at most once a minute while playing, and again when you leave the app or stop the AI. After a reinstall, choose the folder again: only values the new install doesn't have are filled in, so nothing it already learned is overwritten.
+- **v36.52**: the screen picture collector now zips its batch and switches off at 300 pictures (was 150).
+- **v36.53**:
+  - **Real skills only.** A hero's passive and skills come from the hero's page on the Mobile Legends wiki, read by the phone. The online model only copies them from that text, and every skill and passive name must appear on the page. A made-up one is thrown away, and a hero with a dropped skill is asked again next time. If the page can't be read, nothing is saved. Skills an AI wrote from memory before this version are no longer used and are re-learned. The Library shows each hero's own passive (name and text) first.
+  - **Retribution kinds.** Ice, Flame and Bloody Retribution are now listed under Spells in the Library, not Equipment. They're still learned online and still accepted in builds, and the AI treats them as Retribution.
+  - **Weak fight models are ignored.** A fight-choice network or small tactical model whose report is no better than "always the most common answer" (or whose balanced accuracy is under 30%) gives no advice, even with its switch on. The Model page shows "TOO WEAK, NOT USED". The small-model notebook now writes `tactical_llm_info.json` with its scores.
+  - **Clean screen pictures.** The collector takes a picture only about 1 s after a skill or a basic attack: 1.0 s after a skill or the spell, 1.5 s after the ultimate, and a newer skill restarts the wait. The app's boxes, touch dots and floating window are hidden for that moment. No picture during a banner or while the camera pans fast.
+  - **⚔ COMBO works with the AI and Player off.** It needs only the Accessibility service. It uses your chosen, detected or last-played hero, and aims at the nearest enemy or to the right of your hero.
+- **v36.54**: hero kits that aren't "passive + 2 skills + ultimate" (new `game/HeroKit.kt`):
+  - **2, 3 or 4 active skills.** Yu Zhong and Pharsa have four (s1, s2, s3, ult). The 4th button "Skill 3" is a new calibration point, and auto-detect snaps it to a skill icon when one shows. Hirara has two (s1, s2, no ultimate button). The wiki reader now records how many active skills a hero has. The AI also learns from the screen: a button it pressed that never went off, 4 times in tap and aim, is marked as absent for that hero, and one seen going off is confirmed. Combos, the playbook and ⚔ COMBO use only the hero's real buttons. A 4th skill a combo doesn't name is cast before the ultimate.
+  - **Skill types.** Skillshot (a projectile that stops on the first unit hit): the AI holds it back while an enemy minion stands in its line. Transform: Roger and Selena's ultimate switches form (melee form for a close fight, back to the ranged form when nothing is in reach), and Yu Zhong and Sora get a timed form. Cast modes and aim are learned separately per form.
+  - **Special casts.** Hirara drags Skill 1 onto Skill 2 in one gesture, her combo. Suyou holds a skill for Immortal form (trading, team fights, hurt) and taps it for Mortal form (chasing, escaping). Sora swipes the ultimate right for Torrent (2+ enemies or low HP) and left for Thunder (one target).
+  - **HP bars.** A light segment right after the HP colour, filling the bar's height inside a standard-width hero bar, is read as shield, armour or stored energy instead of stopping the HP reading. Decisions use HP plus shield or armour, plus half of stored energy. Esmeralda (shield) and Masha (segmented HP) stay a little longer; X.Borg with his armour broken leaves earlier. The HUD shows "HP x% + shield/armour y%". The 160 saved screenshots read exactly as before.
+  - **Hirara** is added to the hero list (jungle assassin).
+- **v36.55**: tuned on your in-match screenshots, plus HP back from hitting and the game's terms:
+  - **Button layouts per kit.** 4-skill heroes (Fredrinn, Yu Zhong, Pharsa) have their own Skill 2, Skill 3 and Ultimate places, measured on your screenshots. 2-skill Hirara uses "Mobility" (between the usual Skill 1 and 2) and "AOE" (near the ultimate), so her kit is s1 + ult. The AI drags Mobility onto AOE to engage and AOE onto Mobility when leaving. Each has its own calibration point, and auto-detect estimates all of them. Fredrinn is now a 4-skill hero.
+  - **HP bars, read from your screenshots.** Esmeralda's light-grey shield, e.g. HP 66% + shield 33%. X.Borg's salmon armour (HP 42% + armour 57%), counted only on your own bar, since enemy bars flash light red for just-lost HP. Masha's dark-green bar shown as one of three ("×3"): her total HP = (bars left − 1 + this bar) / 3. Your own bar's thicker segment dividers (~5 px) no longer split it; that fixes a full Sora bar and a 100% Hirara bar that weren't found. The 160 saved screenshots read the same, apart from that Hirara bar now being found.
+  - **HP back from hitting (lifesteal, spell vamp, hybrid lifesteal, healing passives).** The app measures how much HP you regain per second while you or the AI hit something, learned per hero and shown in the Library. A hero that heals by hitting, from its measured rate or its own passive or skills, stays to farm the camp or wave in front of it and recalls only below 15% HP. Lifesteal and spell-vamp items are listed too.
+  - **Library > Terms:** the game's Tutorial terms (Attribute Guide, State Guide and Common Terms), with crowd control grouped by level. Each skill in a hero's details shows the crowd control its description names, with that level.
+- **v36.56**:
+  - **Masha's HP, read from your 5 screenshots.** Her bar is three HP layers in three greens: dark (×3), medium (×2) and bright (the last layer, no label). The top layer drains and shows the one under it. Her whole HP = (layers under the top one + the top layer's visible part) ÷ 3. On your screenshots: 0.75, 0.56, 0.32, 0.15, 0.99 and 0.99, expected 0.76, 0.58, 0.33, 0.15, 1.00 and 1.00.
+  - **Hirara:** two skills, no ultimate. Skill 1 is "Mobility" and Skill 2 is "AOE", whose button sits where an ultimate would. Drag combos go both ways. Target out of reach: Mobility onto AOE (dash in, then the area). Target close: AOE onto Mobility. One skill ready: it is cast on its own. A drag that doesn't fire (no stack) doesn't mark her buttons as missing. Calibration points: "2-skill hero: Skill 1 / Skill 2".
+  - **Library > Equipment** has its own "Active skills" part (Winter Crown, Wind of Nature, Conceal), with what each active does, above the rest of the equipment.
+- **v36.57**:
+  - **More 4-skill heroes:** Popol and Kupa, Chip, Sun, Lunox and Zhask, alongside Fredrinn, Yu Zhong and Pharsa. The game's button hints (e.g. Zhask: Summon, CC, Slow, Morph; Chip: CC, Speed Up, Teleport, Teleport) show in the Library.
+  - **Button positions re-measured** on your 2712 x 1220 screenshots for the 3-, 4- and 2-skill layouts. Auto-detect lands within ~25 px on all of them; a button is ~110 px wide. An attack-button candidate far from its usual place is ignored: on two Pharsa screenshots something lower down was taken for it, which made her layout look shifted.
+  - **Active item button fixed:** it sits at 82.4%, 38.3% (where "Frozen", "Wind Chant" or "Conceal" shows); before it was 93%, 31%. The low-HP Winter Crown swap presses the right place now.
+  - **The AI presses actives by itself.** The icon tells which one it is: Frozen (blue) at very low HP with an enemy on you; Wind Chant (teal) at low HP with physical enemies on you; Conceal (purple) to sneak up on a fight or slip away when hurt. Pressed only while the button shows. All 12 of your screenshots are identified correctly.
+- **v36.58**: heroes with skill variations, from your list. Selena, Roger, Lapu-Lapu, Edith, Sora, Julian, Lunox, Beatrix, Kagura, Gusion, Yi Sun-shin, Lukas and Suyou each show their variation in the Library (forms, weapons, enhanced skills, multi-stage skills, tap or hold). Lapu-Lapu, Edith and Lukas join Roger, Selena, Yu Zhong and Sora as transforming heroes, with cast modes and aim learned per form. Lapu-Lapu's two forms are both melee, so the AI doesn't switch them by distance. Julian's combo uses two different skills first, then the enhanced one.
+- **v36.59**: **Experimental builds** (Build page). One tap asks the online model for 3 builds for your current hero that differ from its meta build. Each comes with a battle spell, an emblem, the synergy idea, when to use it and its weakness. The model is given the hero's real wiki skills and passive, its kit (skill count, forms, special casts, HP bar, variations), its playstyle and combo, the original server's patch and meta, the hero's meta build, and the equipment with what the Library learned about each item. Invented items are dropped, there's at most one pair of boots, each build needs 5+ real items, and the spell must be a real one. "Use this build" makes one your build on the Build page; tap it again to go back to the meta.
+- **v36.60**: **Phone metrics on the Speed page** ("Phone" card, every 2 s, with 2-minute graphs):
+  - **CPU:** this app's share of all cores, plus each core's clock against its maximum. The whole phone's CPU use is closed to apps since Android 8.
+  - **GPU:** the load and clock from the chip maker's files (MediaTek GED for your Dimensity, Qualcomm KGSL, Mali), or "not readable" if the phone blocks them. It also shows which AI parts run on the GPU: the Gemma models show GPU or CPU, and the detectors and networks always run on the CPU.
+  - **RAM:** the phone's used / total, this app's own use (Java, native, models and screen buffers), and a low-memory warning.
+  - **ROM:** storage used / total and how much the app's files (models, icons, cache) take.
+- **v36.61**:
+  - **Skill layout read from the screen (ScreenKit).** Two HUD sizes exist: normal, and LARGE (bigger buttons and Flicker; your Masha and first Pharsa screenshots). The large HUD's attack, spell, Recall, Regen and skill places were measured on those screenshots and have their own calibration page ("In-game buttons (large HUD)"). The screen tells which HUD and how many skill buttons (2, 3 or 4) are showing. A layout counts only when all its buttons are lit: a skill not learned yet is a dark button, with no gold crescent until upgraded. It also needs a clear winner and several frames in agreement. On your 25 screenshots: 19 right, 6 not read (the hero list is used then), 0 wrong. The HUD size always follows the screen. The skill count follows the hero list for known heroes, the screen for others (10 agreeing readings, then remembered for that hero), or the screen when it keeps disagreeing with the list.
+  - Your new 2-skill (Hirara) and 3-skill screenshots confirm the normal positions (within 16 px).
+  - **The ultimate is always upgraded first** whenever its "+" shows (hard-coded).
+  - **Skill-upgrade "+" places per kit**, from your level-1 screenshots: 4 skills (three "+" plus the ultimate's), 3 skills, and Hirara's 2. Before, the 3-skill places were used for every hero, so upgrades on Hirara and 4-skill heroes tapped the wrong spot. Skill 3's "+" is read too. **At level 1** the skill buttons are dark, so the layout is read from where the "+" signs are: 3 in a row means 4 skills, 2 means 3 skills, and Hirara's 2 sit elsewhere. All three of your level-1 screenshots are read correctly.
+- **v36.62**:
+  - **Upgrade "+" places** confirmed on your level-4/8 screenshots: the ultimate's "+" for 3- and 4-skill heroes (measured, within ~9 px), and the other "+" re-measured. A 2-skill hero (Hirara) never reads an ultimate "+": its spot is her Skill 2's.
+  - **Hirara:** her picture in the Library (wiki numbers 1331 / 1341 / 1351 tried in turn, since her number isn't confirmed yet), and she's in the jungle-assassin list too.
+  - **Library > Equipment:** a "Passive skills (roaming boots)" part with Encourage, Favor and Dire Hit (Dire Hit with the revamped Force stacks). Conceal stays under Active skills. Texts from your list.
+  - **Aulus (and any hero with a revamp on the Advanced Server):** the wiki's skills section for the Advanced Server / an upcoming version is skipped, and so are such sub-sections inside the live one. The guide question gets a third, firmer try asking for the live pre-revamp kit and the live patch number, instead of being dropped. A hero that can't be learned now shows **why** in the Library ("⚠ last try failed", with the reason in its details). **Long-press a hero** to learn its skills and guide right away.
+- **v36.63**: hero and item pictures. A picture that failed to download is tried again 2 minutes later; before, it wasn't retried until the app restarted, so one moment without internet, or a reinstall that cleared the saved pictures, left every icon as initials. Each picture now tries three addresses: the small one, the full-size one, and the wiki's file link. Downloads identify like a normal Android browser plus the app name. The reason for a failure (e.g. HTTP 403) is shown at the top of the Library and in the Logs.
+- **v36.64** (from the Aulus wiki page you saved):
+  - **Aulus's skills:** his page has an "Abilities" heading in his story (lore) before the real skills section. The app took that first heading, so no skill name matched and nothing was saved. Now the section that really holds Passive / Skill 1 / Skill 2 / Ultimate is used. His skills are Fighting Spirit, Aulus, Charge!, Cleaving Axe and The Power of Axe. The same fix helps any hero whose page has story "Abilities" first.
+  - **Pictures:** the wiki now serves its images as ".../revision/latest/thumbnail-down/width/..": that's the first address tried, then the full picture, the old "scale-to-width-down" form, and the wiki's file link. Hirara's picture number is confirmed as 1331, and 1341 is Dori.
+- **v36.65**: **skill icons in the Library.** Tap a hero to see its passive and every skill as icons, with labels (Passive, Skill 1, 2, 3, Ultimate, or the game's hints such as "Mobility" / "AOE"). The pictures come from the wiki, which names each one after the skill (e.g. Fighting_Spirit.png, The_Power_of_Axe.png on Aulus's page). They show once the hero's real skill names are learned from the wiki: tap "Learn the whole database online", or long-press the hero.
+- v36.66: Library icons read from each hero's real wiki skill headings (fixes Layla/Arlott showing item icons with the same names, and missing icons for Hirara, Hayabusa, Hanzo, Hanabi, Benedetta, Barats, Aldous); Alpha's ultimate no longer marked missing. NEW: the app detects, identifies and verifies your hero automatically from its hero icon (minimap portrait) and its skill icons (learned in your matches + the wiki pictures); the Player page shows "Hero check" and warns if the screen shows a different hero than the one you typed.
+
+- v36.67: the hero detected in game from its skill icons is now ABSOLUTE - it overrides even the hero you typed on the Player page (a different hero than the typed one needs 6 agreeing readings instead of 3; forgotten when the match ends). Skill looks are not learned under a typed name the wiki pictures contradict.
+
+- v36.68: missing skill icons for 4-skill heroes (Chip, Fredrinn) fixed - the wiki reader accepts headings like "Ultimate 1 / Ultimate 2", "Skill 1: name", a heading with the skill's own name, or two pictures under one heading, and fills every button of the hero's kit; a button still without a wiki picture shows the picture named after the skill (never an item / spell of the same name). Icons are read again once after updating. If a hero still misses one, its Library entry shows the headings found on its wiki page. The in-game hero check uses only the active skill buttons, never the passive.
+
+- v36.69: from your saved Fredrinn and Chip wiki pages - Fredrinn's two Ultimates ("Ultimate 1" Energy Eruption = 3rd button, "Ultimate 2" Appraiser's Wrath = ultimate) and Chip's "Special" extra skill (Why Walk? = 3rd button, Shortcut = ultimate) are read as 4-skill kits, for the icons and the learned skills. Greyed / cooldown / skin versions of an icon are skipped, and icons shown inside another skill's text no longer push out the real one. Fredrinn's Energy Eruption added to his built-in skills; Chip's and Fredrinn's skills are learned again once.
+
+- v36.70: skill-icon detection also while WATCHING a live match - the watched hero's skill icons in the bottom panel (skill 1, skill 2, ultimate) are compared with the looks learned while watching and with the wiki pictures; once they show a hero it replaces the one Gemma read (a different hero than Gemma's needs 6 agreeing readings, the same one 3). Live-panel looks are kept apart from your own buttons. Live page shows "Skill icons: ...". (3-skill heroes only for now: the panel positions of a 4th icon are not measured yet.)
+
+- v36.71: live-match panel re-measured on your 4 live screenshots - skill icons are packed from the left (one every 0.0387 of the width; 2, 3 or 4 of them), battle spell at 0.564. The number of icons gives the watched hero's kit (2 / 4 read right on all 4), so the skill-icon detection and the live cooldown reading now work for 2-, 3- and 4-skill heroes. (The old s2 / ultimate positions were between two icons.) Tested: the same hero matches 0.85-1.00 (even with every skill on cooldown), different heroes below 0.
+
+- v36.72: live panel, from your 3-skill hero screenshots - a 3-skill hero's icons are spread wider (0.4163 / 0.4599 / 0.5033, 0.0435 apart; 2- and 4-skill heroes 0.0387). The icon count now uses texture (an icon, even dark on cooldown, spread 28+; an empty spot 9 or less), so the kit (2 / 3 / 4) reads right on all 6 live screenshots. Icons cooling down (dark, with a number) are left out of the comparison (2 ready icons needed) and only fully-ready panels are learned: the same hero now matches 0.81-1.00.
+
+- v36.73: EQUIPMENT TIERS AND TYPES (game/ItemClass.kt). Every item has a tier (Advanced / Intermediate / Basic / potion) and stat types: Attack (Physical Attack), Magic (Magic Power), Adaptive Attack (fits both), Physical Defense, Magic Defense, Neutral Defense (both / flat HP), Movement - from the item's wiki page first, then a built-in table, then the Library's learned stats. Builds (Build page, role builds, the online meta's, experimental builds) use ADVANCED equipment only; the experimental-build prompt gets only Advanced items with their types and the hero's damage type. Library > Equipment: Advanced (Active-skill items first, then by type), Intermediate, Basic, Potions; the roaming blessings are a separate list (Conceal = active skill, Encourage / Favor / Dire Hit = passives; no cost, not equipment). Heroes: damage type read from the hero's wiki page ("Damage type"), shown in the Library with the equipment type it uses. Drafter: once the enemy heroes are known, their damage types and the defense type to build (Physical / Magic / Neutral). Blessed Retributions: effect text from the wiki only (the AI-written texts were deleted).
+
+- v36.74: the 19 items the app did not know (Allow Throw, Azure Blade, Broken Heart, Chastise Pauldron, Dreadnaught Armor, Elegant Gem, Exotic Veil, Expert Gloves, Flower of Hope, Iron Hunting Bow, Javelin, Lantern of Hope, Magic Blade, Mystic Container, Resonating Heart, Silence Robe, Throw Forbidden, Valkyrie's Shield, Vampire Mallet) are Basic equipment (your word) - never in builds; their stat types come from the wiki / the Library. An item that costs nothing shows "no cost".
+
+- v36.75: from your saved Blade of Despair and Flame Retribution wiki pages. TIERS follow the wiki's "List of equipment" (on every equipment page: Attack / Magic / Defense with Basic, Intermediate, Advanced rows, Movement with Basic and Advanced): all 98 current items found, the built-in table corrected to match it exactly (e.g. Molten Essence, Silence Robe, Dreadnaught Armor = Intermediate; Valkyrie's Shield, Chastise Pauldron = Advanced; Hero's Ring, Book of Sages, Mystery Codex = Basic); the list is read again whenever the Library reads an equipment page, so tiers follow the wiki. Item pages: stats from the info box's "bonus" field, passive / active from "unique", price from the Price row (Blade of Despair: +160 Physical Attack, +5% Movement Speed, 3010 gold). Blessed Retributions: the effect from their page's "unique" field (Flame Retribution read right).
+
+- v36.76: your Blessed Retribution guide in Library > Spells: what each one does (Ice: steals movement speed - chasing / mobile enemies; Flame: steals Physical Attack and Magic Power - burst / 1v1; Bloody: damage + HP steal, heals from Extra HP - tank / sustain / frontline jungler), shown always, with the wiki's exact effect text added once read. The experimental builds get the same guide to choose a jungler's Retribution.
+
+- v36.77: Thunder Belt, Dominance Ice and Oracle are listed under Neutral Defense (your word; they keep their physical / magic defense as a second type). The roaming blessings show their wiki icons (Active_-_Conceal.png, Passive_-_Encourage.png, Passive_-_Favor.png, Passive_-_Dire_Hit.png - the file names from your saved Equipment page).
+
+- v36.78: skill icon choice fixed for sections that show other pictures first (Beatrix's passive section shows her weapons' item icons - Demon Hunter Sword - before her own): the picture named after the skill's name at the start of the section wins; equipment / spell / hero pictures go last (a passive with its own file, e.g. "Malefic_Gun_(Passive).png", beats the item "Malefic_Gun.png"). Skill icons are read again once.
+
+- v36.79: Chip's buttons (your word): the Ultimate Shortcut is the 3rd button, the Special skill Why Walk? the 4th - for the icons, the in-game skill-icon check and the skill learning; Chip's icons and skills are read again once.
+
+- v36.80: HERO PRIORITY (your order): 1. the hero ENTERED on the Player page (new Enter button, or the keyboard's Done; typing alone changes nothing; empty + Enter = detect) - absolute; 2. the skill set seen in game; 3. hero icon / in-game model / minimap portrait; then drafted, last played, Gemma. SKILL-COUNT GATE: the number of skill buttons is read from the screen alone (3 agreeing readings) and every guess after the entered hero must have that many skills - a 4-button screen can only be a 4-skill hero (Fredrinn is no longer taken for Zilong), same for 2 and 3; the skill icons are read at that layout's own button places. Unknown heroes count as 3 skills (the 2- and 4-skill heroes are listed or learned from the wiki). Screen skill counts saved under a wrongly-detected hero are dropped once. The hero icon on the scoreboard is not read yet.
+
+- v36.81: the in-game MODEL and the minimap PORTRAIT are now two separate checks (IconMemory.matchModel / matchPortrait), in your order: entered hero > skill set > (scoreboard icon - not read yet) > in-game model > minimap portrait > drafted > last played > Gemma. Each counts only when its best hero is clearly closer than any other (portrait < 0.18, margin 0.06; model < 0.22, margin 0.08 - first values, not yet measured on your screens) and has the skill count the screen shows. The Player page says which one found the hero.
+
+- v36.82: the hero select / draft screens no longer tell which hero is yours (neither Gemma's draft reading nor the hero the AI picks); the LOADING screen does: Gemma reads the hero name on your card (first card, top row; the skin name above it is ignored). The SCOREBOARD read now also gives your hero (your row, top left) and runs until it has. Priority: entered > skill set > scoreboard > in-game model > minimap portrait > loading screen name > last played > Gemma's in-game guess (each after the first must fit the skill count on screen). The Drafter's pick / ban advice is unchanged.
+
+- v36.83: the loading-screen name now comes before the in-game model. Priority: entered > skill set > scoreboard > loading screen name > in-game model > minimap portrait > last played > Gemma's in-game guess.
+
+- v36.84: "My player name" box on the Player page (with an Enter name button). On the loading screen and the scoreboard Gemma now copies every card's player name with its hero; your card is the one with your name (small reading slips allowed: one letter per 5, a clan tag in front is fine; a different name like Griffin for Griffith is not taken), and if Gemma swapped the two teams, your name puts them back. No name set or not found = the first card of your team, as before. Tested with "Griffith" on sample answers.
+
+- v36.85: the loading screen's cards are in random places and the two teams' rows can swap (your word): nothing is taken from positions any more. Gemma reports the top and bottom rows as they are; your team = the row with your player name, you = the card with your name. No name entered or not found = nothing decided (tried again 2 s later while the loading screen lasts). On the scoreboard (your team left) your hero is also taken only by your name; found on the right = the sides are swapped. When your name matches, the floating panel shows it ("Name: ✓ \"Grifflth\" = your name (Griffith) on the loading: Chip").
+
+- v36.86: (1) DEAD HEROES (vision/DeathTimers.kt): the red respawn countdowns next to the score - enemies right of it, allies left - are counted (own matches show an enemy's portrait only while it is dead; live matches show all 10): right on your 9 screenshots. Used by the AI: dead enemies are not counted as hiding/possibly near, each dead enemy makes fights safer (+4 survival, +6 engage), more allies dead than enemies makes them riskier; also in the strategy model's state text. (2) Priority: entered > LOADING screen card with your name (hero) > skill set > scoreboard > loading > model > portrait; the spell on your loading card comes right after the one you chose. (3) Floating panel: Loading screen hero + spell, Spell (and where from), Dead counts. (4) The scoreboard read is told the in-game scoreboard differs from the end-of-match screen (which is skipped). (5) Screen capture button only on the Home page. (6) Speed page keeps 5 minutes (was 2).
+
+- v36.87: (1) FLOATING PANEL steady: one single-line row per line (… when too long), rows never removed while open, a row is redrawn only when its text changes, every line always present ("-" when empty) - nothing jumps; smooth scrolling (no over-scroll). (2) END-OF-MATCH SCOREBOARD (vision/EndBoard.kt; your screenshot is recognised as RESULT_BOARD, your in-game scoreboard as SCOREBOARD): your row = the highlighted one (85-112 bright vs 41-51; row 5 on your screenshot) and, with your player name entered, Gemma reads the 5 names on your side and your row must carry it; that row's PORTRAIT is matched with the heroes' portrait pictures (the Library's icons; detected heroes first, fetched if missing). The hero found VERIFIES the match's detection and LOCKS it: the portrait/model look, the skill-button look and the skill count learned this match are kept for that hero (wrong labels replaced), and it becomes your last-played hero. Floating panel line "Match end: ✓ <hero> LOCKED … - matches the detection / corrected from X".
+
+- v36.88: PORTRAITS vs the wiki's portrait pictures (vision/PortraitMatch.kt; the same HeroNNN-icon.png the Library shows, all heroes' pictures fetched once): (1) IN-GAME SCOREBOARD - your highlighted row (92 bright vs about 60 on your screenshot) gives your hero without Gemma (as the scoreboard step), and the enemy portraits fill the enemy line-up when it is not known; (2) END-OF-MATCH scoreboard - as before (EndBoard), now with all pictures fetched; (3) MINIMAP - your icon vs the pictures, a last resort below the learned portrait (it is about 11 px wide: a clear winner only, 0.6 and 0.12 ahead). Each must fit the skill count on screen. Floating panel line "Portraits: scoreboard … · minimap …". Thresholds are first values (the pictures cannot be downloaded in the build environment to measure).
+
+- v36.89: LEVEL fix (it counted up to 15 at level 12): the level can no longer exceed what the match time allows (5 by 2:00, then about one per 55 s - only when the app saw the loading screen, so its clock is the real one); the in-game scoreboard read now also takes the LEVEL number on your portrait and it sets the true level (also downward) and teaches that level's badge (a wrongly remembered badge is replaced); a skill "+" flickering back within 1.5 s no longer counts as a level-up; badge patterns remembered so far are forgotten once (they may have been saved at miscounted levels; the built-in ones stay).
+
+- v36.90: MATCH RECORDING follows the match: it starts at the LOADING screen (if that was missed, when your hero is first seen) and ends at the end-of-match screens; moments are recorded only inside a match. Every recorded moment (experiences, your demonstrations, fights - database v7, column match_id) carries its match, and when the end scoreboard locks the hero, all of that match's moments and its Learn-page match line are relabelled with that hero. Logs: "Match recording started / ended", "N recorded moments relabelled as X". Floating panel buttons and title smaller.
+
+- v36.91: Learn page buttons "Delete all fight moments" (the fights table) and "Delete all recorded moments" (everything recorded in your matches: the AI's saved decisions, your recorded play, the fight moments; live-match moments keep their own button). Both ask first.
+
+- v36.92: from your 15 screenshots of a whole match (newest win over older ones). SCREENS: the new loading screen (cards on a blue band / red line; also with the rows swapped), the hero-locked screen (blue skin button), searching for a match, the Rank and Win-streak screens (gold Continue - they were taken for hero select, which could start a new match at the end of yours) and the new end scoreboard (Quit moved, gold Return to Lobby - also taken for hero select) are recognised: all 15 right, and the 194 older screenshots unchanged except those 6 fixes. LOADING: your card = the one with the GREEN player name (173 green pixels on your card only) - works without a typed name; Gemma is told it too. Your highlighted rows found on the new in-game scoreboard (row 3) and end scoreboard (row 2). The hero portrait on the Victory / Defeat and MVP screens backs up the scoreboard's. An ENTERED hero is locked at the end scoreboard as it is and the entry is then cleared, ready for the next match. Priority: minimap portrait now before the in-game model.
+
+- v36.93: Vision tuning (show what the AI sees / where it touches) moved from the Player page to the Home page, under the screen capture button.
+
+- v36.94: fixes from your first real-match log (Aurora, then Karina - loading card found by your name both times, end scoreboard lock + 2763 moments relabelled worked): no "live match" readings within a minute of your own match (a live clock and watched hero were read right after your match ended); the end-scoreboard names count only if that screen was still showing when Gemma answered (names from another screen came back); a match starts once (hero-select false sightings started 3); level: the two-digit-badge jump only from level 8 (6 -> 7 and 2 -> 7 happened), a scoreboard level more than 3 below the count or above the time limit is ignored (7 -> 1 happened); learning how the hero looks / its skill icons at most every 15 s, logged once per match (it logged every second); the model / minimap portrait need 3 readings in a row to switch to another hero (Karina / Aurora / Alucard flipped).
+
 ## How it is organised (matches your note)
 
 | Folder | Job | Speed |

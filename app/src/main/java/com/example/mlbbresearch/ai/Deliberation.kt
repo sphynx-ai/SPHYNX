@@ -85,8 +85,9 @@ object Deliberation {
     // ---- checking the rules' decision ----
     // returns the reason to leave the fight, or null to keep the rules' decision
     fun vetoFight(s: GameState, d: TacticalDecision, sc: Scores): String? {
-        if (d.intent != Intent.ENGAGE || d.targetHp in 0f..0.25f) return null     // finishing blows stay
-        if (sc.retreat <= sc.attack + 0.15f) return null
+        if (d.intent != Intent.ENGAGE || d.targetHp in 0f..0.35f) return null     // finishing blows stay
+        if (d.reason.startsWith("last stand")) return null                        // a 1v1 you can still win (your rule)
+        if (s.selfHp >= 0.30f || sc.retreat <= sc.attack + 0.30f) return null
         return "the scores say leave: attack %.2f < retreat %.2f (risk %.2f)".format(sc.attack, sc.retreat, sc.r)
     }
 

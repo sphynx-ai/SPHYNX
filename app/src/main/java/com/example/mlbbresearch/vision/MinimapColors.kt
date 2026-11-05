@@ -20,6 +20,8 @@ object MinimapColors {
 
     private val cache = HashMap<Kind, List<IntArray>>()
 
+    fun forgetCache() = cache.clear()
+
     private fun key(k: Kind) = "mmcol_" + k.name.lowercase()
 
     @Synchronized
