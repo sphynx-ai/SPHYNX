@@ -6,13 +6,30 @@ import com.example.mlbbresearch.core.Cfg
 // slot: "s1", "s2", "s3", "ult", "a" (basic attack) or "spell"
 class ComboStep(val slot: String, val waitMs: Long)
 
-// Skill combos for ALL 131 heroes in HeroDb (v37.07).
-// Includes dual-identity transformation combos, multi-phase skill combos, and role-accurate sequences for every hero.
+// Complete built-in multi-combo profile for a hero (v37.11):
+//  - burst: Full Lv4+ all-in / teamfight combo
+//  - poke: Short trade / harass combo
+//  - chase: Gap-close / low-HP finisher combo
+//  - pre4: Pre-Level-4 (or Ultimate on cooldown) combo
+//  - retreat: Escape / peel / counter-disengage combo
+//  - variants: Additional named hero-specific combo options
+class HeroComboSet(
+    val burst: String,
+    val poke: String,
+    val chase: String,
+    val pre4: String,
+    val retreat: String,
+    val variants: List<Pair<String, String>> = emptyList()
+)
+
+// Built-in optimized skill combos & all possible combo variations for all heroes (v37.11).
+// Online combo updates are disabled: the AI strictly uses Manual Input (if set for the hero)
+// and automatically falls back to this Built-In Multi-Combo Library when Manual Input is empty.
 object ComboBook {
 
     private val builtIn: Map<String, String> = mapOf(
         // ---- TANKS (19) ----
-        "Tigreal" to "s1 > s2 > s2 > ult > a",
+        "Tigreal" to "s2 > s2 > ult > s1 > a",
         "Franco" to "s1 > ult > s2 > a",
         "Akai" to "s1 > s2 > ult > a",
         "Johnson" to "ult > s1 > s2 > a",
@@ -33,7 +50,7 @@ object ComboBook {
         "Marcel" to "s2 > s1 > ult > a",
 
         // ---- FIGHTERS (37) ----
-        "Thamuz" to "s1 > s2 > a > ult > s1 > a",
+        "Thamuz" to "s1 > s2 > a > ult > a > s1 > a",
         "Balmond" to "s1 > s2 > a > ult",
         "Alucard" to "s1 > a > s2 > a > ult > a > s1 > a",
         "Chou" to "s1 > s1 > s2 > s1 > a > ult > ult > a",
@@ -157,6 +174,144 @@ object ComboBook {
         "Kalea" to "s2 > s1 > a > ult > a"
     )
 
+    // Hero-specific named multi-combo variations for complex / signature heroes
+    private val specialVariants: Map<String, List<Pair<String, String>>> = mapOf(
+        "Gusion" to listOf(
+            "10-Dagger Full Burst" to "s2 > ult > s2 > s1 > s2 > s1 > a > ult > a",
+            "5-Dagger Fast Pickoff" to "s1 > s2 > s1 > s2 > a > ult",
+            "Double-S2 Shotgun Burst" to "s2 > ult > s2 > s2 > a > ult > s1 > s1 > a",
+            "Pre-Lv4 Dagger Trade" to "s1 > s2 > s1 > s2 > a"
+        ),
+        "Fanny" to listOf(
+            "Double-Cable Cut Throat" to "s2 > s2 > ult > s1 > a",
+            "Triple-Cable Dive" to "s2 > s2 > s2 > ult > s1 > a",
+            "Single-Cable Quick Slash" to "s2 > s1 > a > s2",
+            "Pre-Lv4 Double-Cable" to "s2 > s2 > s1 > a"
+        ),
+        "Ling" to listOf(
+            "4-Blade Tempest Full Combo" to "s2 > a > ult > s2 > s2 > s2 > s2 > s1 > a",
+            "Wall Leap Crit -> 4-Blade" to "s1 > a > s2 > a > ult > s2 > s2 > s2 > s2 > a",
+            "Quick Pickoff" to "s1 > a > s2 > a > ult > s2 > a",
+            "Pre-Lv4 Crit Poke" to "s1 > a > s2 > a"
+        ),
+        "Chou" to listOf(
+            "Jeet Kune Do -> Shunpo -> Kick" to "s1 > s1 > s2 > s1 > a > ult > ult > a",
+            "Fast Dash Knockup -> Kick" to "s1 > s1 > s2 > s1 > ult > ult > a",
+            "Pre-Lv4 Knockup Trade" to "s1 > s1 > s1 > a > s2 > a"
+        ),
+        "Kagura" to listOf(
+            "Full 6-Skill Yin Yang Burst" to "s1 > ult > s2 > ult > s2 > s1 > a",
+            "Fast Umbrella Catch" to "s1 > s2 > ult > s1 > s2 > a",
+            "Long-Range Poke & Pull" to "s1 > ult > s1 > a"
+        ),
+        "Julian" to listOf(
+            "Enhanced S1 (Single-Target Javelin)" to "s2 > ult > s1 > a > a",
+            "Enhanced Ult (AOE Knockup Control)" to "s1 > s2 > ult > a > a",
+            "Enhanced S2 (Untargetable Sword Dive)" to "s1 > ult > s2 > a > a"
+        ),
+        "Suyou" to listOf(
+            "Immortal Cleave -> Mortal Finisher" to "s1 > s2 > a > ult > a",
+            "Triple Immortal Hold Combo" to "s1 > s2 > ult > a",
+            "Fast Mortal Tap Assassination" to "s1 > a > s2 > a > ult > a"
+        ),
+        "Hirara" to listOf(
+            "Drag S1->S2 (Mobility Dash into AOE)" to "s1 > s2 > a",
+            "Drag S2->S1 (AOE Burst into Escape Dash)" to "s2 > s1 > a"
+        ),
+        "Sora" to listOf(
+            "Shifting Skies -> Ult Reset Combo" to "s1 > s2 > ult > s1 > s2 > a",
+            "Instant Ult -> Double Skill Chain" to "ult > s1 > s2 > a > s1 > s2 > a"
+        ),
+        "Selena" to listOf(
+            "Elven Trap + Arrow -> Abyssal Reset" to "s1 > s2 > ult > s2 > s1 > s2 > a",
+            "Close-Range Abyssal Burst" to "s1 > ult > s2 > s1 > s2 > a",
+            "Abyssal Form Melee Chain" to "s2 > s1 > s2 > a > ult"
+        ),
+        "Roger" to listOf(
+            "Human Slow/Shred -> Wolf Pounce" to "s1 > s2 > a > ult > s2 > s1 > a > a",
+            "Wolf Form Ambush Execute" to "ult > s2 > s1 > a > a",
+            "Human Form Kite" to "s1 > a > s2 > a"
+        ),
+        "Hayabusa" to listOf(
+            "Quad Shadow -> Shuriken -> Ougi -> Return" to "s2 > s1 > a > ult > s1 > s2 > a",
+            "Instant Ougi Assassination" to "s2 > ult > s1 > a > s2",
+            "Shadow Poke & Return" to "s2 > s1 > a > s2"
+        ),
+        "Lancelot" to listOf(
+            "Puncture -> Thorned Rose -> Execution" to "s1 > s2 > a > ult > s1 > a",
+            "Double-Dash Gap-Close Burst" to "s1 > s1 > s2 > ult > a",
+            "Pre-Lv4 Triangle Poke" to "s1 > s2 > a > s1"
+        ),
+        "Paquito" to listOf(
+            "Champ Stance Double-Jab -> Knockout" to "s2 > s1 > ult > s2 > s1 > a",
+            "Double Knockout Strike CC Lock" to "ult > ult > s2 > s1 > a",
+            "Double-Dash Burst" to "s2 > s2 > s1 > ult > a"
+        ),
+        "Yu Zhong" to listOf(
+            "Black Dragon Dive -> Sha Essence Burst" to "ult > s3 > s1 > s2 > a",
+            "Lane 5-Stack All-In" to "s1 > s3 > s2 > a > ult > a",
+            "Poke & Sustain" to "s1 > s2 > a > s3"
+        ),
+        "Benedetta" to listOf(
+            "Alecto -> Phantom Slash -> Guard" to "ult > s1 > a > s2 > a",
+            "Passive Dash -> S1 -> Ult" to "a > s1 > ult > s2 > a",
+            "Counter-Stun Trade" to "s2 > a > s1 > a"
+        ),
+        "Zilong" to listOf(
+            "Supreme Warrior Charge -> Flip -> Flurry" to "ult > s2 > a > s1 > a > a",
+            "Ambush Flip -> Spear Strike -> Continuous BA" to "s1 > s2 > ult > a > a > a",
+            "Pre-Lv4 Spear Flip Trade" to "s2 > a > s1 > a > a"
+        ),
+        "Argus" to listOf(
+            "Demonic Grip -> Meteoric Sword -> Eternal Evil" to "s1 > s2 > a > s1 > ult > a > a",
+            "All-In Immortal Continuous Attack" to "ult > s1 > s2 > a > a > s1 > a",
+            "Poke & Disengage" to "s1 > s2 > a > s1"
+        ),
+        "Thamuz" to listOf(
+            "Molten Scythes -> Chasm Leap -> Cauterant" to "s1 > s2 > a > ult > a > s1 > a",
+            "Cauterant Inferno Continuous Attack" to "ult > s2 > s1 > a > a > a",
+            "Scythe Poke & Pull" to "s1 > a > s1 > s2 > a"
+        ),
+        "Layla" to listOf(
+            "Malefic Bomb -> Void Projectile -> Continuous BA -> Ult" to "s1 > a > s2 > a > a > ult > a",
+            "Long-Range Snipe Finisher" to "s2 > s1 > ult > a",
+            "Kite & Continuous Attack" to "s1 > s2 > a > a > a"
+        ),
+        "Miya" to listOf(
+            "Hidden Moonlight Ambush -> Arrow of Eclipse -> Continuous BA" to "ult > s1 > s2 > a > a > a",
+            "Root Trap -> Moon Arrow Split-Shot" to "s2 > s1 > a > a > ult > a",
+            "Continuous Basic Attack DPS" to "s1 > a > a > s2 > a > a"
+        ),
+        "Freya" to listOf(
+            "Valkyrie Descent -> Leap -> 4x Spirit Combo" to "ult > s1 > s2 > a > s2 > a > s2 > a > s2 > a",
+            "Pre-Lv4 Shield Bash Chain" to "s1 > s2 > a > s2 > a > s2 > a"
+        ),
+        "Lunox" to listOf(
+            "Darkening Chaos Assault Burst" to "s3 > s2 > ult > s2 > s2 > s1 > a",
+            "Light Brilliance Safe Poke" to "s3 > s1 > s2 > a > ult"
+        ),
+        "Harith" to listOf(
+            "Zaman Force Infinite Chrono Dash" to "ult > s2 > a > s1 > s2 > a > s2 > a > s2 > a",
+            "Pre-Lv4 Dash Poke" to "s2 > a > s1 > a"
+        ),
+        "Edith" to listOf(
+            "Phylax CC Throw -> Primal Wrath Marksman Burst" to "s2 > s1 > a > ult > s2 > s1 > a > a",
+            "Peel & Lockdown" to "s2 > s1 > a"
+        ),
+        "Fredrinn" to listOf(
+            "4-Point Combo -> Appraiser's Wrath Execute" to "s1 > a > s2 > a > s3 > s1 > s2 > ult",
+            "Taunt Lockdown Peel" to "s2 > a > s3 > s1 > a"
+        ),
+        "Wanwan" to listOf(
+            "Swallow's Path Weakness Break -> Crossbow of Tang" to "s1 > s1 > a > a > ult > s2 > a",
+            "Purify Kiting Trade" to "s1 > a > s2 > a > a"
+        ),
+        "Beatrix" to listOf(
+            "Weapon Burst -> Tactical Reposition -> Ult" to "s1 > a > ult > s2 > a > a",
+            "Dash Reload Double-Volley" to "a > a > s2 > a > a > ult"
+        )
+    )
+
     private val roleDefault: Map<Role, String> = mapOf(
         Role.TANK to "s2 > s1 > ult > a",
         Role.FIGHTER to "s1 > s2 > a > ult > a",
@@ -167,48 +322,164 @@ object ComboBook {
         Role.UNKNOWN to "s1 > s2 > ult > a"
     )
 
-    // Dynamic form-aware combo for Roger, Selena, and Julian
+    // Builds the full situational HeroComboSet (burst, poke, chase, pre4, retreat, and named variants) for any hero
+    fun comboSet(hero: String?): HeroComboSet {
+        val h = HeroDb.match(hero) ?: hero ?: "Unknown"
+        val role = HeroDb.role(h)
+        val burst = builtIn[h] ?: roleDefault[role] ?: "s1 > s2 > ult > a"
+        val dash = HeroDb.dashSlot(h)?.takeIf { it != "none" }
+        val four = HeroKit.has(h, "s3")
+        val two = HeroKit.count(h) == 2
+
+        val pre4 = when {
+            two -> "s1 > s2 > a"
+            h == "Fanny" -> "s2 > s2 > s1 > a"
+            h == "Gusion" -> "s1 > s2 > s1 > s2 > a"
+            h == "Chou" -> "s1 > s1 > s1 > a > s2 > a"
+            h == "Freya" -> "s1 > s2 > a > s2 > a > s2 > a"
+            four -> "s1 > s2 > s3 > a"
+            dash == "s2" -> "s2 > s1 > a"
+            else -> "s1 > s2 > a"
+        }
+
+        val poke = when {
+            two -> "s2 > s1 > a"
+            h == "Kagura" -> "s1 > ult > s1 > a"
+            h == "Hayabusa" -> "s2 > s1 > a > s2"
+            h == "Fanny" -> "s2 > s1 > a > s2"
+            role == Role.MAGE -> "s1 > s2 > a"
+            role == Role.MARKSMAN -> "s1 > a > s2 > a"
+            dash == "s2" -> "s1 > a > s2"
+            else -> "s1 > a > s2 > a"
+        }
+
+        val chase = when {
+            two -> "s1 > s2 > a"
+            dash != null && dash != "ult" -> {
+                val rest = burst.split(">").map { it.trim() }.filter { it.isNotEmpty() && it != dash }
+                (listOf(dash) + rest).joinToString(" > ")
+            }
+            else -> burst
+        }
+
+        val retreat = when {
+            dash != null && dash != "ult" -> if (dash == "s1") "s2 > s1" else "s1 > $dash"
+            role == Role.TANK || role == Role.SUPPORT -> "s2 > s1"
+            else -> "s1 > s2"
+        }
+
+        val customVars = specialVariants[h] ?: listOf(
+            "Burst / All-In (Lv4+)" to burst,
+            "Chase / Finisher" to chase,
+            "Poke / Short Trade" to poke,
+            "Pre-Lv4 / Ult on Cooldown" to pre4
+        )
+        return HeroComboSet(burst, poke, chase, pre4, retreat, customVars)
+    }
+
+    fun allVariants(hero: String?): List<Pair<String, String>> = comboSet(hero).variants
+
+    // Dynamic form-aware / situational built-in combo for Julian, Selena, Roger, Suyou, Hirara, and Sora
     fun dynamicComboText(hero: String?, enemiesClose: Int = 1, selfHp: Float = 1f, targetDist: Float = 0.25f): String? {
-        if (hero == null || Cfg.heroCombo(hero) != null) return null
+        if (hero == null || Cfg.manualCombo(hero) != null) return null
         return when (hero) {
             "Julian" -> HeroKit.julianCombo(enemiesClose, selfHp, targetDist)
             "Selena" -> if (HeroKit.formOf("Selena") == 1) {
-                // Already in Abyssal (melee) form: dash with Garotte -> Soul Eater -> Garotte reset -> basic attack -> back to Elven
                 "s2 > s1 > s2 > a > ult"
             } else {
-                // In Elven (ranged) form: Abyssal Trap -> Abyssal Arrow -> transform to Abyssal -> Garotte -> Soul Eater -> Garotte reset
                 "s1 > s2 > ult > s2 > s1 > s2 > a"
             }
             "Roger" -> if (HeroKit.formOf("Roger") == 1) {
-                // Already in Wolf (melee) form: Bloodthirsty Howl -> Lycan Pounce -> basic attacks
                 "s2 > s1 > a > a"
             } else {
-                // In Human (ranged) form: Open Fire slow/shred -> Hunter's Steps -> Wolf Transformation lunge -> Wolf s2 > s1 > basic attacks
                 "s1 > s2 > a > ult > s2 > s1 > a > a"
             }
+            "Hirara" -> if (targetDist > 0.30f) "s1 > s2 > a" else "s2 > s1 > a"
             else -> null
         }
     }
 
+    // Selects the active combo for the current situation (v37.11):
+    //  1. Manual Input (if the user entered a manual combo for this hero) -> always used first!
+    //     If Cfg.autoSituationalCombo is ON and the hero is pre-Lv4 / ult is on cooldown, adapts smoothly.
+    //  2. Built-In Multi-Combo Library (never uses online meta):
+    //     - When Cfg.autoSituationalCombo is ON: automatically selects between All-In Burst, Teamfight AOE,
+    //       Chase/Finisher, Poke/Short Trade, Pre-Lv4/No-Ult, Retreat/Peel, and Form/Enhanced combos!
+    //     - When Cfg.autoSituationalCombo is OFF: always uses the hero's primary Burst combo.
+    fun selectForSituation(
+        hero: String?,
+        level: Int = 4,
+        ultReady: Boolean = true,
+        targetHp: Float = 0.5f,
+        targetDist: Float = 0.25f,
+        enemiesClose: Int = 1,
+        selfHp: Float = 1f,
+        retreating: Boolean = false
+    ): Pair<String, String> {
+        if (hero != null) {
+            Cfg.manualCombo(hero)?.let { manual ->
+                val parsed = parse(manual)
+                if (parsed.isNotEmpty()) {
+                    if (Cfg.autoSituationalCombo && !ultReady && !HeroKit.canRecastNow(hero, "ult") && parsed.any { it.slot != "ult" }) {
+                        val noUlt = parsed.filter { it.slot != "ult" }.joinToString(" > ") { it.slot }
+                        return noUlt to "manual input (no-ult adapted)"
+                    }
+                    return manual to "manual input (yours)"
+                }
+            }
+            val set = comboSet(hero)
+            if (!Cfg.autoSituationalCombo) {
+                return set.burst to "built-in (fixed primary)"
+            }
+            dynamicComboText(hero, enemiesClose, selfHp, targetDist)?.let { dyn ->
+                return dyn to "auto situational (form/enhanced)"
+            }
+            val twoSkill = HeroKit.count(hero) == 2
+            return when {
+                retreating || (selfHp in 0.01f..0.28f && targetHp > 0.45f) -> set.retreat to "auto situational (retreat/peel)"
+                !twoSkill && (level < 4 || (!ultReady && !HeroKit.canRecastNow(hero, "ult"))) -> set.pre4 to "auto situational (pre-Lv4 / no-ult)"
+                enemiesClose >= 2 && ultReady -> set.burst to "auto situational (teamfight burst)"
+                targetHp in 0f..0.38f || targetDist > 0.40f -> set.chase to "auto situational (chase/finisher)"
+                targetHp > 0.72f && enemiesClose <= 1 -> set.poke to "auto situational (poke/trade)"
+                else -> set.burst to "auto situational (all-in burst)"
+            }
+        }
+        return (roleDefault[HeroDb.role(hero)] ?: "s1 > s2 > ult > a") to "built-in (role default)"
+    }
+
+    // Full multi-line summary of all built-in situational combos for a hero
+    fun describeAllCombos(hero: String?): String {
+        val set = comboSet(hero)
+        return buildString {
+            append("• All-In Burst: ").append(set.burst)
+            append("\n• Chase / Finisher: ").append(set.chase)
+            append("\n• Poke / Trade: ").append(set.poke)
+            append("\n• Pre-Lv4 (No Ult): ").append(set.pre4)
+            append("\n• Retreat / Peel: ").append(set.retreat)
+        }
+    }
+
+    // Primary display text for the selected hero: Manual Input if set, otherwise Built-In Optimized
     fun text(hero: String?): Pair<String, String> {
         if (hero != null) {
-            Cfg.heroCombo(hero)?.let { if (parse(it).isNotEmpty()) return it to "yours" }
-            if (hero in HeroKit.MULTI_PHASE_HEROES) {
-                builtIn[hero]?.let { return it to "built-in (multi-phase / complex)" }
+            Cfg.manualCombo(hero)?.let { manual ->
+                if (parse(manual).isNotEmpty()) return manual to "manual input (yours)"
             }
-            MetaStore.hero(hero)?.combo?.let { return it to "online meta" }
-            builtIn[hero]?.let { return it to "built-in" }
-            HeroPlaybook.of(hero).takeIf { it.learned }?.let { return it.combo to "from its skills" }
+            val set = comboSet(hero)
+            val mode = if (Cfg.autoSituationalCombo) "built-in auto-situational (${set.variants.size} combos)" else "built-in primary"
+            return set.burst to mode
         }
-        return (roleDefault[HeroDb.role(hero)] ?: "s1 > s2 > ult") to "role default"
+        return (roleDefault[HeroDb.role(hero)] ?: "s1 > s2 > ult > a") to "built-in (role default)"
     }
 
     fun steps(hero: String?, overrideText: String? = null): List<ComboStep> {
+        val hasManual = hero != null && Cfg.manualCombo(hero)?.let { parse(it).isNotEmpty() } == true
         val four = HeroKit.has(hero, "s3")
         val rawText = overrideText ?: text(hero).first
         var st = parse(rawText).map { if (it.slot == "s3" && !four) ComboStep("ult", it.waitMs) else it }
             .filter { it.slot !in HeroKit.ALL || HeroKit.has(hero, it.slot) }
-        if (four && st.none { it.slot == "s3" }) {
+        // Only auto-insert s3 on 4-skill heroes when using a generic default, never overwrite user manual input
+        if (!hasManual && four && st.none { it.slot == "s3" }) {
             val i = st.indexOfFirst { it.slot == "ult" }.let { if (it < 0) st.size else it }
             st = st.take(i) + ComboStep("s3", 350L) + st.drop(i)
         }
@@ -217,7 +488,7 @@ object ComboBook {
 
     fun parse(text: String): List<ComboStep> {
         val out = ArrayList<ComboStep>()
-        for (raw in text.split(">", ",", "→", "+")) {
+        for (raw in text.split(">", ",", "→", "+", "-", " ")) {
             val t = raw.trim().lowercase()
             if (t.isEmpty()) continue
             val wait = Regex("\\((\\d{2,4})\\)").find(t)?.groupValues?.get(1)?.toLongOrNull()
@@ -225,14 +496,14 @@ object ComboBook {
                 "s1", "1", "skill1", "skill 1" -> "s1"
                 "s2", "2", "skill2", "skill 2" -> "s2"
                 "s3", "3", "skill3", "skill 3" -> "s3"
-                "ult", "s4", "4", "ultimate", "skill 4", "skill4" -> "ult"
-                "a", "ba", "basic", "attack", "basic attack" -> "a"
-                "spell", "flicker", "battle spell" -> "spell"
+                "ult", "s4", "4", "ultimate", "skill 4", "skill4", "u" -> "ult"
+                "a", "ba", "aa", "basic", "attack", "basic attack" -> "a"
+                "spell", "sp", "flicker", "battle spell" -> "spell"
                 else -> null
             } ?: continue
-            out.add(ComboStep(slot, wait ?: if (slot == "a") 350L else 350L))
+            out.add(ComboStep(slot, wait ?: 350L))
         }
-        return out.take(14)
+        return out.take(16)
     }
 
     fun format(steps: List<ComboStep>): String = steps.joinToString(" > ") { it.slot }

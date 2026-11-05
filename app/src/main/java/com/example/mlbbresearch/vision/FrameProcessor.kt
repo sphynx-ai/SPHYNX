@@ -109,8 +109,10 @@ object FrameProcessor {
         if (hint == ScreenHint.RESULT_STATS && frameNo % 10 == 2L) try { EndBoard.observePortrait(px, w, h, 0.4525f, 0.761f, 0.014f, "MVP screen") } catch (e: Exception) { }
         // watching someone's live match: their screen has no buttons of yours, but its own overlays
         val live = hint == ScreenHint.LIVE || hint == ScreenHint.LIVE_DEAD
-        // the minimap changes slowly: its full analysis every 3rd frame is enough (faster frames)
-        val mini = lastMini.takeIf { it != null && frameNo % 3 != 0L && live == lastMiniLive } ?: MinimapAnalyzer.analyze(px, w, h, live)
+        // Full minimap scan every 3rd frame; fast self-ring refresh on every intermediate frame so 3D scenery & minimap stay 100% synchronized (v37.11)
+        val mini = lastMini.takeIf { it != null && frameNo % 3 != 0L && live == lastMiniLive }
+            ?.let { if (live) it else MinimapAnalyzer.fastSelfUpdate(px, w, h, it) }
+            ?: MinimapAnalyzer.analyze(px, w, h, live)
         lastMini = mini; lastMiniLive = live
         val masks = if (live) ScreenReader.LIVE_MASKS else hud
         val seen = if (live) liveUnits(px, w, h, mini, banner, hint == ScreenHint.LIVE) else monstersFromRedBars(withoutAttachedBars(ownBars(hint, HeroDetector.scan(

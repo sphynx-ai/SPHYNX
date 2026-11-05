@@ -66,7 +66,8 @@ object MetaStore {
             val o = JSONObject(txt)
             if (isAdvanced(o.optString("patch", ""))) return null
             val dash = o.optString("dash", "").lowercase().trim().takeIf { it in setOf("s1", "s2", "ult", "none") }
-            val combo = o.optString("combo", "").takeIf { ComboBook.parse(it).size >= 2 }
+            // Online combo updates are disabled (v37.11): always display Manual Input (if set) or Built-In combo
+            val combo = ComboBook.text(hero).first
             HeroMeta(hero, o.optString("patch", "?"), o.optLong("at"), ItemClass.advancedOnly(list(o, "build")), o.optString("emblem", ""),
                 SpellDb.match(o.optString("spell", "")), Lane.of(o.optString("lane", "").lowercase().trim()),
                 combo, dash, list(o, "laning"), list(o, "jungle"), list(o, "rotation"),

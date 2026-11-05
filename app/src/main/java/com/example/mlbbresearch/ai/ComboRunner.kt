@@ -59,15 +59,29 @@ object ComboRunner {
         reset()
     }
 
-    private fun buildComboSteps(hero: String?, kit: com.example.mlbbresearch.game.HeroSkills, s: GameState, targetDist: Float): List<ComboStep> {
-        // Dynamic form-aware / enhanced combo for Julian, Selena, and Roger
-        val overrideText = ComboBook.dynamicComboText(hero, s.enemiesWithin(0.55f).size, s.selfHp, targetDist)
-        var st = ComboBook.steps(hero, overrideText).filter { it.slot == "a" || it.slot == "spell" || HeroKit.has(hero, it.slot) }
+    @Volatile var activeComboSource: String = "built-in"
+        private set
+
+    private fun buildComboSteps(hero: String?, kit: com.example.mlbbresearch.game.HeroSkills, s: GameState, targetDist: Float, targetHp: Float = 0.5f, p: HeroProfile = com.example.mlbbresearch.game.HeroDb.profile(hero)): List<ComboStep> {
+        val hasManual = hero != null && Cfg.manualCombo(hero)?.let { ComboBook.parse(it).isNotEmpty() } == true
+        val ultReady = CooldownTracker.ready("ult", p) || HeroKit.canRecastNow(hero, "ult")
+        val (selectedText, srcLabel) = ComboBook.selectForSituation(
+            hero = hero,
+            level = s.level,
+            ultReady = ultReady,
+            targetHp = targetHp,
+            targetDist = targetDist,
+            enemiesClose = s.enemiesWithin(0.55f).size,
+            selfHp = s.selfHp,
+            retreating = false
+        )
+        activeComboSource = srcLabel
+        var st = ComboBook.steps(hero, selectedText).filter { it.slot == "a" || it.slot == "spell" || HeroKit.has(hero, it.slot) }
         if (st.none { it.slot != "a" }) {
             st = HeroKit.slots(hero).map { ComboStep(it, 600L) }
         }
-        // For standard heroes without custom multi-phase recasts, weave a basic attack after every skill
-        if (hero !in HeroKit.MULTI_PHASE_HEROES) {
+        // If using built-in combos (not a custom manual input) on standard heroes, weave a basic attack after every skill
+        if (!hasManual && hero !in HeroKit.MULTI_PHASE_HEROES) {
             st = st.flatMapIndexed { i, x ->
                 if (x.slot != "a" && st.getOrNull(i + 1)?.slot != "a") listOf(x, ComboStep("a", 220L)) else listOf(x)
             }
@@ -104,7 +118,7 @@ object ComboRunner {
         val dist = if (tx >= 0f) s.distToSelf(tx, ty) else 9f
 
         if (!running) {
-            val st = buildComboSteps(s.ownHero, kit, s, dist)
+            val st = buildComboSteps(s.ownHero, kit, s, dist, thp, p)
             val firstReadyIdx = st.indexOfFirst {
                 it.slot != "a" && it.slot != "spell" && (CooldownTracker.ready(it.slot, p) || HeroKit.canRecastNow(s.ownHero, it.slot))
             }
@@ -119,7 +133,7 @@ object ComboRunner {
             lastEnemySeenAt = now
             used.clear()
             lastSlot = null
-            status = "combo started: ${ComboBook.format(st)}"
+            status = "combo started ($activeComboSource): ${ComboBook.format(st)}"
         }
 
         // Reassess before every step (allow up to 12s for 10-dagger Gusion / 4-blade Ling combos)
@@ -207,7 +221,7 @@ object ComboRunner {
             }
             if (burstN > 0) {
                 nextAt = now + span.coerceIn(180L, 1500L)
-                status = "combo ${idx}/${steps.size}: ${ComboBook.format(steps)}"
+                status = "combo ${idx}/${steps.size} ($activeComboSource): ${ComboBook.format(steps)}"
             }
         }
 
@@ -222,7 +236,7 @@ object ComboRunner {
         if (!running && trackedTarget != null && dist <= p.engageRange * 1.3f) {
             val nextReady = HeroKit.slots(s.ownHero).any { CooldownTracker.ready(it, p) || HeroKit.canRecastNow(s.ownHero, it) }
             if (nextReady) {
-                steps = buildComboSteps(s.ownHero, kit, s, dist)
+                steps = buildComboSteps(s.ownHero, kit, s, dist, thp, p)
                 idx = 0
                 used.clear()
                 startedAt = now

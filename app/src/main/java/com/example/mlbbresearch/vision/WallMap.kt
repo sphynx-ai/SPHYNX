@@ -116,6 +116,7 @@ object WallMap {
                 else -> Terrain.JUNGLE
             }
         }
+        com.example.mlbbresearch.game.SceneryMap.reapplyToWallMap()
     }
 
     fun terrainAt(x: Float, y: Float): Terrain {

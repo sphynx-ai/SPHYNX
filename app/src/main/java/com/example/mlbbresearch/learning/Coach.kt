@@ -74,10 +74,10 @@ object Coach {
         counts[seq] = (counts[seq] ?: 0) + 1
         Cfg.setRaw(k, counts.entries.sortedByDescending { it.value }.take(8).joinToString(";") { "${it.key}=${it.value}" })
         val best = counts.maxByOrNull { it.value }!!
-        if (best.value >= 2 && Cfg.heroCombo(hero) != best.key) {
-            Cfg.setHeroCombo(hero, best.key)
-            Diag.info("Coach: learned your $hero combo: ${best.key} (seen ${best.value} times)")
-            status = "learned your combo: ${best.key}"
+        if (best.value >= 2) {
+            Cfg.setRaw("coach_best_${key(hero)}", best.key)
+            Diag.info("Coach: observed your $hero sequence: ${best.key} (seen ${best.value} times; manual/built-in combo kept)")
+            status = "observed your sequence: ${best.key}"
         }
     }
 
@@ -142,7 +142,7 @@ object Coach {
     fun summary(hero: String?): String {
         val h = hero ?: return "pick a hero first"
         val r = listOf("s1", "s2", "ult").mapNotNull { sl -> castRange(h, sl)?.let { "$sl at ${(it * 100).toInt()}" } }
-        return "Joystick: ${holdMs} ms per direction. Combo: ${Cfg.heroCombo(h) ?: "not learned yet"}. " +
+        return "Joystick: ${holdMs} ms per direction. Observed sequence: ${Cfg.raw("coach_best_${key(h)}") ?: "none yet"} · Active combo: ${com.example.mlbbresearch.game.ComboBook.text(h).second}. " +
             "Cast distance: ${if (r.isEmpty()) "not learned yet" else r.joinToString(", ")}. Last: $status"
     }
 

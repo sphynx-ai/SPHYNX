@@ -124,6 +124,35 @@ object MinimapAnalyzer {
         return MinimapInfo(heroDots.size, allies, heroDots, self, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves, icon, blue, lord, turtle)
     }
 
+    // Fast every-frame self-position refresh (v37.11):
+    // Keeps your hero's minimap coordinates synchronized on every single frame with the 3D screen scenery
+    // without re-running the heavier full-minimap structure/camp scan on intermediate frames.
+    fun fastSelfUpdate(px: IntArray, w: Int, h: Int, prev: MinimapInfo): MinimapInfo {
+        val (l, t) = Layout.get("mapTL")
+        val (r, b) = Layout.get("mapBR")
+        val mw = r - l
+        val mh = b - t
+        if (mw < 0.03f || mh < 0.05f) return prev
+        val pSelf = prev.self
+        val sl = if (pSelf != null) (l + (pSelf.first - 0.12f) * mw).coerceAtLeast(l) else l
+        val sr = if (pSelf != null) (l + (pSelf.first + 0.12f) * mw).coerceAtMost(r) else r
+        val st = if (pSelf != null) (t + (pSelf.second - 0.12f) * mh).coerceAtLeast(t) else t
+        val sb = if (pSelf != null) (t + (pSelf.second + 0.12f) * mh).coerceAtMost(b) else b
+        val green = ButtonDetector.blobs(px, w, h, sl, st, sr, sb, 1) { isGreen(it) }
+        val ring = green.filter { it.w / mw >= 0.04f }.maxByOrNull { it.count } ?: return prev
+        val fitted = fitRing(px, w, h, ring, mw)
+        lastIcon = fitted ?: prev.selfIcon
+        val rawMe = fitted?.let { ((it[0] - l) / mw) to ((it[1] * w / h - t) / mh) }
+            ?: (((ring.cx - l) / mw) to ((ring.cy - t) / mh))
+        val smoothed = if (pSelf != null && kotlin.math.hypot(rawMe.first - pSelf.first, rawMe.second - pSelf.second) < 0.08f) {
+            (pSelf.first * 0.30f + rawMe.first * 0.70f).coerceIn(0f, 1f) to (pSelf.second * 0.30f + rawMe.second * 0.70f).coerceIn(0f, 1f)
+        } else rawMe.first.coerceIn(0f, 1f) to rawMe.second.coerceIn(0f, 1f)
+        return MinimapInfo(
+            prev.enemies, prev.allies, prev.enemyDots, smoothed, prev.camps, prev.towers, prev.enemyBase,
+            prev.allyWaves, prev.allyTowers, prev.enemyWaves, lastIcon, prev.allyDots, prev.lordIcon, prev.turtleIcon
+        )
+    }
+
     // The watched hero on a live match's minimap: the cyan camera circles are centred on them.
     // A circle fit that drops the points far from the circle (the blue lane highlight, the part
     // cut off at the map edge), then the portrait ring nearest to that centre if one is close.
