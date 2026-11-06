@@ -246,11 +246,15 @@ object TacticalEngine {
         val vsHero = (d.intent == Intent.ENGAGE || d.intent == Intent.AMBUSH || d.intent == Intent.IMITATE) &&
             d.targetId >= 0 || d.intent == Intent.RETREAT
         var casts = d.casts
-        // a wall jump may use the ultimate when that is the hero's dash: keep it
-        val hop = if (d.reason.contains("passing the wall") || d.reason.contains("to get there faster")) HeroDb.dashSlot(s.ownHero) else null
-        // (a LOW-cooldown ultimate - back within 30 s - may be used on monsters / minions too)
-        val lowCdUlt = CooldownTracker.lowCdUlt(s.ownHero)
-        if (Cfg.noUltOnCreeps && !vsHero && !lowCdUlt) casts = casts.filter { it != "ult" || it == hop }
+        // Wall-hop and travel dashes may ONLY use non-ultimate mobility skills (s1, s2, s3), NEVER "ult"! (v37.13)
+        val hop = if (d.reason.contains("passing the wall") || d.reason.contains("to get there faster")) HeroDb.dashSlot(s.ownHero)?.takeIf { it != "ult" } else null
+        val transformOrEnhanced = CooldownTracker.lowCdUlt(s.ownHero)
+        val enemyHeroInUltReach = s.enemiesWithin(maxOf(p.engageRange * 1.15f, 0.52f)).isNotEmpty()
+        val emergencyDefUlt = d.intent == Intent.RETREAT && p.ult == UltRule.DEFENSIVE && s.selfHp in 0f..0.22f && s.enemiesWithin(0.45f).isNotEmpty()
+        // Strictly forbid Ultimate (especially Ultimate with dash) when roaming, pathing, farming creeps/waves, or when no enemy hero is in reach!
+        if (!transformOrEnhanced && !((vsHero && enemyHeroInUltReach) || emergencyDefUlt)) {
+            casts = casts.filter { it != "ult" }
+        }
         // Coach: you cast this skill at enemies about this close; wait until the target is that
         // close (a far-away cast mostly misses) - only for skills seen at least 3 times
         // (while the combo plays against a hero, its order comes first: no extra skills thrown in)
@@ -406,7 +410,7 @@ object TacticalEngine {
         // stuck against a wall: walking for 1 s but the camera has not moved for 0.6 s
         val stuck = now - movingSince > 1000 && now - GameStateTracker.lastMotionAt > 600
         if (!pendingHop && !stuck) return d
-        val dash = if (Cfg.useDash) HeroDb.dashSlot(s.ownHero)?.takeIf { CooldownTracker.ready(it, p) } else null
+        val dash = if (Cfg.useDash) HeroDb.dashSlot(s.ownHero)?.takeIf { it != "ult" && CooldownTracker.ready(it, p) } else null
         // Flicker has a long cooldown: only to escape or to catch someone
         val flicker = if (s.spell == "Flicker" && CooldownTracker.ready("spell", p) &&
             (d.intent == Intent.RETREAT || d.intent == Intent.ENGAGE)) "spell" else null
@@ -883,46 +887,77 @@ object TacticalEngine {
             return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "rotating to help a teamfight (minimap)")
         }
 
-        // ---- laners: a nearby jungle camp between waves (gold + EXP) ----
+        // ---- laners (not equipped with Retribution): only take a small adjacent non-buff camp after Lv4 between waves ----
         fun laneCamps(radius: Float): TacticalDecision? {
             if (!Cfg.lanersTakeCamps || threat.isNotEmpty() || s.level >= 15) return null
-            return JungleNav.direction(s, radius)?.let { jungleStep(s, p, it) }
+            if (s.lane == Lane.ROAM) return null
+            val hasRetri = s.spell == "Retribution"
+            // Non-Retribution laners must NEVER detour into jungle camps before Lv4 (2:40) or while a minion wave is present!
+            if (!hasRetri && (s.level < 4 || s.matchSec in 0..160 || minions.isNotEmpty())) return null
+            val effRadius = if (hasRetri) radius else minOf(radius, 0.11f)
+            return JungleNav.direction(s, effRadius, allowBuffs = hasRetri)?.let { jungleStep(s, p, it) }
         }
 
-        // ---- roamer: walk the map with the mid laner / jungler, checking bushes ahead (vision) ----
+        // ---- Optimized Roamer Pathing (not equipped with Retribution) (v37.13):
+        //  1. Opening (0:00..1:10): Escort Mid wave & Lithowanderer river bush (0.44, 0.56 -> 0.39, 0.61)
+        //  2. Minimap Ally Rescue: Immediately rotate around walls to any ally fighting an enemy on the minimap
+        //  3. Screen Ally Escort & Bush Vision: Step into bushes ahead of nearby allies to provide vision
+        //  4. Minimap Carry Follow: Follow Jungler -> Mid -> Gold Laner (Marksman protection)
+        //  5. Active River Patrol: Patrol river bushes without ever walking alone into an enemy tower
         fun roam(): TacticalDecision? {
             if (threat.isNotEmpty()) return null
-            // a bush ahead (towards the enemy side) next to the team: step in to see who hides there
-            if (Cfg.useBushes && hp > 0.6f && !s.inBush && s.allies.isNotEmpty() && now - lastBushCheck > 6000) {
+            if (Cfg.useBushes && hp > 0.55f && !s.inBush && s.allies.isNotEmpty() && now - lastBushCheck > 5500) {
                 val (px0, py0) = pushVector()
-                val bush = s.bushes.filter { s.distToSelf(it.x, it.y) in 0.08f..0.35f }.firstOrNull { b ->
-                    val (bx, by) = toward(s, b.x, b.y); bx * px0 + by * py0 > 0.3f
+                val bush = s.bushes.filter { s.distToSelf(it.x, it.y) in 0.08f..0.34f }.firstOrNull { b ->
+                    val (bx, by) = toward(s, b.x, b.y); bx * px0 + by * py0 > 0.25f
                 }
                 if (bush != null) {
                     if (s.distToSelf(bush.x, bush.y) < 0.1f) lastBushCheck = now
                     val (mx, my) = toward(s, bush.x, bush.y)
-                    return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "checking a bush ahead for the team (vision)")
+                    return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roamer: checking bush ahead for team vision")
                 }
             }
-            // follow the ally on screen; else the mid laner / jungler on the map (the one away from the side lanes)
             if (s.allies.isNotEmpty()) {
                 val ax = s.allies.map { it.x }.average().toFloat(); val ay = s.allies.map { it.y }.average().toFloat()
-                if (s.distToSelf(ax, ay) > 0.2f) {
+                if (s.distToSelf(ax, ay) > 0.18f) {
                     val (mx, my) = toward(s, ax, ay)
-                    return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roaming with allies")
+                    return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roaming with nearby allies")
                 }
                 return null
             }
             if (me == null) return null
-            val buddy = s.map.allies.filter { a ->
-                val inBase = a.first < 0.18f && a.second > 0.82f
-                val sideLane = a.first < 0.12f || a.second > 0.88f
-                !inBase && !sideLane
-            }.minByOrNull { a -> kotlin.math.abs(a.first + a.second - 1f) + kotlin.math.hypot(a.first - me.first, a.second - me.second) * 0.5f }
-                ?: return null
-            if (kotlin.math.hypot(buddy.first - me.first, buddy.second - me.second) < 0.06f) return null
-            val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, buddy) ?: mapDir(me, buddy)
-            return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roaming the map with the mid laner / jungler")
+            // 1. Opening (0:00..1:05): help Mid lane & secure river bush vision
+            if (s.matchSec in 0..65) {
+                val openGoal = if (s.matchSec < 32) (0.45f to 0.55f) else (0.39f to 0.61f)
+                if (kotlin.math.hypot(openGoal.first - me.first, openGoal.second - me.second) > 0.055f) {
+                    val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, openGoal) ?: mapDir(me, openGoal)
+                    return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roamer opening: securing mid & river vision")
+                }
+            }
+            // 2. Rescue any ally who has an enemy hero near them on the minimap
+            val allyInFight = s.map.allies.filter { a -> !(a.first < 0.18f && a.second > 0.82f) }
+                .firstOrNull { a -> s.map.enemies.any { e -> kotlin.math.hypot(e.first - a.first, e.second - a.second) < 0.18f } }
+            if (allyInFight != null && kotlin.math.hypot(allyInFight.first - me.first, allyInFight.second - me.second) > 0.055f) {
+                val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, allyInFight) ?: mapDir(me, allyInFight)
+                return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roamer: rotating to assist ally in skirmish")
+            }
+            // 3. Follow active Jungler / Mid laner, or rotate to protect the Gold laner
+            val activeAllies = s.map.allies.filter { a -> !(a.first < 0.18f && a.second > 0.82f) }
+            val buddy = activeAllies.filter { a -> a.first >= 0.13f && a.second <= 0.87f }
+                .minByOrNull { a -> kotlin.math.abs(a.first + a.second - 1f) * 0.6f + kotlin.math.hypot(a.first - me.first, a.second - me.second) * 0.5f }
+                ?: activeAllies.filter { a -> a.second > 0.65f && a.first > 0.35f }
+                    .minByOrNull { a -> kotlin.math.hypot(a.first - me.first, a.second - me.second) }
+                ?: activeAllies.minByOrNull { a -> kotlin.math.hypot(a.first - me.first, a.second - me.second) }
+            if (buddy != null) {
+                if (kotlin.math.hypot(buddy.first - me.first, buddy.second - me.second) < 0.055f) return null
+                val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, buddy) ?: mapDir(me, buddy)
+                return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roamer: escorting teammate on map")
+            }
+            // 4. River & bush vision patrol when no ally icon is visible on the minimap
+            val patrol = ROAM_PATROL[(s.ts / 7000L).toInt().mod(ROAM_PATROL.size)]
+            if (kotlin.math.hypot(patrol.first - me.first, patrol.second - me.second) < 0.05f) return null
+            val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, patrol) ?: mapDir(me, patrol)
+            return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roamer: river & bush vision patrol")
         }
 
         // ---- MOBA rule: do not wander alone deep in the enemy half (ganks) ----
@@ -1117,7 +1152,7 @@ object TacticalEngine {
 
     private fun dashSlot(s: GameState, p: HeroProfile): String? {
         if (!Cfg.useDash) return null
-        val slot = HeroDb.dashSlot(s.ownHero) ?: return null
+        val slot = HeroDb.dashSlot(s.ownHero)?.takeIf { it != "ult" } ?: return null
         return if (CooldownTracker.ready(slot, p)) slot else null
     }
 
@@ -1174,53 +1209,103 @@ object TacticalEngine {
         }
     }
 
-    // Lane route from base: EXP = up then right, Gold = right then up, Mid = your push direction.
-    // Jungle and roam head to the middle of the map, or to the team when it is in sight.
+    // Multi-waypoint corridors for EXP Lane, Gold Lane, Mid Lane, and Roam Patrol (v37.13)
+    private val EXP_CORRIDOR = listOf(
+        0.12f to 0.74f, 0.10f to 0.56f, 0.10f to 0.38f, 0.11f to 0.22f,
+        0.15f to 0.13f, 0.28f to 0.10f, 0.48f to 0.10f, 0.68f to 0.10f, 0.86f to 0.12f
+    )
+    private val GOLD_CORRIDOR = listOf(
+        0.26f to 0.88f, 0.44f to 0.90f, 0.62f to 0.90f, 0.78f to 0.89f,
+        0.87f to 0.85f, 0.89f to 0.68f, 0.89f to 0.48f, 0.89f to 0.28f, 0.87f to 0.14f
+    )
+    private val MID_CORRIDOR = listOf(
+        0.24f to 0.76f, 0.34f to 0.66f, 0.43f to 0.57f, 0.50f to 0.50f,
+        0.58f to 0.42f, 0.67f to 0.33f, 0.76f to 0.24f, 0.86f to 0.14f
+    )
+    private val ROAM_PATROL = listOf(
+        0.45f to 0.55f, 0.39f to 0.61f, 0.56f to 0.44f, 0.74f to 0.76f, 0.34f to 0.32f
+    )
+
+    private fun corridorOf(lane: Lane): List<Pair<Float, Float>> = when (lane) {
+        Lane.EXP -> EXP_CORRIDOR
+        Lane.GOLD -> GOLD_CORRIDOR
+        else -> MID_CORRIDOR
+    }
+
+    // Lane route from base: EXP = up left corridor then right, Gold = right bottom corridor then up, Mid = diagonal corridor.
     private fun laneVector(s: GameState): Triple<Float, Float, String> {
         val travelling = s.sinceSpawnMs < Cfg.laneTravelSec * 1000L
         fun t(v: Pair<Float, Float>, what: String) = Triple(v.first, v.second, what)
         return when (s.lane) {
             Lane.EXP, Lane.GOLD, Lane.MID -> laneByMap(s) ?: when (s.lane) {
-                Lane.EXP -> if (travelling) t(0f to -1f, "going up to the lane") else t(1f to 0f, "pushing right")
-                Lane.GOLD -> if (travelling) t(1f to 0f, "going right to the lane") else t(0f to -1f, "pushing up")
-                else -> t(pushVector(), "pushing ${Cfg.pushDir}")
+                Lane.EXP -> if (travelling) t(0f to -1f, "walking up EXP lane corridor") else t(1f to 0f, "advancing along EXP lane")
+                Lane.GOLD -> if (travelling) t(1f to 0f, "walking right along Gold lane corridor") else t(0f to -1f, "advancing along Gold lane")
+                else -> t(pushVector(), "walking Mid lane (${Cfg.pushDir})")
             }
-            Lane.JUNGLE, Lane.ROAM -> {
-                if (s.allies.isNotEmpty() && !travelling) {
-                    val ax = s.allies.map { it.x }.average().toFloat()
-                    val ay = s.allies.map { it.y }.average().toFloat()
-                    val (mx, my) = toward(s, ax, ay)
-                    t(mx to my, "joining the team")
-                } else t(norm(1f, -1f), if (s.lane == Lane.JUNGLE) "heading into the jungle" else "heading to mid")
+            Lane.JUNGLE -> {
+                JungleNav.direction(s, 9f, allowBuffs = true)?.let { return Triple(it.first, it.second, it.third) }
+                t(norm(1f, -1f), "heading into the jungle")
+            }
+            Lane.ROAM -> {
+                val me = s.minimapSelf
+                if (me != null) {
+                    val pt = ROAM_PATROL[(s.ts / 7000L).toInt().mod(ROAM_PATROL.size)]
+                    val (mx, my) = mapDir(me, pt)
+                    return t(mx to my, "roaming river & lane vision")
+                }
+                t(norm(1f, -1f), "heading to mid river")
             }
         }
     }
 
-    // With your minimap position: walk the lane (EXP: up the left edge then along the top,
-    // gold: along the bottom then up the right edge, mid: straight) to the next enemy tower,
-    // and wait at the edge of its range for your minions.
+    // Multi-waypoint corridor pathing for EXP Laner, Gold Laner, and Mid Laner (v37.13):
+    // Walks step-by-step along the lane's safe perimeter/diagonal corridor without cutting through the
+    // jungle, stops safely outside enemy tower range until friendly minions arrive, and holds steady at
+    // the clash point when waiting for the wave.
     private fun laneByMap(s: GameState): Triple<Float, Float, String>? {
         val me = s.minimapSelf ?: return null
-        val target = TowerLogic.laneTarget(s, s.lane) ?: return null
-        val corner = when (s.lane) {
-            Lane.EXP -> if (me.second > 0.15f && me.first < 0.5f) (0.08f to 0.08f) else null
-            Lane.GOLD -> if (me.first < 0.85f && me.second > 0.5f) (0.92f to 0.92f) else null
-            else -> null
+        val corridor = corridorOf(s.lane)
+        val curIdx = corridor.indices.minByOrNull { i ->
+            kotlin.math.hypot(corridor[i].first - me.first, corridor[i].second - me.second)
+        } ?: 0
+
+        // Determine the enemy frontline tower in this lane (with safe early/mid fallback if the minimap tower icon is covered)
+        val detectedTower = TowerLogic.laneTarget(s, s.lane)
+        val defaultOuterIdx = when (s.lane) {
+            Lane.EXP -> 5   // (0.28, 0.10) Enemy EXP outer tower
+            Lane.GOLD -> 5  // (0.89, 0.68) Enemy Gold outer tower
+            else -> 4       // (0.58, 0.42) Enemy Mid outer tower
         }
-        if (corner != null) {
-            val (mx, my) = mapDir(me, corner)
-            return Triple(mx, my, "walking to the ${s.lane.label}")
+        val frontPos = detectedTower?.pos ?: if (s.matchSec in 0..480) corridor[defaultOuterIdx] else (s.enemyBase ?: corridor.last())
+        val frontIdx = corridor.indices.minByOrNull { i ->
+            kotlin.math.hypot(corridor[i].first - frontPos.first, corridor[i].second - frontPos.second)
+        } ?: corridor.lastIndex
+
+        val distToFront = kotlin.math.hypot(frontPos.first - me.first, frontPos.second - me.second)
+        val safeStopDist = TowerLogic.range() + 0.035f
+        val what = if (detectedTower?.bonus == true) "plated tower" else if (s.towers.isEmpty()) "enemy base" else "${s.lane.label} tower"
+
+        // Already at the enemy tower frontline without minion cover: step back to the safe clash waypoint or hold
+        if (distToFront < safeStopDist && !TowerLogic.canPush(s)) {
+            val safeIdx = (frontIdx - 1).coerceAtLeast(0)
+            val safeSpot = corridor[safeIdx]
+            if (kotlin.math.hypot(safeSpot.first - me.first, safeSpot.second - me.second) < 0.035f && distToFront >= TowerLogic.range() + 0.01f) {
+                return Triple(0f, 0f, "holding ${s.lane.label} wave position outside $what range")
+            }
+            val (bx, by) = mapDir(me, safeSpot)
+            return Triple(bx, by, "positioning outside $what range for next minion wave")
         }
-        val dist = kotlin.math.hypot(target.x - me.first, target.y - me.second)
-        val what = if (target.bonus) "bonus tower" else if (s.towers.isEmpty()) "enemy base" else "next enemy tower"
-        if (dist < TowerLogic.range() + 0.03f) {
-            // no standing around at the tower: walk back along the lane to meet our next wave
-            val home = s.allyTowers.minByOrNull { kotlin.math.hypot(it.first - me.first, it.second - me.second) } ?: (0.1f to 0.9f)
-            val (bx, by) = mapDir(me, home)
-            return Triple(bx, by, "meeting our next minion wave (the $what needs minions)")
+
+        // Advance along the lane corridor one waypoint at a time (never skipping across the jungle!)
+        val maxAllowedIdx = if (TowerLogic.canPush(s)) frontIdx else (frontIdx - 1).coerceAtLeast(0)
+        val nextIdx = (if (kotlin.math.hypot(corridor[curIdx].first - me.first, corridor[curIdx].second - me.second) < 0.055f) curIdx + 1 else curIdx)
+            .coerceAtMost(maxAllowedIdx)
+        val goal = if (TowerLogic.canPush(s) && curIdx >= maxAllowedIdx) frontPos else corridor[nextIdx]
+        if (kotlin.math.hypot(goal.first - me.first, goal.second - me.second) < 0.03f && !TowerLogic.canPush(s)) {
+            return Triple(0f, 0f, "at ${s.lane.label} clash point: waiting for minion wave")
         }
-        val (mx, my) = mapDir(me, target.x to target.y)
-        return Triple(mx, my, "pushing to the $what")
+        val (mx, my) = mapDir(me, goal)
+        return Triple(mx, my, "walking ${s.lane.label} corridor (${nextIdx + 1}/${corridor.size}) toward $what")
     }
 
     // walk on the minimap from `me` to `to`, around walls when the wall map knows the way
@@ -1310,14 +1395,15 @@ object TacticalEngine {
     }
 
     private fun useUlt(p: HeroProfile, s: GameState, t: Track, d: Float, hp: Float, enemies: Int, allies: Int): Boolean {
+        if (enemies <= 0 || d > maxOf(p.engageRange * 1.08f, 0.48f)) return false
         if (!CooldownTracker.ready("ult", p) && !com.example.mlbbresearch.game.HeroKit.canRecastNow(s.ownHero, "ult")) return false
-        if (s.ownHero in com.example.mlbbresearch.game.HeroKit.MULTI_PHASE_HEROES && d <= p.engageRange * 1.25f) return true
+        if (s.ownHero in com.example.mlbbresearch.game.HeroKit.MULTI_PHASE_HEROES && d <= p.engageRange * 1.05f) return true
         return when (p.ult) {
-            UltRule.EXECUTE -> t.hp < 0.4f && d <= p.engageRange
-            UltRule.ENGAGE -> d <= p.engageRange && hp > 0.5f && enemies <= allies + 1
-            UltRule.TEAMFIGHT -> enemies >= 2 && d <= p.engageRange
-            UltRule.DEFENSIVE -> hp < 0.35f
-            UltRule.BUFF -> d <= p.attackRange * 1.5f && hp > 0.3f
+            UltRule.EXECUTE -> t.hp < 0.42f && d <= p.engageRange
+            UltRule.ENGAGE -> d <= p.engageRange && hp > 0.45f && enemies <= allies + 1
+            UltRule.TEAMFIGHT -> (enemies >= 2 || t.hp < 0.48f) && d <= p.engageRange
+            UltRule.DEFENSIVE -> hp < 0.35f && d <= p.engageRange
+            UltRule.BUFF -> d <= maxOf(p.attackRange * 1.45f, 0.36f) && hp > 0.3f
         }
     }
 

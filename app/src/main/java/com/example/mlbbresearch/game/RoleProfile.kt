@@ -40,25 +40,25 @@ class RoleProfile(
     companion object {
         private val all = mapOf(
             Lane.EXP to RoleProfile(Lane.EXP, "lane pressure, engage, split push",
-                listOf(Job.STRONG_FIGHT, Job.MINIONS, Job.BOSS, Job.OBJECTIVE_MAP, Job.TOWER, Job.FIGHT, Job.POSITIONING, Job.BASE,
-                    Job.TEAMFIGHT, Job.DEFEND, Job.LANE_CAMPS, Job.SPLIT_PUSH, Job.SAFETY),
-                rotateEarly = 0.5f, rotateLate = 0.35f, objectiveNeedsAlly = false),
+                listOf(Job.STRONG_FIGHT, Job.MINIONS, Job.FIGHT, Job.TOWER, Job.DEFEND, Job.BOSS, Job.OBJECTIVE_MAP,
+                    Job.POSITIONING, Job.BASE, Job.TEAMFIGHT, Job.SPLIT_PUSH, Job.LANE_CAMPS, Job.SAFETY),
+                rotateEarly = 0.32f, rotateLate = 0.38f, objectiveNeedsAlly = false, campRadiusEarly = 0.11f, campRadiusLate = 0.13f),
             Lane.MID to RoleProfile(Lane.MID, "wave clear, rotate, control",
-                listOf(Job.STRONG_FIGHT, Job.MINIONS, Job.BOSS, Job.OBJECTIVE_MAP, Job.TEAMFIGHT, Job.TOWER, Job.FIGHT,
-                    Job.POSITIONING, Job.BASE, Job.DEFEND, Job.LANE_CAMPS, Job.SAFETY),
-                rotateEarly = 0.5f, rotateLate = 0.45f, objectiveNeedsAlly = false),
+                listOf(Job.STRONG_FIGHT, Job.MINIONS, Job.BOSS, Job.OBJECTIVE_MAP, Job.TEAMFIGHT, Job.GANK, Job.FIGHT,
+                    Job.DEFEND, Job.TOWER, Job.POSITIONING, Job.BASE, Job.SAFETY),
+                rotateEarly = 0.48f, rotateLate = 0.48f, objectiveNeedsAlly = false, campRadiusEarly = 0.09f, campRadiusLate = 0.11f),
             Lane.GOLD to RoleProfile(Lane.GOLD, "farm, positioning, survival",
-                listOf(Job.STRONG_FIGHT, Job.MINIONS, Job.BOSS, Job.OBJECTIVE_MAP, Job.TOWER, Job.FIGHT, Job.POSITIONING, Job.BASE,
-                    Job.DEFEND, Job.LANE_CAMPS, Job.TEAMFIGHT, Job.SAFETY),
-                retreatBonus = 0.06f, rotateEarly = 0.15f, rotateLate = 0.4f, campRadiusEarly = 0.25f, campRadiusLate = 0.18f),
+                listOf(Job.STRONG_FIGHT, Job.MINIONS, Job.TOWER, Job.FIGHT, Job.POSITIONING, Job.DEFEND, Job.BASE,
+                    Job.LANE_CAMPS, Job.BOSS, Job.OBJECTIVE_MAP, Job.TEAMFIGHT, Job.SAFETY),
+                retreatBonus = 0.06f, rotateEarly = 0.15f, rotateLate = 0.38f, campRadiusEarly = 0.11f, campRadiusLate = 0.14f),
             Lane.JUNGLE to RoleProfile(Lane.JUNGLE, "farm, gank, objectives",
                 listOf(Job.STRONG_FIGHT, Job.BOSS, Job.OBJECTIVE_MAP, Job.MONSTERS, Job.FIGHT, Job.POSITIONING, Job.BASE, Job.GANK,
                     Job.INVADE, Job.JUNGLE_ROUTE, Job.MINIONS, Job.TOWER, Job.SAFETY),
-                rotateEarly = 0.45f, rotateLate = 0.45f, objectiveNeedsAlly = false),
+                rotateEarly = 0.48f, rotateLate = 0.48f, objectiveNeedsAlly = false),
             Lane.ROAM to RoleProfile(Lane.ROAM, "vision, initiation, protection",
-                listOf(Job.BOSS, Job.OBJECTIVE_MAP, Job.FIGHT, Job.POSITIONING, Job.MINIONS, Job.TOWER, Job.BASE, Job.DEFEND,
-                    Job.TEAMFIGHT, Job.ROAM, Job.SAFETY),
-                rotateEarly = 0.45f, rotateLate = 0.45f, objectiveNeedsAlly = false)
+                listOf(Job.STRONG_FIGHT, Job.BOSS, Job.OBJECTIVE_MAP, Job.TEAMFIGHT, Job.FIGHT, Job.DEFEND, Job.ROAM,
+                    Job.POSITIONING, Job.MINIONS, Job.TOWER, Job.BASE, Job.SAFETY),
+                rotateEarly = 0.52f, rotateLate = 0.52f, objectiveNeedsAlly = false)
         )
 
         fun of(lane: Lane): RoleProfile = all[lane] ?: all.getValue(Lane.MID)

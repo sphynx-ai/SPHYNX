@@ -234,15 +234,20 @@ object ActionExecutor {
         val acts = ArrayList<Act>()
         val (mx, my) = holdDirection(d)
         if (mx != 0f || my != 0f) {
+            zeroMoveSince = 0L
             joystick(mx, my, d.intent)?.let { acts.add(it) }
         } else {
-            // Standing still (e.g. attacking a monster, minion, or tower): ALWAYS release the joystick immediately
-            // so the hero never walks out of its attack zone or pulls the monster out of its aggro zone!
-            joyDirX = 0f; joyDirY = 0f; headX = 0f; headY = 0f; headOct = -1
-            val svc = AccessibilityController.instance
-            if (svc != null && svc.joystickHeld()) {
-                svc.clearWantedJoystick()
-                acts.add(Act.JoyRelease)
+            val stopImmediately = "attack" in d.casts || d.targetX >= 0f ||
+                d.intent in setOf(Intent.RECALL, Intent.REGEN, Intent.AMBUSH, Intent.IDLE, Intent.LANE_CLEAR)
+            if (zeroMoveSince == 0L) zeroMoveSince = nowMs
+            if (stopImmediately || nowMs - zeroMoveSince >= 140L) {
+                // Standing still to attack a stationary entity or channel: release the joystick cleanly
+                joyDirX = 0f; joyDirY = 0f; headX = 0f; headY = 0f; headOct = -1
+                val svc = AccessibilityController.instance
+                if (svc != null && svc.joystickHeld()) {
+                    svc.clearWantedJoystick()
+                    acts.add(Act.JoyRelease)
+                }
             }
         }
 
@@ -651,7 +656,7 @@ object ActionExecutor {
         lastJoyAt = now
         joyDirX = nx; joyDirY = ny
         val held = AccessibilityController.instance?.joystickHeld() == true
-        if (held && nx * sentDirX + ny * sentDirY > 0.994f && now - sentAt < 180 && now >= detourUntil) return null
+        if (held && nx * sentDirX + ny * sentDirY > 0.978f && now - sentAt < 280 && now >= detourUntil) return null
         sentDirX = nx; sentDirY = ny; sentAt = now
         val ms = CastTiming.JOY_HOLD_MS
         val via = ArrayList<Pair<Float, Float>>()
@@ -676,30 +681,24 @@ object ActionExecutor {
         if (svc.joystickHeld()) main.post { try { svc.releaseJoystick() } catch (e: Exception) { } }
     }
 
+    private var zeroMoveSince = 0L
+
     // ---------------- player: level up skills ----------------
-    // Hard Level 4 / 8 / 12 Ultimate Upgrade Priority (v37.10):
-    // Prevents the Level 4 (or 8 / 12) skill point from ever being mistakenly spent on s1 or s2 when
-    // the Ultimate "+" icon is briefly obscured by floating damage/XP numbers or still animating in.
-    @Volatile private var upgradesCompleted = 0
-    @Volatile private var ultUpgradedAt4 = false
-    @Volatile private var ultUpgradedAt8 = false
-    @Volatile private var ultUpgradedAt12 = false
+    // Safe Ultimate Upgrade Priority (v37.13):
+    //  1. Never taps ultUp unless "ult" is genuinely in s.hud.upgradeReady (so it never taps an unavailable ult upgrade!).
+    //  2. Never interrupts an active skill combo (ComboRunner.running) or skill hold (holdUntil).
+    //  3. Waits 220 ms when a skill point first appears before upgrading s1/s2 so "ult" is always picked first if it is an Ult level (4/8/12).
+    //  4. Caps consecutive taps on the same slot to 2 with a 4.5s cooldown so it can never spam-tap or block combos.
     @Volatile private var upgradeWindowStartAt = 0L
     @Volatile private var lastReadySeenAt = 0L
-    @Volatile private var ultSeenInWindow = false
-    @Volatile private var pendingUpgradeSlot: String? = null
-    @Volatile private var ultTapAttempts = 0
+    @Volatile private var lastUpgradedSlot: String? = null
+    @Volatile private var sameSlotTaps = 0
 
     fun resetMatchUpgrades() {
-        upgradesCompleted = 0
-        ultUpgradedAt4 = false
-        ultUpgradedAt8 = false
-        ultUpgradedAt12 = false
         upgradeWindowStartAt = 0L
         lastReadySeenAt = 0L
-        ultSeenInWindow = false
-        pendingUpgradeSlot = null
-        ultTapAttempts = 0
+        lastUpgradedSlot = null
+        sameSlotTaps = 0
     }
 
     fun maybeUpgrade(s: GameState) {
@@ -707,64 +706,40 @@ object ActionExecutor {
         val now = System.currentTimeMillis()
         val ready = s.hud.upgradeReady
         if (ready.isEmpty()) {
-            if (pendingUpgradeSlot != null && now - lastReadySeenAt > 420L) {
-                upgradesCompleted++
-                if (pendingUpgradeSlot == "ult") {
-                    when {
-                        !ultUpgradedAt4 -> ultUpgradedAt4 = true
-                        s.level >= 8 && !ultUpgradedAt8 -> ultUpgradedAt8 = true
-                        s.level >= 12 && !ultUpgradedAt12 -> ultUpgradedAt12 = true
-                    }
-                }
-                pendingUpgradeSlot = null
-                ultSeenInWindow = false
+            if (now - lastReadySeenAt > 600L) {
                 upgradeWindowStartAt = 0L
-                ultTapAttempts = 0
-            } else if (now - lastReadySeenAt > 1200L) {
-                ultSeenInWindow = false
-                upgradeWindowStartAt = 0L
+                lastUpgradedSlot = null
+                sameSlotTaps = 0
             }
             return
         }
         lastReadySeenAt = now
         if (upgradeWindowStartAt == 0L) upgradeWindowStartAt = now
-        if ("ult" in ready) ultSeenInWindow = true
 
-        // Wait until any active skill hold gesture finishes so perform() never drops the upgrade tap
-        if (now < holdUntil || now - lastUpgradeTap < 480L || now < QuickBuySwap.busyUntil) return
+        // Never interrupt an active combo or skill hold gesture to tap an upgrade button!
+        if (now < holdUntil || com.example.mlbbresearch.ai.ComboRunner.running || now < QuickBuySwap.busyUntil) return
+        if (now - lastUpgradeTap < 650L) return
 
         val hasStandardUlt = HeroKit.has(s.ownHero, "ult") && Layout.kitSize >= 3 && s.ownHero != "Julian"
-        val ultDueAt4 = hasStandardUlt && !ultUpgradedAt4 && (s.level >= 4 || upgradesCompleted == 3)
-        val ultDueAt8 = hasStandardUlt && ultUpgradedAt4 && !ultUpgradedAt8 && (s.level >= 8 || upgradesCompleted == 7)
-        val ultDueAt12 = hasStandardUlt && ultUpgradedAt8 && !ultUpgradedAt12 && (s.level >= 12 || upgradesCompleted == 11)
-        val forceUlt = hasStandardUlt && ("ult" in ready || ultSeenInWindow || ((ultDueAt4 || ultDueAt8 || ultDueAt12) && ultTapAttempts < 3))
-
-        // On any level-up, wait 160 ms (3-4 frames) before allowing a non-ult upgrade so the Ultimate "+"
-        // badge has time to finish its pop-in animation and is never beaten by s1/s2 on frame 1!
-        if (!forceUlt && hasStandardUlt && now - upgradeWindowStartAt < 160L) return
+        // If "ult" is not in ready yet on the first 220 ms of a level-up, wait briefly so "ult" can finish popping in at Lv 4 / 8 / 12
+        if ("ult" !in ready && hasStandardUlt && now - upgradeWindowStartAt < 220L) return
 
         val order = com.example.mlbbresearch.game.SkillOrder.of(s.ownHero)
-        val slot = if (forceUlt) {
+        // ONLY pick "ult" when "ult" is actually present in `ready`!
+        val slot = if ("ult" in ready) {
             "ult"
         } else {
             order.firstOrNull { it in ready } ?: ready.first()
         }
 
+        // Guard against repeating the same tap more than twice if an icon is covered or non-responsive
+        if (slot == lastUpgradedSlot && sameSlotTaps >= 2 && now - lastUpgradeTap < 4500L) return
+        if (slot == lastUpgradedSlot) sameSlotTaps++ else { lastUpgradedSlot = slot; sameSlotTaps = 1 }
+
         lastUpgradeTap = now
-        pendingUpgradeSlot = slot
-        if (slot == "ult") {
-            ultTapAttempts++
-            if (ultTapAttempts >= 3 && "ult" !in ready) {
-                when {
-                    ultDueAt4 -> ultUpgradedAt4 = true
-                    ultDueAt8 -> ultUpgradedAt8 = true
-                    ultDueAt12 -> ultUpgradedAt12 = true
-                }
-            }
-        }
         val (x, y) = com.example.mlbbresearch.vision.ScreenReader.plusPos[slot] ?: Layout.upgradePoint(slot)
-        perform(listOf(Act.Tap(x, y, 0L, 65L)))
-        note("Upgrade skill: $slot" + if (forceUlt && slot == "ult") " (Lv${maxOf(4, s.level)} Ultimate priority)" else "")
+        perform(listOf(Act.Tap(x, y, 0L, 55L)))
+        note("Upgrade skill: $slot")
     }
 
     // ---------------- standard match: hero, battle spell, emblem ----------------

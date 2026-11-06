@@ -40,19 +40,46 @@ enum class Lane(val label: String) {
 
 object LaneLogic {
 
-    // The lane in use and why
+    // Non-Retribution lane fallback for heroes whose primary role is Assassin/Jungler when played without Retribution (v37.13)
+    private fun nonRetriLane(hero: String?): Lane = when (hero) {
+        "Selena", "Natalia", "Helcurt", "Saber", "Kadita", "Mathilda", "Kaja" -> Lane.ROAM
+        "Gusion", "Harley", "Joy", "Aamon", "Karina", "Harith", "Julian" -> Lane.MID
+        "Yi Sun-shin", "Granger", "Kimmy" -> Lane.GOLD
+        else -> when (HeroDb.role(hero)) {
+            Role.MARKSMAN -> Lane.GOLD
+            Role.MAGE -> Lane.MID
+            Role.TANK, Role.SUPPORT -> Lane.ROAM
+            else -> Lane.EXP
+        }
+    }
+
+    // The lane in use and why (v37.13):
+    //  - Retribution equipped -> always Jungle (unless manually overridden)
+    //  - Not equipped with Retribution -> never auto-assigns Jungle (routes to EXP, Gold, Mid, or Roam)
     fun effective(hero: String?, spell: String?): Pair<Lane, String> {
         val chosen = Lane.of(Cfg.lane)
-        if (spell == "Retribution" && (chosen == null || Cfg.retriMeansJungle)) return Lane.JUNGLE to "Retribution equipped"
-        if (chosen != null) return chosen to "your choice"
-        MetaStore.hero(hero)?.lane?.let { return it to "auto, from the online meta" }
-        WikiLanes.lane(hero)?.let { return it to "auto, from the wiki's laning list" }
+        val hasRetri = spell == "Retribution"
+        if (hasRetri && (chosen == null || Cfg.retriMeansJungle)) return Lane.JUNGLE to "Retribution equipped"
+        if (chosen != null) {
+            if (chosen == Lane.JUNGLE && spell != null && !hasRetri) {
+                return nonRetriLane(hero) to "no Retribution equipped (auto-switched from Jungle)"
+            }
+            return chosen to "your choice"
+        }
+        MetaStore.hero(hero)?.lane?.let { l ->
+            if (l == Lane.JUNGLE && !hasRetri) return nonRetriLane(hero) to "auto (no Retribution)"
+            return l to "auto, from the online meta"
+        }
+        WikiLanes.lane(hero)?.let { l ->
+            if (l == Lane.JUNGLE && !hasRetri) return nonRetriLane(hero) to "auto (no Retribution)"
+            return l to "auto, from the wiki's laning list"
+        }
         val lane = when (HeroDb.role(hero)) {
             Role.MARKSMAN -> Lane.GOLD
             Role.MAGE -> Lane.MID
             Role.FIGHTER -> Lane.EXP
             Role.TANK, Role.SUPPORT -> Lane.ROAM
-            Role.ASSASSIN -> Lane.JUNGLE
+            Role.ASSASSIN -> if (hasRetri) Lane.JUNGLE else nonRetriLane(hero)
             Role.UNKNOWN -> Lane.MID
         }
         return lane to "auto, from the hero's role"

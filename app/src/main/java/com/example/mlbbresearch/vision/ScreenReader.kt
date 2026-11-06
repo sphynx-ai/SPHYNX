@@ -485,30 +485,38 @@ object ScreenReader {
     // Searches a bounce/shift-tolerant window around both the calibrated upgrade "+" position and the
     // relative offset from the skill button so the Ultimate "+" is never missed during its pulse animation
     // or when Large HUD / custom button layouts are active (v37.10).
+    // Verifies a real golden "+" upgrade badge (v37.13):
+    // Must have both bright gold pixels (>= 0.35f) AND dark badge frame/border pixels (>= 0.12f)
+    // within a tight ±0.006f tolerance of the upgrade button position so yellow lane ground or skill
+    // effects never trigger false "+" upgrade taps!
+    private fun isRealUpgradeBadge(px: IntArray, w: Int, h: Int, cx: Float, cy: Float, rad: Float, ry: Float, minGold: Float): Float {
+        val gold = fraction(px, w, h, cx - rad, cy - ry, cx + rad, cy + ry, 1) { isGold(it) }
+        if (gold < minGold) return 0f
+        val outerR = rad * 1.25f
+        val outerRy = ry * 1.25f
+        val dark = fraction(px, w, h, cx - outerR, cy - outerRy, cx + outerR, cy + outerRy, 1) { isDark(it) }
+        return if (dark >= 0.12f) gold else 0f
+    }
+
     private fun findUpgradePlus(px: IntArray, w: Int, h: Int, slot: String, key: String): Pair<Float, Float>? {
         val rad = 0.011f
         val ry = rad * w / h
         val (ux, uy) = Layout.upgradePoint(slot)
-        val minGold = if (slot == "ult") 0.24f else 0.30f
-        if (fraction(px, w, h, ux - rad, uy - ry, ux + rad, uy + ry, 1) { isGold(it) } >= minGold) {
+        val minGold = if (slot == "ult") 0.34f else 0.36f
+        if (isRealUpgradeBadge(px, w, h, ux, uy, rad, ry, minGold) >= minGold) {
             return ux to uy
         }
-        val (sx, sy) = Layout.get(slot)
-        val relX = (sx + if (Layout.kitSize == 4) -0.035f else -0.042f).coerceIn(0.05f, 0.95f)
-        val relY = (sy + if (Layout.kitSize == 4) -0.076f else -0.098f).coerceIn(0.05f, 0.95f)
-        val candidates = if (abs(relX - ux) > 0.008f || abs(relY - uy) > 0.008f) listOf(ux to uy, relX to relY) else listOf(ux to uy)
         var bestPos: Pair<Float, Float>? = null
         var bestScore = minGold
-        for ((bx, by) in candidates) {
-            for (dy in floatArrayOf(-0.016f, -0.008f, 0f, 0.008f, 0.016f)) {
-                for (dx in floatArrayOf(-0.012f, -0.006f, 0f, 0.006f, 0.012f)) {
-                    val cx = bx + dx
-                    val cy = by + dy
-                    val f = fraction(px, w, h, cx - rad, cy - ry, cx + rad, cy + ry, 1) { isGold(it) }
-                    if (f >= bestScore) {
-                        bestScore = f
-                        bestPos = cx to cy
-                    }
+        for (dy in floatArrayOf(-0.006f, 0f, 0.006f)) {
+            for (dx in floatArrayOf(-0.005f, 0f, 0.005f)) {
+                if (dx == 0f && dy == 0f) continue
+                val cx = ux + dx
+                val cy = uy + dy
+                val f = isRealUpgradeBadge(px, w, h, cx, cy, rad, ry, minGold)
+                if (f >= bestScore) {
+                    bestScore = f
+                    bestPos = cx to cy
                 }
             }
         }

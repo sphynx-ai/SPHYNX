@@ -84,37 +84,37 @@ object HeroDb {
 
     // Complete dash / mobility table for all 131 heroes in HeroDb (v37.07)
     private val dashTable = mapOf(
-        // Tanks
-        "Tigreal" to "s2", "Franco" to "none", "Akai" to "s1", "Johnson" to "ult", "Grock" to "ult",
+        // Tanks (never use Ultimate as a roaming/wall-hop dash)
+        "Tigreal" to "s2", "Franco" to "none", "Akai" to "s1", "Johnson" to "none", "Grock" to "none",
         "Hylos" to "none", "Uranus" to "s2", "Belerick" to "none", "Khufra" to "s1", "Atlas" to "s2",
-        "Baxia" to "s1", "Lolita" to "s1", "Minotaur" to "s1", "Gatotkaca" to "ult", "Barats" to "none",
+        "Baxia" to "s1", "Lolita" to "s1", "Minotaur" to "s1", "Gatotkaca" to "none", "Barats" to "none",
         "Edith" to "s2", "Fredrinn" to "s2", "Gloo" to "s2", "Marcel" to "s2",
-        // Fighters
+        // Fighters (use non-ult dash/mobility skills; never waste Ultimate while pathing/roaming)
         "Thamuz" to "s2", "Balmond" to "s1", "Alucard" to "s1", "Chou" to "s2", "Freya" to "s1",
         "Zilong" to "s2", "Sun" to "s2", "Martis" to "s2", "Paquito" to "s2", "Yu Zhong" to "s3",
-        "Terizla" to "ult", "X.Borg" to "ult", "Dyrroth" to "s2", "Badang" to "s2", "Aldous" to "ult",
-        "Leomord" to "s2", "Lapu-Lapu" to "s2", "Masha" to "ult", "Silvanna" to "ult", "Khaleed" to "s1",
+        "Terizla" to "none", "X.Borg" to "none", "Dyrroth" to "s2", "Badang" to "s2", "Aldous" to "none",
+        "Leomord" to "s2", "Lapu-Lapu" to "s2", "Masha" to "s1", "Silvanna" to "s2", "Khaleed" to "s1",
         "Arlott" to "s2", "Yin" to "s2", "Cici" to "s2", "Ruby" to "s2", "Argus" to "s1",
-        "Jawhead" to "ult", "Hilda" to "s1", "Guinevere" to "s2", "Aulus" to "s1", "Alpha" to "ult",
-        "Bane" to "none", "Julian" to "s2", "Lukas" to "s2", "Minsitthar" to "s1", "Phoveus" to "ult",
-        "Roger" to "ult", "Sora" to "s1",
+        "Jawhead" to "s2", "Hilda" to "s1", "Guinevere" to "s2", "Aulus" to "s1", "Alpha" to "none",
+        "Bane" to "none", "Julian" to "s2", "Lukas" to "s2", "Minsitthar" to "s1", "Phoveus" to "none",
+        "Roger" to "s1", "Sora" to "s1",
         // Assassins
-        "Saber" to "s2", "Karina" to "ult", "Fanny" to "s2", "Hayabusa" to "s2", "Natalia" to "s1",
+        "Saber" to "s2", "Karina" to "s1", "Fanny" to "s2", "Hayabusa" to "s2", "Natalia" to "s1",
         "Lancelot" to "s1", "Gusion" to "s2", "Helcurt" to "s1", "Ling" to "s2", "Benedetta" to "s2",
         "Aamon" to "none", "Joy" to "s2", "Nolan" to "s2", "Hanzo" to "s2", "Yi Sun-shin" to "s1",
         "Selena" to "s2", "Suyou" to "s1", "Hirara" to "s1",
         // Mages
         "Eudora" to "none", "Alice" to "s1", "Nana" to "none", "Kagura" to "s2", "Cyclops" to "none",
-        "Aurora" to "none", "Vale" to "none", "Lunox" to "ult", "Harley" to "s2", "Odette" to "ult",
+        "Aurora" to "none", "Vale" to "none", "Lunox" to "none", "Harley" to "s2", "Odette" to "none",
         "Zhask" to "none", "Pharsa" to "s3", "Kadita" to "s1", "Cecilion" to "none", "Luo Yi" to "none",
         "Yve" to "none", "Valir" to "none", "Chang'e" to "none", "Xavier" to "none", "Novaria" to "s2",
-        "Lylia" to "ult", "Vexana" to "none", "Zhuxin" to "ult", "Esmeralda" to "ult", "Gord" to "none",
+        "Lylia" to "none", "Vexana" to "none", "Zhuxin" to "none", "Esmeralda" to "s1", "Gord" to "none",
         "Harith" to "s2", "Valentina" to "s2", "Zetian" to "none",
         // Marksmen
-        "Layla" to "none", "Miya" to "ult", "Bruno" to "s2", "Clint" to "s2", "Granger" to "s2",
+        "Layla" to "none", "Miya" to "none", "Bruno" to "s2", "Clint" to "s2", "Granger" to "s2",
         "Moskov" to "s1", "Beatrix" to "s2", "Brody" to "s2", "Claude" to "s2", "Wanwan" to "none",
-        "Karrie" to "s2", "Irithel" to "ult", "Lesley" to "s2", "Hanabi" to "none", "Melissa" to "s1",
-        "Natan" to "ult", "Ixia" to "none", "Popol and Kupa" to "none", "Kimmy" to "s2", "Obsidia" to "s2",
+        "Karrie" to "s2", "Irithel" to "none", "Lesley" to "s2", "Hanabi" to "none", "Melissa" to "s1",
+        "Natan" to "none", "Ixia" to "none", "Popol and Kupa" to "none", "Kimmy" to "s2", "Obsidia" to "s2",
         // Supports
         "Rafaela" to "none", "Estes" to "none", "Angela" to "none", "Diggie" to "none", "Floryn" to "none",
         "Mathilda" to "s2", "Kaja" to "s2", "Faramis" to "s1", "Carmilla" to "none", "Chip" to "s2",
@@ -129,7 +129,7 @@ object HeroDb {
             Role.ASSASSIN, Role.TANK -> "s2"
             else -> "none"
         }
-        return if (slot == "none") null else slot
+        return if (slot == "none" || slot == "ult") null else slot
     }
 
     fun dashSlot(hero: String?): String? {
@@ -139,7 +139,7 @@ object HeroDb {
             Role.ASSASSIN, Role.TANK -> "s2"
             else -> "none"
         }
-        return if (slot == "none") null else slot
+        return if (slot == "none" || slot == "ult") null else slot
     }
 
     fun dashSource(hero: String?): String = when {

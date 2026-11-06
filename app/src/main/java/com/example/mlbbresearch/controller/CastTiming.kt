@@ -12,7 +12,7 @@ object CastTiming {
     // - Aim (long-range skillshot): press -> hold 0.3s (300 ms) -> live re-aim direction while holding 0.5s (500 ms) -> release (800 ms total)
     const val ATTACK_HOLD_MS = 220L
     const val CONTINUOUS_ATTACK_HOLD_MS = 340L
-    const val JOY_HOLD_MS = 85L
+    const val JOY_HOLD_MS = 320L
     const val TAP_HOLD_MS = 500L
     const val AIM_PRESS_HOLD_MS = 300L
     const val AIM_SHORT_DIR_HOLD_MS = 300L
