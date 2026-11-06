@@ -207,24 +207,30 @@ class AccessibilityController : AccessibilityService() {
             }
         } ?: CastTiming.JOY_HOLD_MS
 
-        val held = joyStroke?.takeIf { joyStrokeEndedAt == 0L || now - joyStrokeEndedAt <= 60L }
+        val held = joyStroke?.takeIf { joyStrokeEndedAt == 0L || now - joyStrokeEndedAt <= 280L }
         var newJoy: GestureDescription.StrokeDescription? = null
         try {
             if (joyAct != null && !release) {
                 val ty = joyAct.y * h
-                val tx = if (held != null && joyAct.x * w == joyX && ty == joyY) nudge(joyX) else joyAct.x * w
-                val p = Path()
+                val tx = if (held != null && kotlin.math.abs(joyAct.x * w - joyX) < 1f && kotlin.math.abs(ty - joyY) < 1f) nudge(joyX) else joyAct.x * w
                 val joyDur = maxOf(joyAct.ms, maxOtherDur, CastTiming.JOY_HOLD_MS)
-                if (held == null) {
+                if (held != null) {
+                    try {
+                        val p = Path()
+                        p.moveTo(joyX, joyY)
+                        for ((vx, vy) in joyAct.via) p.lineTo(vx * w, vy * h)
+                        p.lineTo(tx, ty)
+                        newJoy = held.continueStroke(p, 0L, joyDur.coerceAtLeast(180L), true)
+                    } catch (_: Exception) {
+                        newJoy = null
+                    }
+                }
+                if (newJoy == null) {
+                    val p = Path()
                     val cx = joyAct.cx * w; val cy = joyAct.cy * h
                     p.moveTo(cx, cy)
                     p.lineTo(tx, ty)
-                    newJoy = GestureDescription.StrokeDescription(p, 0L, joyDur.coerceAtLeast(CastTiming.JOY_HOLD_MS), true)
-                } else {
-                    p.moveTo(joyX, joyY)
-                    for ((vx, vy) in joyAct.via) p.lineTo(vx * w, vy * h)
-                    p.lineTo(tx, ty)
-                    newJoy = held.continueStroke(p, 0L, joyDur.coerceAtLeast(60L), true)
+                    newJoy = GestureDescription.StrokeDescription(p, 0L, joyDur.coerceAtLeast(360L), true)
                 }
                 g.addStroke(newJoy)
                 n++

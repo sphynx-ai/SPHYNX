@@ -729,8 +729,10 @@ object CooldownTracker {
 
     // a LOW-cooldown ultimate (back within LOW_ULT_CD seconds) may be spent on farming and early in combos
     const val LOW_ULT_CD = 30f
+    // Only true form-switch / 3-skill enhanced heroes (Julian, Roger, Selena) may use slot 3 ("ult") on creeps/waves;
+    // standard Ultimates (especially Ultimates with dash) are strictly reserved for enemy hero fights! (v37.13)
     fun lowCdUlt(hero: String?): Boolean =
-        hero in setOf("Julian", "Roger", "Selena", "Gusion") || (ultCooldown(hero) ?: 999f) <= LOW_ULT_CD
+        hero in setOf("Julian", "Roger", "Selena")
 
     @Synchronized
     fun markCast(slot: String) {
