@@ -4,6 +4,7 @@ import com.example.mlbbresearch.game.CooldownTracker
 import com.example.mlbbresearch.game.GameState
 import com.example.mlbbresearch.game.GameStateTracker
 import com.example.mlbbresearch.game.HeroDb
+import com.example.mlbbresearch.game.HeroKit
 import com.example.mlbbresearch.game.HeroProfile
 import com.example.mlbbresearch.game.HeroSkills
 import com.example.mlbbresearch.game.Passive
@@ -69,6 +70,16 @@ object Utility {
         val me = s.minimapSelf
         if (me != null && s.towers.any { kotlin.math.hypot(it.x - me.first, it.y - me.second) < TowerLogic.range() } && s.allyMinions.isEmpty()) v -= 20f
         if (k.has(Passive.LOW_HP_POWER) && hp < 0.5f) v += 6f
+        // Transformation Bar & Buff Ultimate Badge survival boosts (v37.15):
+        //  - Argus Eternal Evil (4s death immunity on badge/icon): cannot die, stays in fight at full aggression
+        //  - Thamuz Cauterant Inferno (transformation bar + badge): massive HP regen per hit
+        //  - Yu Zhong Black Dragon / Dragonoid, Leomord Phantom Steed, Lukas Sacred Beast, etc.
+        when {
+            s.ownHero == "Argus" && HeroKit.isBuffUltActive(s) -> v = maxOf(v + 55f, 75f)
+            s.ownHero == "Thamuz" && HeroKit.isBuffUltActive(s) -> v += 24f
+            HeroKit.isYuZhongBlackDragonFlight(s) -> v += 30f
+            HeroKit.isBuffUltActive(s) -> v += 18f
+        }
         return v.coerceIn(0f, 100f)
     }
 
@@ -94,7 +105,14 @@ object Utility {
         add(minOf(s.alliesWithin(0.5f).size, 2) * 15f, "allies near")
         if (ready("ult", p)) add(15f, "ultimate ready")
         if (k.cc.any { ready(it.slot, p) }) add(8f, "crowd control ready")
-        if (hp < 0.3f) add(-30f * (0.3f - hp) / 0.3f - 10f, "own HP low")
+        val argusImmortal = s.ownHero == "Argus" && HeroKit.isBuffUltActive(s)
+        if (hp < 0.3f && !argusImmortal) add(-30f * (0.3f - hp) / 0.3f - 10f, "own HP low")
+        when {
+            argusImmortal -> add(28f, "Eternal Evil immortality active")
+            s.ownHero == "Thamuz" && HeroKit.isBuffUltActive(s) -> add(20f, "Cauterant Inferno active")
+            HeroKit.isYuZhongBlackDragonFlight(s) -> add(25f, "Black Dragon flight active")
+            HeroKit.isBuffUltActive(s) -> add(16f, "transformation / ultimate buff active")
+        }
         // more enemies close on the minimap than on screen = hidden ones joining the fight
         val hiddenNear = (com.example.mlbbresearch.game.MapIntel.enemiesNear(s, 0.15f) - s.enemies.size).coerceAtLeast(0)
         if (hiddenNear > 0) add(-15f * hiddenNear, "$hiddenNear enemy hidden nearby (minimap)")

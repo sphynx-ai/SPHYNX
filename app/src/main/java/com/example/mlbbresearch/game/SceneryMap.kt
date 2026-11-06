@@ -165,9 +165,11 @@ object SceneryMap {
         Cfg.sceneryScaleY = 0.112f
         Cfg.sceneryOffsetX = 0f
         Cfg.sceneryOffsetY = 0f
+        Cfg.setRaw("sync_reset_at", System.currentTimeMillis().toString())
         syncAnchors = 0
         lastSyncDrift = 0f
-        return "Reset scenery-minimap sync to defaults"
+        com.example.mlbbresearch.learning.OnlineBackup.saveScenerySyncNow()
+        return "Reset scenery-minimap sync offsets to defaults (saved to phone)"
     }
 
     fun syncStatus(): String =
@@ -242,6 +244,16 @@ object SceneryMap {
                 if (nearBush != null) {
                     addAnchor(b.x, b.y, nearBush.first, nearBush.second, 0.045f)
                 }
+            }
+        }
+
+        // 4) 3D Enemy Hero on screen <-> Minimap Enemy Dot (keeps combat aiming 100% synchronized) (v37.16)
+        if (s.enemies.size == 1 && s.map.enemies.isNotEmpty()) {
+            val e = s.enemies[0]
+            val (px, py) = projectToWorld(me, self, e.x, e.y)
+            val nearDot = s.map.enemies.minByOrNull { hypot(it.first - px, it.second - py) }
+            if (nearDot != null) {
+                addAnchor(e.x, e.y, nearDot.first, nearDot.second, 0.055f)
             }
         }
 
@@ -377,11 +389,17 @@ object SceneryMap {
             }
             o.put("pits", pArr)
             Cfg.setRaw(CFG_KEY, o.toString())
-            com.example.mlbbresearch.learning.OnlineBackup.changed()
+            com.example.mlbbresearch.learning.OnlineBackup.saveScenerySyncNow()
             lastSaveAt = System.currentTimeMillis()
         } catch (e: Exception) {
             Diag.error("SceneryMap save", e)
         }
+    }
+
+    @Synchronized
+    fun reloadFromCfg() {
+        loaded = false
+        ensureLoaded()
     }
 
     fun clear() {
@@ -392,7 +410,9 @@ object SceneryMap {
         pits.clear()
         pits.addAll(defaultPits)
         Cfg.setRaw(CFG_KEY, null)
-        status = "cleared (defaults restored)"
+        Cfg.setRaw("scenery_cleared_at", System.currentTimeMillis().toString())
+        com.example.mlbbresearch.learning.OnlineBackup.saveScenerySyncNow()
+        status = "cleared (deleted from phone storage)"
     }
 
     fun startRoam(): String {

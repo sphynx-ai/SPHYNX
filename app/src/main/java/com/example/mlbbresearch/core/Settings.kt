@@ -155,10 +155,13 @@ object Cfg {
     var heroWebSearch: Boolean get() = b("hero_web_search", false); set(v) = put("hero_web_search", v)
     var metaMaxAgeDays: Int get() = i("meta_age", 7); set(v) = put("meta_age", v)
 
-    // ---- kills, towers, farming ----
+    // ---- kills, towers, farming & meta rotations ----
     var executeHpPct: Int get() = i("exec_hp", 20); set(v) = put("exec_hp", v)       // chase enemies below this
     var towerGuard: Boolean get() = true; set(v) {}
-    var towerRangePct: Int get() = i("tower_range", 8); set(v) = put("tower_range", v) // % of the minimap
+    // Reduced default tower range from 8% to 5% of the minimap (v37.16) so heroes do not stop far outside turret range
+    var towerRangePct: Int get() = i("tower_range_v2", 5); set(v) = put("tower_range_v2", v) // % of the minimap
+    // Role rotation & pathing source (v37.16): "hybrid" (Built-In Pro Meta + Online Meta & Trend), "online" (Online Meta & Trend), "builtin" (Built-In Pro Meta)
+    var rotationMetaMode: String get() = s("rotation_meta_mode", "hybrid"); set(v) = put("rotation_meta_mode", v)
     var useDash: Boolean get() = true; set(v) {}
     var lanersTakeCamps: Boolean get() = true; set(v) {}
     fun heroRange(hero: String): String = s("range_" + hero.lowercase(), "auto")     // auto | ranged | melee

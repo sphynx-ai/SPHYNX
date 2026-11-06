@@ -74,17 +74,20 @@ object JungleNav {
         skipped.entries.removeAll { it.value < now }
         val isJungler = maxDist >= 1f && (s.lane == Lane.JUNGLE || s.spell == "Retribution")
 
-        // 0) Pre-spawn opening (0:00..0:21): walk straight to Purple Buff entrance so we are ready at 0:20 spawn!
+        // 0) Pre-spawn opening (0:00..0:21): walk straight to starting Buff entrance (Purple Buff by default,
+        // or Orange Buff if online/built-in meta for this hero prefers Red/Orange start!) so we hit frame 1 at 0:20! (v37.16)
         if (isJungler && s.matchSec in 0..21 && s.creeps.isEmpty()) {
-            val purpleStand = SceneryMap.pitStandSpot(0.27f, 0.56f)
-            val dPurple = hypot(purpleStand.first - me.first, purpleStand.second - me.second)
-            if (dPurple < 0.042f) {
-                status = "waiting at Purple Buff pit for 0:20 spawn"
-                return Triple(0f, 0f, "at Purple Buff pit (waiting for spawn)")
+            val orangeStart = RoleProfile.preferOrangeBuffStart(s.ownHero)
+            val buffName = if (orangeStart) "Orange Buff" else "Purple Buff"
+            val startStand = if (orangeStart) SceneryMap.pitStandSpot(0.52f, 0.77f) else SceneryMap.pitStandSpot(0.27f, 0.56f)
+            val dStart = hypot(startStand.first - me.first, startStand.second - me.second)
+            if (dStart < 0.042f) {
+                status = "waiting at $buffName pit for 0:20 spawn"
+                return Triple(0f, 0f, "at $buffName pit (waiting for spawn)")
             }
-            val (dx, dy) = WallMap.direction(me, purpleStand) ?: norm(purpleStand.first - me.first, purpleStand.second - me.second)
-            status = "opening route: walking to Purple Buff"
-            return Triple(dx, dy, "to Purple Buff (opening route)")
+            val (dx, dy) = WallMap.direction(me, startStand) ?: norm(startStand.first - me.first, startStand.second - me.second)
+            status = "opening meta route: walking to $buffName"
+            return Triple(dx, dy, "to $buffName (opening meta route)")
         }
 
         var camps = s.camps.filter {

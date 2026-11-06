@@ -829,9 +829,16 @@ class MainActivity : Activity() {
                 "${st.camps.count { !it.enemy }} of your camps up (${st.camps.count { it.buff && !it.enemy }} buffs), ${st.camps.count { it.enemy }} enemy camps seen\nJungle path: ${com.example.mlbbresearch.game.JungleNav.status}\n${com.example.mlbbresearch.ai.TacticalEngine.invadeStatus}"
         }
         val laneInfo = text("", 13f)
+        val rotModeBtn = btn("") {
+            val lbl = com.example.mlbbresearch.game.RoleProfile.cycleMode()
+            toast("Rotations & Pathing: $lbl")
+        }
+        val rotMetaInfo = text("", 12.5f, color = "#9AA0A6")
         upd {
             val (lane, why) = GameStateTracker.lane()
             laneInfo.text = "Playing: ${lane.label} ($why)"
+            rotModeBtn.text = "Rotations & Pathing: ${com.example.mlbbresearch.game.RoleProfile.modeLabel()}  (tap to change)"
+            rotMetaInfo.text = com.example.mlbbresearch.game.RoleProfile.activeRotationSummary(GameStateTracker.state)
         }
         val tuneInfo = text("", 12f, color = "#9AA0A6")
         upd { tuneInfo.text = "Learned by itself: base to lane ${Cfg.laneTravelSec} s, enemy tower range ${Cfg.towerRangePct}% of the minimap" }
@@ -936,7 +943,7 @@ class MainActivity : Activity() {
         }
 
         title("IN-GAME SCENERY & MINIMAP SYNCHRONIZATION")
-        text("Synchronizes 3D screen scenery (towers, monster pits, bushes, walls) with the 2D minimap on every frame and memorizes the entire map.", 12f, color = "#9AA0A6")
+        text("Synchronizes 3D screen scenery (towers, monster pits, bushes, walls) with the 2D minimap on every frame. Saved persistently on your phone (Download/MLBB-Research/mlbb-scenery-sync.json) across app uninstall/reinstall — only deleted when you press Clear saved map scenery or Reset minimap sync offsets.", 12f, color = "#9AA0A6")
         switch("Auto-sync 3D screen scenery with minimap landmarks", Cfg.sceneryAutoSync) { Cfg.sceneryAutoSync = it }
         val sceneryInfo = text("", 13f)
         val camPresetBtn = btn("") {

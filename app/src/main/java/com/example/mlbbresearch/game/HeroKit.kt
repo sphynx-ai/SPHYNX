@@ -6,34 +6,21 @@ import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
 
-// HERO KITS, DUAL-IDENTITY TRANSFORMATIONS & MULTI-PHASE MECHANICS ENGINE (v37.07):
-//  1. Dual-Identity & Transformation Heroes:
-//      * Selena (Elven ranged trap/arrow -> Primal Darkness ult -> Abyssal melee Garotte dash resets)
-//      * Roger (Human ranged slow/shred -> Wolf Transformation lunge ult -> Wolf melee Lycan Pounce)
-//      * Lapu-Lapu (Twin Blades -> Bravest Fighter ult -> Heavy Sword Raging Slash 3-slam ult + Storm Sword)
-//      * Edith (Phylax melee tank flip/knockup -> Primal Wrath ult -> Ranged Marksman Lightning Bolt + Divine Retribution)
-//      * Yu Zhong (Black Dragon Form -> Dragonoid Form enhanced s3 > s1 > s2)
-//      * Lukas (Unleash the Beast -> Sacred Beast form + Shockwave Blast 2nd ult recast)
-//      * Sora (Swipe ult Left = Thunder single-target burst, Swipe Right = Torrent AoE pull + CC immunity -> transformed s1 > s2)
-//      * Kagura (With Seimei Umbrella <-> Without Umbrella: s1 throw -> ult remote pull -> s2 teleport pickup -> ult close burst -> s2 dash)
-//      * Lunox (Order <-> Chaos: Darkening ult grants 4s zero-cooldown Chaos Assault s2 spam; Brilliance ult grants untargetable heal)
-//      * Yin (Yin human s1 > s2 -> My Turn domain ult -> Lieh form Frenzy Strike s2 > s1)
-//      * Leomord (Unmounted -> Phantom Steed ult -> Mounted Barbiel s1 > s2 > a)
-//      * Hanzo (Body -> Kinjutsu Pinnacle Ninja ult -> Demon Pneuma s2 > a > s1)
-//  2. Multi-Phase Skill Heroes (2, 3, 4, or 5 recast phases within a single cooldown window):
-//      * Chou (s1 Jeet Kune Do 3 phases -> 3rd phase resets s2 Shunpo; ult The Way of Dragon 2 phases)
-//      * Paquito (Champ Stance: every 3rd skill cast immediately resets s1, s2, and ult with zero cooldown)
-//      * Martis (s2 Mortal Coil 2 phases), Terizla (s2 Execution Strike 3 phases), Khaleed (s1 Desert Tornado 3 phases)
-//      * Freya (s2 Spirit Combo 4 phases), Guinevere (s2 Spatial Migration 2 phases), Jawhead (s2 Ejector 2 phases)
-//      * Tigreal (s2 Sacred Hammer 2 phases), Carmilla (s2 Bloodbath 2 phases), Cici (s2 Buoyant Bounce 2 phases)
-//      * Arlott (s2 Vengeance multi-recast on marked enemy), Lancelot (s1 Puncture multi-recast), Joy (s2 4 rhythmic dashes)
-//      * Hayabusa (s2 Quad Shadow teleport recast), Harley (s2 Space Escape hat return), Claude (s2 Battle Mirror Image swap)
-//      * Kadita (s1 Ocean Ode wave return), Wanwan (s1 Swallow's Path recall stun), Natan (ult Entropy swap + CD cut)
-//      * Gloo (ult Split/Attach 2 phases), X.Borg (ult Last Insanity spin + detonate), Phoveus (ult Infernal Pursuit multi-recast)
-//      * Harith (s2 Synchro Fission rapid resets inside Zaman Force ult), Lylia (s2 Shadow Energy 5 charges), Valentina (s2 resets s1)
-//  3. Special Input & Combo Heroes:
-//      * Suyou (per-skill Tap Mortal vs Hold Immortal), Hirara (drag s1<->s2), Julian (2 skills -> 3rd Enhanced skill + empowered basic attacks),
-//        Fanny (wall-grapple Steel Cable + double-cable triangulation), Gusion (10-dagger throw/reset/recall/blink), Ling (4 Field Eye blades).
+// HERO KITS, DUAL-IDENTITY TRANSFORMATIONS, SKILL DURATION BADGES & TRANSFORMATION BAR ENGINE (v37.15):
+//  1. Dual-Identity & Transformation Heroes (with Center-Bottom Transformation/Enhancement Bar & Badge sync):
+//      * Yu Zhong (Black Dragon Form flight on center-bottom bar -> 10s Dragonoid Form enhanced s1 > s3 > s2 > a)
+//      * Thamuz (Cauterant Inferno enhancement bar + badge -> massive attack speed & HP regen on basic attacks + scythes)
+//      * Argus (Eternal Evil 4s death-immunity badge + ult icon -> never retreat, execute full combo + basic attacks)
+//      * Leomord (Phantom Steed mounted duration on badge + ult icon -> mounted Barbiel s1 > s2 > a combo)
+//      * Selena, Roger, Lapu-Lapu, Edith, Lukas, Sora, Kagura, Lunox, Yin, Hanzo, Zhask, Gloo, Barats
+//  2. Continuous-Damage Active Skill Heroes (Badge & Skill Icon Duration — DO NOT interrupt with other combo skills!):
+//      * Balmond s2 (Cyclone Sweep 3.0s continuous axe spin), Cici s1 (Yo-Yo Blitz 3.5s continuous yoyo blitz),
+//        X.Borg s1/ult, Khaleed s1, Alice ult, Hylos s2, Baxia s1, Akai ult, Johnson ult, Chang'e ult,
+//        Odette ult, Pharsa ult, Yve ult, Gord ult, Zhuxin s2, Claude ult, Ixia ult, Wanwan ult, Kimmy s1,
+//        Beatrix ult, Hayabusa ult, Mathilda ult, Silvanna s2, Badang ult, Guinevere ult
+//  3. Multi-Phase & Special Input Heroes:
+//      * Chou, Paquito, Martis, Terizla, Freya, Guinevere, Jawhead, Tigreal, Carmilla, Arlott, Lancelot,
+//        Joy, Harley, Kadita, Natan, Phoveus, Harith, Lylia, Valentina, Suyou, Hirara, Julian, Fanny, Gusion, Ling
 object HeroKit {
 
     val ALL = listOf("s1", "s2", "s3", "ult")
@@ -152,6 +139,12 @@ object HeroKit {
     @Volatile private var form = 0
     @Volatile private var formAt = 0L
 
+    // Tracks last cast timestamp per "Hero:slot" and visual badge/icon duration hysteresis (v37.15)
+    private val slotCastAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    @Volatile private var lastVisualBadgeAt = 0L
+    @Volatile private var lastVisualTransformBarAt = 0L
+    @Volatile private var wasYuZhongDragonFlight = false
+
     fun onUltCast(hero: String?) {
         val t = transform(hero) ?: return
         if (formHero != hero) { formHero = hero; form = 0 }
@@ -194,19 +187,181 @@ object HeroKit {
         val s1Ready = CooldownTracker.ready("s1", p)
         val s2Ready = CooldownTracker.ready("s2", p)
         return if (ranged) {
-            // Switch from Ranged (Human/Elven) -> Melee (Wolf/Abyssal) when engaging an enemy within 0.46f
-            // (especially right after firing ranged s1/s2, or when enemy is within pounce range <= 0.35f)
             fighting && hp > 0.25f && nearestEnemy in 0f..0.46f && (!s1Ready || !s2Ready || nearestEnemy <= 0.34f)
         } else {
-            // Switch from Melee (Wolf/Abyssal) -> Ranged (Human/Elven) when retreating, target escaped (> 0.46f),
-            // low HP, or both melee skills were spent
             !fighting || nearestEnemy !in 0f..0.46f || hp in 0f..0.24f || (!s1Ready && !s2Ready && !canRecastNow(hero, "s2"))
         }
     }
 
+    // ---------------- 1b. Continuous-Damage Skill Badge/Icon Detection vs Buff Ultimate Exceptions (v37.15) ----------------
+
+    // Continuous-damage / channelled skills whose active duration is displayed on the Level Badge and/or Skill Icon,
+    // and which MUST NOT be interrupted mid-duration by combo skill execution!
+    //  - allowBasicAttack = true: hero can weave basic attacks while the continuous skill runs (e.g., Cici s1 Yo-Yo Blitz, X.Borg s1 Fire Missiles)
+    //  - allowBasicAttack = false: pure spin / barrage / channel where pressing basic attack or another skill interrupts or stalls the channel (e.g., Balmond s2 Cyclone Sweep, Odette ult, Claude ult, Chang'e ult, Akai ult)
+    //  - allowMove = false: stationary channel where moving the joystick cancels the channel (e.g., Odette ult, Pharsa ult, Gord ult, Yve ult, Ixia ult)
+    class ContinuousSkillSpec(
+        val slot: String,
+        val durationMs: Long,
+        val allowBasicAttack: Boolean,
+        val allowMove: Boolean = true,
+        val executeUltHp: Float = 0f,
+        val note: String
+    )
+
+    val CONTINUOUS_BADGE_SKILLS: Map<String, ContinuousSkillSpec> = mapOf(
+        "Balmond" to ContinuousSkillSpec("s2", 3000L, allowBasicAttack = false, allowMove = true, executeUltHp = 0.22f, "Cyclone Sweep 3.0s continuous spinning axe damage — do not interrupt with s1/basic attack (ult only if enemy HP <= 22%)"),
+        "Cici" to ContinuousSkillSpec("s1", 3500L, allowBasicAttack = true, allowMove = true, executeUltHp = 0f, "Yo-Yo Blitz 3.5s continuous yoyo attack while moving — do not interrupt with s2/ult while active"),
+        "X.Borg" to ContinuousSkillSpec("s1", 2000L, allowBasicAttack = true, allowMove = true, executeUltHp = 0f, "Fire Missiles 2.0s continuous flamethrower spray — do not interrupt with s2"),
+        "Khaleed" to ContinuousSkillSpec("s1", 1800L, allowBasicAttack = false, allowMove = true, executeUltHp = 0.20f, "Desert Tornado spinning slash channel"),
+        "Alice" to ContinuousSkillSpec("ult", 4000L, allowBasicAttack = true, allowMove = true, executeUltHp = 0f, "Blood Ode continuous AoE drain"),
+        "Hylos" to ContinuousSkillSpec("s2", 3500L, allowBasicAttack = true, allowMove = true, executeUltHp = 0f, "Ring of Punishment continuous AoE"),
+        "Baxia" to ContinuousSkillSpec("s1", 3200L, allowBasicAttack = false, allowMove = true, executeUltHp = 0f, "Baxia-Shield Unity continuous wheel roll"),
+        "Akai" to ContinuousSkillSpec("ult", 4000L, allowBasicAttack = false, allowMove = true, executeUltHp = 0f, "Heavy Spin 4.0s knockback spin — steer onto target without interrupting"),
+        "Johnson" to ContinuousSkillSpec("ult", 6000L, allowBasicAttack = false, allowMove = true, executeUltHp = 0f, "Rapid Touchdown drive"),
+        "Uranus" to ContinuousSkillSpec("s2", 2500L, allowBasicAttack = true, allowMove = true, executeUltHp = 0f, "Transcendent Ward shield & AoE"),
+        "Belerick" to ContinuousSkillSpec("ult", 2200L, allowBasicAttack = true, allowMove = true, executeUltHp = 0f, "Wrath of Dryad spreading vines"),
+        "Chang'e" to ContinuousSkillSpec("ult", 4000L, allowBasicAttack = false, allowMove = true, executeUltHp = 0f, "Meteor Shower 4.0s continuous meteor barrage"),
+        "Odette" to ContinuousSkillSpec("ult", 5000L, allowBasicAttack = false, allowMove = false, executeUltHp = 0f, "Swan Song 5.0s stationary AoE channel — hold still and do not cancel"),
+        "Pharsa" to ContinuousSkillSpec("ult", 5500L, allowBasicAttack = false, allowMove = false, executeUltHp = 0f, "Feathered Air Strike bombardment"),
+        "Yve" to ContinuousSkillSpec("ult", 5000L, allowBasicAttack = false, allowMove = false, executeUltHp = 0f, "Real World Manipulation starfield"),
+        "Gord" to ContinuousSkillSpec("ult", 3000L, allowBasicAttack = false, allowMove = false, executeUltHp = 0f, "Mystic Gush 3.0s continuous energy beam"),
+        "Zhuxin" to ContinuousSkillSpec("s2", 3000L, allowBasicAttack = false, allowMove = true, executeUltHp = 0f, "Lantern Flare continuous spirit snare"),
+        "Claude" to ContinuousSkillSpec("ult", 3000L, allowBasicAttack = false, allowMove = true, executeUltHp = 0f, "Blazing Duet 3.0s continuous dual-gun barrage"),
+        "Ixia" to ContinuousSkillSpec("ult", 4000L, allowBasicAttack = false, allowMove = false, executeUltHp = 0f, "Full Barrage fan channel"),
+        "Wanwan" to ContinuousSkillSpec("ult", 2500L, allowBasicAttack = false, allowMove = true, executeUltHp = 0f, "Crossbow of Tang airborne barrage"),
+        "Kimmy" to ContinuousSkillSpec("s1", 3000L, allowBasicAttack = true, allowMove = true, executeUltHp = 0f, "Energy Transformation continuous spray"),
+        "Beatrix" to ContinuousSkillSpec("ult", 2400L, allowBasicAttack = false, allowMove = false, executeUltHp = 0f, "Weapon ultimate continuous barrage"),
+        "Hayabusa" to ContinuousSkillSpec("ult", 2200L, allowBasicAttack = false, allowMove = false, executeUltHp = 0f, "Ougi: Shadow Kill invulnerable multi-slash"),
+        "Mathilda" to ContinuousSkillSpec("ult", 2500L, allowBasicAttack = false, allowMove = true, executeUltHp = 0f, "Circling Eagle flight around target"),
+        "Silvanna" to ContinuousSkillSpec("s2", 2400L, allowBasicAttack = false, allowMove = true, executeUltHp = 0f, "Spiral Strangling 6-spin spear channel"),
+        "Badang" to ContinuousSkillSpec("ult", 2500L, allowBasicAttack = false, allowMove = false, executeUltHp = 0f, "Fist Crack continuous flurry"),
+        "Guinevere" to ContinuousSkillSpec("ult", 2200L, allowBasicAttack = false, allowMove = false, executeUltHp = 0f, "Violet Requiem airborne knock-up channel"),
+        "Barats" to ContinuousSkillSpec("ult", 2600L, allowBasicAttack = false, allowMove = false, executeUltHp = 0f, "Detona's Welcome devour channel"),
+        "Alpha" to ContinuousSkillSpec("s2", 1200L, allowBasicAttack = true, allowMove = true, executeUltHp = 0f, "Force Swing sweep")
+    )
+
+    // Secondary continuous skill for heroes that have two continuous skills (e.g., X.Borg s1 Fire Missiles AND ult Last Insanity spin)
+    private val SECONDARY_CONTINUOUS_SKILLS: Map<String, ContinuousSkillSpec> = mapOf(
+        "X.Borg" to ContinuousSkillSpec("ult", 2800L, allowBasicAttack = false, allowMove = true, executeUltHp = 0f, "Last Insanity 2.8s flame spin before detonation"),
+        "Khaleed" to ContinuousSkillSpec("s2", 2500L, allowBasicAttack = false, allowMove = false, executeUltHp = 0f, "Quicksand Guard healing channel")
+    )
+
+    // EXPLICIT EXCEPTIONS (v37.15):
+    // Heroes whose Ultimate (or combat buff) duration is displayed on the Level Badge / Ult Icon / Transformation Bar,
+    // where combo skill execution and basic attacks MUST NOT be blocked — instead they fight aggressively with all skills!
+    // Examples from user prompt: Argus (Eternal Evil ultimate duration), Leomord (Phantom Steed ultimate duration),
+    // Thamuz (Cauterant Inferno), Yu Zhong (once in Dragonoid form).
+    val BUFF_ULT_BADGE_HEROES: Set<String> = setOf(
+        "Argus", "Leomord", "Thamuz", "Yu Zhong",
+        "Zilong", "Freya", "Alucard", "Lapu-Lapu", "Aulus", "Masha", "Sun", "Martis",
+        "Lukas", "Sora", "Yin", "Roger", "Selena", "Edith", "Hanzo", "Zhask", "Gloo",
+        "Harith", "Esmeralda", "Miya", "Karrie", "Irithel", "Hanabi", "Melissa", "Natan",
+        "Popol and Kupa", "Estes", "Angela", "Faramis", "Carmilla", "Aldous", "Bane", "Clint", "Moskov", "Bruno", "Layla"
+    )
+
+    // Heroes that display a red/orange Transformation or Enhancement Duration Bar at the bottom-center of the screen
+    val TRANSFORM_BAR_HEROES: Set<String> = setOf(
+        "Yu Zhong", "Thamuz", "Lukas", "Sora", "Lapu-Lapu", "Edith", "Yin", "Leomord",
+        "Selena", "Roger", "Hanzo", "Zhask", "Barats", "Gloo", "Aldous", "Freya", "Alucard", "Argus", "Aulus"
+    )
+
+    // Called on every frame in GameStateTracker.update() to synchronize hero form & buff states from visual bars/badges
+    fun observeVisualState(s: GameState) {
+        val hero = s.ownHero ?: return
+        val now = s.ts
+        if (s.skillBadgeActive) lastVisualBadgeAt = now
+        if (s.transformBarPct > 0f) lastVisualTransformBarAt = now
+
+        // Yu Zhong: Black Dragon flight (center-bottom red bar active + high flying HP bar / badge active) ->
+        // the moment Black Dragon flight ends, he enters 10s Dragonoid form with refreshed s1, s2, s3!
+        if (hero == "Yu Zhong") {
+            val inDragonFlight = s.transformBarPct > 0f || (s.self != null && s.self.barTop < 0.28f && s.skillBadgeActive)
+            if (inDragonFlight) {
+                wasYuZhongDragonFlight = true
+                formHero = hero
+                form = 1
+                formAt = now
+            } else if (wasYuZhongDragonFlight) {
+                wasYuZhongDragonFlight = false
+                formHero = hero
+                form = 1
+                formAt = now
+                CooldownTracker.resetSlots("s1", "s2", "s3")
+            }
+            return
+        }
+
+        // Other transform heroes (Leomord, Lukas, Sora, Lapu-Lapu, Edith, Yin, Hanzo):
+        // If the transformation bar or ultimate badge/icon duration is visually active on screen, lock form = 1!
+        val t = transform(hero)
+        if (t != null && !t.toggle) {
+            val visualActive = s.transformBarPct > 0f || (hero in BUFF_ULT_BADGE_HEROES && (s.skillBadgeActive || "ult" in s.activeSkillIcons))
+            if (visualActive) {
+                if (formHero != hero || form != 1) {
+                    formHero = hero
+                    form = 1
+                    CooldownTracker.resetSlots("s1", "s2", "s3")
+                }
+                formAt = now
+            }
+        }
+    }
+
+    // True while Yu Zhong is flying as the Black Dragon (1000033086..1000033088):
+    // During Black Dragon flight, s1/s2/s3 and basic attacks are locked (purple prohibition icons);
+    // Yu Zhong should steer directly onto the target enemy hero to deal collision damage and knockback!
+    fun isYuZhongBlackDragonFlight(s: GameState): Boolean {
+        if (s.ownHero != "Yu Zhong") return false
+        return s.transformBarPct > 0f || (s.self != null && s.self.barTop < 0.28f && s.skillBadgeActive)
+    }
+
+    // True when an Ultimate buff / immortality / mount / enhancement duration is active on the badge, ult icon, or transform bar
+    // (e.g., Argus Eternal Evil, Leomord Phantom Steed, Thamuz Cauterant Inferno, Yu Zhong Dragonoid, Lukas Sacred Beast, etc.)
+    fun isBuffUltActive(s: GameState): Boolean {
+        val hero = s.ownHero ?: return false
+        if (hero !in BUFF_ULT_BADGE_HEROES) return false
+        if (isYuZhongBlackDragonFlight(s)) return false
+        val now = s.ts
+        val castAge = now - (slotCastAt["$hero:ult"] ?: 0L)
+        return s.transformBarPct > 0f ||
+            s.skillBadgeActive ||
+            "ult" in s.activeSkillIcons ||
+            (now - lastVisualBadgeAt <= 320L && castAge <= 8000L) ||
+            (now - lastVisualTransformBarAt <= 320L && castAge <= 10000L) ||
+            formOf(hero) == 1 ||
+            (hero in setOf("Argus", "Thamuz", "Leomord", "Zilong", "Freya", "Alucard", "Aulus") && castAge in 1L..4200L)
+    }
+
+    // Returns the active ContinuousSkillSpec when the hero is currently executing a continuous-damage skill
+    // (detected on the Level Badge, on the Skill Icon, or within its active cast window) that MUST NOT be interrupted
+    // by other combo skills. Returns null for Buff/Mount/Immortality Ultimates (Argus, Leomord, Thamuz, etc.).
+    fun activeContinuousSkill(s: GameState): ContinuousSkillSpec? {
+        val hero = s.ownHero ?: return null
+        val now = s.ts
+
+        // Check secondary continuous skill first if its slot was cast more recently or is active on its skill icon
+        SECONDARY_CONTINUOUS_SKILLS[hero]?.let { sec ->
+            val secCastAge = now - (slotCastAt["$hero:${sec.slot}"] ?: 0L)
+            val secOnIcon = sec.slot in s.activeSkillIcons
+            val secOnBadge = s.skillBadgeActive && secCastAge in 0L..(sec.durationMs + 900L)
+            if (secOnIcon || secOnBadge || secCastAge in 1L..sec.durationMs) {
+                return sec
+            }
+        }
+
+        val spec = CONTINUOUS_BADGE_SKILLS[hero] ?: return null
+        val castAge = now - (slotCastAt["$hero:${spec.slot}"] ?: 0L)
+        val onSkillIcon = spec.slot in s.activeSkillIcons
+        // If this hero is NOT in BUFF_ULT_BADGE_HEROES (e.g., Balmond, Cici, X.Borg, Chang'e, Odette, Claude, Akai),
+        // any active skill duration badge on the HP bar belongs to their continuous-damage skill!
+        val badgeBelongsToSkill = hero !in BUFF_ULT_BADGE_HEROES || castAge in 0L..(spec.durationMs + 900L)
+        val onBadge = (s.skillBadgeActive || now - lastVisualBadgeAt <= 280L) && badgeBelongsToSkill
+        val inTimerWindow = castAge in 1L..spec.durationMs
+        return if (onSkillIcon || onBadge || inTimerWindow) spec else null
+    }
+
     // ---------------- 2. Multi-Phase Skill Specification Table ----------------
-    // Defines how many phases a skill has within a single cooldown window, how long the recast window lasts,
-    // and which other slots get their cooldown reset when this skill (or its final phase) fires!
     class MultiPhaseSpec(
         val phases: Int,
         val windowMs: Long = 3800L,
@@ -300,9 +455,9 @@ object HeroKit {
         "Gloo" to mapOf(
             "ult" to MultiPhaseSpec(phases = 2, windowMs = 5500L, minGapMs = 400L, recastTap = true, resetsOnFinalPhase = listOf("s1", "s2"))
         ),
-        // X.Borg: ult Last Insanity (Phase 1 flame spin -> Phase 2 detonate)
+        // X.Borg: ult Last Insanity (Phase 1 flame spin -> Phase 2 detonate after spin)
         "X.Borg" to mapOf(
-            "ult" to MultiPhaseSpec(phases = 2, windowMs = 2800L, minGapMs = 650L, recastTap = true)
+            "ult" to MultiPhaseSpec(phases = 2, windowMs = 2800L, minGapMs = 2400L, recastTap = true)
         ),
         // Phoveus: ult Infernal Pursuit (multi-recast whenever enemy is displaced/marked by s1 or s2)
         "Phoveus" to mapOf(
@@ -362,6 +517,11 @@ object HeroKit {
         "Nolan" to mapOf(
             "s1" to MultiPhaseSpec(phases = 2, windowMs = 3500L, minGapMs = 320L),
             "s2" to MultiPhaseSpec(phases = 2, windowMs = 3500L, minGapMs = 320L)
+        ),
+        // Thamuz: s1 Molten Scythes (throw + recall) and s2 Chasm Trample resets s1 when scythes are out
+        "Thamuz" to mapOf(
+            "s1" to MultiPhaseSpec(phases = 2, windowMs = 4000L, minGapMs = 450L, recastTap = true),
+            "s2" to MultiPhaseSpec(phases = 1, resetsOnCast = listOf("s1"))
         ),
     )
 
@@ -573,6 +733,7 @@ object HeroKit {
     fun onSkillCast(hero: String?, slot: String, targetX: Float = -1f, targetY: Float = -1f) {
         if (hero == null) return
         val now = System.currentTimeMillis()
+        slotCastAt["$hero:$slot"] = now
         if (slot == "ult") onUltCast(hero)
 
         // 1) Multi-phase skill table state transitions
@@ -687,7 +848,8 @@ object HeroKit {
         }
         val spec = multiPhaseSpecs[hero]?.get(slot) ?: return false
         val st = phaseState["$hero:$slot"] ?: return false
-        return now < st.second && st.first in 1 until spec.phases
+        val castAge = now - (slotCastAt["$hero:$slot"] ?: 0L)
+        return now < st.second && st.first in 1 until spec.phases && castAge >= spec.minGapMs
     }
 
     fun resetComplexState() {
@@ -696,7 +858,61 @@ object HeroKit {
         gusionS1MarkedUntil = 0L; gusionS2DaggersOutUntil = 0L; gusionS2FreshReset = false; gusionUltDash2Until = 0L
         lingAirUntil = 0L; lingBladesUntil = 0L; lingBladeIdx = 0
         paquitoStacks = 0; paquitoLastAt = 0L
+        lastVisualBadgeAt = 0L; lastVisualTransformBarAt = 0L; wasYuZhongDragonFlight = false
+        slotCastAt.clear()
         phaseState.clear()
+    }
+
+    // ---------------- Execute / Finisher Ultimate HP Thresholds (v37.16) ----------------
+    // Optimal target HP fraction (0..1) below which an Execute or Finisher Ultimate is lethal / optimal to cast,
+    // calibrated per hero kit and scaled with Ultimate level (Lv 4 / 8 / 12):
+    private val executeBaseThresholds: Map<String, Float> = mapOf(
+        // True-Damage & Missing-HP Execute Ultimates (must wait until enemy drops into lethal missing-HP window)
+        "Balmond" to 0.36f,      // Lethal Counter: 20% missing HP true damage + base
+        "Martis" to 0.34f,       // Decimation: true damage + reset when target is low
+        "Dyrroth" to 0.42f,      // Abysm Strike: physical burst + 20% missing HP
+        "Karina" to 0.38f,       // Shadow Assault: missing HP magic burst + reset on kill
+        "Fredrinn" to 0.44f,     // Appraiser's Wrath: stored crystalline energy slam
+        "Aamon" to 0.44f,        // Endless Shards: missing HP magic shard finisher
+        // Single-Target Burst / Assassin Finisher Ultimates
+        "Gusion" to 0.56f,
+        "Harley" to 0.55f,
+        "Hayabusa" to 0.52f,
+        "Saber" to 0.56f,
+        "Eudora" to 0.56f,
+        "Aurora" to 0.54f,
+        "Kaja" to 0.52f,
+        "Hilda" to 0.46f,
+        "Aldous" to 0.48f,
+        "Paquito" to 0.54f,
+        "Julian" to 0.56f,
+        "Suyou" to 0.48f,
+        "Arlott" to 0.52f,
+        "Lancelot" to 0.48f,
+        "Fanny" to 0.52f,
+        "Ling" to 0.52f,
+        "Nolan" to 0.54f,
+        "Joy" to 0.54f,
+        "Benedetta" to 0.52f,
+        "Helcurt" to 0.52f,
+        "Natalia" to 0.50f,
+        "Lesley" to 0.42f,
+        "Granger" to 0.44f,
+        "Beatrix" to 0.48f,
+        "Xavier" to 0.42f,
+        "Novaria" to 0.45f,
+        "Brody" to 0.44f,       // Torn-Apart Memory: scales with stacks + target missing HP
+        "Clint" to 0.55f
+    )
+
+    fun executeUltThreshold(hero: String?, level: Int = 4): Float {
+        val base = hero?.let { executeBaseThresholds[it] } ?: maxOf(Cfg.executeHpPct / 100f + 0.16f, 0.38f)
+        val lvBonus = when {
+            level >= 12 -> 0.05f
+            level >= 8 -> 0.025f
+            else -> 0f
+        }
+        return (base + lvBonus).coerceIn(0.24f, 0.65f)
     }
 
     // ---------------- HP bar models ----------------
@@ -728,7 +944,12 @@ object HeroKit {
         "Roger" to "Human (ranged slow/shred) <-> Wolf (melee lunge + Lycan Pounce)",
         "Lapu-Lapu" to "Twin Blades <-> Heavy Sword form: Bravest Fighter (ult) unlocks Raging Slash (3-slam CC-immune ult)",
         "Edith" to "Phylax (melee tank) <-> Edith (ranged Marksman form with refreshed Lightning Bolt & Divine Retribution)",
-        "Yu Zhong" to "Black Dragon form -> 10s Dragonoid form with enhanced range on all 3 skills",
+        "Yu Zhong" to "Black Dragon form (collision flight bar) -> 10s Dragonoid form with enhanced range on all 3 skills",
+        "Thamuz" to "Cauterant Inferno (enhancement bar + badge): massive attack speed & HP regen on basic attacks and scythes",
+        "Argus" to "Eternal Evil (badge + ult icon): 4s death immunity — attacks aggressively with all skills without retreating",
+        "Leomord" to "Phantom Steed (badge + ult icon): mounted Barbiel combo with s1 + s2 + basic attacks",
+        "Balmond" to "Cyclone Sweep (s2 badge + icon): 3s continuous spinning damage — never interrupted by s1/basic attacks",
+        "Cici" to "Yo-Yo Blitz (s1 badge + icon): 3.5s continuous yoyo attacks while moving — never interrupted by s2/ult",
         "Lukas" to "Sacred Beast form (ult) refreshes skills and unlocks Shockwave Blast recast",
         "Sora" to "Thunder (swipe left) and Torrent (swipe right) forms: the form chosen changes his skills",
         "Kagura" to "Seimei Umbrella dual state: s1 throw -> ult link -> s2 teleport pickup -> ult knockback burst -> s2 dash",
@@ -751,6 +972,7 @@ object HeroKit {
         append(when (sl.size) { 2 -> "2 active skills"; 4 -> "4 active skills"; else -> "${sl.size} active skills" })
         append(" (").append(sl.joinToString(" ") { s -> buttonHints[hero]?.get(s)?.let { "$s=$it" } ?: s }).append(")")
         transform(hero)?.let { append(" · transform ultimate: ").append(it.note) }
+        CONTINUOUS_BADGE_SKILLS[hero]?.let { append(" · continuous skill (${it.slot}): ").append(it.note) }
         for (s in specials(hero)) append(" · ").append(s.slot).append(": ").append(s.note)
         val b = barModel(hero)
         if (b != BarModel.NORMAL) append(" · HP bar: ").append(b.label)

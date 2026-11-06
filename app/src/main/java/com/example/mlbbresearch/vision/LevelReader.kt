@@ -61,7 +61,9 @@ object LevelReader {
     }
 
     // once per frame while your hero is visible
-    fun update(px: IntArray, w: Int, h: Int, self: Seen, upgradeReady: Boolean, now: Long) {
+    // When an active skill duration icon replaces the circular Level Badge (skillBadgeActive = true, v37.15),
+    // freeze badge glyph/ring reading so the skill icon is never mistaken for a level-up badge change!
+    fun update(px: IntArray, w: Int, h: Int, self: Seen, upgradeReady: Boolean, now: Long, skillBadgeActive: Boolean = false) {
         load()
         // a new skill point: the "+" shows up again (the first one is level 1's point)
         // (v36.89: a "+" back within 1.5 s of hiding is the same one flickering - not a new point)
@@ -71,6 +73,12 @@ object LevelReader {
         }
         if (!upgradeReady && upgradeShown) upgradeHiddenAt = now
         upgradeShown = upgradeReady
+
+        if (skillBadgeActive) {
+            pending = null
+            pendingN = 0
+            return
+        }
 
         xp = ring(px, w, h, self)
         val g = glyph(px, w, h, self) ?: return
@@ -93,6 +101,7 @@ object LevelReader {
     // level of any hero bar (enemy heroes too) from the remembered badge patterns, -1 unknown
     fun levelOf(px: IntArray, w: Int, h: Int, bar: Seen): Int {
         load()
+        if (ScreenReader.badgeSkillDuration(px, w, h, bar) >= 0f) return -1
         val g = glyph(px, w, h, bar) ?: return -1
         return match(g) ?: if (g.wide) 10 else -1
     }

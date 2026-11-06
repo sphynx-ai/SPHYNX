@@ -62,10 +62,16 @@ class GameState(
     val map: MapIntel.Info = MapIntel.Info.NONE,       // heroes / objectives on the minimap (YOLO detector)
     // your bar's shield / armour / stored energy (HeroKit bar models); selfHp already counts it
     val selfExtra: Float = 0f,
-    val selfHpRaw: Float = -1f
+    val selfHpRaw: Float = -1f,
+    // Skill Casted Duration Badge, Skill Icon Duration & Center-Bottom Bars (v37.15):
+    val skillBadgePct: Float = -1f,           // 0..1 remaining duration when a skill icon replaces the Level Badge, -1 when normal level badge
+    val activeSkillIcons: Map<String, Float> = emptyMap(), // slot -> 0..1 remaining active duration on the skill button icon
+    val transformBarPct: Float = -1f,         // 0..1 remaining duration on the red/orange center-bottom Transformation/Enhancement bar
+    val recallBarPct: Float = -1f             // 0..1 progress on the blue/cyan center-bottom Recall execution bar
 ) {
     val creeps: List<Seen> get() = monsters.filter { !it.hero }
     val boss: Seen? get() = monsters.filter { it.hero }.minByOrNull { distToSelf(it.x, it.y) }
+    val skillBadgeActive: Boolean get() = skillBadgePct >= 0f
 
     // distance in screen-height units, so ranges look the same on any phone
     fun dist(ax: Float, ay: Float, bx: Float, by: Float): Float = hypot((ax - bx) * aspect, ay - by)
@@ -83,6 +89,10 @@ class GameState(
         val sb = StringBuilder()
         sb.append("phase=").append(phase.label)
         if (selfHp >= 0) sb.append(", my HP ").append((selfHp * 100).toInt()).append("%")
+        if (transformBarPct >= 0f) sb.append(", transform/enhance bar ").append((transformBarPct * 100).toInt()).append("%")
+        if (skillBadgePct >= 0f) sb.append(", badge duration ").append((skillBadgePct * 100).toInt()).append("%")
+        if (activeSkillIcons.isNotEmpty()) sb.append(", active skill icon ").append(activeSkillIcons.entries.joinToString("/") { "${it.key}:${(it.value * 100).toInt()}%" })
+        if (recallBarPct >= 0f) sb.append(", recall bar ").append((recallBarPct * 100).toInt()).append("%")
         sb.append(", enemy heroes on screen ").append(enemies.size)
         if (enemies.isNotEmpty()) {
             sb.append(" (HP ").append(enemies.joinToString("/") { "${(it.hp * 100).toInt()}%" }).append(")")

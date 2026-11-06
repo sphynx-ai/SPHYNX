@@ -32,6 +32,10 @@ class VisionResult(
     val xp: Float = -1f,               // how full the EXP ring is, 0..1 (-1 unknown)
     val enemyLevel: Int = -1,          // nearest enemy hero's level, -1 unknown
     val towerRing: TowerRing.Ring = TowerRing.NONE,   // an enemy tower's range circle on screen and its colour
+    val skillBadgePct: Float = -1f,    // 0..1 remaining skill duration displayed on the Level Badge, -1 = normal level badge (v37.15)
+    val activeSkillIcons: Map<String, Float> = emptyMap(), // slot -> 0..1 remaining active duration displayed on the skill icon (v37.15)
+    val transformBarPct: Float = -1f,  // 0..1 remaining duration on the red/orange center-bottom Transformation/Enhancement bar, -1 = none (v37.15)
+    val recallBarPct: Float = -1f,     // 0..1 progress on the blue/cyan center-bottom Recall execution bar, -1 = none (v37.15)
     val processMs: Long
 ) {
     val aspect: Float get() = if (frameH == 0) 1.78f else frameW.toFloat() / frameH
@@ -131,9 +135,9 @@ object FrameProcessor {
         // a minion / monster must be seen on two frames in a row at about the same place:
         // a single-frame flash (effects, skill colours) is not a target
         // Neutral monsters (creeps/buffs) are accepted immediately on frame 1 so there is zero delay starting camp attacks
-        fun steady(u: Seen) = u.team == Team.NEUTRAL || prevSmall.any { it.team == u.team && kotlin.math.abs(it.x - u.x) < 0.04f && kotlin.math.abs(it.y - u.y) < 0.05f }
+        fun steady(u: Seen) = u.team == Team.NEUTRAL || prevSmall.any { it.team == u.team && kotlin.math.abs(it.x - self?.x.let { _ -> u.x }) < 0.04f && kotlin.math.abs(it.y - u.y) < 0.05f }
         val small = seen.filter { !it.hero && it.team != Team.SELF && !onSelf(it) }
-        val steadySmall = small.filter { steady(it) }
+        val steadySmall = small.filter { u -> u.team == Team.NEUTRAL || prevSmall.any { it.team == u.team && kotlin.math.abs(it.x - u.x) < 0.04f && kotlin.math.abs(it.y - u.y) < 0.05f } }
         prevSmall = small
         val aspect = w.toFloat() / h
         val tracks = enemyTracker.update(seen.filter { it.team == Team.ENEMY && it.hero }, t0, aspect)
@@ -186,8 +190,12 @@ object FrameProcessor {
 
         val hudInfo = if (live) ScreenReader.liveHud(px, w, h)
             else if (self != null || trackPlayer) ScreenReader.hud(px, w, h, trackPlayer || trackMotion) else HudInfo.NONE
-        // your level from the badge, and the nearest enemy hero's (from the badges remembered)
-        if (self != null) LevelReader.update(px, w, h, self, hudInfo.upgradeReady.isNotEmpty(), t0)
+        // Skill Casted Duration Badge, Skill Icon Duration & Center-Bottom Transformation/Recall Bars (v37.15)
+        val skillBadgePct = if (!live && self != null) ScreenReader.badgeSkillDuration(px, w, h, self) else -1f
+        val activeSkillIcons = if (!live && self != null && hint == ScreenHint.NONE) ScreenReader.skillIconDurations(px, w, h) else emptyMap()
+        val centerBars = if (!live && self != null && hint == ScreenHint.NONE) ScreenReader.centerBars(px, w, h) else CenterBars.NONE
+        // your level from the badge (frozen while a skill duration icon occupies the badge), and the nearest enemy hero's
+        if (self != null) LevelReader.update(px, w, h, self, hudInfo.upgradeReady.isNotEmpty(), t0, skillBadgePct >= 0f)
         val enemyLevel = if (self == null) -1 else seen.filter { it.team == Team.ENEMY && it.hero }
             .minByOrNull { kotlin.math.abs(it.x - self.x) + kotlin.math.abs(it.y - self.y) }
             ?.let { LevelReader.levelOf(px, w, h, it) } ?: -1
@@ -207,6 +215,9 @@ object FrameProcessor {
         val scr = ScreenIntel.merge(t0, self, steadySmall.filter { it.team == Team.NEUTRAL } + seen.filter { it.team == Team.NEUTRAL && it.hero },
             bush.bushes, bush.walls, ring, steadySmall.filter { it.team == Team.ALLY })
 
+        val kdaNow = if (self != null && !live && frameNo % 2 == 0L) KdaReader.read(px, w, h) else IntArray(3)
+        if (kdaNow[0] > 0 || kdaNow[2] > 0) enemyTracker.onKillOrAssist(t0)
+
         val result = VisionResult(
             ts = t0, frameW = w, frameH = h,
             self = self,
@@ -224,7 +235,7 @@ object FrameProcessor {
             spellIcon = if (!live && self != null && frameNo % 12 == 6L) IconMemory.print(px, w, h, "spell", 0.016f) else null,
             monsters = scr.monsters,
             bossHp = if (self != null && !live) ScreenReader.bossBar(px, w, h) else -1f,
-            kda = if (self != null && !live && frameNo % 2 == 0L) KdaReader.read(px, w, h) else IntArray(3),
+            kda = kdaNow,
             bushes = scr.bushes,
             inBush = bush.inBush,
             screenWalls = scr.walls,
@@ -232,6 +243,10 @@ object FrameProcessor {
             xp = LevelReader.xp,
             enemyLevel = enemyLevel,
             towerRing = scr.ring,
+            skillBadgePct = skillBadgePct,
+            activeSkillIcons = activeSkillIcons,
+            transformBarPct = centerBars.transformPct,
+            recallBarPct = centerBars.recallPct,
             processMs = System.currentTimeMillis() - t0
         )
         // whole-screen detector training pictures (every 10 s in a match)
@@ -290,21 +305,31 @@ object FrameProcessor {
         val hp = (green.toFloat() / n).coerceIn(0.02f, 0.3f)
         val me = Seen(Team.SELF, true, 0.51f, (0.395f + Cfg.bodyBelowBarPct / 100f).coerceAtMost(1f), hp,
             0.471f, 0.382f, 0.548f, 0.394f)
-        // and your level badge with its white number next to it (a dimmed shop screen has none)
-        return if (LevelReader.glyph(px, w, h, me) != null) out + me else out
+        // and your level badge with its white number next to it (or an active skill duration badge, e.g. Argus Eternal Evil at 1% HP! - v37.15)
+        return if (LevelReader.glyph(px, w, h, me) != null || ScreenReader.badgeSkillDuration(px, w, h, me) >= 0f) out + me else out
     }
+
+    @Volatile private var barsWithSubBar: Set<Seen> = emptySet()
 
     // Many heroes have a second bar right under their HP bar (passive, energy, mana, e.g. Thamuz's
     // red passive bar). It is part of that hero, not a unit: drop any bar that starts inside a
-    // hero bar's width and sits just below it.
+    // hero bar's width and sits just below it, and record `barsWithSubBar` so `monstersFromRedBars`
+    // knows that bar belongs to a hero (jungle monsters and turrets never have a mana/energy sub-bar!).
     private fun withoutAttachedBars(all: List<Seen>): List<Seen> {
         val heroes = all.filter { it.hero || it.team == Team.SELF }
-        return all.filter { b ->
-            heroes.none { a ->
+        val confirmedHeroes = HashSet<Seen>()
+        val filtered = all.filter { b ->
+            val parent = heroes.firstOrNull { a ->
                 a !== b && b.barTop >= a.barBottom - 0.002f && b.barTop - a.barBottom <= 0.03f &&
                     b.barLeft >= a.barLeft - 0.01f && b.barLeft <= a.barRight
             }
+            if (parent != null) {
+                confirmedHeroes.add(parent)
+                false
+            } else true
         }
+        barsWithSubBar = confirmedHeroes
+        return filtered
     }
 
     // Brightness of a ring inside a button, around (not at) its centre: a cooling-down skill is
@@ -366,10 +391,22 @@ object FrameProcessor {
         } ?: false
         val out = ArrayList<Seen>(all.size)
         val monsters = ArrayList<Seen>()
+        val nowMs = System.currentTimeMillis()
+        val aspect = if (h == 0) 1.78f else w.toFloat() / h
         for (s in all) {
             // a red bar where yours sits is YOUR passive bar, not a unit (see ownBars)
             if (s.team == Team.ENEMY && kotlin.math.abs(s.barLeft - 0.471f) < 0.015f && s.barTop in 0.36f..0.43f) continue
-            if (s.team == Team.ENEMY && s.hero && badgeDark(px, w, h, s) < 0.28f) {
+            // Confirmed Enemy Hero Protection (v37.16):
+            // Never misclassify an Enemy Hero as a jungle monster when their level badge is replaced by a colorful
+            // active skill duration icon (e.g. Cici s1, Balmond s2, Thamuz ult, Leomord ult) or partially occluded!
+            val confirmedEnemyHero = s.team == Team.ENEMY && s.hero && (
+                badgeDark(px, w, h, s) >= 0.20f ||
+                    s in barsWithSubBar ||
+                    ScreenReader.badgeSkillDuration(px, w, h, s) >= 0f ||
+                    LevelReader.glyph(px, w, h, s) != null ||
+                    enemyTracker.isNearActiveTrack(s.x, s.y, nowMs, aspect)
+                )
+            if (s.team == Team.ENEMY && s.hero && !confirmedEnemyHero) {
                 // an enemy TOWER's bar is red without a badge too: near an enemy tower on the
                 // minimap it is the tower (a structure), not a monster
                 if (nearEnemyTower) { out.add(s.copy(hero = false)); continue }
@@ -454,7 +491,8 @@ object FrameProcessor {
             val p = px[y * w + x]
             val r = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val b = p and 0xff
             n++
-            if (r > 150 && g < 90 && b < 110) red++
+            // Recognise both red turret shield emblems AND gold-plated outer turret shield emblems (v37.16)
+            if ((r > 150 && g < 95 && b < 110) || (r > 175 && g in 120..215 && b < 120 && r - b >= 65)) red++
             if (r > 110 && b > 140 && g < 110) pur++
         }
         return if (n == 0) floatArrayOf(0f, 0f) else floatArrayOf(red.toFloat() / n, pur.toFloat() / n)

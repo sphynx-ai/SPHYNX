@@ -2,9 +2,12 @@ package com.example.mlbbresearch.vision
 
 import com.example.mlbbresearch.core.Layout
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.sin
 
 // Which MLBB screen is showing, read from colours only (no Gemma needed).
 // Measured on screenshots of every screen from the home screen to the match-end scoreboard.
@@ -36,6 +39,16 @@ class HudInfo(
 ) {
     companion object {
         val NONE = HudInfo(emptySet(), false, 0f, 0f)
+    }
+}
+
+// Center-bottom horizontal progress bar reading (v37.15, calibrated on 1000033086..33099):
+//  - transformPct: 0..1 remaining duration when a RED/CORAL/ORANGE Transformation or Enhancement bar
+//    is showing (e.g., Yu Zhong Black Dragon, Thamuz Cauterant Inferno, Lukas, Sora, Yin, Edith), -1 when none.
+//  - recallPct: 0..1 progress when the BLUE/CYAN Recall execution bar is showing (1000033098, 1000033099), -1 when none.
+class CenterBars(val transformPct: Float, val recallPct: Float) {
+    companion object {
+        val NONE = CenterBars(-1f, -1f)
     }
 }
 
@@ -156,6 +169,189 @@ object ScreenReader {
                 if (r(p) >= 150 && g(p) <= 90 && b(p) <= 100 && r(p) - g(p) >= 80) { red++; lastRed = x }
             }
             if (red >= (x1 - x0) / 8) best = maxOf(best, (lastRed - x0 + 1).toFloat() / (x1 - x0 + 1))
+        }
+        return best
+    }
+
+    // ---------------- Skill Casted Duration Badge, Skill Icon Duration & Center-Bottom Bars (v37.15) ----------------
+
+    // 1. Center-Bottom Transformation/Enhancement Bar vs Blue Recall Execution Bar
+    // Measured on 1000033086..1000033099:
+    //  - Transformation / Enhancement duration bar (Yu Zhong Black Dragon, Thamuz Cauterant Inferno, Lukas, Sora, etc.):
+    //    Red / coral / orange-red fill (r >= 168, r - g >= 30, r - b >= 18) draining right-to-left in x = 0.400..0.600, y = 0.718..0.728.
+    //  - Recall execution bar (1000033098, 1000033099):
+    //    Blue / cyan fill (b >= 160, g >= 115, b - r >= 60) filling left-to-right in the same bar frame.
+    fun centerBars(px: IntArray, w: Int, h: Int): CenterBars {
+        val x0 = (0.400f * w).toInt().coerceIn(0, w - 1)
+        val x1 = (0.600f * w).toInt().coerceIn(0, w - 1)
+        val y0 = (0.718f * h).toInt().coerceIn(0, h - 1)
+        val y1 = (0.728f * h).toInt().coerceIn(0, h - 1)
+        val total = (x1 - x0 + 1).coerceAtLeast(1)
+        val leftLim = x0 + max(8, (total * 0.12f).toInt())
+        var redFill = 0
+        var blueFill = 0
+        var whiteTip = 0
+        var empty = 0
+        var leftRed = 0
+        var leftBlue = 0
+        for (x in x0..x1) {
+            var cRed = false
+            var cBlue = false
+            var cTip = false
+            var cEmp = false
+            for (y in y0..y1) {
+                val p = px[y * w + x]
+                val pr = r(p); val pg = g(p); val pb = b(p)
+                val mx = max(pr, max(pg, pb)); val mn = min(pr, min(pg, pb))
+                if (pr >= 168 && pr - pg >= 30 && pr - pb >= 18 && pb in 35..195) {
+                    cRed = true
+                } else if (pb >= 160 && pg >= 115 && pb - pr >= 60) {
+                    cBlue = true
+                } else if (pr >= 205 && pg >= 200 && pb >= 200 && mx - mn <= 30) {
+                    cTip = true
+                } else if (mx in 18..92 && mx - mn <= 55 && pg < 90) {
+                    cEmp = true
+                }
+            }
+            when {
+                cRed -> {
+                    redFill++
+                    if (x <= leftLim) leftRed++
+                }
+                cBlue -> {
+                    blueFill++
+                    if (x <= leftLim) leftBlue++
+                }
+                cTip -> whiteTip++
+                cEmp -> empty++
+            }
+        }
+        val trackOk = (redFill + blueFill + whiteTip + empty) >= (total * 0.78f).toInt()
+        if (!trackOk) return CenterBars.NONE
+        val tValid = redFill >= 4 && leftRed >= 3 && leftBlue <= 1
+        val rValid = blueFill >= 4 && leftBlue >= 3 && leftRed <= 1
+        val tPct = if (tValid) ((redFill + whiteTip).toFloat() / max(1, redFill + whiteTip + empty)).coerceIn(0.02f, 1f) else -1f
+        val rPct = if (rValid) ((blueFill + whiteTip).toFloat() / max(1, blueFill + whiteTip + empty)).coerceIn(0.02f, 1f) else -1f
+        return CenterBars(tPct, rPct)
+    }
+
+    // 2. Skill Casted Duration Badge (replaces the circular Level Badge immediately left of the Hero HP Bar)
+    // Measured on 1000033086..1000033099:
+    //  - Normal Level Badge (32040..42, 33096, 33098..99): flat dark interior (darkRatio >= 0.45) with white digits (colRatio <= 0.26).
+    //  - Active Skill Duration Badge (Cici s1 33090..91, Leomord ult 33093, Thamuz ult 33094..95, Argus ult 33097, Yu Zhong 33086..88):
+    //    Colorful skill icon inside the badge (colRatio >= 0.45, darkRatio <= 0.36) surrounded by an outer yellow-gold countdown arc + dark ring.
+    // Returns 0.02f..1.0f remaining duration on the badge, or -1f when the normal Level Badge is showing.
+    fun badgeSkillDuration(px: IntArray, w: Int, h: Int, bar: Seen): Float {
+        val cx = (bar.barLeft * w - w * 0.0155f).toInt()
+        val cy = (bar.barTop * h + h * 0.005f).toInt()
+        val rIn = max(4, (w * 0.010f).toInt())
+        if (cx - rIn < 0 || cy - rIn < 0 || cx + rIn >= w || cy + rIn >= h) return -1f
+        var coloredIn = 0
+        var darkIn = 0
+        var totalIn = 0
+        for (dy in -rIn..rIn) {
+            for (dx in -rIn..rIn) {
+                if (dx * dx + dy * dy <= rIn * rIn) {
+                    val p = px[(cy + dy) * w + (cx + dx)]
+                    val pr = r(p); val pg = g(p); val pb = b(p)
+                    val mx = max(pr, max(pg, pb)); val mn = min(pr, min(pg, pb))
+                    totalIn++
+                    if (mx - mn >= 38 && mx >= 85) coloredIn++
+                    if ((pr + pg + pb) / 3 < 55) darkIn++
+                }
+            }
+        }
+        if (totalIn == 0) return -1f
+        val colRatio = coloredIn.toFloat() / totalIn
+        val darkRatio = darkIn.toFloat() / totalIn
+        if (colRatio < 0.45f || darkRatio > 0.36f) return -1f
+
+        var goldAngles = 0
+        var darkAngles = 0
+        for (aIdx in 0 until 24) {
+            val ang = (aIdx / 24.0) * 2.0 * Math.PI - Math.PI / 2.0
+            var hasGold = false
+            var hasDark = false
+            for (rf in floatArrayOf(0.0155f, 0.0170f, 0.0185f)) {
+                val rx = (cx + cos(ang) * w * rf).roundToInt()
+                val ry = (cy + sin(ang) * w * rf).roundToInt()
+                if (rx in 0 until w && ry in 0 until h) {
+                    val p = px[ry * w + rx]
+                    val pr = r(p); val pg = g(p); val pb = b(p)
+                    if (pr >= 175 && pg >= 135 && pb <= 125 && pr - pb >= 65) hasGold = true
+                    if ((pr + pg + pb) / 3 < 70) hasDark = true
+                }
+            }
+            if (hasGold) goldAngles++
+            else if (hasDark) darkAngles++
+        }
+        if (goldAngles + darkAngles < 14) return -1f
+        return (goldAngles.toFloat() / max(1, goldAngles + darkAngles)).coerceIn(0.02f, 1f)
+    }
+
+    // 3. Skill Casted Active Duration Displayed on the Skill Icon itself ("s1", "s2", "s3", "ult")
+    // Measured on 1000033090..91 (Cici s1), 1000033093 (Leomord ult), 1000033094 (Thamuz ult), 1000033097 (Argus ult):
+    // While a skill's active duration is running on its skill icon, the button interior is darkened by the radial
+    // clock-sweep (avgInLum in 18..66), while the outer rim (r = 0.025..0.028 * w) is split into a contiguous bright
+    // cyan/gold arc (hiRun >= 6) and a contiguous dark elapsed arc (loRun >= 8).
+    fun skillIconDurations(px: IntArray, w: Int, h: Int): Map<String, Float> {
+        val slots = when (Layout.kitSize) {
+            2 -> listOf("s1", "s2")
+            4 -> listOf("s1", "s2", "s3", "ult")
+            else -> listOf("s1", "s2", "ult")
+        }
+        val out = HashMap<String, Float>(4)
+        val rimFlags = IntArray(24)
+        val loFlags = IntArray(24)
+        for (slot in slots) {
+            val (fx, fy) = Layout.get(slot)
+            val cx = fx * w
+            val cy = fy * h
+            var hiCount = 0
+            var inLumSum = 0
+            for (aIdx in 0 until 24) {
+                val ang = (aIdx / 24.0) * 2.0 * Math.PI - Math.PI / 2.0
+                var bestRim = 0
+                var minLum = 999
+                for (rf in floatArrayOf(0.0250f, 0.0265f, 0.0280f)) {
+                    val x = (cx + cos(ang) * rf * w).roundToInt()
+                    val y = (cy + sin(ang) * rf * w).roundToInt()
+                    if (x in 0 until w && y in 0 until h) {
+                        val p = px[y * w + x]
+                        val pr = r(p); val pg = g(p); val pb = b(p)
+                        bestRim = max(bestRim, max(pr, pg))
+                        minLum = min(minLum, (pr * 3 + pg * 6 + pb) / 10)
+                    }
+                }
+                if (bestRim >= 175) { rimFlags[aIdx] = 1; hiCount++ } else rimFlags[aIdx] = 0
+                loFlags[aIdx] = if (minLum < 58) 1 else 0
+
+                val xin = (cx + cos(ang) * 0.0165f * w).roundToInt().coerceIn(0, w - 1)
+                val yin = (cy + sin(ang) * 0.0165f * w).roundToInt().coerceIn(0, h - 1)
+                inLumSum += lum(px[yin * w + xin])
+            }
+            val avgInLum = inLumSum / 24f
+            if (avgInLum !in 18f..66f) continue
+            val hiRun = maxCircularRun(rimFlags)
+            val loRun = maxCircularRun(loFlags)
+            if (hiRun >= 6 && loRun >= 8) {
+                out[slot] = (hiCount / 24f).coerceIn(0.05f, 1f)
+            }
+        }
+        return out
+    }
+
+    private fun maxCircularRun(flags: IntArray): Int {
+        var cur = 0
+        var best = 0
+        val n = flags.size
+        for (i in 0 until n * 2) {
+            if (flags[i % n] != 0) {
+                cur++
+                if (cur > best) best = min(n, cur)
+            } else {
+                cur = 0
+            }
         }
         return best
     }
@@ -485,40 +681,56 @@ object ScreenReader {
     // Searches a bounce/shift-tolerant window around both the calibrated upgrade "+" position and the
     // relative offset from the skill button so the Ultimate "+" is never missed during its pulse animation
     // or when Large HUD / custom button layouts are active (v37.10).
-    // Verifies a real golden "+" upgrade badge (v37.13):
-    // Must have both bright gold pixels (>= 0.35f) AND dark badge frame/border pixels (>= 0.12f)
-    // within a tight ±0.006f tolerance of the upgrade button position so yellow lane ground or skill
-    // effects never trigger false "+" upgrade taps!
+    // Bright cream-white / pale-yellow "+" cross core inside a golden skill upgrade badge (v37.16, calibrated on 1000033098/33099):
+    // Real upgrade badges have a glowing golden disc (gold >= 0.35f) with a bright cream-white "+" cross in the center
+    // (r >= 215, g >= 190, b in 95..250, r - b >= 15) and NO dark outer ring (their outer halo is bright gold!).
+    private fun isPlusCore(p: Int): Boolean {
+        val pr = r(p); val pg = g(p); val pb = b(p)
+        return pr >= 215 && pg >= 190 && pb in 95..250 && pr - pb >= 15 && pg - pb >= 10
+    }
+
     private fun isRealUpgradeBadge(px: IntArray, w: Int, h: Int, cx: Float, cy: Float, rad: Float, ry: Float, minGold: Float): Float {
         val gold = fraction(px, w, h, cx - rad, cy - ry, cx + rad, cy + ry, 1) { isGold(it) }
         if (gold < minGold) return 0f
-        val outerR = rad * 1.25f
-        val outerRy = ry * 1.25f
-        val dark = fraction(px, w, h, cx - outerR, cy - outerRy, cx + outerR, cy + outerRy, 1) { isDark(it) }
-        return if (dark >= 0.12f) gold else 0f
+        val coreR = rad * 0.68f
+        val coreRy = ry * 0.68f
+        val core = fraction(px, w, h, cx - coreR, cy - coreRy, cx + coreR, cy + coreRy, 1) { isPlusCore(it) }
+        return if (core >= 0.055f) gold + core * 0.4f else 0f
     }
 
     private fun findUpgradePlus(px: IntArray, w: Int, h: Int, slot: String, key: String): Pair<Float, Float>? {
-        val rad = 0.011f
+        val rad = 0.0115f
         val ry = rad * w / h
-        val (ux, uy) = Layout.upgradePoint(slot)
         val minGold = if (slot == "ult") 0.34f else 0.36f
-        if (isRealUpgradeBadge(px, w, h, ux, uy, rad, ry, minGold) >= minGold) {
-            return ux to uy
+        val candidates = ArrayList<Pair<Float, Float>>(4)
+        candidates.add(Layout.upgradePoint(slot))
+        val (sx, sy) = Layout.get(slot)
+        val relX = (sx - (if (Layout.kitSize == 4) 0.035f else 0.042f)).coerceIn(0.05f, 0.95f)
+        val relY = (sy - (if (Layout.kitSize == 4) 0.076f else 0.098f)).coerceIn(0.05f, 0.95f)
+        if (candidates.none { kotlin.math.hypot(it.first - relX, it.second - relY) < 0.005f }) {
+            candidates.add(relX to relY)
+        }
+        if (slot == "ult") {
+            val u3 = Layout.point("ultUp")
+            val u4 = Layout.point("ultUp4")
+            if (candidates.none { kotlin.math.hypot(it.first - u3.first, it.second - u3.second) < 0.005f }) candidates.add(u3)
+            if (candidates.none { kotlin.math.hypot(it.first - u4.first, it.second - u4.second) < 0.005f }) candidates.add(u4)
         }
         var bestPos: Pair<Float, Float>? = null
         var bestScore = minGold
-        for (dy in floatArrayOf(-0.006f, 0f, 0.006f)) {
-            for (dx in floatArrayOf(-0.005f, 0f, 0.005f)) {
-                if (dx == 0f && dy == 0f) continue
-                val cx = ux + dx
-                val cy = uy + dy
-                val f = isRealUpgradeBadge(px, w, h, cx, cy, rad, ry, minGold)
-                if (f >= bestScore) {
-                    bestScore = f
-                    bestPos = cx to cy
+        for ((ux, uy) in candidates) {
+            for (dy in floatArrayOf(0f, -0.008f, 0.008f, -0.016f, 0.016f)) {
+                for (dx in floatArrayOf(0f, -0.006f, 0.006f, -0.013f, 0.013f)) {
+                    val cx = ux + dx
+                    val cy = uy + dy
+                    val f = isRealUpgradeBadge(px, w, h, cx, cy, rad, ry, minGold)
+                    if (f >= bestScore) {
+                        bestScore = f
+                        bestPos = cx to cy
+                    }
                 }
             }
+            if (bestPos != null && bestScore >= minGold + 0.12f) return bestPos
         }
         return bestPos
     }

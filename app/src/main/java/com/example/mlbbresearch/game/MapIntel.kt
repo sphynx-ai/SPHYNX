@@ -37,10 +37,15 @@ object MapIntel {
         return ((sx - l) / (r - l).coerceAtLeast(0.01f)) to ((sy - t) / (b - t).coerceAtLeast(0.01f))
     }
 
-    fun read(mini: MinimapInfo, now: Long): Info {
+    fun read(
+        mini: MinimapInfo,
+        now: Long,
+        screenEnemies: List<com.example.mlbbresearch.vision.Track> = emptyList(),
+        self: com.example.mlbbresearch.vision.Seen? = null
+    ): Info {
         val det = ObjectDetector.latest
         val fresh = ObjectDetector.ready && now - ObjectDetector.latestAt < 1500
-        val info0 = if (fresh) {
+        val baseInfo = if (fresh) {
             val heroes = det.filter { it.label.contains("hero") && !it.label.contains("turret") }
             Info(
                 heroes.filter { it.team == "enemy" }.map { toMap(it.cx, it.cy) },
@@ -50,11 +55,31 @@ object MapIntel {
                 true
             )
         } else {
-            // colour fallback: red portrait rings (no team-mates, no objectives)
+            // colour fallback: red portrait rings + blue ally portrait rings
             val r = MinimapAnalyzer.rect
-            Info(mini.enemyDots.map { (dx, dy) -> toMap(r[0] + dx * (r[2] - r[0]), r[1] + dy * (r[3] - r[1])) },
-                emptyList(), null, emptyList(), false)
+            Info(
+                mini.enemyDots.map { (dx, dy) -> toMap(r[0] + dx * (r[2] - r[0]), r[1] + dy * (r[3] - r[1])) },
+                mini.allyDots.map { (dx, dy) -> toMap(r[0] + dx * (r[2] - r[0]), r[1] + dy * (r[3] - r[1])) },
+                null, emptyList(), false
+            )
         }
+        // 3D Gameplay Screen <-> Minimap Synchronization (v37.16):
+        // When our Green Ring on the minimap blocks/occludes a nearby enemy hero dot, project all visible 3D on-screen
+        // enemy heroes onto the minimap via SceneryMap.projectToWorld so MapIntel never loses sight of them!
+        val me0 = mini.self
+        val fusedEnemies = if (me0 != null && self != null && screenEnemies.isNotEmpty()) {
+            val list = baseInfo.enemies.toMutableList()
+            for (e in screenEnemies) {
+                val proj = SceneryMap.projectToWorld(me0, self, e.x, e.y)
+                if (list.none { hypot(it.first - proj.first, it.second - proj.second) < 0.055f }) {
+                    list.add(proj)
+                }
+            }
+            list
+        } else baseInfo.enemies
+        val info0 = if (fusedEnemies.size != baseInfo.enemies.size) {
+            Info(fusedEnemies, baseInfo.allies, baseInfo.objective, baseInfo.turrets, baseInfo.fromDetector)
+        } else baseInfo
         // turtle / lord alive: from the detector, else from the icon in its pit (colour)
         val pitObj = (mini.turtleIcon ?: mini.lordIcon)?.let { toMap((it[0] + it[2]) / 2, (it[1] + it[3]) / 2) }
         val info = if (info0.objective == null && pitObj != null)

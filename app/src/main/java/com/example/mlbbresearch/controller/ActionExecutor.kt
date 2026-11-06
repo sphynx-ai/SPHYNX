@@ -131,7 +131,7 @@ object ActionExecutor {
             val svc = AccessibilityController.instance ?: return@postDelayed
             try { svc.dispatch(listOf(Act.Tap(ax, ay, 0L, CastTiming.ATTACK_HOLD_MS)), true) } catch (x: Exception) { Diag.error("Test combo", x) }
         }, 0L)
-        delay += CastTiming.ATTACK_HOLD_MS + 55L
+        delay += CastTiming.ATTACK_HOLD_MS + 25L
         val testSkip = HashSet<String>()
         val specialNotes = ArrayList<String>()
         var lingBladeTestIdx = 0
@@ -187,14 +187,14 @@ object ActionExecutor {
                     val svc = AccessibilityController.instance ?: return@postDelayed
                     try { svc.dispatch(listOf(skillAct), true) } catch (x: Exception) { Diag.error("Test combo", x) }
                 }, stepDelay)
-                delay += stepDur + 70L
+                delay += stepDur + 30L
                 val atkDelay = delay
                 main.postDelayed({
                     if (gen != generation || com.example.mlbbresearch.ai.AiRuntime.playerOn) return@postDelayed
                     val svc = AccessibilityController.instance ?: return@postDelayed
                     try { svc.dispatch(listOf(Act.Tap(ax, ay, 0L, CastTiming.ATTACK_HOLD_MS)), true) } catch (x: Exception) { Diag.error("Test combo", x) }
                 }, atkDelay)
-                delay += CastTiming.ATTACK_HOLD_MS + 65L
+                delay += CastTiming.ATTACK_HOLD_MS + 30L
             }
         }
         val text = "Test combo (${hero ?: "hero unknown: choose it on the Player page"}): " + bursts.joinToString("  |  ") { it.joinToString(" ") } +
@@ -268,7 +268,7 @@ object ActionExecutor {
         val gs = GameStateTracker.state
         val self = gs.self
         val p = HeroDb.profile(gs.ownHero)
-        val baReliant = HeroDb.isBasicAttackReliant(gs.ownHero)
+        val baReliant = HeroDb.isBasicAttackReliant(gs.ownHero) || HeroKit.isBuffUltActive(gs)
         val atkHoldDur = if (baReliant) CastTiming.CONTINUOUS_ATTACK_HOLD_MS else CastTiming.ATTACK_HOLD_MS
         val rawCasts = kitCasts(d, gs)
         val vsHeroOrMonster = d.intent == Intent.ENGAGE || d.intent == Intent.JUNGLE || d.intent == Intent.OBJECTIVE
@@ -295,16 +295,19 @@ object ActionExecutor {
             if (c in skip) continue
             if (c == "attack") {
                 if (skillCastDuration > 0L) {
-                    // Weave a basic attack immediately after the skill hold finishes!
-                    val (ax, ay) = Layout.get("attack")
-                    val gen = generation
-                    main.postDelayed({
-                        if (gen == generation && com.example.mlbbresearch.ai.AiRuntime.playerOn) {
-                            perform(listOf(Act.Tap(ax, ay, 0L, atkHoldDur)))
-                        }
-                    }, skillCastDuration + 20L)
-                    aiCastAt["attack"] = nowMs + skillCastDuration + atkHoldDur
-                    lastAttackTap = nowMs + skillCastDuration
+                    // Weave a basic attack immediately after the skill hold finishes (unless the skill just cast is a continuous spin that forbids basic attacks)!
+                    val justCastCont = prevSkill?.let { ps -> HeroKit.CONTINUOUS_BADGE_SKILLS[gs.ownHero]?.takeIf { it.slot == ps && !it.allowBasicAttack } }
+                    if (justCastCont == null) {
+                        val (ax, ay) = Layout.get("attack")
+                        val gen = generation
+                        main.postDelayed({
+                            if (gen == generation && com.example.mlbbresearch.ai.AiRuntime.playerOn) {
+                                perform(listOf(Act.Tap(ax, ay, 0L, atkHoldDur)))
+                            }
+                        }, skillCastDuration + 10L)
+                        aiCastAt["attack"] = nowMs + skillCastDuration + atkHoldDur
+                        lastAttackTap = nowMs + skillCastDuration
+                    }
                     continue
                 }
                 // 3-Stage Basic Attack Glow/Dim feedback (v37.10, calibrated on 1000032040/41/42):
@@ -313,13 +316,13 @@ object ActionExecutor {
                 //  - Stage 1 (IDLE, unpressed): re-press after 75 ms.
                 //  - Stage 2 (GLOWING, currently held): wait for the current hold to finish (attackGap).
                 val minAtkGap = when (CooldownTracker.attackStage) {
-                    CooldownTracker.AttackStage.DIMMED -> 55L
-                    CooldownTracker.AttackStage.IDLE -> 75L
+                    CooldownTracker.AttackStage.DIMMED -> 35L
+                    CooldownTracker.AttackStage.IDLE -> 50L
                     CooldownTracker.AttackStage.GLOWING -> attackGap
                 }
                 if (nowMs - lastAttackTap < minAtkGap) continue
                 lastAttackTap = nowMs
-                attackGap = atkHoldDur + 20L
+                attackGap = atkHoldDur + 12L
             }
             val (x, y) = Layout.get(c)
             if (c in AIMED && self != null) {
@@ -356,11 +359,11 @@ object ActionExecutor {
                     }
                     null -> {}
                 }
-                if (HeroKit.shouldRecastTap(gs.ownHero, c)) {
+                if (HeroKit.shouldRecastTap(gs.ownHero, c) || (gs.ownHero == "Yu Zhong" && c == "ult")) {
                     mode = CastMode.TAP
                 }
                 val isDashSkill = (d.intent == Intent.RETREAT || c == HeroDb.dashSlot(gs.ownHero) || SkillBook.get(gs.ownHero)[c]?.kind == SkillKind.DASH)
-                if (isDashSkill && mode == CastMode.TAP && !HeroKit.shouldRecastTap(gs.ownHero, c) &&
+                if (isDashSkill && mode == CastMode.TAP && !HeroKit.shouldRecastTap(gs.ownHero, c) && !(gs.ownHero == "Yu Zhong" && c == "ult") &&
                     (d.intent == Intent.RETREAT || d.targetX >= 0f || d.moveX != 0f || d.moveY != 0f)
                 ) {
                     mode = CastMode.AIM
@@ -370,21 +373,21 @@ object ActionExecutor {
                 val act: Act = when {
                     special != null -> {
                         val specDur = if (special is Act.SkillAim) special.totalMs else CastTiming.TAP_HOLD_MS
-                        holdUntil = nowMs + specDur + 25L
+                        holdUntil = nowMs + specDur + 12L
                         special
                     }
                     mode == CastMode.HOLD -> {
                         val hold = SkillBook.holdMs(gs.ownHero, c).coerceAtLeast(CastTiming.AIM_LONG_DIR_HOLD_MS)
-                        holdUntil = nowMs + CastTiming.AIM_PRESS_HOLD_MS + hold + 25L
+                        holdUntil = nowMs + CastTiming.AIM_PRESS_HOLD_MS + hold + 12L
                         aimDrag(c, x, y, self.x, self.y, d, gs, hold, longRange = true)
                     }
                     mode == CastMode.AIM && Cfg.aimSkills -> {
                         val dirHold = if (longRange) CastTiming.AIM_LONG_DIR_HOLD_MS else CastTiming.AIM_SHORT_DIR_HOLD_MS
-                        holdUntil = nowMs + CastTiming.AIM_PRESS_HOLD_MS + dirHold + 25L
+                        holdUntil = nowMs + CastTiming.AIM_PRESS_HOLD_MS + dirHold + 12L
                         aimDrag(c, x, y, self.x, self.y, d, gs, dirHold, longRange = longRange)
                     }
                     else -> {
-                        holdUntil = nowMs + CastTiming.TAP_HOLD_MS + 20L
+                        holdUntil = nowMs + CastTiming.TAP_HOLD_MS + 10L
                         Act.Tap(x, y, 0L, CastTiming.TAP_HOLD_MS)
                     }
                 }
@@ -398,7 +401,7 @@ object ActionExecutor {
                 skillCastDuration = castDur
                 checks.add(Check(c, mode, nowMs + castDur, d.targetId, d.targetHp, SkillBook.get(gs.ownHero)[c]?.travelSec ?: 0.3f, gs.ownHero, prev = prevSkill))
                 prevSkill = c
-                t += castDur + 25L
+                t += castDur + 12L
                 CooldownTracker.markCast(c)
                 HeroKit.onSkillCast(gs.ownHero, c, d.targetX, d.targetY)
                 aiCastAt[c] = nowMs + castDur
@@ -437,7 +440,27 @@ object ActionExecutor {
 
     private fun kitCasts(d: TacticalDecision, gs: GameState): List<String> {
         val hero = gs.ownHero
+        // 1. Yu Zhong Black Dragon Flight (v37.15): skills s1/s2/s3 and basic attacks are locked
+        if (HeroKit.isYuZhongBlackDragonFlight(gs)) {
+            return d.casts.filter { it == "ult" || it == "spell" }
+        }
         var out = d.casts.filter { it !in HeroKit.ALL || HeroKit.has(hero, it) }
+        // 2. Active Continuous-Damage Skill Guard (Balmond s2, Cici s1, X.Borg s1/ult, Odette ult, Chang'e ult, Claude ult, Akai ult, etc.) (v37.15):
+        // Never allow another skill (or basic attack when allowBasicAttack = false) to interrupt an active continuous-damage skill!
+        HeroKit.activeContinuousSkill(gs)?.let { cont ->
+            if (d.intent != Intent.RETREAT) {
+                val canExecuteWithUlt = cont.executeUltHp > 0f && d.intent == Intent.ENGAGE && d.targetHp in 0f..cont.executeUltHp
+                out = out.filter { c ->
+                    when (c) {
+                        "spell" -> true
+                        "ult" -> canExecuteWithUlt
+                        "attack" -> cont.allowBasicAttack
+                        in HeroKit.ALL -> false
+                        else -> true
+                    }
+                }
+            }
+        }
         if (HeroKit.rangedNow(hero) != null && (hero == "Roger" || hero == "Selena")) {
             val nearest = gs.enemies.minOfOrNull { gs.distToSelf(it.x, it.y) } ?: -1f
             val fighting = d.intent == Intent.ENGAGE || d.intent == Intent.AMBUSH
@@ -571,10 +594,19 @@ object ActionExecutor {
     }
 
     // When to keep the thumb on the joystick.
-    // IMPORTANT (v37.09): Never keep holding the joystick when attacking a stationary entity
-    // (minions, jungle monsters, turtle/lord, or tower) or when moveX == 0 && moveY == 0 in PVE/Push!
+    // IMPORTANT (v37.09 / v37.15): Never keep holding the joystick when attacking a stationary entity
+    // (minions, jungle monsters, turtle/lord, or tower), when a stationary channel (Odette ult, Gord ult, etc.)
+    // or Blue Recall bar is active, or when moveX == 0 && moveY == 0 in PVE/Push!
     private fun holdDirection(d: TacticalDecision): Pair<Float, Float> {
         val now = System.currentTimeMillis()
+        val gs = GameStateTracker.state
+        val activeCont = HeroKit.activeContinuousSkill(gs)
+        if (activeCont != null && !activeCont.allowMove && d.intent != Intent.RETREAT) {
+            return 0f to 0f
+        }
+        if (gs.recallBarPct > 0f && d.intent == Intent.RECALL) {
+            return 0f to 0f
+        }
         if (d.moveX != 0f || d.moveY != 0f) { lastMoveAt = now; return d.moveX to d.moveY }
         // If moveX == 0 and moveY == 0, stand completely still for ALL stationary / farming / objective / channel intents!
         val stay = when (d.intent) {
@@ -583,19 +615,21 @@ object ActionExecutor {
             else -> false
         }
         if (stay || !Cfg.smoothJoystick) return 0f to 0f
-        val self = GameStateTracker.state.self
+        val self = gs.self
         if (d.intent == Intent.ENGAGE && d.targetX >= 0f && self != null) {
-            val dist = GameStateTracker.state.distToSelf(d.targetX, d.targetY)
-            val atkR = HeroDb.profile(GameStateTracker.state.ownHero).attackRange
-            // If a melee hero is already right on top of the enemy hero (dist <= atkR * 0.85f), stand and swing so attacks don't cancel!
-            if (!HeroDb.isRanged(GameStateTracker.state.ownHero) && dist <= atkR * 0.85f) {
+            val dist = gs.distToSelf(d.targetX, d.targetY)
+            val atkR = HeroDb.profile(gs.ownHero).attackRange
+            val spinKeepMoving = HeroKit.isYuZhongBlackDragonFlight(gs) || (activeCont != null && activeCont.allowMove && !activeCont.allowBasicAttack)
+            // If a melee hero is already right on top of the enemy hero (dist <= atkR * 0.85f), stand and swing so attacks don't cancel
+            // (UNLESS spinning with Balmond s2 / Akai ult / X.Borg ult / Yu Zhong Black Dragon, where we keep steering onto the enemy down to dist <= 0.04f!)
+            if (!HeroDb.isRanged(gs.ownHero) && dist <= (if (spinKeepMoving) 0.04f else atkR * 0.85f)) {
                 return 0f to 0f
             }
             val ax = (d.targetX - self.x) * AccessibilityController.screenAspect()
             val ay = d.targetY - self.y
             val l = kotlin.math.hypot(ax, ay)
             if (l > 0.02f) {
-                if (!HeroDb.isRanged(GameStateTracker.state.ownHero)) {
+                if (!HeroDb.isRanged(gs.ownHero)) {
                     lastMoveAt = now
                     return (ax / l) to (ay / l)
                 }
@@ -661,7 +695,7 @@ object ActionExecutor {
         }
         mx = headX; my = headY; headIntent = intent
         if (joyDirX == 0f && joyDirY == 0f) walkSince = now
-        if (Cfg.wallAvoid && now - walkSince > 850 && now - GameStateTracker.lastMotionAt > 650 && now > detourUntil + 350) {
+        if (Cfg.wallAvoid && !HeroKit.isYuZhongBlackDragonFlight(GameStateTracker.state) && now - walkSince > 850 && now - GameStateTracker.lastMotionAt > 650 && now > detourUntil + 350) {
             detourUntil = now + 650
             detourSign = -detourSign
             GameStateTracker.state.minimapSelf?.let { com.example.mlbbresearch.vision.WallMap.markBlocked(it, mx, my) }
@@ -739,30 +773,34 @@ object ActionExecutor {
         lastReadySeenAt = now
         if (upgradeWindowStartAt == 0L) upgradeWindowStartAt = now
 
-        // Never interrupt an active combo or skill hold gesture to tap an upgrade button!
-        if (now < holdUntil || com.example.mlbbresearch.ai.ComboRunner.running || now < QuickBuySwap.busyUntil) return
-        if (now - lastUpgradeTap < 650L) return
+        val ultReadyNow = "ult" in ready
+        // Never interrupt an active touch hold on screen; allow "ult" to upgrade immediately between combo touches so Lv 4/8/12 unlocks mid-fight!
+        if (now < holdUntil || now < QuickBuySwap.busyUntil) return
+        if (!ultReadyNow && com.example.mlbbresearch.ai.ComboRunner.running) return
+        if (now - lastUpgradeTap < (if (ultReadyNow) 380L else 550L)) return
 
         val hasStandardUlt = HeroKit.has(s.ownHero, "ult") && Layout.kitSize >= 3 && s.ownHero != "Julian"
-        // If "ult" is not in ready yet on the first 220 ms of a level-up, wait briefly so "ult" can finish popping in at Lv 4 / 8 / 12
-        if ("ult" !in ready && hasStandardUlt && now - upgradeWindowStartAt < 220L) return
+        val isUltSpikeLevel = s.level in setOf(4, 8, 12) || (s.level in setOf(3, 7, 11) && s.xp >= 0.80f)
+        val ultWaitMs = if (isUltSpikeLevel) 520L else 260L
+        // Wait briefly on a level-up before spending the skill point on s1/s2 so "ult" is always upgraded first at Lv 4 / 8 / 12!
+        if (!ultReadyNow && hasStandardUlt && now - upgradeWindowStartAt < ultWaitMs) return
 
         val order = com.example.mlbbresearch.game.SkillOrder.of(s.ownHero)
-        // ONLY pick "ult" when "ult" is actually present in `ready`!
-        val slot = if ("ult" in ready) {
+        // Prioritize "ult" above all other skills whenever its golden "+" badge is visible!
+        val slot = if (ultReadyNow) {
             "ult"
         } else {
             order.firstOrNull { it in ready } ?: ready.first()
         }
 
-        // Guard against repeating the same tap more than twice if an icon is covered or non-responsive
-        if (slot == lastUpgradedSlot && sameSlotTaps >= 2 && now - lastUpgradeTap < 4500L) return
+        // Guard against repeating the same tap more than 3 times if an icon is covered or non-responsive
+        if (slot == lastUpgradedSlot && sameSlotTaps >= 3 && now - lastUpgradeTap < 3500L) return
         if (slot == lastUpgradedSlot) sameSlotTaps++ else { lastUpgradedSlot = slot; sameSlotTaps = 1 }
 
         lastUpgradeTap = now
         val (x, y) = com.example.mlbbresearch.vision.ScreenReader.plusPos[slot] ?: Layout.upgradePoint(slot)
-        perform(listOf(Act.Tap(x, y, 0L, 55L)))
-        note("Upgrade skill: $slot")
+        perform(listOf(Act.Tap(x, y, 0L, 45L)))
+        note("Upgrade skill: $slot" + if (slot == "ult") " (Ultimate prioritized)" else "")
     }
 
     // ---------------- standard match: hero, battle spell, emblem ----------------
