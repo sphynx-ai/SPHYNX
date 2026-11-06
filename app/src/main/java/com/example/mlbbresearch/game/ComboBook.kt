@@ -322,22 +322,32 @@ object ComboBook {
         Role.UNKNOWN to "s1 > s2 > ult > a"
     )
 
-    // Pure map lookup for built-in burst combo (never calls MetaStore or HeroDb.dashSlot) (v37.12)
-    fun builtInBurst(hero: String?): String {
-        val h = HeroDb.match(hero) ?: hero ?: "Unknown"
-        return builtIn[h] ?: roleDefault[HeroDb.role(h)] ?: "s1 > s2 > ult > a"
+    // Ensures every combo sequence starts with a basic attack ("a") so the AI always locks onto and hits the target first (v37.14)
+    fun withLeadingAttack(combo: String): String {
+        val trimmed = combo.trim()
+        if (trimmed.isEmpty()) return "a"
+        val firstToken = trimmed.split(">", ",", "→", "+", "-", " ").firstOrNull { it.isNotBlank() }?.trim()?.lowercase()
+        return if (firstToken in setOf("a", "ba", "aa", "basic", "attack")) trimmed else "a > $trimmed"
     }
 
-    // Builds the full situational HeroComboSet (burst, poke, chase, pre4, retreat, and named variants) for any hero
+    // Pure map lookup for built-in burst combo (never calls MetaStore or HeroDb.dashSlot) (v37.14)
+    fun builtInBurst(hero: String?): String {
+        val h = HeroDb.match(hero) ?: hero ?: "Unknown"
+        return withLeadingAttack(builtIn[h] ?: roleDefault[HeroDb.role(h)] ?: "a > s1 > s2 > ult > a")
+    }
+
+    // Builds the full situational HeroComboSet (burst, poke, chase, pre4, retreat, and named variants) for any hero,
+    // always starting every combo with a basic attack ("a > ...") (v37.14).
     fun comboSet(hero: String?): HeroComboSet {
         val h = HeroDb.match(hero) ?: hero ?: "Unknown"
         val role = HeroDb.role(h)
-        val burst = builtIn[h] ?: roleDefault[role] ?: "s1 > s2 > ult > a"
+        val rawBurst = builtIn[h] ?: roleDefault[role] ?: "s1 > s2 > ult > a"
+        val burst = withLeadingAttack(rawBurst)
         val dash = HeroDb.builtInDashSlot(h)?.takeIf { it != "none" }
         val four = HeroKit.has(h, "s3")
         val two = HeroKit.count(h) == 2
 
-        val pre4 = when {
+        val pre4 = withLeadingAttack(when {
             two -> "s1 > s2 > a"
             h == "Fanny" -> "s2 > s2 > s1 > a"
             h == "Gusion" -> "s1 > s2 > s1 > s2 > a"
@@ -346,9 +356,9 @@ object ComboBook {
             four -> "s1 > s2 > s3 > a"
             dash == "s2" -> "s2 > s1 > a"
             else -> "s1 > s2 > a"
-        }
+        })
 
-        val poke = when {
+        val poke = withLeadingAttack(when {
             two -> "s2 > s1 > a"
             h == "Kagura" -> "s1 > ult > s1 > a"
             h == "Hayabusa" -> "s2 > s1 > a > s2"
@@ -357,24 +367,24 @@ object ComboBook {
             role == Role.MARKSMAN -> "s1 > a > s2 > a"
             dash == "s2" -> "s1 > a > s2"
             else -> "s1 > a > s2 > a"
-        }
+        })
 
-        val chase = when {
+        val chase = withLeadingAttack(when {
             two -> "s1 > s2 > a"
             dash != null && dash != "ult" -> {
-                val rest = burst.split(">").map { it.trim() }.filter { it.isNotEmpty() && it != dash }
-                (listOf(dash) + rest).joinToString(" > ")
+                val rest = rawBurst.split(">").map { it.trim() }.filter { it.isNotEmpty() && it != dash && it != "a" }
+                (listOf(dash) + rest + "a").joinToString(" > ")
             }
-            else -> burst
-        }
+            else -> rawBurst
+        })
 
-        val retreat = when {
+        val retreat = withLeadingAttack(when {
             dash != null && dash != "ult" -> if (dash == "s1") "s2 > s1" else "s1 > $dash"
             role == Role.TANK || role == Role.SUPPORT -> "s2 > s1"
             else -> "s1 > s2"
-        }
+        })
 
-        val customVars = specialVariants[h] ?: listOf(
+        val customVars = (specialVariants[h]?.map { (lbl, seq) -> lbl to withLeadingAttack(seq) }) ?: listOf(
             "Burst / All-In (Lv4+)" to burst,
             "Chase / Finisher" to chase,
             "Poke / Short Trade" to poke,
@@ -388,21 +398,22 @@ object ComboBook {
     // Dynamic form-aware / situational built-in combo for Julian, Selena, Roger, Suyou, Hirara, and Sora
     fun dynamicComboText(hero: String?, enemiesClose: Int = 1, selfHp: Float = 1f, targetDist: Float = 0.25f): String? {
         if (hero == null || Cfg.manualCombo(hero) != null) return null
-        return when (hero) {
+        val raw = when (hero) {
             "Julian" -> HeroKit.julianCombo(enemiesClose, selfHp, targetDist)
             "Selena" -> if (HeroKit.formOf("Selena") == 1) {
-                "s2 > s1 > s2 > a > ult"
+                "a > s2 > s1 > s2 > a > ult"
             } else {
-                "s1 > s2 > ult > s2 > s1 > s2 > a"
+                "a > s1 > s2 > ult > s2 > s1 > s2 > a"
             }
             "Roger" -> if (HeroKit.formOf("Roger") == 1) {
-                "s2 > s1 > a > a"
+                "a > s2 > s1 > a > a"
             } else {
-                "s1 > s2 > a > ult > s2 > s1 > a > a"
+                "a > s1 > s2 > a > ult > s2 > s1 > a > a"
             }
-            "Hirara" -> if (targetDist > 0.30f) "s1 > s2 > a" else "s2 > s1 > a"
+            "Hirara" -> if (targetDist > 0.30f) "a > s1 > s2 > a" else "a > s2 > s1 > a"
             else -> null
         }
+        return raw?.let { withLeadingAttack(it) }
     }
 
     // Selects the active combo for the current situation (v37.11):
@@ -428,9 +439,9 @@ object ComboBook {
                 if (parsed.isNotEmpty()) {
                     if (Cfg.autoSituationalCombo && !ultReady && !HeroKit.canRecastNow(hero, "ult") && parsed.any { it.slot != "ult" }) {
                         val noUlt = parsed.filter { it.slot != "ult" }.joinToString(" > ") { it.slot }
-                        return noUlt to "manual input (no-ult adapted)"
+                        return withLeadingAttack(noUlt) to "manual input (no-ult adapted)"
                     }
-                    return manual to "manual input (yours)"
+                    return withLeadingAttack(manual) to "manual input (yours)"
                 }
             }
             val set = comboSet(hero)
@@ -469,7 +480,7 @@ object ComboBook {
     fun text(hero: String?): Pair<String, String> {
         if (hero != null) {
             Cfg.manualCombo(hero)?.let { manual ->
-                if (parse(manual).isNotEmpty()) return manual to "manual input (yours)"
+                if (parse(manual).isNotEmpty()) return withLeadingAttack(manual) to "manual input (yours)"
             }
             val set = comboSet(hero)
             val mode = if (Cfg.autoSituationalCombo) "built-in auto-situational (${set.variants.size} combos)" else "built-in primary"
@@ -481,13 +492,15 @@ object ComboBook {
     fun steps(hero: String?, overrideText: String? = null): List<ComboStep> {
         val hasManual = hero != null && Cfg.manualCombo(hero)?.let { parse(it).isNotEmpty() } == true
         val four = HeroKit.has(hero, "s3")
-        val rawText = overrideText ?: text(hero).first
+        val rawText = withLeadingAttack(overrideText ?: text(hero).first)
         var st = parse(rawText).map { if (it.slot == "s3" && !four) ComboStep("ult", it.waitMs) else it }
             .filter { it.slot !in HeroKit.ALL || HeroKit.has(hero, it.slot) }
-        // Only auto-insert s3 on 4-skill heroes when using a generic default, never overwrite user manual input
         if (!hasManual && four && st.none { it.slot == "s3" }) {
             val i = st.indexOfFirst { it.slot == "ult" }.let { if (it < 0) st.size else it }
             st = st.take(i) + ComboStep("s3", 350L) + st.drop(i)
+        }
+        if (st.firstOrNull()?.slot != "a") {
+            st = listOf(ComboStep("a", 220L)) + st
         }
         return st
     }

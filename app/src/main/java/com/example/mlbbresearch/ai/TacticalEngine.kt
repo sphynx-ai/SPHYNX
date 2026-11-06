@@ -1140,8 +1140,8 @@ object TacticalEngine {
             val (mx, my) = if (d > monStopDist || !inLeash(s, m)) toward(s, m.x, m.y) else (0f to 0f)
             return TacticalDecision(Intent.JUNGLE, mx, my, casts, m.x, m.y, "monster", m.hp, -1, JungleNav.status)
         }
-        // Full-HP creep (no HP bar yet): press attack immediately and aim skills toward the memorized pit monster direction!
-        val startCasts = if (JungleNav.atCampMs > 120L) casts else arrayListOf("attack")
+        // Full-HP creep / buff (no HP bar yet): ALWAYS start with a Basic Attack first for the opening 320 ms before casting skills! (v37.14)
+        val startCasts = if (JungleNav.atCampMs > 320L) casts else arrayListOf("attack")
         val self = s.self
         val pitDir = com.example.mlbbresearch.game.SceneryMap.pitAimDirection(s)
         val aimX = if (self != null && pitDir != null) (self.x + pitDir.first * 0.16f / s.aspect).coerceIn(0.1f, 0.9f) else -1f
@@ -1164,18 +1164,23 @@ object TacticalEngine {
     // the monster last fought: its bar at the last 1-3% can flicker out of sight
     private var lastMonX = -1f; private var lastMonY = -1f; private var lastMonHp = 1f; private var lastMonAt = 0L
     private var lastMonSpecies = ""; private var lastMonBoss = false
+    private var monComboStartedAt = 0L
     // Retribution is kept for the Purple / Orange Buffs, the Turtle and the Lord (and hero fights)
     private fun retriWorthy(species: String, boss: Boolean) = boss || com.example.mlbbresearch.game.JungleDb.isBuff(species) ||
         species.isEmpty() && JungleNav.atBuff
 
     private fun hitMonster(s: GameState, p: HeroProfile, m: Seen, retriPct: Int, intent: Intent, why: String): TacticalDecision {
+        if (s.ts - lastMonAt > 1600L || s.dist(m.x, m.y, lastMonX, lastMonY) > 0.22f) {
+            monComboStartedAt = s.ts
+        }
         lastMonX = m.x; lastMonY = m.y; lastMonHp = m.hp; lastMonAt = s.ts; lastMonSpecies = m.species; lastMonBoss = m.hero
         val d = s.distToSelf(m.x, m.y)
         val stopDist = maxOf(p.attackRange * 1.85f, if (p.ranged) 0.42f else 0.34f)
         val casts = ArrayList<String>()
-        // Press attack as soon as within approach range (0.48f) so MLBB auto-locks onto full-HP creeps immediately
+        // Always start attacking jungle monsters and buffs with a Basic Attack first (first 260 ms), then chain skills! (v37.14)
         if (d <= maxOf(stopDist * 1.35f, 0.48f)) casts.add("attack")
-        if (d <= maxOf(stopDist * 1.25f, 0.42f)) {
+        val openingBasicDone = s.ts - monComboStartedAt >= 260L && m.hp < 0.995f
+        if (openingBasicDone && d <= maxOf(stopDist * 1.25f, 0.42f)) {
             val ultToo = CooldownTracker.lowCdUlt(s.ownHero)
             p.waveClearSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
             for (sk in p.combo) if ((sk != "ult" || ultToo) && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
