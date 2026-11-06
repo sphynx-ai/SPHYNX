@@ -121,9 +121,20 @@ object HeroDb {
         "Kalea" to "s2"
     )
 
+    // Direct non-recursive built-in dash lookup (never calls MetaStore) (v37.12)
+    fun builtInDashSlot(hero: String?): String? {
+        val chosen = if (hero == null) "auto" else Cfg.heroDash(hero)
+        val slot = if (chosen != "auto") chosen else dashTable[hero] ?: when (role(hero)) {
+            Role.FIGHTER -> "s1"
+            Role.ASSASSIN, Role.TANK -> "s2"
+            else -> "none"
+        }
+        return if (slot == "none") null else slot
+    }
+
     fun dashSlot(hero: String?): String? {
         val chosen = if (hero == null) "auto" else Cfg.heroDash(hero)
-        val slot = if (chosen != "auto") chosen else MetaStore.hero(hero)?.dash ?: dashTable[hero] ?: when (role(hero)) {
+        val slot = if (chosen != "auto") chosen else dashTable[hero] ?: MetaStore.hero(hero)?.dash ?: when (role(hero)) {
             Role.FIGHTER -> "s1"
             Role.ASSASSIN, Role.TANK -> "s2"
             else -> "none"

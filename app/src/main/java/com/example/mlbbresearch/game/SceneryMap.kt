@@ -304,8 +304,7 @@ object SceneryMap {
                         wallHits[idx] = 3
                         val wx = (idx % G + 0.5f) / G
                         val wy = (idx / G + 0.5f) / G
-                        WallMap.markSceneryWall(wx, wy)
-                    }
+                        }
                 }
             }
             o.optJSONArray("bushes")?.let { arr ->
@@ -316,8 +315,7 @@ object SceneryMap {
                     val by = b.optDouble("y", -1.0).toFloat()
                     if (bx in 0f..1f && by in 0f..1f) {
                         bushes.add(bx to by)
-                        WallMap.markSceneryBush(bx, by)
-                    }
+                        }
                 }
             }
             o.optJSONArray("towers")?.let { arr ->
