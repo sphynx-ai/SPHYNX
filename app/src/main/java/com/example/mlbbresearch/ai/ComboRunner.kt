@@ -118,22 +118,26 @@ object ComboRunner {
         val dist = if (tx >= 0f) s.distToSelf(tx, ty) else 9f
 
         if (!running) {
-            val st = buildComboSteps(s.ownHero, kit, s, dist, thp, p)
-            val firstReadyIdx = st.indexOfFirst {
+            var st = buildComboSteps(s.ownHero, kit, s, dist, thp, p)
+            if (st.firstOrNull()?.slot != "a") {
+                st = listOf(ComboStep("a", 220L)) + st
+            }
+            val firstReadySkillIdx = st.indexOfFirst {
                 it.slot != "a" && it.slot != "spell" && (CooldownTracker.ready(it.slot, p) || HeroKit.canRecastNow(s.ownHero, it.slot))
             }
-            if (firstReadyIdx < 0) return d
-            val firstSlot = st[firstReadyIdx].slot
+            if (firstReadySkillIdx < 0) return d
+            val firstSlot = st[firstReadySkillIdx].slot
             val r = maxOf(kit[firstSlot]?.range ?: p.engageRange, p.engageRange)
             if (dist > r * 1.35f) { status = "walking into $firstSlot range"; return d }
-            steps = st
-            idx = firstReadyIdx
+            // Always begin the combo with the opening Basic Attack ("a") followed by the ready skills! (v37.14)
+            steps = listOf(ComboStep("a", 220L)) + st.drop(firstReadySkillIdx)
+            idx = 0
             nextAt = now
             startedAt = now
             lastEnemySeenAt = now
             used.clear()
             lastSlot = null
-            status = "combo started ($activeComboSource): ${ComboBook.format(st)}"
+            status = "combo started ($activeComboSource): ${ComboBook.format(steps)}"
         }
 
         // Reassess before every step (allow up to 12s for 10-dagger Gusion / 4-blade Ling combos)
@@ -178,10 +182,12 @@ object ComboRunner {
             while (idx < steps.size && burstN < 1 && guard++ < steps.size + 2) {
                 val st = steps[idx]
                 if (st.slot == "a") {
+                    val isOpeningAttack = idx == 0
                     idx++
-                    if (dist <= p.attackRange * 1.55f && "attack" !in casts) {
+                    // Always execute the opening basic attack (idx == 0) to lock onto the target before the first skill!
+                    if ((isOpeningAttack || dist <= maxOf(p.attackRange * 1.65f, 0.38f)) && "attack" !in casts) {
                         casts.add("attack")
-                        span = com.example.mlbbresearch.controller.CastTiming.ATTACK_HOLD_MS + 45L
+                        span = com.example.mlbbresearch.controller.CastTiming.ATTACK_HOLD_MS + 35L
                         burstN++
                         break
                     }

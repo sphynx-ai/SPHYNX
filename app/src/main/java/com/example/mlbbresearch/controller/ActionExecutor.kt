@@ -125,6 +125,13 @@ object ActionExecutor {
         val gen = generation
         var delay = 0L
         val (ax, ay) = Layout.get("attack")
+        // Always start the combo with a Basic Attack first (v37.14)
+        main.postDelayed({
+            if (gen != generation || com.example.mlbbresearch.ai.AiRuntime.playerOn) return@postDelayed
+            val svc = AccessibilityController.instance ?: return@postDelayed
+            try { svc.dispatch(listOf(Act.Tap(ax, ay, 0L, CastTiming.ATTACK_HOLD_MS)), true) } catch (x: Exception) { Diag.error("Test combo", x) }
+        }, 0L)
+        delay += CastTiming.ATTACK_HOLD_MS + 55L
         val testSkip = HashSet<String>()
         val specialNotes = ArrayList<String>()
         var lingBladeTestIdx = 0
@@ -264,7 +271,21 @@ object ActionExecutor {
         val baReliant = HeroDb.isBasicAttackReliant(gs.ownHero)
         val atkHoldDur = if (baReliant) CastTiming.CONTINUOUS_ATTACK_HOLD_MS else CastTiming.ATTACK_HOLD_MS
         val rawCasts = kitCasts(d, gs)
-        val casts = rawCasts.filter { it != "attack" } + rawCasts.filter { it == "attack" }
+        val vsHeroOrMonster = d.intent == Intent.ENGAGE || d.intent == Intent.JUNGLE || d.intent == Intent.OBJECTIVE
+        if (!vsHeroOrMonster) {
+            if (nowMs - lastCombatTickAt > 1500L) openedWithBasicAttack = false
+        } else {
+            lastCombatTickAt = nowMs
+            if (nowMs - lastAttackTap > 2200L) openedWithBasicAttack = false
+        }
+        // Always start the combo with a Basic Attack first when attacking enemy heroes or jungle monsters/buffs! (v37.14)
+        val needOpeningBasicAttack = vsHeroOrMonster && !openedWithBasicAttack && "attack" in rawCasts
+        val casts = if (needOpeningBasicAttack) {
+            openedWithBasicAttack = true
+            listOf("attack")
+        } else {
+            rawCasts.filter { it != "attack" } + rawCasts.filter { it == "attack" }
+        }
         val skip = HashSet<String>()
         var t = 0L
         var prevSkill: String? = null
@@ -682,6 +703,8 @@ object ActionExecutor {
     }
 
     private var zeroMoveSince = 0L
+    private var openedWithBasicAttack = false
+    private var lastCombatTickAt = 0L
 
     // ---------------- player: level up skills ----------------
     // Safe Ultimate Upgrade Priority (v37.13):
