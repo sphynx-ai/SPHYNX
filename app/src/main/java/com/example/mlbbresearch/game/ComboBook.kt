@@ -322,12 +322,18 @@ object ComboBook {
         Role.UNKNOWN to "s1 > s2 > ult > a"
     )
 
+    // Pure map lookup for built-in burst combo (never calls MetaStore or HeroDb.dashSlot) (v37.12)
+    fun builtInBurst(hero: String?): String {
+        val h = HeroDb.match(hero) ?: hero ?: "Unknown"
+        return builtIn[h] ?: roleDefault[HeroDb.role(h)] ?: "s1 > s2 > ult > a"
+    }
+
     // Builds the full situational HeroComboSet (burst, poke, chase, pre4, retreat, and named variants) for any hero
     fun comboSet(hero: String?): HeroComboSet {
         val h = HeroDb.match(hero) ?: hero ?: "Unknown"
         val role = HeroDb.role(h)
         val burst = builtIn[h] ?: roleDefault[role] ?: "s1 > s2 > ult > a"
-        val dash = HeroDb.dashSlot(h)?.takeIf { it != "none" }
+        val dash = HeroDb.builtInDashSlot(h)?.takeIf { it != "none" }
         val four = HeroKit.has(h, "s3")
         val two = HeroKit.count(h) == 2
 

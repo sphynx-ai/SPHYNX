@@ -66,8 +66,8 @@ object MetaStore {
             val o = JSONObject(txt)
             if (isAdvanced(o.optString("patch", ""))) return null
             val dash = o.optString("dash", "").lowercase().trim().takeIf { it in setOf("s1", "s2", "ult", "none") }
-            // Online combo updates are disabled (v37.11): always display Manual Input (if set) or Built-In combo
-            val combo = ComboBook.text(hero).first
+            // Online combo updates are disabled (v37.12): pure lookup of Manual Input or Built-In burst (no recursion)
+            val combo = Cfg.manualCombo(hero) ?: ComboBook.builtInBurst(hero)
             HeroMeta(hero, o.optString("patch", "?"), o.optLong("at"), ItemClass.advancedOnly(list(o, "build")), o.optString("emblem", ""),
                 SpellDb.match(o.optString("spell", "")), Lane.of(o.optString("lane", "").lowercase().trim()),
                 combo, dash, list(o, "laning"), list(o, "jungle"), list(o, "rotation"),
