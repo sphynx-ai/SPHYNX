@@ -116,12 +116,22 @@ object MinimapAnalyzer {
             val me = liveSelf(px, w, h, allyRings)
             return MinimapInfo(rings.size, allyRings.size, rings, me, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves, icon, allyRings, lord, turtle)
         }
-        val heroDots = dots.filter { d -> CLOUDS.none { kotlin.math.hypot(it.first - d.first, it.second - d.second) < 0.06f } &&
-            st.towers.none { kotlin.math.hypot(it.x - d.first, it.y - d.second) < 0.05f } &&
+        val baseHeroDots = dots.filter { d -> CLOUDS.none { kotlin.math.hypot(it.first - d.first, it.second - d.second) < 0.06f } &&
+            st.towers.none { kotlin.math.hypot(it.x - d.first, it.y - d.second) < 0.045f } &&
                 st.enemyWaves.none { kotlin.math.hypot(it.first - d.first, it.second - d.second) < 0.02f }
+        }.toMutableList()
+        // Green-Ring Occlusion Recovery (v37.16):
+        // When our own Green Ring overlaps an enemy hero on the minimap during a close fight, most of the enemy red ring
+        // is covered by the green ring. Scan at 1px resolution around `self` for partially occluded red ring arcs!
+        if (self != null) {
+            for (occ in occludedEnemiesNearSelf(px, w, h, self, st.towers, st.base)) {
+                if (baseHeroDots.none { kotlin.math.hypot(it.first - occ.first, it.second - occ.second) < 0.045f }) {
+                    baseHeroDots.add(occ)
+                }
+            }
         }
         val (lord, turtle) = pits(px, w, h)
-        return MinimapInfo(heroDots.size, allies, heroDots, self, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves, icon, blue, lord, turtle)
+        return MinimapInfo(baseHeroDots.size, allies, baseHeroDots, self, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves, icon, blue, lord, turtle)
     }
 
     // Fast every-frame self-position refresh (v37.11):
@@ -147,8 +157,14 @@ object MinimapAnalyzer {
         val smoothed = if (pSelf != null && kotlin.math.hypot(rawMe.first - pSelf.first, rawMe.second - pSelf.second) < 0.08f) {
             (pSelf.first * 0.30f + rawMe.first * 0.70f).coerceIn(0f, 1f) to (pSelf.second * 0.30f + rawMe.second * 0.70f).coerceIn(0f, 1f)
         } else rawMe.first.coerceIn(0f, 1f) to rawMe.second.coerceIn(0f, 1f)
+        val updatedDots = prev.enemyDots.toMutableList()
+        for (occ in occludedEnemiesNearSelf(px, w, h, smoothed, prev.towers, prev.enemyBase)) {
+            if (updatedDots.none { kotlin.math.hypot(it.first - occ.first, it.second - occ.second) < 0.045f }) {
+                updatedDots.add(occ)
+            }
+        }
         return MinimapInfo(
-            prev.enemies, prev.allies, prev.enemyDots, smoothed, prev.camps, prev.towers, prev.enemyBase,
+            updatedDots.size, prev.allies, updatedDots, smoothed, prev.camps, prev.towers, prev.enemyBase,
             prev.allyWaves, prev.allyTowers, prev.enemyWaves, lastIcon, prev.allyDots, prev.lordIcon, prev.turtleIcon
         )
     }
@@ -289,19 +305,28 @@ object MinimapAnalyzer {
         val me = lastIcon?.let { ((it[0] - l) / mw) to ((it[1] * w / h - t) / mh) } ?: ring?.let { inMap(it) }
 
         val out = ArrayList<Camp>()
-        fun add(bl: ButtonDetector.Blob, buff: Boolean) {
+        val ringRadMap = lastIcon?.let { (it[2] / mw).coerceIn(0.020f, 0.055f) } ?: 0.032f
+        fun add(bl: ButtonDetector.Blob, buff: Boolean, fromGreen: Boolean = false) {
             val (x, y) = inMap(bl)
             val enemy = y < x - 0.03f                        // the enemy side of the river
             if (!enemy && y < x + 0.03f) return              // on the river itself
             if (x < 0.15f || y > 0.88f) return               // EXP / gold lane edges
             if (enemy && (y < 0.12f || x > 0.85f)) return    // their EXP / gold lane edges
             if (kotlin.math.abs(x + y - 1f) < 0.08f) return  // mid lane
-            if (me != null && kotlin.math.hypot(x - me.first, y - me.second) < 0.032f) return
-            out.add(Camp(x, y, buff, enemy))
+            // Green-Ring Occlusion Fix (v37.16):
+            // Never discard magenta buff icons or cyan creep icons under `me`, and for green creep dots only skip
+            // fragments that sit right on the green ring circle itself (so a creep dot inside or next to the green ring is kept!).
+            if (fromGreen && me != null) {
+                val dMe = kotlin.math.hypot(x - me.first, y - me.second)
+                if (kotlin.math.abs(dMe - ringRadMap) < 0.011f) return
+            }
+            if (out.none { kotlin.math.hypot(it.x - x, it.y - y) < 0.028f }) {
+                out.add(Camp(x, y, buff, enemy))
+            }
         }
-        for (bl in ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { isMagenta(it) }) if (bl.count >= 8) add(bl, true)
-        for (bl in green) if (bl.w / mw < 0.035f && bl.count in 3..10) add(bl, false)
-        for (bl in ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { isCyan(it) }) if (bl.count in 3..10) add(bl, false)
+        for (bl in ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { isMagenta(it) }) if (bl.count >= 6) add(bl, true, false)
+        for (bl in green) if (bl.w / mw < 0.035f && bl.count in 3..12) add(bl, false, true)
+        for (bl in ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { isCyan(it) }) if (bl.count in 3..12) add(bl, false, false)
         return me to out
     }
 
@@ -410,19 +435,23 @@ object MinimapAnalyzer {
         fun cloud(p: Pair<Float, Float>) = CLOUDS.any { near(it, p, 0.06f) }
         fun onLane(p: Pair<Float, Float>) = !cloud(p) && p.first < 0.14f || p.first > 0.86f || p.second < 0.12f || p.second > 0.88f ||
             kotlin.math.abs(p.first + p.second - 1f) < 0.13f
+        // Canonical enemy outer tower spots on the minimap (EXP outer, MID outer, GOLD outer):
+        val outerSpots = listOf(0.275f to 0.042f, 0.606f to 0.404f, 0.933f to 0.714f)
+        fun isOuterSpot(p: Pair<Float, Float>) = outerSpots.any { near(it, p, 0.075f) }
+        // Calibrated on 1000033098/33099 (v37.16): untouched gold-plated enemy outer towers on the minimap
+        // have a coral/pinkish-gold shield tint (RGB ~185..234, 105..136, 115..136) where g and b reach ~135.
         val red = ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { p ->
             val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
-            rr >= 170 && g <= 110 && bb <= 120 && rr - g >= 80 || MinimapColors.matches(MinimapColors.Kind.ENEMY_TOWER, p)
+            rr >= 165 && g <= 142 && bb <= 145 && rr - g >= 65 && rr - bb >= 55 || MinimapColors.matches(MinimapColors.Kind.ENEMY_TOWER, p)
         }
         val base = red.filter { it.w / mw >= 0.075f && it.count >= 20 }.maxByOrNull { it.count }?.let { inMap(it) }
-        val redTowers = red.filter { it.count >= 12 && it.w / mw in 0.018f..0.07f }.map { inMap(it) }
+        val redTowers = red.filter { it.count >= 10 && it.w / mw in 0.015f..0.085f }.map { inMap(it) }
             .filter { tw -> (base == null || !near(tw, base, 0.08f)) && onLane(tw) }
-        // yellow tower icons: a yellow body with a RED cap = enemy tower with a gold bonus,
-        // a yellow body with a BLUE cap = one of your towers
+        // yellow / gold-plated tower icons: either a yellow body with a RED/BLUE cap OR a fully gold-plated outer tower on a lane!
         val yellowBlobs = ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { p ->
             val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
-            rr >= 200 && g >= 160 && bb <= 150 && rr - bb >= 80 && g - bb >= 50 || MinimapColors.matches(MinimapColors.Kind.BONUS_TOWER, p)
-        }.filter { it.count >= 8 && it.w / mw in 0.012f..0.07f }
+            rr >= 185 && g >= 135 && bb <= 150 && rr - bb >= 60 && g - bb >= 30 || MinimapColors.matches(MinimapColors.Kind.BONUS_TOWER, p)
+        }.filter { it.count >= 6 && it.w / mw in 0.012f..0.075f }
         val yellowEnemy = ArrayList<Pair<Float, Float>>()
         val yellowAlly = ArrayList<Pair<Float, Float>>()
         for (yb in yellowBlobs) {
@@ -431,34 +460,34 @@ object MinimapAnalyzer {
             var redCap = 0
             var blueCap = 0
             var yy = top - capH
-            while (yy < top) {
+            while (yy < top + capH * 0.4f) {
                 var xx = yb.cx - 0.02f * mw
                 while (xx <= yb.cx + 0.02f * mw) {
                     val xi = (xx * w).toInt().coerceIn(0, w - 1)
                     val yi = (yy * h).toInt().coerceIn(0, h - 1)
                     val p = px[yi * w + xi]
                     val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
-                    if (rr >= 190 && g <= 165 && rr - bb >= 90 && rr - g >= 50) redCap++
+                    if (rr >= 175 && g <= 165 && rr - bb >= 65 && rr - g >= 45) redCap++
                     if (bb >= 170 && rr <= 130 && bb - rr >= 60) blueCap++
                     xx += 1f / w
                 }
                 yy += 1f / h
             }
             val pos = inMap(yb)
-            // a tower icon has a coloured cap and stands upright; round dots (flying clouds,
-            // coins) and the Lord / turtle pit icon are not towers
-            if (redCap + blueCap < 2) continue
-            if (yb.h < yb.w * 1.05f) continue
             if (!onLane(pos)) continue
+            val fullGoldOuter = isOuterSpot(pos) && yb.count >= 7
+            if (!fullGoldOuter && (redCap + blueCap < 2 || yb.h < yb.w * 0.95f)) continue
             if (pos.second < pos.first - 0.02f) yellowEnemy.add(pos) else yellowAlly.add(pos)
         }
         // the river runs corner to corner from top-left to bottom-right: your half is below it
         // (y > x), the enemy half above it. Towers are told apart by side, not by colour
         // (both teams' outer towers can be drawn yellow).
         fun enemySide(p: Pair<Float, Float>) = p.second < p.first - 0.02f
-        val towers = redTowers.filter { enemySide(it) }.map { tw -> MapTower(tw.first, tw.second, yellowEnemy.any { near(it, tw, 0.05f) }) } +
-            yellowEnemy.filter { enemySide(it) }.filter { y -> redTowers.none { near(it, y, 0.05f) } && (base == null || !near(y, base, 0.08f)) }
-                .map { MapTower(it.first, it.second, true) }
+        val goldShieldActive = com.example.mlbbresearch.game.GameStateTracker.state.matchSec in -1..300
+        val towers = redTowers.filter { enemySide(it) }.map { tw ->
+            MapTower(tw.first, tw.second, yellowEnemy.any { near(it, tw, 0.055f) } || (goldShieldActive && isOuterSpot(tw)))
+        } + yellowEnemy.filter { enemySide(it) }.filter { y -> redTowers.none { near(it, y, 0.055f) } && (base == null || !near(y, base, 0.08f)) }
+            .map { MapTower(it.first, it.second, true) }
         // ally towers: compact solid blue icons (portrait rings are bigger, minion marks smaller)
         val blueAll = ButtonDetector.blobs(px, w, h, l, t, r, b, 1) { p ->
             val rr = (p shr 16) and 0xff; val g = (p shr 8) and 0xff; val bb = p and 0xff
@@ -477,6 +506,42 @@ object MinimapAnalyzer {
     }
 
     @Volatile private var lastIcon: FloatArray? = null
+
+    // 1px-resolution scan in the annulus around our own Green Ring on the minimap (v37.16):
+    // Detects enemy hero red portrait rings that are partially blocked/occluded by our Green Ring during close fights!
+    private fun occludedEnemiesNearSelf(
+        px: IntArray, w: Int, h: Int,
+        self: Pair<Float, Float>,
+        towers: List<MapTower>,
+        base: Pair<Float, Float>?
+    ): List<Pair<Float, Float>> {
+        val (l, t) = Layout.get("mapTL")
+        val (r, b) = Layout.get("mapBR")
+        val mw = r - l; val mh = b - t
+        if (mw < 0.03f || mh < 0.05f) return emptyList()
+        val rad = 0.068f
+        val sl = (l + (self.first - rad) * mw).coerceIn(l, r)
+        val sr = (l + (self.first + rad) * mw).coerceIn(l, r)
+        val st = (t + (self.second - rad) * mh).coerceIn(t, b)
+        val sb = (t + (self.second + rad) * mh).coerceIn(t, b)
+        val redBlobs = ButtonDetector.blobs(px, w, h, sl, st, sr, sb, 1) { p ->
+            val rr = (p shr 16) and 0xff; val gg = (p shr 8) and 0xff; val bb = p and 0xff
+            rr > 168 && gg < 96 && bb < 96 && rr - gg >= 75 && rr - bb >= 75
+        }
+        val out = ArrayList<Pair<Float, Float>>()
+        for (bl in redBlobs) {
+            if (bl.count !in 4..85) continue
+            val mx = ((bl.cx - l) / mw).coerceIn(0f, 1f)
+            val my = ((bl.cy - t) / mh).coerceIn(0f, 1f)
+            val dSelf = kotlin.math.hypot(mx - self.first, my - self.second)
+            if (dSelf > 0.072f) continue
+            if (CLOUDS.any { kotlin.math.hypot(it.first - mx, it.second - my) < 0.05f }) continue
+            if (towers.any { kotlin.math.hypot(it.x - mx, it.y - my) < 0.042f }) continue
+            if (base != null && kotlin.math.hypot(base.first - mx, base.second - my) < 0.07f) continue
+            out.add(mx to my)
+        }
+        return out
+    }
 
     // Kasa least-squares circle through the green ring pixels near a blob.
     // Returns x, y (y as a fraction of the WIDTH, so the circle stays round) and radius, as fractions of the width.

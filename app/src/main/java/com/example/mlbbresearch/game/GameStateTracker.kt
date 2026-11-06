@@ -249,133 +249,154 @@ object GameStateTracker {
         val canon = SpellDb.match(rawSpell) ?: return
         if (scoreboardSpell != canon) {
             scoreboardSpell = canon
-            Diag.info("Scoreboard: your battle spell icon = $canon (%.2f, wiki pictures)".format(score))
+            if (buttonSpell == null) iconSpell = canon
+            Diag.info("Recognised your battle spell on the scoreboard: $canon (%.2f, wiki pictures)".format(score))
             refreshNameMatchSpell()
         }
     }
 
-    // 4th priority: loading screen card spell icon verified against the 12 base wiki spell icons
+    // 4th priority: loading screen spell icon verified against the 12 base wiki spell icons
     fun onLoadingSpellVerified(rawSpell: String, score: Float) {
         val canon = SpellDb.match(rawSpell) ?: return
         if (loadingSpell != canon) {
             loadingSpell = canon
-            val confirmed = gemmaLoadingSpell?.equals(canon, ignoreCase = true) == true
-            Diag.info("Loading screen: your card's spell icon = $canon (%.2f, wiki pictures${if (confirmed) ", confirms Gemma" else ""})".format(score))
+            if (buttonSpell == null && scoreboardSpell == null) iconSpell = canon
+            Diag.info("Recognised your battle spell on the loading screen: $canon (%.2f, wiki pictures)".format(score))
             refreshNameMatchSpell()
         }
     }
 
-    fun lane(): Pair<Lane, String> = LaneLogic.effective(ownHero(), spell())
+    // 1. Name, 2. Hero, 3. Spell on the loading screen:
+    // Priority for loading screen spell:
+    //  - If PortraitMatch already verified the loading card's spell icon against the wiki pictures, keep it;
+    //  - Otherwise record Gemma's reading as gemmaLoadingSpell (and trigger wiki icon verification).
+    fun onLoadingCardRead(cardPlayerName: String?, hero: String, spellFromCard: String?, via: String) {
+        val h = HeroDb.match(hero) ?: return
+        if (!cardPlayerName.isNullOrBlank()) {
+            loadingCardName = cardPlayerName.trim()
+            verifiedPlayerName = loadingCardName
+        }
+        loadingHero = h
+        Cfg.myHero = h
+        if (!spellFromCard.isNullOrBlank()) {
+            SpellDb.match(spellFromCard)?.let { sp ->
+                gemmaLoadingSpell = sp
+                if (loadingSpell == null) loadingSpell = sp
+            }
+        }
+        val dispSpell = spellDisplay()
+        val dispName = loadingCardName ?: PlayerName.get().ifBlank { "you" }
+        nameMatch = "$dispName → $h" + (if (dispSpell != null) " · $dispSpell" else "")
+        Diag.info("Loading card verified ($via): 1. Name=$dispName · 2. Hero=$h · 3. Spell=${dispSpell ?: "checking icon…"}")
+    }
 
-    // you are back in base (respawn, recall): the lane route starts again
+    // Verified on the in-game scoreboard (or end-of-match scoreboard)
+    fun onScoreboardVerified(playerNameFound: String?, hero: String, spellFromRow: String? = null, lockForMatch: Boolean = false) {
+        val h = HeroDb.match(hero) ?: return
+        if (!playerNameFound.isNullOrBlank()) {
+            verifiedPlayerName = playerNameFound.trim()
+        }
+        scoreboardHero = h
+        if (lockForMatch) {
+            lockedHero = h
+            spellFromRow?.let { SpellDb.match(it) }?.let { lockedSpell = it }
+        }
+        Cfg.myHero = h
+        val dispSpell = spellDisplay()
+        val dispName = verifiedPlayerName ?: PlayerName.get().ifBlank { "you" }
+        nameMatch = "$dispName → $h" + (if (dispSpell != null) " · $dispSpell" else "")
+    }
+
+    // What lane / role you play:
+    //  1. what you chose on the Player page
+    //  2. Retribution -> Jungle (the jungler's spell)
+    //  3. the hero's usual lane from the wiki (WikiLanes), else its role (HeroDb)
+    fun lane(): Pair<Lane, String> =
+        LaneLogic.effective(ownHero(), spell())
+
+    // You just recalled to base: the walking-to-lane window starts again
     fun markSpawn() { spawnAt = System.currentTimeMillis() }
 
-    // "This is my hero / spell now": label what the icons look like right now
-    fun teachHero(name: String): Boolean {
-        val sig = lastHeroSig ?: return false
-        IconMemory.learnHero(name, sig)
-        iconHero = name; modelHero = name; portraitHero = name
-        return true
-    }
+    // True only when the app saw the match start (loading screen): started mid-match, matchStartAt is
+    // only the moment the app was turned on, not 0:00 of the game
+    fun clockFromStart(): Boolean = loadingSeenAt != 0L && matchStartAt > 0L && matchStartAt - loadingSeenAt in 0..180_000
+    private var loadingSeenAt = 0L
+    // id of the match being recorded (stamped on every coaching sample); 0 = not in a match
+    @Volatile var matchId = 0L
+        private set
+    @Volatile var lastMatchId = 0L
+        private set
 
-    // the END-OF-MATCH scoreboard confirmed the hero (EndBoard, v36.87): what was learned this match is
-    // kept for THAT hero - the portrait / model look, the skill-button look, the skill count - and it is
-    // remembered as the hero you played
-    @Volatile var lockedHero: String? = null; private set
-    @Volatile var lockedSpell: String? = null; private set
-    // the loading screen was seen right before this match: the match clock then is the real one
-    @Volatile var loadingSeenAt = 0L
-    // THIS MATCH (v36.90): starts at the LOADING screen (or, if that was missed, when your hero is first
-    // seen) and ends at the end-of-match screens; every recorded moment carries it. 0 = no match.
-    @Volatile var matchId = 0L; private set
-    @Volatile var lastMatchId = 0L; private set       // the match that just ended (the end scoreboard locks it)
-    fun clockFromStart(): Boolean = matchStartAt != 0L && matchStartAt - loadingSeenAt in 0..90_000
-    fun lockHero(hero: String) {
-        lockedHero = hero
-        if (!hero.equals(Cfg.myHero, true)) Cfg.myHero = hero
-        lastHeroSig?.let { if (IconMemory.learnHero(hero, it)) Diag.info("Locked: $hero's portrait / model look") }
-        com.example.mlbbresearch.vision.HeroVerifier.lockLook(hero)
-        // every moment recorded in this match is relabelled with the locked hero, and its match log line
-        com.example.mlbbresearch.learning.ExperienceRecorder.relabel(if (matchId != 0L) matchId else lastMatchId, hero)
-        MatchLog.relabelLast(hero)
-        val k = com.example.mlbbresearch.vision.ScreenKit.screenKit()
-        if (k != 0 && HeroKit.kitOf(hero) == k) Cfg.setRaw("kit_screen_" + hero.lowercase().filter { it.isLetterOrDigit() }, k.toString())
-    }
-
-    // the END-OF-MATCH scoreboard also locks the battle spell used in this match (v37.00, your request)
-    fun lockSpell(spell: String) {
-        val canon = SpellDb.match(spell) ?: return
-        lockedSpell = canon
-        if (blessedRetribution == null) {
-            lastSpellIcon?.let { if (IconMemory.learnSpell(canon, it)) Diag.info("Locked: $canon's battle spell icon") }
-        } else if (canon == "Retribution") {
-            Diag.info("Locked: Retribution Upgraded to $blessedRetribution")
-        }
-        refreshNameMatchSpell()
-    }
-
-    fun teachSpell(name: String): Boolean {
-        val p = lastSpellIcon ?: return false
-        val blessed = PortraitMatch.blessedKind(name)
-        if (blessed != null && isRetributionDetected()) blessedRetribution = blessed
-        val canon = SpellDb.match(name) ?: name
-        IconMemory.learnSpell(canon, p)
-        buttonSpell = canon
-        iconSpell = canon
-        return true
-    }
-
-    private var modelCand: String? = null; private var modelCandN = 0
-    private var portraitCand: String? = null; private var portraitCandN = 0
-    private var lookLearnedAt = 0L; private var lookLogged: String? = null
-    private var spellLearnedAt = 0L; private var spellLogged: String? = null
+    // Remembered looks (IconMemory): both the minimap portrait AND the in-game model are checked on
+    // their own (each needs 2 readings in a row), and when one is sure and the other is still
+    // unknown it teaches the other - so learning on the Heroes page or from one source is enough.
+    // Once the end-of-match scoreboard has verified your hero and spell, they are locked in for the
+    // rest of the match and the looks on screen are saved under that truth (v36.87).
+    private var spellLearnedAt = 0L
+    private var modelCand: String? = null
+    private var modelCandN = 0
+    private var portraitCand: String? = null
+    private var portraitCandN = 0
+    private var lookLogged: String? = null
+    private var spellLogged: String? = null
+    @Volatile var lockedHero: String? = null
+    @Volatile var lockedSpell: String? = null
 
     private fun recognise(v: VisionResult) {
-        // only on the normal map (the big map hides your minimap icon)
-        if (state.phase != Phase.MAP) v.heroSig?.let { sig ->
+        val enteredHero = HeroDb.match(Cfg.manualHero)
+        val enteredSpell = SpellDb.match(Cfg.mySpell)
+        v.heroSig?.let { sig ->
             lastHeroSig = sig
-            // the in-game MODEL and the minimap PORTRAIT, each on its own (v36.80, your order: model first)
-            val alreadyVerified = verifiedHero()
-            val mm = IconMemory.matchModel(sig)?.takeIf { HeroKit.fitsScreen(it) && (alreadyVerified == null || it == alreadyVerified) }
-            val pp = IconMemory.matchPortrait(sig)?.takeIf { HeroKit.fitsScreen(it) && (alreadyVerified == null || it == alreadyVerified) }
-            // (v36.94 / v37.01: a DIFFERENT hero must be read 3 times in a row and never contradict an already verified hero)
-            if (mm != null && mm != modelHero) { if (mm == modelCand) modelCandN++ else { modelCand = mm; modelCandN = 1 }
-                if (modelHero == null || modelCandN >= 3) { modelHero = mm; Diag.info("Recognised your hero from its in-game model: $mm") } }
-            if (pp != null && pp != portraitHero) { if (pp == portraitCand) portraitCandN++ else { portraitCand = pp; portraitCandN = 1 }
-                if (portraitHero == null || portraitCandN >= 3) { portraitHero = pp; Diag.info("Recognised your hero from its minimap portrait: $pp") } }
-            val m = mm ?: pp
-            if (m != null) {
-                iconHero = m
-                // remembered as the hero you play (standard pick, and the first guess next match)
-                if (!m.equals(Cfg.myHero, true)) Cfg.myHero = m
+            val LOCK = lockedHero
+            if (LOCK != null) {
+                modelHero = LOCK; portraitHero = LOCK; iconHero = LOCK
+                IconMemory.learnHero(LOCK, sig)
+                return@let
             }
-            // learn the icons of a hero seen picked / read THIS match (never against the icons;
-            // never from the typed name, which may be from an older match)
-            // (the hero you chose teaches its look too, so detection works by itself later)
-            val teacher = HeroDb.match(Cfg.manualHero) ?: loadingHero ?: guessedHero
-            // (at most every 15 s, logged once per match - your log had it every second)
-            val nowL = System.currentTimeMillis()
-            if (teacher != null && nowL - lookLearnedAt > 15_000 && (iconHero == null || iconHero == teacher) && IconMemory.learnHero(teacher, sig)) {
-                lookLearnedAt = nowL
-                if (lookLogged != teacher) { lookLogged = teacher; Diag.info("Learning how $teacher looks (portrait / model; every 15 s this match)") }
+            val pHit = if (sig.isNotEmpty()) IconMemory.matchPortrait(sig) else null
+            val mHit = if (sig.size >= 2) IconMemory.matchModel(sig) else null
+            if (pHit != null && HeroKit.fitsScreen(pHit)) {
+                if (pHit == portraitCand) portraitCandN++ else { portraitCand = pHit; portraitCandN = 1 }
+                if (portraitCandN >= 2) portraitHero = pHit
             }
-        }
-        v.spellIcon?.let { p ->
-            lastSpellIcon = p
-            val m = IconMemory.matchSpell(p)
-            if (m != null && m.second < IconMemory.SPELL_MATCH) {
-                iconSpell = m.first
-                if (m.first == "Retribution" && buttonSpell != null && buttonSpell != "Retribution" && m.second < IconMemory.SPELL_MATCH * 0.75f) {
-                    buttonSpell = "Retribution"
+            if (mHit != null && HeroKit.fitsScreen(mHit)) {
+                if (mHit == modelCand) modelCandN++ else { modelCand = mHit; modelCandN = 1 }
+                if (modelCandN >= 2) modelHero = mHit
+            }
+            val hit = IconMemory.matchHero(sig)
+            if (hit != null && HeroKit.fitsScreen(hit.first)) iconHero = hit.first
+            // Teacher priority: only verified sources (manual entry, loading screen card, scoreboard, or skill verifier)
+            // may teach IconMemory so an unverified guess never pollutes learned portraits.
+            val teacher = enteredHero ?: loadingHero ?: scoreboardHero ?: com.example.mlbbresearch.vision.HeroVerifier.skillHero
+            if (teacher != null && HeroKit.fitsScreen(teacher)) {
+                if (pHit == null || pHit != teacher || mHit == null || mHit != teacher) {
+                    IconMemory.learnHero(teacher, sig)
+                    if (lookLogged != teacher) {
+                        lookLogged = teacher
+                        Diag.info("Learned $teacher's look (portrait + in-game model)")
+                    }
                 }
             }
-            // Only learn from a verified spell (or chosen spell), at most every 15 s, when the button is ready & not showing a Blessed Retribution, logged once per match
-            val teacher = SpellDb.match(Cfg.mySpell) ?: buttonSpell ?: scoreboardSpell ?: loadingSpell
-            val nowS = System.currentTimeMillis()
-            val ready = !CooldownTracker.screenKnown("spell") || CooldownTracker.lookReady("spell")
-            if (teacher != null && ready && blessedRetribution == null && nowS - spellLearnedAt > 15_000 &&
-                (iconSpell == null || iconSpell == teacher) && IconMemory.learnSpell(teacher, p)) {
-                spellLearnedAt = nowS
+        }
+        v.spellIcon?.let { sp ->
+            lastSpellIcon = sp
+            val LOCK = lockedSpell
+            if (LOCK != null) {
+                iconSpell = LOCK
+                IconMemory.learnSpell(LOCK, sp)
+                return@let
+            }
+            val hit = IconMemory.matchSpell(sp)
+            if (hit != null) {
+                // Only set iconSpell from IconMemory if a higher-priority wiki-verified spell (buttonSpell / scoreboardSpell / loadingSpell) has not already locked it
+                if (buttonSpell == null && scoreboardSpell == null && loadingSpell == null) {
+                    iconSpell = hit.first
+                }
+            }
+            val teacher = enteredSpell ?: buttonSpell ?: scoreboardSpell ?: loadingSpell
+            if (teacher != null && (hit == null || hit.first != teacher) && v.ts - spellLearnedAt > 4000) {
+                IconMemory.learnSpell(teacher, sp)
+                spellLearnedAt = v.ts
                 if (spellLogged != teacher) {
                     spellLogged = teacher
                     Diag.info("Learned the $teacher icon")
@@ -491,6 +512,7 @@ object GameStateTracker {
         val s = makeState(v, now, phase, onMap, ownHero(), spell(), lane().first,
             if (matchStartAt == 0L) -1 else ((now - matchStartAt) / 1000).toInt(),
             if (spawnAt == 0L) Long.MAX_VALUE else now - spawnAt)
+        HeroKit.observeVisualState(s)
         state = s
         CooldownTracker.observe(v)
         Sustain.observe(s)          // HP back while hitting (lifesteal / spell vamp), learned per hero
@@ -517,7 +539,7 @@ object GameStateTracker {
             enemies = v.enemyHeroes.filter { field(it.x, it.y) },
             enemyMinions = v.enemyMinions.filter { field(it.x, it.y) },
             allyMinions = v.allyMinions.filter { field(it.x, it.y) },
-            minimapEnemies = v.minimap.enemies,
+            minimapEnemies = maxOf(v.minimap.enemies, v.enemyHeroes.count { field(it.x, it.y) }),
             aspect = v.aspect,
             ownHero = hero,
             myTeam = myTeam,
@@ -547,7 +569,11 @@ object GameStateTracker {
             xp = v.xp,
             enemyLevel = v.enemyLevel,
             towerRing = v.towerRing,
-            map = if (onMap) MapIntel.Info.NONE else MapIntel.read(v.minimap, now)
+            map = if (onMap) MapIntel.Info.NONE else MapIntel.read(v.minimap, now, v.enemyHeroes.filter { field(it.x, it.y) }, v.self),
+            skillBadgePct = if (onMap) -1f else v.skillBadgePct,
+            activeSkillIcons = if (onMap) emptyMap() else v.activeSkillIcons,
+            transformBarPct = if (onMap) -1f else v.transformBarPct,
+            recallBarPct = if (onMap) -1f else v.recallBarPct
         )
     }
 
@@ -750,6 +776,9 @@ object CooldownTracker {
     fun ready(slot: String, p: HeroProfile): Boolean {
         val since = System.currentTimeMillis() - (lastCast[slot] ?: 0L)
         val hero = GameStateTracker.ownHero()
+        // If this slot is currently displaying its active continuous duration on its skill icon (and is not a recastable phase), do not re-tap it!
+        val gs = GameStateTracker.state
+        if (slot in gs.activeSkillIcons && !HeroKit.canRecastNow(hero, slot)) return false
         if (HeroKit.canRecastNow(hero, slot)) return since >= 260L
         if (since < 380L) return false
         val baseCd = if (slot == "spell") SpellInfo.cooldown[GameStateTracker.spell()] ?: p.cooldownSec[slot] ?: 100f else p.cooldownSec[slot] ?: 7f
@@ -780,12 +809,22 @@ object CooldownTracker {
     // for the Player page: what the buttons show right now (including Basic Attack glow/dim stage)
     @Synchronized
     fun screenState(): String {
+        val gs = GameStateTracker.state
         val skills = listOf("s1", "s2", "ult", "spell").joinToString("  ") { k ->
-            val b = current[k]; val base = baseline[k]
-            k + ": " + if (b == null || base == null || base <= 40f) "?" else if (b >= base * 0.65f || b >= 88f) "ready" else "cooling down"
+            val actPct = gs.activeSkillIcons[k]
+            if (actPct != null) "$k: active (${(actPct * 100).toInt()}%)"
+            else {
+                val b = current[k]; val base = baseline[k]
+                k + ": " + if (b == null || base == null || base <= 40f) "?" else if (b >= base * 0.65f || b >= 88f) "ready" else "cooling down"
+            }
         }
         val atk = if (attackCurrent <= 20f) "attack: ?" else "attack: ${attackStage.label}"
-        return "$atk  |  $skills"
+        val extras = buildList {
+            if (gs.skillBadgePct >= 0f) add("badge: ${(gs.skillBadgePct * 100).toInt()}%")
+            if (gs.transformBarPct >= 0f) add("transformBar: ${(gs.transformBarPct * 100).toInt()}%")
+            if (gs.recallBarPct >= 0f) add("recallBar: ${(gs.recallBarPct * 100).toInt()}%")
+        }.joinToString(" · ")
+        return if (extras.isEmpty()) "$atk  |  $skills" else "$atk  |  $skills  |  $extras"
     }
 
     @Synchronized

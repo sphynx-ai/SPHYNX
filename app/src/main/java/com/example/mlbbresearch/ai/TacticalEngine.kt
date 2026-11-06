@@ -8,6 +8,7 @@ import com.example.mlbbresearch.core.Cfg
 import com.example.mlbbresearch.game.CooldownTracker
 import com.example.mlbbresearch.game.GameState
 import com.example.mlbbresearch.game.GameStateTracker
+import com.example.mlbbresearch.game.HeroKit
 import com.example.mlbbresearch.game.Lane
 import com.example.mlbbresearch.game.LaneLogic
 import com.example.mlbbresearch.game.HeroProfile
@@ -121,7 +122,7 @@ object TacticalEngine {
             ((d0.targetX - ring.cx) / ring.rx).let { it * it } + ((d0.targetY - ring.cy) / ring.ry).let { it * it } < 1f
         if (ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.GREEN && !targetIn) return d0
         val (tx, ty) = ring.dirFrom(self.x, self.y, s.aspect)
-        val killChase = d0.intent == Intent.ENGAGE && d0.targetHp in 0f..0.10f && Utility.lastSurvival >= 50f
+        val killChase = d0.intent == Intent.ENGAGE && (d0.targetHp in 0f..0.10f && Utility.lastSurvival >= 50f || s.ownHero == "Argus" && HeroKit.isBuffUltActive(s))
         if ((ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.RED || targetIn) && ring.inside) {
             if (killChase) return d0
             val casts = d0.casts.filter { it != "attack" }      // no hitting the tower from in here
@@ -148,6 +149,7 @@ object TacticalEngine {
         val e = com.example.mlbbresearch.game.EnemyIntel.dashAtMe(s) ?: return d
         if (d.intent == Intent.ENGAGE && d.targetId == e.id) return d
         if (d.intent == Intent.RECALL && s.enemiesWithin(0.9f).isEmpty()) return d
+        if (HeroKit.activeContinuousSkill(s)?.allowMove == false) return d
         val self = s.self ?: return d
         // perpendicular to the enemy's dash, the side that also leads away from it
         val lx = e.vx * s.aspect; val ly = e.vy
@@ -165,6 +167,8 @@ object TacticalEngine {
     // side before bumping into them. If every way is blocked, the wall-jump check takes over.
     private fun steerAroundWalls(s: GameState, d: TacticalDecision): TacticalDecision {
         val self = s.self ?: return d
+        // Yu Zhong in Black Dragon flight flies straight over all walls and terrain! (v37.15)
+        if (HeroKit.isYuZhongBlackDragonFlight(s)) return d
         if (!Cfg.wallAvoid || (d.moveX == 0f && d.moveY == 0f) || s.screenWalls.isEmpty()) return d
         val bd = com.example.mlbbresearch.vision.BushDetector
         val fy = self.y + 0.02f                        // feet
@@ -242,10 +246,19 @@ object TacticalEngine {
     // (also covers combos and "Play like me")
     //  - the ultimate is kept for enemy heroes (fighting or escaping them), never for creeps
     //  - Skill 1 and 2 go out the moment they are ready while fighting creeps or heroes in reach
+    //  - Active continuous-damage skills on the badge / skill icon (e.g., Balmond s2, Cici s1) are NEVER interrupted (v37.15)
     fun filterCasts(d: TacticalDecision, s: GameState, p: HeroProfile): TacticalDecision {
+        // 1. Yu Zhong Black Dragon Flight (v37.15): s1/s2/s3 and basic attacks are locked; only allow "ult" (early landing on target) or "spell"
+        if (HeroKit.isYuZhongBlackDragonFlight(s)) {
+            val dragonCasts = d.casts.filter { it == "ult" || it == "spell" }
+            return if (dragonCasts == d.casts) d
+            else TacticalDecision(d.intent, d.moveX, d.moveY, dragonCasts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId, d.reason)
+        }
+
         val vsHero = (d.intent == Intent.ENGAGE || d.intent == Intent.AMBUSH || d.intent == Intent.IMITATE) &&
             d.targetId >= 0 || d.intent == Intent.RETREAT
         var casts = d.casts
+        val activeCont = HeroKit.activeContinuousSkill(s)
         // Wall-hop and travel dashes may ONLY use non-ultimate mobility skills (s1, s2, s3), NEVER "ult"! (v37.13)
         val hop = if (d.reason.contains("passing the wall") || d.reason.contains("to get there faster")) HeroDb.dashSlot(s.ownHero)?.takeIf { it != "ult" } else null
         val transformOrEnhanced = CooldownTracker.lowCdUlt(s.ownHero)
@@ -257,9 +270,9 @@ object TacticalEngine {
         }
         // Coach: you cast this skill at enemies about this close; wait until the target is that
         // close (a far-away cast mostly misses) - only for skills seen at least 3 times
-        // (while the combo plays against a hero, its order comes first: no extra skills thrown in)
+        // (while the combo plays against a hero, or while a continuous-damage skill is active on the badge/icon, no extra skills are thrown in)
         val comboOn = d.intent == Intent.ENGAGE && ComboRunner.running
-        if (Cfg.skillsWhenReady && !comboOn && inReach(d, s, p)) {
+        if (Cfg.skillsWhenReady && !comboOn && activeCont == null && inReach(d, s, p)) {
             val nonUltSlots = com.example.mlbbresearch.game.HeroKit.slots(s.ownHero).filter { it != "ult" }
             val extra = nonUltSlots.filter { it !in casts && CooldownTracker.ready(it, p) }
             if (extra.isNotEmpty()) casts = casts + extra
@@ -310,8 +323,30 @@ object TacticalEngine {
         // how this hero is played: keep the escape, heal / shield when hurt, self-buff first
         casts = HeroPlaybook.applyCasts(d, casts, s, p) { CooldownTracker.ready(it, p) }
         casts = spellCasts(s, p, d, casts)
-        if (casts == d.casts) return d
-        return TacticalDecision(d.intent, d.moveX, d.moveY, casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId, d.reason)
+
+        // 2. Enforce Active Continuous-Damage Skill Guard across all intents (PVP, Jungle, Lane Clear) (v37.15):
+        // Never allow another skill (or basic attack when allowBasicAttack = false, e.g. Balmond s2) to interrupt an active continuous-damage skill!
+        var moveX = d.moveX
+        var moveY = d.moveY
+        if (activeCont != null && d.intent != Intent.RETREAT) {
+            val canExecuteWithUlt = activeCont.executeUltHp > 0f && d.intent == Intent.ENGAGE && d.targetHp in 0f..activeCont.executeUltHp
+            casts = casts.filter { c ->
+                when (c) {
+                    "spell" -> true
+                    "ult" -> canExecuteWithUlt
+                    "attack" -> activeCont.allowBasicAttack
+                    in HeroKit.ALL -> false
+                    else -> true
+                }
+            }
+            if (!activeCont.allowMove) {
+                moveX = 0f
+                moveY = 0f
+            }
+        }
+
+        if (casts == d.casts && moveX == d.moveX && moveY == d.moveY) return d
+        return TacticalDecision(d.intent, moveX, moveY, casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId, d.reason)
     }
 
     // THE BATTLE SPELL, by what it does (wiki descriptions) - not only at very low HP.
@@ -388,6 +423,7 @@ object TacticalEngine {
         val now = s.ts
         if (!travelling(d)) { travelSince = 0L; return d }
         if (travelSince == 0L) travelSince = now
+        if (HeroKit.activeContinuousSkill(s) != null || HeroKit.isYuZhongBlackDragonFlight(s)) return d
         val slot = HeroDb.dashSlot(s.ownHero) ?: return d
         if (slot == "ult" || slot in d.casts || now - lastTravelDash < 6000 || now - travelSince < 800) return d
         if (s.selfHp in 0f..0.5f || s.enemiesWithin(1.0f).isNotEmpty() || s.creeps.isNotEmpty() || s.boss != null || JungleNav.atCamp) return d
@@ -406,7 +442,7 @@ object TacticalEngine {
         val moving = d.moveX != 0f || d.moveY != 0f
         if (!moving) { movingSince = 0L; return d }
         if (movingSince == 0L) movingSince = now
-        if (!Cfg.wallHop) return d
+        if (!Cfg.wallHop || HeroKit.activeContinuousSkill(s) != null || HeroKit.isYuZhongBlackDragonFlight(s)) return d
         // stuck against a wall: walking for 1 s but the camera has not moved for 0.6 s
         val stuck = now - movingSince > 1000 && now - GameStateTracker.lastMotionAt > 600
         if (!pendingHop && !stuck) return d
@@ -431,14 +467,20 @@ object TacticalEngine {
         val now = s.ts
         val hp = s.selfHp
         // the big picture (game state engine) and the role's style (role profile)
-        val roleP = com.example.mlbbresearch.game.RoleProfile.of(s.lane)
+        val roleP = com.example.mlbbresearch.game.RoleProfile.of(s.lane, s.ownHero, s.matchSec)
         val advantage = com.example.mlbbresearch.game.MatchSense.advantage(s)
         val gamePhase = com.example.mlbbresearch.game.MatchSense.phase(s)
         val aggression = (plan.aggression + learnedBias + levelBias(s) + advantage * 0.15f).coerceIn(0f, 1f)
         // (the hero's HP bar model: X.Borg without armour leaves earlier, a shielded Esmeralda or
-        // Masha's segmented HP stays longer - HeroKit)
+        // Masha's segmented HP stays longer, and Thamuz during Cauterant Inferno stays longer - HeroKit)
+        val buffUltAdj = when {
+            s.ownHero == "Argus" && HeroKit.isBuffUltActive(s) -> -0.50f
+            s.ownHero == "Thamuz" && HeroKit.isBuffUltActive(s) -> -0.10f
+            HeroKit.isBuffUltActive(s) -> -0.06f
+            else -> 0f
+        }
         val retreatHp = (p.retreatHp + roleP.retreatBonus + (0.5f - aggression) * 0.15f +
-            com.example.mlbbresearch.game.HeroKit.retreatAdjust(s.ownHero, s.selfExtra)).coerceIn(0.12f, 0.6f)
+            com.example.mlbbresearch.game.HeroKit.retreatAdjust(s.ownHero, s.selfExtra) + buffUltAdj).coerceIn(0.01f, 0.6f)
 
         val threat = s.enemiesWithin(0.55f)
         val alliesNear = s.alliesWithin(0.5f).size
@@ -454,20 +496,42 @@ object TacticalEngine {
             (s.allies.count { s.dist(it.x, it.y, bossNow.x, bossNow.y) < 0.5f } >= 1 || s.lane == Lane.JUNGLE)
         val fstate = Utility.update(s, surv, eng, objectiveOn, threat.isNotEmpty())
 
+        // ---- 0a. Yu Zhong Black Dragon Flight (1000033086..1000033088, v37.15):
+        // While flying as the Black Dragon (center-bottom red bar active), steer directly onto the nearest enemy hero
+        // (or camp/lane if no enemy hero is on screen) so the Black Dragon knocks them back and deals collision damage!
+        if (HeroKit.isYuZhongBlackDragonFlight(s)) {
+            if (cand != null) {
+                val d = s.distToSelf(cand.x, cand.y)
+                val (mx, my) = toward(s, cand.x, cand.y)
+                val landNow = d <= 0.14f && s.transformBarPct in 0.01f..0.22f
+                val casts = if (landNow) listOf("ult") else emptyList()
+                lastTargetId = cand.id
+                return hold(now, TacticalDecision(Intent.ENGAGE, mx, my, casts, cand.x, cand.y, "enemy #${cand.id}", cand.hp, cand.id,
+                    "Yu Zhong Black Dragon (${(s.transformBarPct.coerceAtLeast(0f) * 100).toInt()}%): steering onto enemy #${cand.id}"), force = true)
+            }
+        }
+
+        // ---- 0b. Blue Recall Execution Bar (1000033098..1000033099, v37.15):
+        // When the blue Recall execution bar is active at the bottom-center of the screen and no enemy is hitting us,
+        // stand completely still (0f, 0f) with empty casts so the Recall channel finishes cleanly without interruption!
+        if (s.recallBarPct > 0f && threat.isEmpty() && !GameStateTracker.hurtRecently(now)) {
+            recallUntil = maxOf(recallUntil, now + 1500L)
+            return TacticalDecision(Intent.RECALL, 0f, 0f, emptyList(), -1f, -1f, "-", -1f, -1,
+                "recalling (${(s.recallBarPct * 100).toInt()}% blue bar)")
+        }
+
         // ---- 1. survive ----
-        // Low HP always retreats. "Outnumbered" / "losing the duel" are rules of thumb: when the
-        // brain has chosen an option it decides those itself (and learns if it was wrong).
+        // Low HP always retreats (EXCEPT Argus during Eternal Evil 4s death immunity on badge/icon!).
+        val argusImmortal = s.ownHero == "Argus" && HeroKit.isBuffUltActive(s)
         val rules = option == null || option == FightOption.RULES
-        // HP alone does not decide (a tank at 20% outlasts a marksman at 40%): the survival score
-        // does, except at critical HP (under 15%)
-        val outnumbered = rules && threat.size >= alliesNear + 2 && surv < 55f
-        val losingDuel = rules && threat.size == 1 && alliesNear == 0 && hp < 0.5f && threat[0].hp > hp + 0.25f && surv < 45f
-        val brainRetreat = option == FightOption.RETREAT && s.enemiesWithin(0.9f).isNotEmpty()
+        val outnumbered = rules && !argusImmortal && threat.size >= alliesNear + 2 && surv < 55f
+        val losingDuel = rules && !argusImmortal && threat.size == 1 && alliesNear == 0 && hp < 0.5f && threat[0].hp > hp + 0.25f && surv < 45f
+        val brainRetreat = option == FightOption.RETREAT && !argusImmortal && s.enemiesWithin(0.9f).isNotEmpty()
         // LAST STAND (your rule): low HP but a 1v1 you can still win - the enemy is lower than you,
         // or the skills you have ready can finish it (e.g. an execute ultimate when you are both
         // low) - fight instead of running (it would chase and kill you anyway)
         val duelFoe = threat.singleOrNull()?.takeIf { s.enemiesWithin(0.9f).size == 1 && s.distToSelf(it.x, it.y) <= p.engageRange * 1.2f }
-        val canFinish = duelFoe != null && (duelFoe.hp + 0.03f < hp ||
+        val canFinish = duelFoe != null && (argusImmortal || duelFoe.hp + 0.03f < hp ||
             duelFoe.hp <= kit.burst { CooldownTracker.ready(it, p) } + 0.05f ||
             duelFoe.hp <= 0.4f && p.ult == UltRule.EXECUTE && CooldownTracker.ready("ult", p))
         if (canFinish && duelFoe != null && (hp in 0f..0.15f || fstate == Utility.State.RETREATING) && !outnumbered) {
@@ -481,8 +545,8 @@ object TacticalEngine {
             return hold(now, TacticalDecision(Intent.ENGAGE, mx, my, casts, duelFoe.x, duelFoe.y, "enemy #${duelFoe.id}", duelFoe.hp, duelFoe.id,
                 "last stand: 1v1 I can win (me ${(hp * 100).toInt()}%, enemy ${(duelFoe.hp * 100).toInt()}%)"), force = true)
         }
-        if ((hp in 0f..0.15f || fstate == Utility.State.RETREATING) && threat.isNotEmpty() || outnumbered || losingDuel || brainRetreat ||
-            plan.plan == "retreat" && threat.isNotEmpty() && rules
+        if (!argusImmortal && ((hp in 0f..0.15f || fstate == Utility.State.RETREATING) && threat.isNotEmpty() || outnumbered || losingDuel || brainRetreat ||
+                plan.plan == "retreat" && threat.isNotEmpty() && rules)
         ) {
             var (mx, my) = retreatDir(s, threat)
             // hurt and chased: a bush on the way out hides you (enemies lose sight of you)
@@ -622,16 +686,18 @@ object TacticalEngine {
         //    you are healthy (40%+ HP) and it is a quick kill (close, or a dash is ready)
         //  - under the execute % (20 by default): chase, but never under their tower
         //  - before level 4 only the under-10% kills (no duels yet)
-        val safeTargets = s.enemiesWithin(0.9f).filter { !TowerLogic.enemyUnderTower(s, it) }
+        val safeTargets = s.enemiesWithin(0.9f).filter { !TowerLogic.enemyUnderTower(s, it) || argusImmortal }
         // (never on HP alone: you must be fairly safe, the enemy alone, and no objective to lose)
         val dying = s.enemiesWithin(1.3f).filter { e ->
-            e.hp <= 0.10f && hp > 0.15f && surv >= 35f && !(objectiveOn && bossNow!!.hp < 0.4f) &&
-                s.enemies.none { o -> o.id != e.id && s.dist(o.x, o.y, e.x, e.y) < 0.35f && o.hp > 0.3f } && (!TowerLogic.enemyUnderTower(s, e) ||
+            e.hp <= 0.10f && (hp > 0.15f || argusImmortal) && surv >= 35f && !(objectiveOn && bossNow!!.hp < 0.4f) &&
+                s.enemies.none { o -> o.id != e.id && s.dist(o.x, o.y, e.x, e.y) < 0.35f && o.hp > 0.3f } && (!TowerLogic.enemyUnderTower(s, e) || argusImmortal ||
                 hp >= 0.4f && (s.distToSelf(e.x, e.y) <= p.attackRange * 1.6f || dashSlot(s, p) != null || s.spell == "Flicker" && CooldownTracker.ready("spell", p)))
         }.minByOrNull { it.hp + s.distToSelf(it.x, it.y) * 0.3f }
+        val heroExecPct = if (p.ult == UltRule.EXECUTE && CooldownTracker.ready("ult", p)) (HeroKit.executeUltThreshold(s.ownHero, s.level) * 100f).toInt() else 0
+        val effExecPct = maxOf(Cfg.executeHpPct + (if (kit.has(Passive.EXECUTE_BONUS)) 10 else 0), heroExecPct)
         val low = dying ?: if (s.level < 4) null else
-            safeTargets.filter { it.hp * 100 <= Cfg.executeHpPct + (if (kit.has(Passive.EXECUTE_BONUS)) 10 else 0) }.minByOrNull { it.hp + s.distToSelf(it.x, it.y) * 0.3f }
-        if (low != null && (hp > retreatHp || low === dying)) {
+            safeTargets.filter { it.hp * 100 <= effExecPct }.minByOrNull { it.hp + s.distToSelf(it.x, it.y) * 0.3f }
+        if (low != null && (hp > retreatHp || low === dying || argusImmortal)) {
             val d = s.distToSelf(low.x, low.y)
             val casts = ArrayList<String>()
             if (d <= p.attackRange * 1.3f) casts.add("attack")
@@ -714,7 +780,7 @@ object TacticalEngine {
         // ---- fight an enemy hero (engagement 50+, 35+ to keep going) ----
         fun fight(minEng: Float = 0f): TacticalDecision? {
             val effMin = if (minEng >= 70f) 52f else minEng
-            val fightOk = (fstate == Utility.State.ENGAGING || ComboRunner.running) && eng >= effMin && !(objectiveOn && eng < 60f) || option == FightOption.ALL_IN
+            val fightOk = (fstate == Utility.State.ENGAGING || ComboRunner.running || HeroKit.isBuffUltActive(s)) && eng >= effMin && !(objectiveOn && eng < 60f) || option == FightOption.ALL_IN
             if (target == null || !(rules || option == FightOption.ALL_IN) || s.distToSelf(target.x, target.y) > 0.62f || !fightOk) return null
             val d = s.distToSelf(target.x, target.y)
             lastTargetId = target.id
@@ -814,7 +880,7 @@ object TacticalEngine {
                     advantage < -0.25f || hiddenNear -> "freeze"
                 else -> "clear"
             }
-            val pushing = wave == "push" 
+            val pushing = wave == "push"
             if (false && wave == "freeze") {
                 val lh = minions.filter { it.hp <= 0.35f }.minByOrNull { it.hp }
                 if (lh == null) {
@@ -906,6 +972,13 @@ object TacticalEngine {
         //  5. Active River Patrol: Patrol river bushes without ever walking alone into an enemy tower
         fun roam(): TacticalDecision? {
             if (threat.isNotEmpty()) return null
+            // Mid Laner 1-3-1 Semi-Roam between waves (Built-In + Online Meta, v37.16):
+            if (s.lane == Lane.MID) {
+                if (me == null) return null
+                val (goal, why) = com.example.mlbbresearch.game.RoleProfile.midSemiRoamTarget(s) ?: return null
+                val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, goal) ?: mapDir(me, goal)
+                return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, why)
+            }
             if (Cfg.useBushes && hp > 0.55f && !s.inBush && s.allies.isNotEmpty() && now - lastBushCheck > 5500) {
                 val (px0, py0) = pushVector()
                 val bush = s.bushes.filter { s.distToSelf(it.x, it.y) in 0.08f..0.34f }.firstOrNull { b ->
@@ -926,13 +999,10 @@ object TacticalEngine {
                 return null
             }
             if (me == null) return null
-            // 1. Opening (0:00..1:05): help Mid lane & secure river bush vision
-            if (s.matchSec in 0..65) {
-                val openGoal = if (s.matchSec < 32) (0.45f to 0.55f) else (0.39f to 0.61f)
-                if (kotlin.math.hypot(openGoal.first - me.first, openGoal.second - me.second) > 0.055f) {
-                    val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, openGoal) ?: mapDir(me, openGoal)
-                    return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roamer opening: securing mid & river vision")
-                }
+            // 1. Pro + Online Meta time-windowed Roam waypoint (0:00 Mid/Litho -> 0:36 Jungler guard -> 1:45 Turtle zoning) (v37.16)
+            com.example.mlbbresearch.game.RoleProfile.roamMetaWaypoint(s)?.let { (goal, why) ->
+                val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, goal) ?: mapDir(me, goal)
+                return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, why)
             }
             // 2. Rescue any ally who has an enemy hero near them on the minimap
             val allyInFight = s.map.allies.filter { a -> !(a.first < 0.18f && a.second > 0.82f) }
@@ -1128,10 +1198,14 @@ object TacticalEngine {
         if (!JungleNav.atCamp) {
             return TacticalDecision(Intent.JUNGLE, nav.first, nav.second, emptyList(), -1f, -1f, "-", -1f, -1, "jungle path: ${nav.third}")
         }
-        val casts = arrayListOf("attack")
-        val ultToo = CooldownTracker.lowCdUlt(s.ownHero)
-        p.waveClearSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
-        for (sk in p.combo) if ((sk != "ult" || ultToo) && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
+        val activeCont = HeroKit.activeContinuousSkill(s)
+        val casts = ArrayList<String>()
+        if (activeCont == null || activeCont.allowBasicAttack) casts.add("attack")
+        if (activeCont == null) {
+            val ultToo = CooldownTracker.lowCdUlt(s.ownHero)
+            p.waveClearSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
+            for (sk in p.combo) if ((sk != "ult" || ultToo) && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
+        }
         val m = s.creeps.minByOrNull { s.distToSelf(it.x, it.y) }
         if (s.spell == "Retribution" && JungleNav.atBuff && JungleNav.atCampMs > 5000L && CooldownTracker.ready("spell", p)) casts.add("spell")
         val monStopDist = maxOf(p.attackRange * 1.85f, if (p.ranged) 0.42f else 0.34f)
@@ -1176,11 +1250,13 @@ object TacticalEngine {
         lastMonX = m.x; lastMonY = m.y; lastMonHp = m.hp; lastMonAt = s.ts; lastMonSpecies = m.species; lastMonBoss = m.hero
         val d = s.distToSelf(m.x, m.y)
         val stopDist = maxOf(p.attackRange * 1.85f, if (p.ranged) 0.42f else 0.34f)
+        val activeCont = HeroKit.activeContinuousSkill(s)
         val casts = ArrayList<String>()
         // Always start attacking jungle monsters and buffs with a Basic Attack first (first 260 ms), then chain skills! (v37.14)
-        if (d <= maxOf(stopDist * 1.35f, 0.48f)) casts.add("attack")
+        // If a continuous-damage skill that disallows basic attacks (e.g. Balmond s2) is currently active on badge/icon, do not interrupt it! (v37.15)
+        if ((activeCont == null || activeCont.allowBasicAttack) && d <= maxOf(stopDist * 1.35f, 0.48f)) casts.add("attack")
         val openingBasicDone = s.ts - monComboStartedAt >= 260L && m.hp < 0.995f
-        if (openingBasicDone && d <= maxOf(stopDist * 1.25f, 0.42f)) {
+        if (activeCont == null && openingBasicDone && d <= maxOf(stopDist * 1.25f, 0.42f)) {
             val ultToo = CooldownTracker.lowCdUlt(s.ownHero)
             p.waveClearSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
             for (sk in p.combo) if ((sk != "ult" || ultToo) && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
@@ -1205,11 +1281,20 @@ object TacticalEngine {
     // Fighting an enemy HERO: melee walks up close and stays there; ranged keeps a safe distance
     // at the edge of its attack range, steps back if the enemy gets too close (kiting), and
     // steps in if it is out of range.
+    // Continuous-spin heroes (Balmond s2, Akai ult, X.Borg ult, Khaleed s1) and Yu Zhong Black Dragon
+    // steer directly onto the target (down to d <= 0.04f) so their AoE spin stays glued to the enemy! (v37.15)
     private fun heroSpacing(s: GameState, p: HeroProfile, t: Track, d: Float): Pair<Float, Float> {
-        if (!p.ranged) return if (d > p.attackRange * 0.8f) toward(s, t.x, t.y) else (0f to 0f)
+        val cont = HeroKit.activeContinuousSkill(s)
+        if (cont != null && !cont.allowMove) return 0f to 0f
+        if (HeroKit.isYuZhongBlackDragonFlight(s) || (cont != null && cont.allowMove && !cont.allowBasicAttack)) {
+            return if (d > 0.04f) toward(s, t.x, t.y) else (0f to 0f)
+        }
+        val rangedNow = HeroKit.rangedNow(s.ownHero) ?: p.ranged
+        if (!rangedNow) return if (d > p.attackRange * 0.8f) toward(s, t.x, t.y) else (0f to 0f)
+        val effRange = if (s.ownHero == "Edith" && rangedNow) 0.42f else p.attackRange
         return when {
-            d < p.attackRange * 0.30f -> away(s, listOf(t))
-            d > p.attackRange -> toward(s, t.x, t.y)
+            d < effRange * 0.30f -> away(s, listOf(t))
+            d > effRange -> toward(s, t.x, t.y)
             else -> 0f to 0f
         }
     }
@@ -1287,7 +1372,7 @@ object TacticalEngine {
         } ?: corridor.lastIndex
 
         val distToFront = kotlin.math.hypot(frontPos.first - me.first, frontPos.second - me.second)
-        val safeStopDist = TowerLogic.range() + 0.035f
+        val safeStopDist = TowerLogic.range() + 0.014f
         val what = if (detectedTower?.bonus == true) "plated tower" else if (s.towers.isEmpty()) "enemy base" else "${s.lane.label} tower"
 
         // Already at the enemy tower frontline without minion cover: step back to the safe clash waypoint or hold
@@ -1404,7 +1489,7 @@ object TacticalEngine {
         if (!CooldownTracker.ready("ult", p) && !com.example.mlbbresearch.game.HeroKit.canRecastNow(s.ownHero, "ult")) return false
         if (s.ownHero in com.example.mlbbresearch.game.HeroKit.MULTI_PHASE_HEROES && d <= p.engageRange * 1.05f) return true
         return when (p.ult) {
-            UltRule.EXECUTE -> t.hp < 0.42f && d <= p.engageRange
+            UltRule.EXECUTE -> t.hp <= HeroKit.executeUltThreshold(s.ownHero, s.level) && d <= p.engageRange * 1.08f
             UltRule.ENGAGE -> d <= p.engageRange && hp > 0.45f && enemies <= allies + 1
             UltRule.TEAMFIGHT -> (enemies >= 2 || t.hp < 0.48f) && d <= p.engageRange
             UltRule.DEFENSIVE -> hp < 0.35f && d <= p.engageRange

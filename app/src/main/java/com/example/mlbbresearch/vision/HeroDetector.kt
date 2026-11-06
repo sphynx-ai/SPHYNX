@@ -97,7 +97,18 @@ object HeroDetector {
         val b = p and 0xff
         val mx = max(r, max(g, b))
         val mn = min(r, min(g, b))
-        return mx < 110 && mx - mn < 45
+        return mx < 115 && mx - mn < 48
+    }
+
+    // Just-lost HP on an enemy bar flashes salmon / orange-pink / dark-red trail before fading to dark grey (v37.16):
+    // Counting this trail as lost HP ("empty") ensures an enemy dropping into Execute range (10%..40% HP) is read
+    // at their true low HP immediately on the very frame burst damage lands!
+    private fun isDamageLossTrail(p: Int): Boolean {
+        if (classify(p) == RED) return false
+        val r = (p shr 16) and 0xff
+        val g = (p shr 8) and 0xff
+        val b = p and 0xff
+        return r in 85..245 && g in 30..190 && b in 20..175 && r >= g && r - b >= 22
     }
 
     // excl: list of [left, top, right, bottom] fractions to ignore (HUD, our own overlay)
@@ -241,19 +252,24 @@ object HeroDetector {
             // the end of the coloured part (a black tick there used to cut the measurement short)
             // (or a soft blended pixel): use the brightest real grey among the next 5 pixels
             var firstLum = -1
-            for (k in 0..4) {
-                val xx = x + k
-                if (xx < w && isEmptyBar(px[cy * w + xx])) firstLum = maxOf(firstLum, lum(px[cy * w + xx]))
+            val searchLim = min(limit, x + 36)
+            for (xx in x..searchLim) {
+                if (isEmptyBar(px[cy * w + xx])) {
+                    firstLum = maxOf(firstLum, lum(px[cy * w + xx]))
+                    if (firstLum >= 45) break
+                }
             }
-            if (firstLum < 0) firstLum = if (x < w) lum(px[cy * w + x]) else 0
+            if (firstLum < 0) firstLum = if (x < w) lum(px[cy * w + x]).coerceIn(25, 85) else 50
             fun emptyAt(xx: Int): Boolean {
                 val p = px[cy * w + xx]
-                return isEmptyBar(p) && abs(lum(p) - firstLum) <= 30 && framed(px, w, h, bl, xx)
+                val emp = isEmptyBar(p) && abs(lum(p) - firstLum) <= 34
+                val dmgTrail = bl.cls == RED && isDamageLossTrail(p)
+                return (emp || dmgTrail) && framed(px, w, h, bl, xx)
             }
             while (x <= limit) {
                 if (!emptyAt(x)) {
                     // the bar has thin black tick marks every few hundred HP: step over them
-                    val skip = (1..(if (bl.cls == GREEN && specialBar) mergeGap else 3)).firstOrNull { x + it <= limit && emptyAt(x + it) } ?: break
+                    val skip = (1..(if (bl.cls == GREEN && specialBar) mergeGap else 4)).firstOrNull { x + it <= limit && emptyAt(x + it) } ?: break
                     empty += skip
                     x += skip
                     continue
@@ -303,9 +319,10 @@ object HeroDetector {
     private fun emptyAfter(px: IntArray, w: Int, base: Int, x0: Int): Int {
         var n = 0
         var x = x0
-        while (x < w && n < 80) {
-            if (isEmptyBar(px[base + x]) && lum(px[base + x]) >= 45) { n++; x++; continue }
-            val skip = (1..3).firstOrNull { x + it < w && isEmptyBar(px[base + x + it]) && lum(px[base + x + it]) >= 45 } ?: break
+        fun ok(p: Int) = (isEmptyBar(p) && lum(p) >= 38) || isDamageLossTrail(p)
+        while (x < w && n < 90) {
+            if (ok(px[base + x])) { n++; x++; continue }
+            val skip = (1..4).firstOrNull { x + it < w && ok(px[base + x + it]) } ?: break
             n += skip; x += skip
         }
         return n

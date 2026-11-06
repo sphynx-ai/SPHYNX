@@ -54,6 +54,12 @@ class MainApplication : Application() {
                 Cfg.setRaw(com.example.mlbbresearch.game.ItemBook.key(n), null)
             Cfg.setRaw("mig_v73", "1")
         }
+        // v37.16: reduce default tower range from 8% to 5% and clear old slow castgap_v3_* timings
+        if (Cfg.raw("mig_v3716") == null) {
+            if (Cfg.towerRangePct > 6) Cfg.towerRangePct = 5
+            for (k in Cfg.all().keys.filter { it.startsWith("castgap_v3_") }) Cfg.setRaw(k, null)
+            Cfg.setRaw("mig_v3716", "1")
+        }
         Diag.init(this)
         CrashLog.install()
         ExperienceRecorder.init(this)

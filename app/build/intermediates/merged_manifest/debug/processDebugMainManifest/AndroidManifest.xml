@@ -17,6 +17,13 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- Internet is used ONLY when you tap "Get my hero's combo online" (Player page) -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- External storage fallback so scenery & minimap calibration survives app uninstall/reinstall -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
 
     <queries>
         <package android:name="com.itsaky.androidide" />
@@ -33,9 +40,11 @@
 
     <application
         android:name="com.example.mlbbresearch.app.MainApplication"
+        android:allowBackup="true"
         android:appComponentFactory="androidx.core.app.CoreComponentFactory"
         android:debuggable="true"
         android:extractNativeLibs="false"
+        android:hasFragileUserData="true"
         android:icon="@mipmap/ic_mlbb"
         android:label="MLBB Research"
         android:largeHeap="true"

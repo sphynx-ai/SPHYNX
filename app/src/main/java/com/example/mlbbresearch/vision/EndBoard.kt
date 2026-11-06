@@ -120,13 +120,13 @@ object EndBoard {
     private fun lock(hero: String, row: Int, byName: Boolean, how: String? = null) {
         val detected = GameStateTracker.ownHero()
         lockedHero = hero
-        GameStateTracker.lockHero(hero)
+        GameStateTracker.lockedHero = hero
         // Lock the battle spell used in this match too (priority: entered > in-game button > scoreboard > loading > end scoreboard)
         val rowSpell = if (row in 0..4) endSpells[row] else null
         val sp = GameStateTracker.spell() ?: rowSpell
         if (sp != null) {
             lockedSpell = sp
-            GameStateTracker.lockSpell(sp)
+            GameStateTracker.lockedSpell = sp
         }
         val spellShown = GameStateTracker.spellDisplay() ?: lockedSpell
         status = "✓ $hero" + (spellShown?.let { " · $it" } ?: "") + " LOCKED (" +

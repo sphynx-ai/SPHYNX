@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:3:1-55:12
-INJECTED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:3:1-55:12
-INJECTED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:3:1-55:12
-INJECTED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:3:1-55:12
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:3:1-60:12
+INJECTED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:3:1-60:12
+INJECTED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:3:1-60:12
+INJECTED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:3:1-60:12
 MERGED from [logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:18:1-45:12
 MERGED from [androidx.databinding:viewbinding:9.3.1] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/c742bf189dac144f05ed23599bbfed97/transformed/viewbinding-9.3.1/AndroidManifest.xml:2:1-7:12
 MERGED from [com.google.android.material:material:1.9.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/e224da94cfaca09d447a5c2f17f88c96/transformed/material-1.9.0/AndroidManifest.xml:17:1-26:12
@@ -50,40 +50,52 @@ MERGED from [androidx.annotation:annotation-experimental:1.3.0] /data/data/com.i
 MERGED from [com.google.ai.edge.litert:litert:1.4.2] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/82e14d97199e2b72d7b380cfd3e83fa5/transformed/litert-1.4.2/AndroidManifest.xml:2:1-11:12
 MERGED from [com.google.ai.edge.litert:litert-api:1.4.2] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/160f7a97b9c363464bb8f18520d4ade7/transformed/litert-api-1.4.2/AndroidManifest.xml:2:1-11:12
 	package
-		INJECTED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml
+		INJECTED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml
 	android:versionName
-		INJECTED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml
+		INJECTED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml
 	android:versionCode
-		INJECTED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml
+		INJECTED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml
 	xmlns:android
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:3:11-69
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:3:11-69
 uses-permission#android.permission.FOREGROUND_SERVICE
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:6:5-77
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:6:5-77
 MERGED from [logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:29:5-77
 MERGED from [logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:29:5-77
 	android:name
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:6:22-74
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:6:22-74
 uses-permission#android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:7:5-94
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:7:5-94
 	android:name
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:7:22-91
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:7:22-91
 uses-permission#android.permission.POST_NOTIFICATIONS
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:8:5-77
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:8:5-77
 	android:name
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:8:22-74
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:8:22-74
 uses-permission#android.permission.SYSTEM_ALERT_WINDOW
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:10:5-78
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:10:5-78
 	android:name
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:10:22-75
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:10:22-75
 uses-permission#android.permission.INTERNET
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:12:5-67
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:12:5-67
 MERGED from [logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:27:5-67
 MERGED from [logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:27:5-67
 	android:name
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:12:22-64
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:12:22-64
+uses-permission#android.permission.READ_EXTERNAL_STORAGE
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:14:5-107
+	android:maxSdkVersion
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:14:78-104
+	android:name
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:14:22-77
+uses-permission#android.permission.WRITE_EXTERNAL_STORAGE
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:15:5-108
+	android:maxSdkVersion
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:15:79-105
+	android:name
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:15:22-78
 application
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:14:5-54:19
-INJECTED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:14:5-54:19
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:17:5-59:19
+INJECTED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:17:5-59:19
 MERGED from [logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:32:5-43:19
 MERGED from [logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:32:5-43:19
 MERGED from [com.google.android.material:material:1.9.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/e224da94cfaca09d447a5c2f17f88c96/transformed/material-1.9.0/AndroidManifest.xml:24:5-20
@@ -107,79 +119,83 @@ MERGED from [com.google.ai.edge.litert:litert:1.4.2] /data/data/com.itsaky.andro
 MERGED from [com.google.ai.edge.litert:litert-api:1.4.2] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/160f7a97b9c363464bb8f18520d4ade7/transformed/litert-api-1.4.2/AndroidManifest.xml:9:5-20
 MERGED from [com.google.ai.edge.litert:litert-api:1.4.2] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/160f7a97b9c363464bb8f18520d4ade7/transformed/litert-api-1.4.2/AndroidManifest.xml:9:5-20
 	android:extractNativeLibs
-		INJECTED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml
+		INJECTED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.9.0] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/0ff0de468a0a532d8a0dc3e3d81c70c0/transformed/core-1.9.0/AndroidManifest.xml:28:18-86
 	android:label
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:16:9-38
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:19:9-38
 	android:roundIcon
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:18:9-44
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:21:9-44
 	android:largeHeap
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:19:9-33
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:24:9-33
 	android:icon
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:17:9-39
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:20:9-39
+	android:allowBackup
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:22:9-35
 	android:name
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:15:9-44
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:18:9-44
+	android:hasFragileUserData
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:23:9-42
 uses-native-library
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:22:9-85
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:27:9-85
 	android:required
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:22:58-82
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:27:58-82
 	android:name
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:22:30-57
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:27:30-57
 activity#com.example.mlbbresearch.app.MainActivity
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:26:9-35:20
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:31:9-40:20
 	android:exported
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:28:13-36
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:33:13-36
 	android:configChanges
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:30:13-131
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:35:13-131
 	android:theme
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:29:13-75
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:34:13-75
 	android:name
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:27:13-45
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:32:13-45
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:31:13-34:29
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:36:13-39:29
 action#android.intent.action.MAIN
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:32:17-69
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:37:17-69
 	android:name
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:32:25-66
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:37:25-66
 category#android.intent.category.LAUNCHER
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:33:17-77
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:38:17-77
 	android:name
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:33:27-74
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:38:27-74
 service#com.example.mlbbresearch.controller.AccessibilityController
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:37:9-48:19
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:42:9-53:19
 	android:label
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:40:13-42
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:45:13-42
 	android:exported
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:39:13-37
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:44:13-37
 	android:permission
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:41:13-79
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:46:13-79
 	android:name
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:38:13-63
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:43:13-63
 intent-filter#action:name:android.accessibilityservice.AccessibilityService
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:42:13-44:29
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:47:13-49:29
 action#android.accessibilityservice.AccessibilityService
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:43:17-92
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:48:17-92
 	android:name
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:43:25-89
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:48:25-89
 meta-data#android.accessibilityservice
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:45:13-47:64
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:50:13-52:64
 	android:resource
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:47:17-61
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:52:17-61
 	android:name
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:46:17-60
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:51:17-60
 service#com.example.mlbbresearch.capture.ScreenCaptureService
-ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:50:9-53:63
+ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:55:9-58:63
 	android:exported
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:52:13-37
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:57:13-37
 	android:foregroundServiceType
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:53:13-60
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:58:13-60
 	android:name
-		ADDED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml:51:13-57
+		ADDED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml:56:13-57
 uses-sdk
-INJECTED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
-INJECTED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml
-INJECTED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml
+INJECTED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml
+INJECTED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml
 MERGED from [logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:21:5-44
 MERGED from [logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:21:5-44
 MERGED from [androidx.databinding:viewbinding:9.3.1] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/c742bf189dac144f05ed23599bbfed97/transformed/viewbinding-9.3.1/AndroidManifest.xml:5:5-44
@@ -271,9 +287,9 @@ MERGED from [com.google.ai.edge.litert:litert:1.4.2] /data/data/com.itsaky.andro
 MERGED from [com.google.ai.edge.litert:litert-api:1.4.2] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/160f7a97b9c363464bb8f18520d4ade7/transformed/litert-api-1.4.2/AndroidManifest.xml:6:5-7:38
 MERGED from [com.google.ai.edge.litert:litert-api:1.4.2] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/160f7a97b9c363464bb8f18520d4ade7/transformed/litert-api-1.4.2/AndroidManifest.xml:6:5-7:38
 	android:targetSdkVersion
-		INJECTED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml
+		INJECTED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml
 	android:minSdkVersion
-		INJECTED from /storage/emulated/0/CodeOnTheGoProjects/MLBBResearch/app/src/main/AndroidManifest.xml
+		INJECTED from /storage/emulated/0/CodeOnTheGoProjects/Ai-App-Gemini-Git/app/src/main/AndroidManifest.xml
 queries
 ADDED from [logsender.aar] /data/data/com.itsaky.androidide/files/home/.gradle/caches/9.6.1/transforms/50743e7b0cd7555182457a68cbb4e088/transformed/logsender/AndroidManifest.xml:23:5-25:15
 package#com.itsaky.androidide

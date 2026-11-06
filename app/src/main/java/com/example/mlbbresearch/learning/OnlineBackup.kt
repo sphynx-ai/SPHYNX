@@ -9,37 +9,52 @@ import com.example.mlbbresearch.core.Cfg
 import com.example.mlbbresearch.core.Diag
 import com.example.mlbbresearch.game.HeroDb
 import org.json.JSONObject
+import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-// What Groq found online is also kept as files in Download/MLBB-Research, so it survives a
-// reinstall (the app's own storage is wiped then) and the folder scan reads it back:
+// Persistent phone storage backup across uninstalls & reinstalls (v37.16):
+//   mlbb-scenery-sync.json   3D scenery map, minimap sync offsets, camera preset, and minimap/HUD calibration
+//                            (saved immediately on change and restored automatically on startup after reinstall;
+//                            ONLY deleted/reset when you press "Clear saved map scenery" or "Reset scenery-minimap sync offsets")
 //   mlbb-online-meta.json    the patch meta + every hero's meta (build, emblem, combo, tips...)
 //   mlbb-online-skills.json  every hero's skills learned online (what each skill does, cast mode)
-// Each file is rewritten a few seconds after new data arrives. When reading back, an entry only
-// replaces what the app has when it is newer ("at").
-// ONE FILE ONLY: after a reinstall Android would make "mlbb-online-meta (1).json" next to the old
-// one (the old install's file cannot be overwritten through Downloads). Through the folder you
-// chose (Model page) the app may change every file in it: any extra copies are read in first (so
-// nothing is lost), then the one "mlbb-online-meta.json" is overwritten and the copies deleted.
+//   mlbb-learned.json        brain, Coach, ultimate cooldowns, cast gaps, hero/spell icons, level badges...
 object OnlineBackup {
 
     const val META = "mlbb-online-meta"
     const val SKILLS = "mlbb-online-skills"
-    // what the app learned while playing + your settings (v36.51): brain, Coach, ultimate cooldowns,
-    // combo burst gaps, aim leads, cast modes, hero/spell icons, level badges, minimap colours,
-    // tower range, lane travel, layout presets, switches... Restored only where the app has nothing
-    // (a fresh install), so it never overwrites what this install learned.
     const val LEARNED = "mlbb-learned"
+    const val SCENERY_SYNC = "mlbb-scenery-sync"
+
     @Volatile private var learnedPending = false
+    @Volatile private var sceneryPending = false
     @Volatile private var restoring = false
     @Volatile private var ctx: Context? = null
     private val io = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "online-backup").apply { priority = Thread.MIN_PRIORITY } }
     @Volatile private var pending = false
 
+    private val SCENERY_EXACT_KEYS = setOf(
+        "scenery_map_v1", "scenery_auto_sync", "cam_height_mode",
+        "scenery_scale_x", "scenery_scale_y", "scenery_off_x", "scenery_off_y",
+        "scenery_cleared_at", "sync_reset_at", "active_preset", "preset_names", "tower_range_v2"
+    )
+    private val SCENERY_PREFIXES = listOf("cal_", "preset_", "minimap_col_", "mm_col_")
+
+    fun isSceneryOrCalKey(k: String): Boolean =
+        k in SCENERY_EXACT_KEYS || SCENERY_PREFIXES.any { k.startsWith(it) }
+
     fun init(c: Context) {
-        ctx = c.applicationContext
-        Cfg.watch { k -> if (!restoring && learnedKey(k)) learnedChanged() }
+        val app = c.applicationContext
+        ctx = app
+        // Immediately restore persistent scenery & minimap calibration from phone storage on a fresh install / startup
+        restoreFromPhoneStorageOnStartup(app)
+        Cfg.watch { k ->
+            if (!restoring) {
+                if (isSceneryOrCalKey(k)) sceneryChanged()
+                if (learnedKey(k)) learnedChanged()
+            }
+        }
     }
 
     // not in the learned file: the online data (own files), keys (their .txt files), folder/model
@@ -48,23 +63,170 @@ object OnlineBackup {
         "policy_info", "fight_choice_info", "mig_", "groq_limited_until", "gemini_", "cerebras_", "groq_", "kaggle_", "learned_")
     fun learnedKey(k: String) = SKIP_PREFIX.none { k.startsWith(it) } && !k.endsWith("_key") && !k.endsWith("_model")
 
-    // play-learned values change often: one write a minute at most
+    // Scenery & minimap calibration changes are written within 800 ms so they are never lost if the app closes or is uninstalled
+    private fun sceneryChanged() {
+        if (ctx == null || sceneryPending) return
+        sceneryPending = true
+        io.schedule({
+            sceneryPending = false
+            try { writeScenerySync() } catch (e: Exception) { Diag.error("Saving scenery & minimap sync to phone", e) }
+        }, 800, TimeUnit.MILLISECONDS)
+    }
+
+    // Immediate save called when user presses "Sync Now", "Clear saved map scenery", or "Reset scenery-minimap sync offsets"
+    fun saveScenerySyncNow() {
+        val c = ctx ?: return
+        io.execute {
+            try {
+                writeScenerySync()
+                writeLearned()
+            } catch (e: Exception) {
+                Diag.error("Saving scenery & minimap sync to phone", e)
+            }
+        }
+    }
+
+    private fun writeScenerySync() {
+        val c = ctx ?: return
+        val vals = JSONObject()
+        for ((k, v) in Cfg.all()) {
+            if (v == null || !isSceneryOrCalKey(k)) continue
+            val t = when (v) { is Boolean -> "b"; is Int -> "i"; is Long -> "l"; is Float -> "f"; is String -> "s"; else -> continue }
+            vals.put(k, JSONObject().put("t", t).put("v", if (v is Float) v.toDouble() else v))
+        }
+        val payload = JSONObject()
+            .put("at", System.currentTimeMillis())
+            .put("app", com.example.mlbbresearch.core.AppVersion.VERSION)
+            .put("scenery_cleared", Cfg.raw("scenery_map_v1") == null)
+            .put("scenery_cleared_at", Cfg.raw("scenery_cleared_at")?.toLongOrNull() ?: 0L)
+            .put("sync_reset_at", Cfg.raw("sync_reset_at")?.toLongOrNull() ?: 0L)
+            .put("values", vals)
+            .toString()
+        writeEverywhere(c, "$SCENERY_SYNC.json", payload)
+    }
+
+    private fun restoreScenerySync(o: JSONObject): Int {
+        val vals = o.optJSONObject("values") ?: return 0
+        val fileCleared = o.optBoolean("scenery_cleared", false)
+        val fileClearedAt = o.optLong("scenery_cleared_at", 0L)
+        val localClearedAt = Cfg.raw("scenery_cleared_at")?.toLongOrNull() ?: 0L
+        var n = 0
+        restoring = true
+        try {
+            if (fileCleared && fileClearedAt > localClearedAt) {
+                Cfg.setRaw("scenery_map_v1", null)
+                Cfg.setRaw("scenery_cleared_at", fileClearedAt.toString())
+            }
+            for (k in vals.keys()) {
+                if (!isSceneryOrCalKey(k)) continue
+                if (k == "scenery_map_v1" && (fileCleared || localClearedAt > o.optLong("at", 0L))) continue
+                // Restore if missing on this install (fresh reinstall) or if the saved file is newer
+                if (Cfg.has(k)) continue
+                val e = vals.optJSONObject(k) ?: continue
+                when (e.optString("t")) {
+                    "b" -> Cfg.putAny(k, e.optBoolean("v"))
+                    "i" -> Cfg.putAny(k, e.optInt("v"))
+                    "l" -> Cfg.putLong(k, e.optLong("v"))
+                    "f" -> Cfg.putAny(k, e.optDouble("v").toFloat())
+                    "s" -> Cfg.putAny(k, e.optString("v"))
+                    else -> continue
+                }
+                n++
+            }
+        } finally {
+            restoring = false
+        }
+        if (n > 0) {
+            try { com.example.mlbbresearch.vision.MinimapColors.forgetCache() } catch (e: Throwable) { }
+            try { com.example.mlbbresearch.game.SceneryMap.reloadFromCfg() } catch (e: Throwable) { }
+        }
+        return n
+    }
+
+    // Automatically restores mlbb-scenery-sync.json (and mlbb-learned.json) on startup after an uninstall & reinstall,
+    // even before the user has re-selected the Download/MLBB-Research folder!
+    private fun restoreFromPhoneStorageOnStartup(c: Context) {
+        try {
+            // 1. Direct public Download/MLBB-Research and Documents/MLBB-Research file paths
+            val dirs = listOfNotNull(
+                try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MLBB-Research") } catch (e: Exception) { null },
+                try { File("/storage/emulated/0/Download/MLBB-Research") } catch (e: Exception) { null },
+                try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "MLBB-Research") } catch (e: Exception) { null },
+                com.example.mlbbresearch.models.AutoFolder.localDir(c)
+            ).distinctBy { it.absolutePath }
+
+            for (dir in dirs) {
+                if (!dir.exists() || !dir.isDirectory) continue
+                for (base in listOf(SCENERY_SYNC, LEARNED, META, SKILLS)) {
+                    val f = File(dir, "$base.json")
+                    if (f.exists() && f.isFile && f.canRead()) {
+                        try { restore(f.name, f.readText(Charsets.UTF_8)) } catch (e: Exception) { }
+                    }
+                }
+            }
+
+            // 2. MediaStore.Downloads query (reads Download/MLBB-Research/mlbb-scenery-sync.json across reinstalls)
+            val cr = c.contentResolver
+            for (base in listOf(SCENERY_SYNC, LEARNED, META, SKILLS)) {
+                try {
+                    cr.query(
+                        MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                        arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME, MediaStore.Downloads.DATE_MODIFIED),
+                        MediaStore.Downloads.DISPLAY_NAME + " LIKE ?",
+                        arrayOf("$base%.json"),
+                        MediaStore.Downloads.DATE_MODIFIED + " DESC"
+                    )?.use { cur ->
+                        while (cur.moveToNext()) {
+                            val id = cur.getLong(0)
+                            val name = cur.getString(1) ?: "$base.json"
+                            val uri = ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id)
+                            try {
+                                cr.openInputStream(uri)?.use { inp ->
+                                    restore(name, inp.readBytes().toString(Charsets.UTF_8))
+                                }
+                            } catch (e: Exception) { }
+                        }
+                    }
+                } catch (e: Exception) { }
+            }
+
+            // 3. AutoFolder treeUri if already granted
+            for (base in listOf(SCENERY_SYNC, LEARNED)) {
+                for ((name, doc) in folderCopies(c, base)) {
+                    try {
+                        cr.openInputStream(doc)?.use { inp ->
+                            restore(name, inp.readBytes().toString(Charsets.UTF_8))
+                        }
+                    } catch (e: Exception) { }
+                }
+            }
+        } catch (e: Exception) {
+            Diag.error("Startup scenery/calibration restore", e)
+        }
+    }
+
+    // play-learned values change often: one write every 25 seconds at most
     private fun learnedChanged() {
         if (ctx == null || learnedPending) return
         learnedPending = true
-        io.schedule({ learnedPending = false; try { writeLearned() } catch (e: Exception) { Diag.error("Saving the learned data to the folder", e) } }, 60, TimeUnit.SECONDS)
+        io.schedule({ learnedPending = false; try { writeLearned() } catch (e: Exception) { Diag.error("Saving the learned data to the folder", e) } }, 25, TimeUnit.SECONDS)
     }
 
     // also called when you leave the app, so the last minute is not lost
     fun flushLearned() {
         if (ctx == null) return
-        io.execute { try { writeLearned() } catch (e: Exception) { Diag.error("Saving the learned data to the folder", e) } }
+        io.execute {
+            try {
+                writeScenerySync()
+                writeLearned()
+            } catch (e: Exception) {
+                Diag.error("Saving the learned data to the folder", e)
+            }
+        }
     }
 
     private fun writeLearned() {
         val c = ctx ?: return
-        // the first write of this install reads the folder's file first (a fresh install must not
-        // replace the old install's learning before it was restored); later writes may drop what you reset
         val first = Cfg.raw("learned_merged") == null
         val copies = folderCopies(c, LEARNED)
         for ((name, doc) in copies) if (first || name != "$LEARNED.json") {
@@ -83,11 +245,14 @@ object OnlineBackup {
 
     private fun restoreLearned(o: JSONObject): Int {
         val vals = o.optJSONObject("values") ?: return 0
+        val localClearedAt = Cfg.raw("scenery_cleared_at")?.toLongOrNull() ?: 0L
+        val fileAt = o.optLong("at", 0L)
         var n = 0
         restoring = true
         try {
             for (k in vals.keys()) {
                 if (!learnedKey(k) || Cfg.has(k)) continue      // only what this install does not have
+                if (k == "scenery_map_v1" && localClearedAt > fileAt) continue
                 val e = vals.optJSONObject(k) ?: continue
                 when (e.optString("t")) {
                     "b" -> Cfg.putAny(k, e.optBoolean("v"))
@@ -111,6 +276,7 @@ object OnlineBackup {
         try { com.example.mlbbresearch.vision.IconMemory.forgetCache() } catch (e: Throwable) { }
         try { com.example.mlbbresearch.vision.LevelReader.forgetCache() } catch (e: Throwable) { }
         try { com.example.mlbbresearch.vision.MinimapColors.forgetCache() } catch (e: Throwable) { }
+        try { com.example.mlbbresearch.game.SceneryMap.reloadFromCfg() } catch (e: Throwable) { }
     }
 
     private fun norm(h: String) = h.lowercase().filter { it.isLetterOrDigit() }
@@ -119,12 +285,12 @@ object OnlineBackup {
     fun changed() {
         if (ctx == null || pending) return
         pending = true
-        io.schedule({ pending = false; try { writeAll() } catch (e: Exception) { Diag.error("Saving the online data to the folder", e) } }, 3, TimeUnit.SECONDS)
+        io.schedule({ pending = false; try { writeAll() } catch (e: Exception) { Diag.error("Saving the online data to the folder", e) } }, 2, TimeUnit.SECONDS)
     }
 
     private fun writeAll() {
         val c = ctx ?: return
-        // extra copies ("... (1).json") are merged into the app's data first, then removed when writing
+        writeScenerySync()
         for (base in listOf(META, SKILLS)) for ((name, doc) in folderCopies(c, base)) if (name != "$base.json") {
             try { c.contentResolver.openInputStream(doc)?.use { restore(name, it.readBytes().toString(Charsets.UTF_8)) } } catch (e: Exception) { }
         }
@@ -161,8 +327,28 @@ object OnlineBackup {
         return out
     }
 
+    // Writes to ALL available persistent locations so scenery & minimap sync always survives uninstall/reinstall
+    private fun writeEverywhere(c: Context, name: String, text: String) {
+        writeInFolder(c, name, text)
+        writeInDownloads(c, name, text)
+        try {
+            val pubDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MLBB-Research")
+            if (pubDir.exists() || pubDir.mkdirs()) {
+                File(pubDir, name).writeText(text, Charsets.UTF_8)
+            }
+        } catch (e: Exception) { }
+        try {
+            com.example.mlbbresearch.models.AutoFolder.localDir(c)?.let { dir ->
+                File(dir, name).writeText(text, Charsets.UTF_8)
+            }
+        } catch (e: Exception) { }
+    }
+
     private fun write(c: Context, name: String, text: String) {
-        if (writeInFolder(c, name, text)) return
+        if (writeInFolder(c, name, text)) {
+            writeInDownloads(c, name, text)
+            return
+        }
         writeInDownloads(c, name, text)
     }
 
@@ -186,19 +372,18 @@ object OnlineBackup {
     }
 
     private fun writeInDownloads(c: Context, name: String, text: String) {
-        val cr = c.contentResolver
-        val rel = Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research/"
-        val existing = cr.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.Downloads._ID),
-            MediaStore.Downloads.DISPLAY_NAME + " = ? AND " + MediaStore.Downloads.RELATIVE_PATH + " = ?", arrayOf(name, rel), null)
-            ?.use { if (it.moveToFirst()) ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, it.getLong(0)) else null }
-        val uri = existing ?: cr.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, name)
-            put(MediaStore.Downloads.MIME_TYPE, "application/json")
-            put(MediaStore.Downloads.RELATIVE_PATH, rel.trimEnd('/'))
-        }) ?: return
-        cr.openOutputStream(uri, "wt")?.use { it.write(text.toByteArray()) }
-        // our own extra copies ("... (1).json" made by this install) go
         try {
+            val cr = c.contentResolver
+            val rel = Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research/"
+            val existing = cr.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.Downloads._ID),
+                MediaStore.Downloads.DISPLAY_NAME + " = ? AND " + MediaStore.Downloads.RELATIVE_PATH + " = ?", arrayOf(name, rel), null)
+                ?.use { if (it.moveToFirst()) ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, it.getLong(0)) else null }
+            val uri = existing ?: cr.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, name)
+                put(MediaStore.Downloads.MIME_TYPE, "application/json")
+                put(MediaStore.Downloads.RELATIVE_PATH, rel.trimEnd('/'))
+            }) ?: return
+            cr.openOutputStream(uri, "wt")?.use { it.write(text.toByteArray()) }
             val base = name.removeSuffix(".json")
             cr.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME),
                 MediaStore.Downloads.DISPLAY_NAME + " LIKE ? AND " + MediaStore.Downloads.RELATIVE_PATH + " = ?", arrayOf("$base (%).json", rel), null)?.use { cur ->
@@ -207,23 +392,25 @@ object OnlineBackup {
         } catch (e: Exception) { }
     }
 
-    // ---- reading back (folder scan) ----
+    // ---- reading back (folder scan & startup restore) ----
 
     fun isBackup(fileName: String): Boolean {
         val n = fileName.lowercase()
-        return n.endsWith(".json") && (n.startsWith(META) || n.startsWith(SKILLS) || n.startsWith(LEARNED))
+        return n.endsWith(".json") && (n.startsWith(SCENERY_SYNC) || n.startsWith(META) || n.startsWith(SKILLS) || n.startsWith(LEARNED))
     }
 
     // an entry replaces the app's copy when the app has none or the file's is newer; returns how many
     fun restore(fileName: String, text: String): Int {
         val o = JSONObject(text)
-        if (fileName.lowercase().startsWith(LEARNED)) return restoreLearned(o)
+        val lower = fileName.lowercase()
+        if (lower.startsWith(SCENERY_SYNC)) return restoreScenerySync(o)
+        if (lower.startsWith(LEARNED)) return restoreLearned(o)
         var n = 0
         fun newer(key: String, e: JSONObject): Boolean {
             val cur = Cfg.raw(key)?.let { try { JSONObject(it) } catch (x: Exception) { null } }
             return cur == null || e.optLong("at") > cur.optLong("at")
         }
-        if (fileName.lowercase().startsWith(META)) {
+        if (lower.startsWith(META)) {
             o.optJSONObject("general")?.let { g -> if (newer("meta_general", g)) { Cfg.setRaw("meta_general", g.toString()); n++ } }
             o.optJSONObject("items")?.let { its ->
                 for (k in its.keys()) { val e = its.getJSONObject(k); val key = com.example.mlbbresearch.game.ItemBook.key(k); if (newer(key, e)) { Cfg.setRaw(key, e.toString()); n++ } }
