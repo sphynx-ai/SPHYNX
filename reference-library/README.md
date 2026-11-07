@@ -60,3 +60,21 @@ reference-library/
 2. Exclude non-reference images (chat screenshots, terminal credentials, unrelated personal photos).
 3. Copy the original file without recompression into the matching `reference-library/` subdirectory using a descriptive kebab-case filename while recording `original_filename`.
 4. Append the complete metadata entry to `manifests/asset-manifest.json` and `asset-index.md`, commit on `reference-assets`, and push to `origin/reference-assets`.
+
+## 7. Asset Batches
+
+| Batch | Date | Added by | Assets | Notes |
+|---|---|---|---|---|
+| 1 | 2026-11-07 | Gemini CLI | 15 (`MLBB-HUD-001`…`MLBB-MAP-002`) | 1024x460 JPEG copies of owner screenshots (downscaled from the phone's 2712x1220). |
+| 2 | 2026-11-07 | Claude Code | 34 (`MLBB-SCREEN-001`…`015`, `MLBB-MENU-001`…`004`, `MLBB-HUD-004`…`009`, `MLBB-MAP-003`/`004`, `MLBB-GAME-001`…`005`, `MLBB-AIREF-001`/`002`) | Original owner uploads at the phone's **native 2712x1220** resolution (one 152x132 minimap crop), copied byte-for-byte. |
+
+**Batch 2 selection rules (owner decisions of 2026-11-07):**
+- **Curated, not exhaustive.** About 35 images were chosen to keep the repository small: one clear example per screen phase (home, party room, match found, hero select, shop, scoreboard, victory/defeat, result cards, rank, win streak), the in-game glossary, and distinct HUD states. 95 further relevant screenshots were left out and are listed in the excluded log for possible later addition.
+- **No other players.** Screens whose main content is other real players' names (loading screens, ranked scoreboards, end boards) and frames from other people's live streams are excluded. Practice-match screens with "Computer" opponents are included.
+- **Exclusions:** chat conversations, the Sphynx app's own UI, web dashboards, model-hosting pages, and file listings, some of which contain private or credential-adjacent information.
+
+**Additional metadata fields (batch 2):**
+- `interpretation_confidence` (`high` / `medium` / `low`): how sure the AI-generated interpretation is. Verified information never needs a confidence level, because it lists only what is visible in the image.
+- `capture_resolution`: `native` for full-resolution phone captures, `crop` for cropped images.
+
+**Calibration note:** batch 1 images are downscaled JPEG re-encodes. Pixel colour thresholds measured on them may differ slightly from live captures, which the app reads at the phone's native resolution. Batch 2's native-resolution images are the better reference for colour and position calibration.

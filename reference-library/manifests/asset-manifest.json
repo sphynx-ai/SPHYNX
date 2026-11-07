@@ -17,9 +17,9 @@
       "role": "Project Manager and Technical Secretary"
     }
   ],
-  "total_discovered_in_environment": 22,
-  "total_included_reference_assets": 15,
-  "total_excluded_non_reference_files": 7,
+  "total_discovered_in_environment": 249,
+  "total_included_reference_assets": 49,
+  "total_excluded_non_reference_files": 200,
   "assets": [
     {
       "asset_id": "MLBB-HUD-001",
@@ -421,6 +421,931 @@
       "relevance_to_sphynx_auto_pilot": "Validates ScreenReader.findUpgradePlus across pulse animation frames and Recall channel hold in ActionExecutor.holdDirection.",
       "source_and_provenance": "Owner-uploaded in-game screenshot from Android device (user_uploaded/1000033099_0497fd.jpg).",
       "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference."
+    },
+    {
+      "asset_id": "MLBB-SCREEN-001",
+      "descriptive_filename": "mlbb-screen-home-lobby-matchmaking-return-to-lobby.jpg",
+      "original_filename": "00035e57-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-home-lobby-matchmaking-return-to-lobby.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Home lobby (matchmaking)",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1716341,
+      "sha256": "e8198741b38fa46000597267d52f664116e12ac978f387b4c2a229f0ce8449a0",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 00035e57-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "Landscape screenshot of the MLBB home screen with player name '100%KO' at the top left.",
+        "A top-centre box reads 'Estimated 00:03' with a timer '00:01'.",
+        "Bottom-right button reads 'Return to Lobby' with 'RANKED' above it; bottom menu shows 'Preparation', 'Heroes', 'Collection', 'Inventory', 'Mode'."
+      ],
+      "ai_generated_interpretation": "Appears to show the home screen while a ranked match search is running.",
+      "interpretation_confidence": "medium",
+      "relevance_to_sphynx_auto_pilot": "Screen-phase reference for the home / lobby phase (ScreenReader screen classification) and for recognising that matchmaking is in progress.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-SCREEN-002",
+      "descriptive_filename": "mlbb-screen-home-lobby-classic-mode-selected.jpg",
+      "original_filename": "17649258-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-home-lobby-classic-mode-selected.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Home lobby (idle)",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1434246,
+      "sha256": "6227713ff98f40d959c65c6e9a16a2bdced4010991c1be061b68b403b47cdaf9",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 17649258-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "Landscape screenshot of the MLBB home screen, player '100%KO' at the top left.",
+        "Bottom-right mode button reads 'CLASSIC'; bottom menu shows 'Preparation', 'Heroes', 'Inventory', 'Mode'.",
+        "A speech bubble reads 'Hi~! Are you ready to win some games today?'."
+      ],
+      "ai_generated_interpretation": "Idle home screen with Classic mode selected and no matchmaking running.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Screen-phase reference for the idle home / lobby phase.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-SCREEN-003",
+      "descriptive_filename": "mlbb-screen-classic-party-room-start-game.jpg",
+      "original_filename": "fdb8b000-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-classic-party-room-start-game.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Classic party room",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 451274,
+      "sha256": "aa0ef68ed48644e654f239069a63abd1039cbd257e8b18ca0962e0e25d72ead0",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file fdb8b000-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "Landscape screenshot titled 'CLASSIC' with five party slots; the first shows '100%KO' and '37ms', the other four show '?'.",
+        "Bottom-centre button reads 'Start Game'; right side reads 'No friends are online.'."
+      ],
+      "ai_generated_interpretation": "Pre-match party room for Classic mode before the search starts.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Screen-phase reference for the party room / pre-queue phase.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-SCREEN-004",
+      "descriptive_filename": "mlbb-screen-ranked-party-room-start-game.jpg",
+      "original_filename": "c4ddbba0-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-ranked-party-room-start-game.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Ranked party room",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 720428,
+      "sha256": "c2600ca6b4e531ea1f66d45e2adab9c8e6f57d73ab9e1c681470022d1546a50a",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file c4ddbba0-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "Landscape screenshot titled 'RANKED' with five party slots; the first shows '100%KO' and '18ms', the other four show '?'.",
+        "Bottom-centre button reads 'Start Game'."
+      ],
+      "ai_generated_interpretation": "Pre-match party room for Ranked mode.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Screen-phase reference for the ranked party room; compare with MLBB-SCREEN-003 for mode differences.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-SCREEN-005",
+      "descriptive_filename": "mlbb-screen-match-found-accept-countdown.jpg",
+      "original_filename": "548d0392-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-match-found-accept-countdown.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Match found (accept)",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1107528,
+      "sha256": "7b10b6201f63ef260a8f15a30bdb3f705dde01c955a4c9a9cc4ecb5244f01666",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 548d0392-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "Landscape screenshot with a large central crystal showing '24' and '/10' beneath it, and an 'Enter' button.",
+        "Ten hero/player avatar portraits with country flags, five on each side; no player names are shown.",
+        "Bottom text reads 'Once in battle, you cannot download additional resources. Downloads will continue once battle ends.'."
+      ],
+      "ai_generated_interpretation": "Match-found screen where players accept; '24' is likely the accept countdown.",
+      "interpretation_confidence": "medium",
+      "relevance_to_sphynx_auto_pilot": "Screen-phase reference for the match-found / queue-accept phase.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-SCREEN-006",
+      "descriptive_filename": "mlbb-screen-hero-select-practice-thamuz.jpg",
+      "original_filename": "0f1c98ab-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-hero-select-practice-thamuz.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Hero select (Thamuz, practice)",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1529356,
+      "sha256": "d6026efeff85144d42ba4167eaf0c4272e3f943f4015c1041f2343a4151eaa76",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 0f1c98ab-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "Landscape hero-select screen with 'TIME 00:26' at the top left and 'Thamuz / Fighter / Chase/Damage' at the top.",
+        "Left column shows the player 'GRIFFITH' and four slots labelled 'Computer'.",
+        "Right column lists hero portraits (Roger, Clint, Gusion, Thamuz, Masha, Brody) and a 'Confirm' button."
+      ],
+      "ai_generated_interpretation": "Hero selection in a practice match against computer opponents.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Screen-phase reference for hero select (draft); hero-name text and portrait grid positions.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-SCREEN-007",
+      "descriptive_filename": "mlbb-screen-in-match-shop-recommended-builds.jpg",
+      "original_filename": "5851359b-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-in-match-shop-recommended-builds.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "In-match equipment shop",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1311349,
+      "sha256": "6546d4f3198e76b49d5ccd980d0db0f63ce3a6d94c3d81b81e6a616029b5d6ed",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 5851359b-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "Equipment shop overlay with tabs 'All Equipment' / 'Simple Mode' and categories 'Recommended', 'Attack', 'Magic', 'Defense', 'Movement', 'Jungling', 'Roaming'.",
+        "Item cards with prices, e.g. 'Magic Boots 720', 'Blade of the Heptaseas 1950', 'Blade of Despair 2100', and a 'Purchase' button; gold '$889' at the top left."
+      ],
+      "ai_generated_interpretation": "In-match shop open (the app's SHOP phase).",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Screen-phase reference for the shop-open phase; item names and prices are a check for the Builder's item reading.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-SCREEN-008",
+      "descriptive_filename": "mlbb-screen-victory-tap-to-continue.jpg",
+      "original_filename": "32948a47-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-victory-tap-to-continue.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Victory banner",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 978934,
+      "sha256": "601344b5ddacdec79990969f011fad42ad33387f111257ef09ed0721fe198309",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 32948a47-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "Large 'VICTORY' text with a hero emblem, and 'Tap to Continue' beneath it."
+      ],
+      "ai_generated_interpretation": "First post-match screen after a win.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Screen-phase reference for the match result (win).",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-SCREEN-009",
+      "descriptive_filename": "mlbb-screen-defeat-tap-to-continue.jpg",
+      "original_filename": "4e9f1c48-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-defeat-tap-to-continue.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Defeat banner",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 863312,
+      "sha256": "459bcbd7f80088f1512ce1489a77034c4bbc57ecbba59a29630fe1959635d322",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 4e9f1c48-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "Large 'DEFEAT' text on a red background with a hero emblem, and 'Tap to Continue' beneath it."
+      ],
+      "ai_generated_interpretation": "First post-match screen after a loss.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Screen-phase reference for the match result (loss); colour contrast with MLBB-SCREEN-008.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-SCREEN-010",
+      "descriptive_filename": "mlbb-screen-defeat-result-card-performance-radar.jpg",
+      "original_filename": "4d23ba46-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-defeat-result-card-performance-radar.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Defeat result card",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1038704,
+      "sha256": "ab33fd4346824872150d311e028c5ee334d3ab230be85004fb92cd64ca84ac25",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 4d23ba46-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "'DEFEAT' card with the player 'GRIFFITH' and level progress '7204/31500'.",
+        "Performance radar labelled 'Laning', 'DPS', 'DMG Taken', 'Gold', 'Survival', 'Teamfight'; a 'No Data' panel and a 'Confirm' button."
+      ],
+      "ai_generated_interpretation": "Post-match performance summary after a loss.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Post-match analysis reference (radar categories) and screen-phase reference.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-SCREEN-011",
+      "descriptive_filename": "mlbb-screen-victory-mvp-result-card.jpg",
+      "original_filename": "5191817f-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-victory-mvp-result-card.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Victory MVP result card",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1068739,
+      "sha256": "e5a2ec28923e21a848990848572e0f84fc30af1a9ec10e012964b2f99b3e0c39",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 5191817f-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "'VICTORY' card with an 'MVP' badge and score '11.9', 'Surpassed 87.4% of All Players'.",
+        "Player '100%KO' 'Lv.11 315/520'; radar labelled 'Laning', 'DPS', 'Kill', 'Gold', 'Survival', 'Teamfight'.",
+        "Task panel: 'Deal 80000 damage to heroes' (80000/80000) and 'Deal 8000 damage to buildings' (4154/8000)."
+      ],
+      "ai_generated_interpretation": "Post-match performance summary after a win with MVP.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Post-match analysis reference (score, radar, tasks).",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-SCREEN-012",
+      "descriptive_filename": "mlbb-screen-rank-progress-master-ii.jpg",
+      "original_filename": "0cc90baf-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-rank-progress-master-ii.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Rank progress (Master II)",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1075561,
+      "sha256": "7499c009ec4ae4b13302f61af1880fe4f4b27a07f8b79c297dfe5ce2b0137b39",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 0cc90baf-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "Rank screen showing 'Master II' with one of four stars filled.",
+        "'Star-raising Points 55/300+360 18%' with lines 'Triple Kill +50', 'Legendary +50', 'Basic Victory Points +20', 'Winning Streak Points +200'.",
+        "'Protection Points 0/300 0%', and 'Share' / 'Continue' buttons."
+      ],
+      "ai_generated_interpretation": "Ranked progress screen shown after a ranked match.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Screen-phase reference for post-match rank screens.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-SCREEN-013",
+      "descriptive_filename": "mlbb-screen-win-streak-ranked.jpg",
+      "original_filename": "b7b7e3bb-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-win-streak-ranked.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Win streak",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1324539,
+      "sha256": "7257fe8c9159503515254acbe40dc88569ae6a6cf2cab47e047eafb8e6d2908a",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file b7b7e3bb-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "'Win Streak' screen: 'You are on a 12-win streak in Ranked!'.",
+        "Badges labelled 'Legend of War', 'Legendary', 'MVP', 'Raider's Aid', 'Jungle Dominator', 'Great AOE x2'; bottom line '41 x 5', '19', '1', '1', '$ 11865'.",
+        "A popup reads 'You have a Highlight Video ready to generate!' with a 'Generate' button."
+      ],
+      "ai_generated_interpretation": "Post-match streak and achievement summary.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Screen-phase reference for post-match achievement screens; badge names for post-match analysis.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-SCREEN-014",
+      "descriptive_filename": "mlbb-screen-in-match-scoreboard-practice-vs-computer.jpg",
+      "original_filename": "2eb470e3-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-in-match-scoreboard-practice-vs-computer.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "In-match scoreboard (practice)",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1330414,
+      "sha256": "d8406c7c20b5b164ef07f2a3e0e1e3c502aef720d9580140b437486dfc3c889d",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 2eb470e3-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match scoreboard with 'Equipment' tab; left team '100%KO' (Alucard) and four 'Computer' players (Miya, Tigreal, Uranus, Vexana); right team five 'Computer' players (Balmond, Tigreal, Vale, Sun, Hanabi).",
+        "Team gold '$ 25.7k' vs '$ 20.9k'; per-player K/D/A and gold columns (e.g. '11 0 0 7038')."
+      ],
+      "ai_generated_interpretation": "In-match scoreboard opened during a practice match against computer opponents.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Reference for the in-match SCOREBOARD phase and row layout (PortraitMatch.observeScoreboard rows).",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-SCREEN-015",
+      "descriptive_filename": "mlbb-screen-in-match-scoreboard-practice-match-start.jpg",
+      "original_filename": "300e72bb-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-screen-in-match-scoreboard-practice-match-start.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "In-match scoreboard at match start",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1191730,
+      "sha256": "a5d4e054849f430946f2f367872b69c801285e35ee5c7cc16d61f0cf98611a39",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 300e72bb-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match scoreboard at 00:09 with all players at '0 0 0 300'; left team '100%KO' (Dyrroth) and four 'Computer' players, right team five 'Computer' players.",
+        "Team gold '$1.5k' vs '$1.5k'."
+      ],
+      "ai_generated_interpretation": "Scoreboard at the very start of a practice match (empty item slots).",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Baseline scoreboard with empty equipment slots; useful negative case for item reading.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-MENU-001",
+      "descriptive_filename": "mlbb-menu-glossary-state-guide-control-effects.jpg",
+      "original_filename": "09dd31b3-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-menu-glossary-state-guide-control-effects.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "In-game glossary: control effects",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 880124,
+      "sha256": "25bc5ae40da129a02ce1f3344565b2ae3fb543764199de46bdf4fc7aba73037e",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 09dd31b3-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-game tutorial glossary, tab 'State Guide', header 'Familiarize yourself with important game terminology and other commonly used terms.'.",
+        "Entries: Terrify, Taunt, Freeze, Petrify, Airborne, Transform, each with the game's own description text."
+      ],
+      "ai_generated_interpretation": "Official in-game definitions of crowd-control effects.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Text reference for GameTerms / crowd-control vocabulary (game/GameTerms.kt) and for the universal effect model.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-MENU-002",
+      "descriptive_filename": "mlbb-menu-glossary-state-guide-immunity-effects.jpg",
+      "original_filename": "2b75d83b-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-menu-glossary-state-guide-immunity-effects.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "In-game glossary: immunity effects",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 852950,
+      "sha256": "f9f483349992c746b3a8d7c999fc6ec02a821c83a326bafcdf1fba3f83439545",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 2b75d83b-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-game tutorial glossary, tab 'State Guide'.",
+        "Entries: Slow Immunity, Control Immunity, Damage Immunity, Death Immunity ('HP cannot drop below 1 (cannot be killed).'), Untargetable, Invincible, Frozen Moment."
+      ],
+      "ai_generated_interpretation": "Official in-game definitions of immunity effects.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Text reference for immunity effects used by the decision validator and future EffectState.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-MENU-003",
+      "descriptive_filename": "mlbb-menu-glossary-common-terms.jpg",
+      "original_filename": "9200cb5f-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-menu-glossary-common-terms.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "In-game glossary: common terms",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 848757,
+      "sha256": "c52c40b47fac6aaa980346894220fd272fa9e2cad66cd78b14ed9fd129aa11b7",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 9200cb5f-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-game tutorial glossary, tab 'Common Terms'.",
+        "Entries: Emblem, Battle Spell, Converted Attribute, Creep Buff, Draft Pick, Invalid Match, each with description text."
+      ],
+      "ai_generated_interpretation": "Official in-game definitions of general game terms.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Knowledge reference for game-specific terminology (adapter knowledge layer).",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-MENU-004",
+      "descriptive_filename": "mlbb-menu-glossary-state-guide-movement-displacement.jpg",
+      "original_filename": "f16907d3-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-menu-glossary-state-guide-movement-displacement.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "In-game glossary: movement and displacement",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 831840,
+      "sha256": "28e9012b27cfa73e2314b1e438cb898ca299a1a0263f8ca30da9762195d7833d",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file f16907d3-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-game tutorial glossary, tab 'State Guide'.",
+        "Entries: Suppress, Blink, Charge, Displacement, Pull, Camouflage, Conceal, each with description text."
+      ],
+      "ai_generated_interpretation": "Official in-game definitions of movement and displacement effects.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Text reference for GameTerms vocabulary (blink vs charge, displacement).",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-HUD-004",
+      "descriptive_filename": "mlbb-hud-first-blood-banner.jpg",
+      "original_filename": "0aa79b91-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-hud-first-blood-banner.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "First Blood banner",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1671589,
+      "sha256": "a7bd5cb9dd9cf14e6dc917bc5517e2538286d8874cb44e8da8b7c6cb461db1ba",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 0aa79b91-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match screenshot at 00:46 with a 'FIRST BLOOD' banner at the top centre and an 'Attack' notice above it.",
+        "Player 'GRIFFITH' at level 1; spells 'Recall', 'Regen', 'Retribution' (900); skill labels 'Mobility', 'AOE', 'Damage'.",
+        "The Sphynx Auto Pilot floating control reads 'OFF'."
+      ],
+      "ai_generated_interpretation": "Kill announcement banner early in a match.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Reference for the kill/streak banner area (ScreenReader.bannerRect) and early-game HUD.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-HUD-005",
+      "descriptive_filename": "mlbb-hud-minions-spawned-banner-upgrade-plus.jpg",
+      "original_filename": "33ddc92d-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-hud-minions-spawned-banner-upgrade-plus.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Minions Spawned banner",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1729436,
+      "sha256": "57e078a48b5724b45c1f47d0ade173d787d43a41ff2504c85f8bdf9f84a1e516",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 33ddc92d-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match screenshot at 00:11 with a 'Minions Spawned' banner.",
+        "Two golden '+' skill-upgrade badges on the skill buttons; spells 'Recall', 'Regen', 'Execute'; player 'GRIFFITH' level 4 badge visible.",
+        "Minimap at the top left with all towers standing."
+      ],
+      "ai_generated_interpretation": "Match-start state with skill points available to spend.",
+      "interpretation_confidence": "medium",
+      "relevance_to_sphynx_auto_pilot": "Full-resolution reference for golden '+' upgrade-badge detection (ScreenReader.isRealUpgradeBadge) and the early-game minimap; complements the 1024x460 MLBB-MAP-001/002.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-HUD-006",
+      "descriptive_filename": "mlbb-hud-two-upgrade-plus-badges-early-game.jpg",
+      "original_filename": "42462b2e-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-hud-two-upgrade-plus-badges-early-game.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Two upgrade badges",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1812769,
+      "sha256": "aaff8724ef84a348fcd9b71708e87e18f4dbec5667deadde69cbf25589f9b302",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 42462b2e-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match screenshot at 00:29 with two large golden '+' badges on skill buttons.",
+        "A large purple winged creature near the player 'GRIFFITH' (level 1); spells 'Recall', 'Regen', 'Flicker'."
+      ],
+      "ai_generated_interpretation": "Two unspent skill points; the creature is likely a jungle monster.",
+      "interpretation_confidence": "medium",
+      "relevance_to_sphynx_auto_pilot": "Full-resolution reference for multiple simultaneous upgrade badges.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-HUD-007",
+      "descriptive_filename": "mlbb-hud-has-slain-banner-death-replay.jpg",
+      "original_filename": "a8be1c7e-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-hud-has-slain-banner-death-replay.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Has Slain banner / own death",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1324069,
+      "sha256": "9eb5eafbbc4515cb1a95e695e25d379c3a3f20cfaf330a743786c6f979f2a248",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file a8be1c7e-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match screenshot at 02:31 with a 'HAS SLAIN' banner at the top centre.",
+        "Text 'View Death Replay' and a respawn number '14' at the centre; skill buttons dimmed; spells 'Recall', 'Regen', 'Revitalize'."
+      ],
+      "ai_generated_interpretation": "The player has just died; '14' appears to be the respawn countdown.",
+      "interpretation_confidence": "medium",
+      "relevance_to_sphynx_auto_pilot": "Reference for the DEAD phase (respawn countdown) and the kill banner area.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-HUD-008",
+      "descriptive_filename": "mlbb-hud-screenshot-detected-toast.jpg",
+      "original_filename": "c69f7bc9-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-hud-screenshot-detected-toast.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Screenshot-detected toast",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1609464,
+      "sha256": "76bc4f76467d1464c42f212989b91af12e4611ca07c37644fd990528392dc626",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file c69f7bc9-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match screenshot at 03:15 with a grey toast reading 'Mobile Legends: Bang Bang has detected this screenshot'.",
+        "Player 'GRIFFITH' level 2 near a green creature with HP '2839'; spells 'Recall', 'Regen', 'Flicker'."
+      ],
+      "ai_generated_interpretation": "System toast that can cover part of the lower-left HUD.",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Negative / occlusion case: vision readers should not misread the toast area.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-HUD-009",
+      "descriptive_filename": "mlbb-hud-base-level15-skill-labels-practice.jpg",
+      "original_filename": "35f03682-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/ui-hud/mlbb-hud-base-level15-skill-labels-practice.jpg",
+      "category": "moba-games/mobile-legends/ui-hud",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Base, level 15, skill labels",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1792255,
+      "sha256": "9df7f36617d4c1ee94a39716762c5a8783f3f82f0379c8679d48ac58a2082ff3",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 35f03682-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match screenshot at 00:47 in the base, player 'GRIFFITH' at level 15, gold '$48424'.",
+        "Skill labels 'Frozen', 'Morph', 'Burst', 'AOE', 'CC'; spells 'Recall', 'Regen', 'Flicker'."
+      ],
+      "ai_generated_interpretation": "Likely a practice setup (level 15 and very high gold at 00:47).",
+      "interpretation_confidence": "medium",
+      "relevance_to_sphynx_auto_pilot": "Reference for a 4-skill HUD layout with skill-type labels (ScreenKit / HeroKit skill counts).",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-MAP-003",
+      "descriptive_filename": "mlbb-map-big-map-open-custom-signal.jpg",
+      "original_filename": "a9a93980-image.jpg",
+      "repository_path": "reference-library/moba-games/mobile-legends/maps/mlbb-map-big-map-open-custom-signal.jpg",
+      "category": "moba-games/mobile-legends/maps",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Big map open",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1742222,
+      "sha256": "aaf65ad0628916a90abdbe1f5deac76a80c3ee3d957fe3b39a8551c765d2aa4d",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file a9a93980-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match screenshot at 03:23 with the enlarged map open at the top left, a highlighted lane and a yellow line drawn to a target.",
+        "Text 'Drag target to send a Custom Signal'; ally hero portraits along the map edges."
+      ],
+      "ai_generated_interpretation": "The enlarged map / signal mode (the app's MAP phase).",
+      "interpretation_confidence": "high",
+      "relevance_to_sphynx_auto_pilot": "Screen-phase reference for the big-map-open state (MinimapAnalyzer must not treat it as the small minimap).",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-MAP-004",
+      "descriptive_filename": "mlbb-map-minimap-crop-available-in-0.png",
+      "original_filename": "a6805ce5-image.png",
+      "repository_path": "reference-library/moba-games/mobile-legends/maps/mlbb-map-minimap-crop-available-in-0.png",
+      "category": "moba-games/mobile-legends/maps",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Minimap crop",
+      "format": "PNG",
+      "dimensions": {
+        "width": 152,
+        "height": 132,
+        "display": "152x132"
+      },
+      "file_size_bytes": 36827,
+      "sha256": "c8be6ec2e29d007c6c46cf58909b114154b66017ef75c019a6816c49f980ca16",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file a6805ce5-image.png); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "152x132 PNG crop of the MLBB minimap: blue towers on the left and bottom, red towers on the top and right, a hero portrait at the bottom left.",
+        "Text 'Available in: 0' at the bottom."
+      ],
+      "ai_generated_interpretation": "A cropped minimap; the source of the 'Available in: 0' text is unknown.",
+      "interpretation_confidence": "low",
+      "relevance_to_sphynx_auto_pilot": "Small minimap sample at native crop size for MinimapAnalyzer tower and icon tests.",
+      "capture_resolution": "crop"
+    },
+    {
+      "asset_id": "MLBB-GAME-001",
+      "descriptive_filename": "mlbb-gameplay-large-objective-fight-boss-hp-bar.jpg",
+      "original_filename": "230f313a-image.jpg",
+      "repository_path": "reference-library/gameplay-references/mlbb-gameplay-large-objective-fight-boss-hp-bar.jpg",
+      "category": "gameplay-references",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Large neutral objective fight",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1705493,
+      "sha256": "3ae4a35363ea29acf5bd87c48601b6350f07103f9fcae82590f46c5e2513f19d",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 230f313a-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match screenshot at 03:39 with a large shelled creature and a top bar reading '11436/12000'.",
+        "Player 'GRIFFITH' level 3; spells 'Recall', 'Regen', 'Retribution' (1200); minimap at the top left."
+      ],
+      "ai_generated_interpretation": "Fight against a large neutral objective; the creature appears to be the Turtle.",
+      "interpretation_confidence": "medium",
+      "relevance_to_sphynx_auto_pilot": "Reference for the boss HP bar under the top bar (GameState.bossHp) and objective fights.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-GAME-002",
+      "descriptive_filename": "mlbb-gameplay-jungle-camp-fight-fire-monster.jpg",
+      "original_filename": "07685694-image.jpg",
+      "repository_path": "reference-library/gameplay-references/mlbb-gameplay-jungle-camp-fight-fire-monster.jpg",
+      "category": "gameplay-references",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Jungle camp fight",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1784270,
+      "sha256": "d7523e64088d24843f03ffa03a20b242afca4f8f1a4b459f67197b00f35c351c",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 07685694-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match screenshot at 01:21 with the player 'GRIFFITH' (level 1) beside a large orange fire creature with HP '6904'.",
+        "Spells 'Recall', 'Regen', 'Flicker'; a '34' cooldown number on one button."
+      ],
+      "ai_generated_interpretation": "Early jungle camp fight; the monster appears to be a buff camp.",
+      "interpretation_confidence": "medium",
+      "relevance_to_sphynx_auto_pilot": "Reference for neutral-monster HP bars and jungle camp detection (MonsterDetector).",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-GAME-003",
+      "descriptive_filename": "mlbb-gameplay-turret-fight-green-range-ring-1.jpg",
+      "original_filename": "407c5858-image.jpg",
+      "repository_path": "reference-library/gameplay-references/mlbb-gameplay-turret-fight-green-range-ring-1.jpg",
+      "category": "gameplay-references",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Turret fight (1)",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1588026,
+      "sha256": "797dbd5a6b90c1f5556a5e5dae1fd73a87f356a9fa6328a6c878a5a9c469aa3d",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 407c5858-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match screenshot at 09:20 near a turret with a large green ring on the ground and a red line from the turret to a unit.",
+        "Player '100%KO' at level 15; a '3000' damage counter on a spell; the Sphynx Auto Pilot control reads 'ON'."
+      ],
+      "ai_generated_interpretation": "A turret attacking a target; the green ring is likely the turret's attack range.",
+      "interpretation_confidence": "medium",
+      "relevance_to_sphynx_auto_pilot": "Reference for turret range rings (TowerRing) and late-game crowded HUD.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-GAME-004",
+      "descriptive_filename": "mlbb-gameplay-turret-fight-green-range-ring-2.jpg",
+      "original_filename": "8e5c15ca-image.jpg",
+      "repository_path": "reference-library/gameplay-references/mlbb-gameplay-turret-fight-green-range-ring-2.jpg",
+      "category": "gameplay-references",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Turret fight (2)",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1519695,
+      "sha256": "292ee8a399203eb60236cbc91752361eacb701536ad1270ffde23e942ba3cf32",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 8e5c15ca-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match screenshot at 09:25, same area as MLBB-GAME-003; top bar shows '555/7300'.",
+        "Player '100%KO' at level 15; green ring and red turret line visible; control reads 'ON'."
+      ],
+      "ai_generated_interpretation": "Five seconds after MLBB-GAME-003; the bar may be the targeted turret's HP.",
+      "interpretation_confidence": "medium",
+      "relevance_to_sphynx_auto_pilot": "Second frame for turret-ring and structure-HP readings.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-GAME-005",
+      "descriptive_filename": "mlbb-gameplay-large-red-area-indicator-near-structure.jpg",
+      "original_filename": "148a9f11-image.jpg",
+      "repository_path": "reference-library/gameplay-references/mlbb-gameplay-large-red-area-indicator-near-structure.jpg",
+      "category": "gameplay-references",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Large red area indicator",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1648659,
+      "sha256": "dc33b87dccfe108d603a57f1c76938e063d5d7515cf84e6110c39aaf902e52a1",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 148a9f11-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match screenshot at 06:45 with a large semi-transparent red/orange circle around a crystal-like structure and a '7900/7900' bar at the top.",
+        "Player 'GRIFFITH' at level 4 with a '8540' number nearby; spells 'Recall', 'Regen', 'Flicker'."
+      ],
+      "ai_generated_interpretation": "The red circle is likely a structure's danger / attack range.",
+      "interpretation_confidence": "low",
+      "relevance_to_sphynx_auto_pilot": "Reference for large red area overlays that HP-bar and colour readers must not misread.",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-AIREF-001",
+      "descriptive_filename": "mlbb-app-detection-overlay-boxes-1.jpg",
+      "original_filename": "7d7a88cc-image.jpg",
+      "repository_path": "reference-library/ai-model-references/mlbb-app-detection-overlay-boxes-1.jpg",
+      "category": "ai-model-references",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "App detection overlay (1)",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1844906,
+      "sha256": "ddd437df8b6229d9f922082984b2c818edf49f2811f84efaac7f475ebc7e8283",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file 7d7a88cc-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match screenshot at 11:00 with many thin rectangular boxes drawn over the scene and a '14%' label near the player.",
+        "The Sphynx Auto Pilot floating control reads 'ON'; player 'GRIFFITH' level 9; spells include 'Flame Retribution' (2100)."
+      ],
+      "ai_generated_interpretation": "The boxes are likely the app's own detection / debug overlay drawn on screen.",
+      "interpretation_confidence": "medium",
+      "relevance_to_sphynx_auto_pilot": "Reference for how the app's overlay looks in a live frame (and for masking it out of vision input).",
+      "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-AIREF-002",
+      "descriptive_filename": "mlbb-app-detection-overlay-boxes-2.jpg",
+      "original_filename": "a7164839-image.jpg",
+      "repository_path": "reference-library/ai-model-references/mlbb-app-detection-overlay-boxes-2.jpg",
+      "category": "ai-model-references",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "App detection overlay (2)",
+      "format": "JPEG",
+      "dimensions": {
+        "width": 2712,
+        "height": 1220,
+        "display": "2712x1220"
+      },
+      "file_size_bytes": 1848479,
+      "sha256": "def30b3f4f95242951e626253d8b58f23160630e1e9bd15f2189c7d6ce0e7f7b",
+      "source_and_provenance": "Owner-uploaded screenshot shared in the Claude Code development session on 2026-11-07 (upload file a7164839-image.jpg); captured on the owner's Android phone at its native 2712x1220 resolution. Exact capture date unknown.",
+      "license_and_usage": "Owner-provided in-game capture for Sphynx-Auto-Pilot internal research and multi-agent development reference.",
+      "verified_information": [
+        "In-match screenshot at 11:05, same match as MLBB-AIREF-001, with many thin rectangular boxes over the scene.",
+        "Control reads 'ON'; player 'GRIFFITH' level 9; 'Flame Retribution' (2100)."
+      ],
+      "ai_generated_interpretation": "Second frame of the app's overlay boxes.",
+      "interpretation_confidence": "medium",
+      "relevance_to_sphynx_auto_pilot": "Second overlay reference.",
+      "capture_resolution": "native"
     }
   ],
   "excluded_files": [
@@ -465,6 +1390,1164 @@
       "dimensions": "460x1024",
       "size_bytes": 206155,
       "reason": "Android terminal screenshot containing Git authentication prompts and redacted command lines, excluded per Section 5."
+    },
+    {
+      "orig_name": "008f3531-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1571056,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "01186422-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1146495,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "01db224a-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1647826,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "0283384d-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1281798,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "04c6fc27-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 903281,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "06a31d6f-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1758475,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "0a1f1f20-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 945889,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "10d1a2a9-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1823312,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "130be6e2-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1167985,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "147c0822-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1689704,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "16420e41-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1546018,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "165a8af1-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 898456,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "16984c5d-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1764159,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "18030d08-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 827028,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "191c5084-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1615726,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "1b8fae27-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1760299,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "1ba68695-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1561441,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "1bd5cbb9-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1437602,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "1be700b1-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1442971,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "1d2de395-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1729598,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "1e0aec34-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1795704,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "25b9109a-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1617275,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "26739bef-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1679414,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "2850b52e-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1689631,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "2ba400a3-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1205660,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "2c7a406c-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 912607,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "2d01139d-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1772203,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "2e10abe8-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1694536,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "2ed77a9b-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1853602,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "32e502bf-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1906974,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "34dfd818-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1747990,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "35238d2c-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1672450,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "35826e4a-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1688015,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "3b0561b6-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 546317,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "3be7b8aa-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1870180,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "3c5fc6f5-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1664601,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "3cb0d525-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 622417,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "3f5f7b29-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1860882,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "40da627f-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 966053,
+      "reason": "Near-duplicate of accepted asset MLBB-SCREEN-008."
+    },
+    {
+      "orig_name": "41b6ad8d-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1781870,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "42226a0a-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1755730,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "4252c054-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1794235,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "428c3f00-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1750240,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "42db4028-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1670426,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "4538ecb3-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1648659,
+      "reason": "Exact duplicate (same SHA-256) of upload 148a9f11-image.jpg."
+    },
+    {
+      "orig_name": "46106f11-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1350916,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "4806f858-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1288996,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "4879074c-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1701910,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "4aa0fe82-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1595201,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "4bc8b8d7-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 984703,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "4c0c5939-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1687943,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "4c636704-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 708819,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "4d5be52e-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1677634,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "4d6db665-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1662651,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "4d867268-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1262404,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "4f172a1e-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1723037,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "517f263f-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1710840,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "5283e5b7-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1935977,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "5378fbce-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1764781,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "5437b9f0-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 942792,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "55e559f7-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1577640,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "560fdf53-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 704057,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "57c448b1-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1967588,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "5b36ff63-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1761807,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "5cf5586a-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1494614,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "5cfcaee3-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1726964,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "5d6a2c6e-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1672450,
+      "reason": "Exact duplicate (same SHA-256) of upload 35238d2c-image.jpg."
+    },
+    {
+      "orig_name": "5f3746e6-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1708928,
+      "reason": "Near-duplicate of accepted asset MLBB-GAME-001."
+    },
+    {
+      "orig_name": "5f790ea1-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1719441,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "605895f7-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1862401,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "60e18d7d-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1591934,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "63908901-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 819573,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "64d552d1-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 959525,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "65cb0f6c-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1693397,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "66678990-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1561771,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "676e1094-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1295180,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "67b62276-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 900321,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "686243a1-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 598078,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "6a97bb65-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1590495,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "6b160748-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1809518,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "6bc35706-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 2067062,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "6d050e3d-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 285891,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "6d8b9925-image.jpg",
+      "dimensions": "1094x1147",
+      "size_bytes": 328257,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "6de94eef-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1724765,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "6ecea796-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1672612,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "75324fe4-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 600074,
+      "reason": "Screenshot of a model-hosting web page (file listing), not a MOBA visual reference."
+    },
+    {
+      "orig_name": "76201705-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1662651,
+      "reason": "Exact duplicate (same SHA-256) of upload 4d6db665-image.jpg."
+    },
+    {
+      "orig_name": "7ab5b8cc-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1710840,
+      "reason": "Exact duplicate (same SHA-256) of upload 517f263f-image.jpg."
+    },
+    {
+      "orig_name": "7c0cd257-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1789588,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "7dec9753-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1737208,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "7f1c2294-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1784270,
+      "reason": "Exact duplicate (same SHA-256) of upload 07685694-image.jpg."
+    },
+    {
+      "orig_name": "7f7936da-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 590400,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "8108a887-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1671958,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "82bd2f00-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1920141,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "8342548b-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1744151,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "8577efd7-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1237612,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "89beb198-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1518029,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "8a4f1457-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1591241,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "8c47d267-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1706900,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "8c993190-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1635189,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "8d76d9d7-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1801095,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "8db568f2-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1710584,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "8e5cb3b6-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1727314,
+      "reason": "Near-duplicate of accepted asset MLBB-HUD-005."
+    },
+    {
+      "orig_name": "8e697a37-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1721380,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "8ede70c5-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1737208,
+      "reason": "Exact duplicate (same SHA-256) of upload 7dec9753-image.jpg."
+    },
+    {
+      "orig_name": "8f84e2b6-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 961644,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "8f8cc3f7-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1770984,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "901e3205-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 817513,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "9213bc4e-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 753683,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "922f2f06-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1670426,
+      "reason": "Exact duplicate (same SHA-256) of upload 42db4028-image.jpg."
+    },
+    {
+      "orig_name": "9259430f-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 584146,
+      "reason": "Screenshot of a model-hosting web page (file listing), not a MOBA visual reference."
+    },
+    {
+      "orig_name": "925f26b8-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1640037,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "925ffed0-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 1002459,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "935970c0-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1568106,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "94060cc4-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1732349,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "963fa594-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1733711,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "9724fb4c-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 648320,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "97340b05-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 956112,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "9853431b-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 949667,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "9ad89ed7-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1744674,
+      "reason": "Near-duplicate of accepted asset MLBB-HUD-005."
+    },
+    {
+      "orig_name": "9b6b267c-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1562926,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "9bb4ddc8-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 416626,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "9d2b5eec-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1288996,
+      "reason": "Exact duplicate (same SHA-256) of upload 4806f858-image.jpg."
+    },
+    {
+      "orig_name": "9e59a777-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1635189,
+      "reason": "Exact duplicate (same SHA-256) of upload 8c993190-image.jpg."
+    },
+    {
+      "orig_name": "a088cf8e-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1677106,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "a2e2c29b-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1731704,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "a4600149-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1844906,
+      "reason": "Exact duplicate (same SHA-256) of upload 7d7a88cc-image.jpg."
+    },
+    {
+      "orig_name": "a5ccd180-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1622362,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "a5daf8a5-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1724792,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "a6b9be61-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1751076,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "a6dfa71b-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 744920,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "a807c086-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1679414,
+      "reason": "Exact duplicate (same SHA-256) of upload 26739bef-image.jpg."
+    },
+    {
+      "orig_name": "ac1b7306-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1754162,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "ad4b06e3-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 843378,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "ad773317-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1860896,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "b02bdb99-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1697835,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "b0b73362-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1350916,
+      "reason": "Exact duplicate (same SHA-256) of upload 46106f11-image.jpg."
+    },
+    {
+      "orig_name": "b381c100-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 451410,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "b54a6ee7-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1317755,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "b582779b-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1694953,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "b9395ef7-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1725839,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "b9e53434-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1745270,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "ba2f3ce6-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1694730,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "ba32572d-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1654732,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "ba5bb0b4-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1281798,
+      "reason": "Exact duplicate (same SHA-256) of upload 0283384d-image.jpg."
+    },
+    {
+      "orig_name": "ba7431b5-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1729471,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "bba0177d-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 735317,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "bda7fee3-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1677106,
+      "reason": "Exact duplicate (same SHA-256) of upload a088cf8e-image.jpg."
+    },
+    {
+      "orig_name": "bfcfcb80-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1942583,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "c2baacdd-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1758475,
+      "reason": "Exact duplicate (same SHA-256) of upload 06a31d6f-image.jpg."
+    },
+    {
+      "orig_name": "c2d51356-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 2053945,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "c66b2f04-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1725392,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "c8b13060-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1723037,
+      "reason": "Exact duplicate (same SHA-256) of upload 4f172a1e-image.jpg."
+    },
+    {
+      "orig_name": "c9219b1e-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1831845,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "cb584e72-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 751385,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "cb67c087-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1723093,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "cc53973c-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1732349,
+      "reason": "Exact duplicate (same SHA-256) of upload 94060cc4-image.jpg."
+    },
+    {
+      "orig_name": "ce9aec53-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1670182,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "ce9f8767-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 645588,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "d111cfbf-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1851663,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "d2b0b084-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 671738,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "d43057d7-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 839638,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "d4336a33-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1672267,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "d5ac940d-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 944758,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "d644b280-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1750240,
+      "reason": "Exact duplicate (same SHA-256) of upload 428c3f00-image.jpg."
+    },
+    {
+      "orig_name": "dbdb7ed9-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1721470,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "dbdea533-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 818489,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "de40b714-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1663550,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "df380f1b-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1812769,
+      "reason": "Exact duplicate (same SHA-256) of upload 42462b2e-image.jpg."
+    },
+    {
+      "orig_name": "dfddb62e-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 659362,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "e11469eb-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1759602,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "e1634cde-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1804382,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "e1d2b621-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1860882,
+      "reason": "Exact duplicate (same SHA-256) of upload 3f5f7b29-image.jpg."
+    },
+    {
+      "orig_name": "e6308f2c-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 693806,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "e6336672-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1953864,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "e8255454-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1311349,
+      "reason": "Exact duplicate (same SHA-256) of upload 5851359b-image.jpg."
+    },
+    {
+      "orig_name": "e926ca48-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1111645,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "e9d348ba-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1848479,
+      "reason": "Exact duplicate (same SHA-256) of upload a7164839-image.jpg."
+    },
+    {
+      "orig_name": "ea44fa50-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 454306,
+      "reason": "Screenshot of a model-hosting web page (file listing), not a MOBA visual reference."
+    },
+    {
+      "orig_name": "eb1b389a-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1677634,
+      "reason": "Exact duplicate (same SHA-256) of upload 4d5be52e-image.jpg."
+    },
+    {
+      "orig_name": "ec40ca06-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1267907,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "ec72ac23-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1609464,
+      "reason": "Exact duplicate (same SHA-256) of upload c69f7bc9-image.jpg."
+    },
+    {
+      "orig_name": "ece15cdd-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1330977,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "ed1296c2-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1804382,
+      "reason": "Exact duplicate (same SHA-256) of upload e1634cde-image.jpg."
+    },
+    {
+      "orig_name": "ed4f7888-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1904725,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "f369bafd-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1324069,
+      "reason": "Exact duplicate (same SHA-256) of upload a8be1c7e-image.jpg."
+    },
+    {
+      "orig_name": "f37db3d0-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 298158,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "f3984491-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 633030,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "f6ec8ef8-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1807934,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
+    },
+    {
+      "orig_name": "f721a0a3-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 924951,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "f8754b36-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1665951,
+      "reason": "Relevant MLBB screenshot, not selected for this curated batch (owner chose ~35 images to limit repository size); may be added later."
+    },
+    {
+      "orig_name": "f9c0a5db-image.jpg",
+      "dimensions": "1220x2712",
+      "size_bytes": 296023,
+      "reason": "Not a MOBA visual reference (chat conversation, the Sphynx app UI, a web dashboard, a file listing, or notes); some may contain private or credential-adjacent information."
+    },
+    {
+      "orig_name": "fae8d8e7-image.jpg",
+      "dimensions": "2712x1220",
+      "size_bytes": 1852211,
+      "reason": "Shows other real players' names or another person's live stream; excluded per owner decision of 2026-11-07."
     }
   ]
 }
