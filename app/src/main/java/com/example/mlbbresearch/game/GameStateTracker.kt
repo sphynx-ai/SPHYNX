@@ -283,10 +283,9 @@ object GameStateTracker {
         loadingHero = h
         Cfg.myHero = h
         if (!spellFromCard.isNullOrBlank()) {
-            SpellDb.match(spellFromCard)?.let { sp ->
-                gemmaLoadingSpell = sp
-                if (loadingSpell == null) loadingSpell = sp
-            }
+            // Gemma's reading is only a HINT (owner decision 2026-11-07): loadingSpell is set only when
+            // the card's spell icon matches the wiki picture (onLoadingSpellVerified)
+            SpellDb.match(spellFromCard)?.let { sp -> gemmaLoadingSpell = sp }
         }
         val dispSpell = spellDisplay()
         val dispName = loadingCardName ?: PlayerName.get().ifBlank { "you" }

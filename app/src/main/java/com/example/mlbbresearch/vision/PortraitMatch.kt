@@ -148,7 +148,7 @@ object PortraitMatch {
         if (HeroVerifier.meanLum(px, w, h, sx, sy, 0.010f) < 88f) return
         val p = HeroVerifier.buttonPrint(px, w, h, sx, sy, 0.011f) ?: return
         val retriAlready = GameStateTracker.isRetributionDetected()
-        val expected = GameStateTracker.scoreboardSpell ?: GameStateTracker.loadingSpell ?: GameStateTracker.iconSpell
+        val expected = GameStateTracker.scoreboardSpell ?: GameStateTracker.loadingSpell ?: GameStateTracker.iconSpell ?: GameStateTracker.gemmaLoadingSpell
         val m = bestSpell(p, min = 0.55f, margin = 0.10f, includeBlessed = retriAlready, expected = expected)
         if (m == null) {
             spellCand = null; spellCandN = 0
@@ -200,7 +200,7 @@ object PortraitMatch {
             }
             // once Retribution is known, your scoreboard icon may be the Blessed one bought in game: it is
             // compared with those pictures too (and counts as Retribution here; the kind comes from the button)
-            val mySp = matchScoreboardSpell(px, w, h, SB_LEFT, SB_ROWS[row], expected = GameStateTracker.gemmaSpell ?: GameStateTracker.loadingSpell,
+            val mySp = matchScoreboardSpell(px, w, h, SB_LEFT, SB_ROWS[row], expected = GameStateTracker.gemmaSpell ?: GameStateTracker.loadingSpell ?: GameStateTracker.gemmaLoadingSpell,
                 includeBlessed = GameStateTracker.isRetributionDetected())
             if (mySp != null) {
                 GameStateTracker.onScoreboardSpellVerified(mySp.first, mySp.second)
