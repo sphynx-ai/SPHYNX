@@ -76,20 +76,20 @@ The following is historical information from Claude's baseline report, as suppli
 | Baseline branch | main | VERIFIED |
 | Baseline commit | a3ccf6e (reported) | VERIFIED — `origin/main` is still at `a3ccf6e` |
 | Baseline working tree | Clean (reported) | REPORTED (not re-checked from the baseline session) |
-| Reported app version | 37.16 | VERIFIED on main — `core/AppVersion.kt` says `37.16`; `app/build.gradle.kts` still has `versionCode = 1`, `versionName = "1.0"` (the inconsistency is fixed by PR #3, not yet merged) |
+| Reported app version | 37.16 | VERIFIED at `a3ccf6e`: `core/AppVersion.kt` said `37.16`, `app/build.gradle.kts` said `versionName = "1.0"`. Now `37.18` everywhere (PR #3, merged) |
 | README / last commit version | 37.18 | REPORTED — `37.18` is the version on the `v37.18` branch; the README on main does not state a version |
 | assembleDebug | Successful (reported) | VERIFIED by Claude Code in this session (clean copy of tracked files) |
 | Debug APK | Approximately 89 MB | VERIFIED — 88,936,537 bytes |
 | Compiler warnings | 11 (reported) | VERIFIED — 11 |
-| Automated tests | None reported | VERIFIED none on main; 48 JVM tests exist on open PR branches (see 5.1) |
-| CI pipeline | None reported | VERIFIED none on main; added by open PR #4 |
+| Automated tests | None reported | VERIFIED none at `a3ccf6e`; `main` now has 48 JVM tests (see 5.1) |
+| CI pipeline | None reported | VERIFIED none at `a3ccf6e`; added by PR #4 (merged) |
 | Device testing | Not reported | UNKNOWN / AWAITING VERIFICATION — no device testing has been done by any agent in this coordination period |
 | Source modifications during baseline assessment | None reported | REPORTED |
 
 ### 3.2 Known baseline issues (Added at conversion — VERIFIED 2026-11-07 unless noted)
 
-- `main` tracks build output (1,395 files under `app/build/`, plus `.gradle/`, `build/`) and a ~25 MB video; there is no `.gitignore`. → Fixed by PR #3 (not merged).
-- `gradlew` is not executable in Git (mode 100644). → Fixed by PR #4 (not merged).
+- `main` tracked build output (1,395 files under `app/build/`, plus `.gradle/`, `build/`) and a ~25 MB video, and had no `.gitignore`. → Fixed by PR #3 (merged). The video is still in the older Git history.
+- `gradlew` was not executable in Git (mode 100644). → Fixed by PR #4 (merged).
 - `litertlm-android:latest.release` is an unpinned dependency, so builds can change without any code change. → PROPOSED: pin to a specific version (not started).
 
 ## 4. AI Engine Configuration
@@ -118,16 +118,17 @@ Current direction: experimental tactical processing. It is not yet ready for aut
 
 Status labels: VERIFIED, IN PROGRESS, BLOCKED, PROPOSED, REQUIRES OWNER APPROVAL, and UNKNOWN / AWAITING VERIFICATION.
 
-### 5.1 Claude Code — latest state (Added at conversion, 2026-11-07)
+### 5.1 Claude Code — latest state (updated 2026-11-07, after the merges)
 
-Nothing has been merged into `main` yet. Merge order matters: the branches stack (#4 → #5 → #6).
+**`main` @ `e4204d9`** — VERIFIED by Claude Code on 2026-11-07, from a fresh copy of `main`: `assembleDebug` succeeds, and `testDebugUnitTest` runs 48 tests with 0 failures. This was not tested on a device.
 
-| PR | Branch | Head commit | Content | CI (GitHub Actions `build`) | Status |
-|---|---|---|---|---|---|
-| #3 | `chore/repo-cleanup` | `1d3ab3d` | `.gitignore`, untrack build output and video (video preserved outside the repo), version 37.18 everywhere, README build note | No run yet (workflow not on main); local `assembleDebug` VERIFIED | REQUIRES OWNER APPROVAL (review / merge) |
-| #4 | `ci/android-build` | `b011f6e` | CI workflow (build APK + unit tests on every PR and push to main); `gradlew` executable | VERIFIED success | REQUIRES OWNER APPROVAL |
-| #5 | `test/synthetic-unit-tests` | `acdd914` | First 32 JVM unit tests on synthetic data, `TESTING.md` (stacks on #4) | VERIFIED success | REQUIRES OWNER APPROVAL |
-| #6 | `feature/spell-icon-retribution-upgrade` | `07b415e` | "Retribution Upgraded to Bloody/Ice/Flame" message; Blessed icons read on your scoreboard row; +16 tests (48 total) (stacks on #5) | VERIFIED success | REQUIRES OWNER APPROVAL; device test pending |
+| PR | Branch | Content | CI | Status |
+|---|---|---|---|---|
+| #4 | `ci/android-build` | CI workflow: builds the APK and runs the unit tests on every PR and every push to main; `gradlew` made executable | VERIFIED success | **Merged** |
+| #5 | `test/synthetic-unit-tests` | First 32 JVM unit tests on synthetic data; `TESTING.md` | VERIFIED success | **Merged** |
+| #3 | `chore/repo-cleanup` | `.gitignore`; build output and video no longer tracked (video preserved outside the repo); version 37.18 everywhere | Merged before its last CI run finished. VERIFIED by a local build and test run of `main` | **Merged** |
+| #6 | `feature/spell-icon-retribution-upgrade` | "Retribution Upgraded to Bloody/Ice/Flame" message; Blessed icons read on your own scoreboard row; 16 more tests (48 in total) | VERIFIED success | **Merged** — device test pending |
+| #7 | `docs/development-status` | This document | none (documentation only) | Open |
 
 Open owner decisions:
 
@@ -157,7 +158,7 @@ UNKNOWN / AWAITING VERIFICATION — no handoff has occurred.
 **Practical notes (Added at conversion):**
 
 - **Build:** `./gradlew assembleDebug`.
-- **Tests:** `./gradlew testDebugUnitTest` (requires PR #5 or later).
+- **Tests:** `./gradlew testDebugUnitTest`.
 - **SDK:** Android SDK platform 36 and build-tools 36.0.0; JDK 21.
 - **Maven Central rate limits:** they can cause intermittent HTTP 429 errors. Retrying with `--max-workers=1` has worked.
 
@@ -187,7 +188,7 @@ The receiving agent must independently inspect repository state before modifying
 | Initial technical roadmap | Completed (reported) | Owner authorized items 1–4 |
 | Strategic engine direction | Established | — |
 | Tactical engine readiness | Experimental / not ready for autonomous action | See finding in 4.1 |
-| Current Claude implementation | In progress; details awaiting latest report | Roadmap items 1–4 implemented in PRs #3–#6; all awaiting owner review; no device testing |
+| Current Claude implementation | In progress; details awaiting latest report | Roadmap items 1–4 merged into `main` (PRs #3–#6). Build and tests VERIFIED; device testing pending |
 | Gemini backup readiness | Pending verification | — |
 | Multi-MOBA adapter expansion | Roadmap / future work | — |
 | Universal companion maturity | Long-term objective | — |
@@ -244,7 +245,7 @@ Next recommended task:
   - Owner decisions listed in 5.1.
   - `litertlm-android` is unpinned.
 - **Next recommended task:**
-  1. Owner review and merge in the order #4 → #3 → #5 → #6.
+  1. Owner review and merge in the order #4 → #3 → #5 → #6. Done: merged on 2026-11-07 in the order #4, #5, #3, #6.
   2. Then device-test the Retribution-upgrade message in a real match.
 
 ### 2026-11-07 — Claude Code — this document
@@ -254,6 +255,24 @@ Next recommended task:
 - **Task:** convert the owner's coordination document into `docs/DEVELOPMENT_STATUS.md`.
 - **Files:** `docs/DEVELOPMENT_STATUS.md` (new). No source code, Gradle or version changes.
 - **Build / test results:** not applicable (documentation only).
+
+### 2026-11-07 — Claude Code — merges verified
+
+- **Branch / commit:** `main` @ `e4204d9`.
+- **Task:** keep the open PRs mergeable while the owner merged them, then verify `main`.
+- **Changes made:**
+  - Merged `main` into `chore/repo-cleanup` twice (`2c4d702`, `70a8e45`), so that its CI would run with the workflow and test it together with the unit tests.
+  - No conflicts.
+- **Build results:** `assembleDebug` on `main` @ `e4204d9` succeeds (fresh copy).
+- **Test results:** 48 tests, 0 failures.
+- **Outstanding issues:**
+  - No device testing yet.
+  - Owner decisions listed in 5.1.
+  - `litertlm-android` is not pinned to a version.
+  - The ~25 MB video is still in the Git history before PR #3. Removing it from history would mean rewriting history, which needs the owner's approval.
+- **Next recommended task:**
+  1. Device test of the Retribution-upgrade message.
+  2. Then the owner chooses the next roadmap item.
 
 ## 10. Architectural Decision Log
 
@@ -275,7 +294,7 @@ For each new decision, record its date, rationale, implementation impact, and ow
 
 | Date | Decision | Rationale | Impact | Approval |
 |---|---|---|---|---|
-| 2026-11-07 | All substantial changes go through feature branches and pull requests into `main`; no direct pushes to `main` | Repository integrity and reviewability | Every change is a PR; CI runs on each PR (once #4 is merged) | Owner approved |
+| 2026-11-07 | All substantial changes go through feature branches and pull requests into `main`; no direct pushes to `main` | Repository integrity and reviewability | Every change is a PR; CI runs on each PR and on every push to `main` | Owner approved |
 | 2026-11-07 | Personal gameplay screenshots are not committed; tests use synthetic fixtures until the owner chooses specific images | Privacy; reusable tests | Colour-threshold tuning still needs real crops (see `TESTING.md`) | Owner decision (screenshots pending) |
 | 2026-11-07 | Autonomous tactical actions stay disabled; no major rewrite; preserve MLBB functionality | Stability over speed | See finding 4.1 for the existing gated use | Owner directive |
 
