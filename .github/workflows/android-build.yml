@@ -41,6 +41,19 @@ jobs:
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug
 
+      # Owner-approved: golden-image tests read the reference screenshots from the
+      # reference-assets branch at test time (no screenshots are committed to main).
+      # If the branch cannot be fetched, those tests skip; all other tests still run.
+      - name: Fetch reference library (reference-assets branch)
+        run: |
+          mkdir -p "$RUNNER_TEMP/reference"
+          if git fetch --depth=1 origin reference-assets; then
+            git archive FETCH_HEAD reference-library | tar -x -C "$RUNNER_TEMP/reference"
+            echo "REFERENCE_LIBRARY_DIR=$RUNNER_TEMP/reference/reference-library" >> "$GITHUB_ENV"
+          else
+            echo "reference-assets not available: golden-image tests will be skipped"
+          fi
+
       - name: Run unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
 
