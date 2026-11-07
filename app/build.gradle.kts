@@ -72,6 +72,12 @@ android {
         }
     }
 
+    // JVM unit tests (app/src/test): Android framework calls return default values instead of
+    // throwing, so plain Kotlin logic can be tested without a device.
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     buildFeatures {
         viewBinding = true
 
@@ -149,4 +155,8 @@ dependencies {
     implementation(libs.android.material)
     implementation(libs.androidx.startup.runtime)
     implementation(libs.androidx.interpolator)
+
+    testImplementation("junit:junit:4.13.2")
+    // the real org.json for unit tests (android.jar only has stubs of it)
+    testImplementation("org.json:json:20240303")
 }
