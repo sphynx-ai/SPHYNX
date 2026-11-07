@@ -36,6 +36,8 @@ The long-term goal is a **Universal MOBA Companion** with a game-agnostic core a
 
 See [SETUP.md](SETUP.md) for Android setup and model placement, and [build-gradle-additions.txt](build-gradle-additions.txt) for the Gradle dependencies.
 
+Build outputs (`build/`, `app/build/`, `.gradle/`), `local.properties` and large recordings (`*.mp4`) are not tracked in Git; see `.gitignore`. Build with `./gradlew assembleDebug` (Android SDK with platform 36).
+
 Main source: `app/src/main` (including `ai`, `vision`, `game`, `controller`, `capture`, `learning`, `models`, `core` and `app`).
 
 For research and development use. Automating gameplay may violate a game's terms of service; use responsibly and check the relevant game's rules.
