@@ -124,7 +124,7 @@ Status labels: VERIFIED, IN PROGRESS, BLOCKED, PROPOSED, REQUIRES OWNER APPROVAL
 
 **`main` @ `3152b10`** (merge of PR #8):
 
-- **GitHub CI:** the workflow "Android build" ran on the push to `main` (run #16); it was IN PROGRESS when this was written. The commit before it, `237d203` (the rewritten main), passed CI (run #14). VERIFIED.
+- **GitHub CI:** the workflow "Android build" ran on the push to `main` (run #16) and succeeded. The commit before it, `237d203` (the rewritten main), passed CI (run #14). VERIFIED.
 - **Local build:** Claude Code built a fresh copy of the rewritten `main` (`237d203`). `assembleDebug` succeeds and `testDebugUnitTest` runs 48 tests with 0 failures. PR #8 was also built locally: same 48 tests pass and the APK is the same size as main's. VERIFIED.
 - **Device testing:** NOT TESTED.
 
@@ -139,7 +139,7 @@ CI results below were recorded before the rewrite, so most quote the **old** com
 | #3 | `chore/repo-cleanup` | `.gitignore`; build output and video no longer tracked; version 37.18 everywhere | Run #5 on `2c4d702`: success. Run #7 on `70a8e45` (#3 combined with the unit tests): success; it finished about two minutes after the merge | Run #8 on `ed878ba`: success | **Merged** (VERIFIED) |
 | #6 | `feature/spell-icon-retribution-upgrade` | "Retribution Upgraded to Bloody/Ice/Flame" message; Blessed icons read on your own scoreboard row; 16 more tests (48 in total) | Run #3 on `07b415e`: success | Run #9 on `e4204d9`: success | **Merged** (VERIFIED); device test NOT TESTED |
 | #7 | `docs/development-status` | This document | Run #10 on `41a39a2`: cancelled, superseded by the next push. Run #11 on `a96379a`: success | Run #12 on `e45c7bd`: success. After the rewrite, run #14 on `237d203`: success | **Merged** (VERIFIED) |
-| #8 | `build/pin-litertlm` | `litertlm-android` pinned to `0.19.1` (was `latest.release`) | Run #13 on `e7a5c3d` (before the rewrite): success. Run #15 on `894226e` (after): success | Run #16 on `3152b10`: in progress when written | **Merged** (VERIFIED) by Claude Code at the owner's request, after CI passed |
+| #8 | `build/pin-litertlm` | `litertlm-android` pinned to `0.19.1` (was `latest.release`) | Run #13 on `e7a5c3d` (before the rewrite): success. Run #15 on `894226e` (after): success | Run #16 on `3152b10`: success | **Merged** (VERIFIED) by Claude Code at the owner's request, after CI passed |
 
 Open owner decisions:
 
