@@ -183,13 +183,17 @@ object GameStateTracker {
     fun spellDisplay(): String? {
         val base = verifiedSpell() ?: spell() ?: return null
         val blessed = blessedRetribution
-        return if (base == "Retribution" && blessed != null) "$blessed Retribution (Retribution Upgraded to $blessed)" else base
+        return if (base == "Retribution" && blessed != null) upgradedText(blessed) else base
     }
+
+    // Retribution was already known (loading screen, scoreboard, Gemma) and the in-game spell button
+    // now shows a Blessed one: it is reported only as the upgrade, e.g. "Retribution Upgraded to Bloody"
+    fun upgradedText(blessed: String): String = "Retribution Upgraded to $blessed"
 
     fun verifiedSpellPanel(): String {
         val vBase = verifiedSpell() ?: return "verifying…"
         val blessed = blessedRetribution
-        val disp = if (vBase == "Retribution" && blessed != null) "$blessed Retribution (Retribution Upgraded to $blessed)" else vBase
+        val disp = if (vBase == "Retribution" && blessed != null) upgradedText(blessed) else vBase
         return "✓ $disp (${spellSource()})"
     }
 
@@ -223,7 +227,7 @@ object GameStateTracker {
             iconSpell = "Retribution"
             if (blessedRetribution != blessed) {
                 blessedRetribution = blessed
-                Diag.info("Retribution Upgraded to $blessed (Upgraded Retribution > Normal Retribution)")
+                Diag.info(upgradedText(blessed))
                 refreshNameMatchSpell()
             }
             return
