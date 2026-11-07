@@ -34,6 +34,8 @@ object Cfg {
     var tacticalLlmOn: Boolean get() = b("tactical_llm", false); set(v) = put("tactical_llm", v)
     // the fight-choice network (numeric, from the tactical-network notebook) advises in fights
     var fightNetOn: Boolean get() = b("fight_net", false); set(v) = put("fight_net", v)
+    // logging mode: record every engine's advice next to what is played (never acts on it)
+    var decisionLogOn: Boolean get() = b("decision_log", true); set(v) = put("decision_log", v)
 
     // ---- player ----
     var myHero: String get() = s("my_hero", ""); set(v) = put("my_hero", v)        // the last hero you played (automatic)
