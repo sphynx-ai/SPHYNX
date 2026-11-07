@@ -78,6 +78,9 @@ object TacticalAdvisor {
             ?: if (u.contains("ALLIN")) FightOption.ALL_IN else null
     }
 
+    // the latest parsed answer and when it came (read-only, for the decision log); null if none
+    fun latestAdvice(): Pair<FightOption, Long>? = advice?.let { it to adviceAt }
+
     // called by the fast loop on every decision: starts a question in the background when due
     fun tick(s: GameState, p: HeroProfile) {
         if (!active || busy || s.self == null) return

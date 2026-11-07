@@ -249,6 +249,7 @@ object AiRuntime {
                     val bias = Cfg.learnedBias(hero ?: "unknown")
                     // the learning brain picks how to handle a nearby enemy; the engine plays it
                     var option = Brain.choose(s)
+                    val brainOption = option
                     // the small tactical model (if on): its advice, once the Kotlin checks allow it
                     TacticalAdvisor.tick(s, profile)
                     // the fight-choice network (if on) advises first - it answers at once; the small
@@ -260,6 +261,8 @@ object AiRuntime {
                     else if (option != null) TacticalAdvisor.validated(s, profile)?.let { a ->
                         if (a != option) { Brain.adopt(s, a); option = a }
                     }
+                    // logging mode only: records every engine's advice next to what is played (never changes it)
+                    com.example.mlbbresearch.engines.DecisionLogging.observe(s, brainOption, option)
                     var d = TacticalEngine.decide(s, profile, plan, bias, option)
                     // fights: play the hero's combo in order instead of pressing everything at once
                     d = ComboRunner.apply(d, s, profile)
@@ -424,6 +427,7 @@ object AiRuntime {
         sb.append("\n     2. Hero- ").append(loadHero)
         sb.append("\n     3. Spell- ").append(loadSpell)
         sb.append("\nDead: ").append(com.example.mlbbresearch.vision.DeathTimers.text())
+        sb.append("\n").append(com.example.mlbbresearch.engines.DecisionLogging.log.summary())
         sb.append("\nPortraits: scoreboard ").append(com.example.mlbbresearch.vision.PortraitMatch.scoreboardStatus)
             .append(" · minimap ").append(com.example.mlbbresearch.vision.PortraitMatch.minimapStatus)
         sb.append("\nMatch end: ").append(com.example.mlbbresearch.vision.EndBoard.status)
