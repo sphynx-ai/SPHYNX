@@ -24,7 +24,7 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
 
 1. Setup page: turn on the accessibility service (it is a NEW service name, so turn it on again),
    allow Display over other apps and Notifications.
-2. Download the Gemma 3n E2B `.litertlm` file (Model page link, accept the licence) into Download/MLBB-Research,
+2. Download the Gemma 4 E2B strategic model `.litertlm` file (Model page link, accept the licence) into Download/MLBB-Research,
    then Model page -> *Choose the folder*. The app copies and loads it by itself (see "One folder" below).
 3. Home: Start screen capture, then switch on Player / Drafter / Builder.
 4. Setup page: calibrate the buttons (see below).
@@ -485,7 +485,7 @@ Pictures are taken from the 800-px capture, so tiny far-away things are hard.
 
 1. With your file manager, make the folder **Download/MLBB-Research** on the phone.
 2. Put the downloaded files in it:
-   - the Gemma 3n E2B model: the `.litertlm` file from Hugging Face (any name ending in .litertlm)
+   - the strategic model: Gemma 4 E2B `.litertlm` (for example, `gemma-4-E2B-it.litertlm`); the optional Gemma 3 270M tactical model is a separate file/slot
    - `mlbb_detector.tflite` and `labels.txt` from the detector notebook
    - `policy.tflite` from the tactical network notebook
    - `groq_key.txt`: a text file with your Groq API key on the first line (optional: `groq_model.txt` with a model name)
@@ -1363,7 +1363,7 @@ Then Learn page > Train in the cloud > Train (minimap detector, screen detector,
 | vision/ | HP-bar hero/enemy/minion detection, enemy tracking, minimap, screen phase, HUD, button auto-detect | every frame |
 | game/ | Game state, hero profiles, primary + counter builds | every frame |
 | ai/TacticalEngine | Kotlin rules: lane clear, engage, retreat, skills, ultimate | 5 per second |
-| ai/GemmaEngine + StrategicAdvisor | Gemma 3n E2B on LiteRT-LM: plan, draft, build | event-driven |
+| ai/GemmaEngine + StrategicAdvisor | Gemma 4 E2B on LiteRT-LM: strategic plan, draft, build | event-driven |
 | controller/ | Accessibility touches, overlay, item swap | on demand |
 | learning/ | SQLite experiences, scoring, "learn from me" demos + copying, CSV export | 2-5 per second |
 | models/ | Model file import and loading | once |
