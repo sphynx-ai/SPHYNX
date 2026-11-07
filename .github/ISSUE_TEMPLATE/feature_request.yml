@@ -1,0 +1,42 @@
+name: Feature request
+description: Propose a capability or improvement.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What user need or limitation should this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior you want, not just implementation details.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List observable conditions that mean this is complete.
+      placeholder: "- [ ] ... "
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Project area
+      options:
+        - Universal architecture
+        - MLBB game adapter
+        - Strategic engine (Gemma 4 E2B)
+        - Tactical model (Gemma 3 270M)
+        - Kotlin tactical engine
+        - Vision and perception
+        - Learning and evaluation
+        - Android UI / accessibility
+        - Build, tests, and infrastructure
+    validations:
+      required: true
