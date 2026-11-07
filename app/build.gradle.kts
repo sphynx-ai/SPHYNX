@@ -148,7 +148,9 @@ kotlin {
 dependencies {
     implementation("org.tensorflow:tensorflow-lite:2.17.0")
     implementation("com.google.ai.edge.litert:litert:1.4.2")
-    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    // pinned (was latest.release, which resolved to 0.19.1 on 2026-11-07): a new LiteRT-LM release
+    // can change Gemma loading / inference, so upgrades are made on purpose, in their own PR
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.19.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)
