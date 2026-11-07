@@ -365,6 +365,25 @@ Next recommended task:
   - All old clones must be re-cloned.
 - **Next recommended task:** the device test of the Retribution-upgrade message. Then the owner chooses the next roadmap item.
 
+### 2026-11-07 — Claude Code — Phase One architecture audit (Universal MOBA Companion prompt)
+
+- **Branch / commit:** `docs/phase1-audit`, from `main` @ `d818477`.
+- **Task:** Phase One of the owner's Universal MOBA Companion prompt. Audit the existing project before any architectural change.
+- **Output:** `docs/ARCHITECTURE_AUDIT.md`. It covers:
+  - the baseline, module inventory and how tied each module is to MLBB;
+  - the actual state of the AI engines and of vision, knowledge and the UI;
+  - the capability support matrix (MLBB plus 6 other games, all Unsupported);
+  - the gaps against the vision;
+  - a proposed incremental Stage 2.
+- **Key findings:**
+  - There is no universal layer or game-adapter boundary yet.
+  - Nothing has been verified on a device.
+  - No performance baseline has been measured.
+  - Player mode plays live matches autonomously through Accessibility gestures. Owner decision needed; Claude Code will not extend autonomous in-match control.
+- **Files modified:** `docs/ARCHITECTURE_AUDIT.md` (new) and this entry. No code changes.
+- **Build / test results:** none run for this change (documentation only). The baseline figures quoted come from earlier verified runs.
+- **Next recommended task:** owner decisions in audit §13, then Stage 2, step 1 (universal model package and capability registry, with no behaviour change).
+
 ## 10. Architectural Decision Log
 
 | Decision area | Current direction |
