@@ -98,8 +98,11 @@ object PortraitMatch {
     // Upgraded Retribution priority order (when Retribution is detected): Bloody, Ice, Flame > Normal Retribution
     val UPGRADED_RETRIBUTIONS = listOf("Bloody Retribution", "Ice Retribution", "Flame Retribution")
 
-    fun bestSpell(print: FloatArray, min: Float = 0.52f, margin: Float = 0.09f, includeBlessed: Boolean = false, expected: String? = null): Pair<String, Float>? {
-        val r = rankSpells(print, includeBlessed)
+    fun bestSpell(print: FloatArray, min: Float = 0.52f, margin: Float = 0.09f, includeBlessed: Boolean = false, expected: String? = null): Pair<String, Float>? =
+        pickSpell(rankSpells(print, includeBlessed), min, margin, includeBlessed, expected)
+
+    // the decision alone, on the likeness ranking (best first) - no pictures needed, so it is unit tested
+    fun pickSpell(r: List<Pair<String, Float>>, min: Float = 0.52f, margin: Float = 0.09f, includeBlessed: Boolean = false, expected: String? = null): Pair<String, Float>? {
         val b = r.firstOrNull() ?: return null
         val second = r.getOrNull(1)?.second ?: -1f
         // ABSOLUTE PRIORITY FOR RETRIBUTION: When includeBlessed is true (Retribution is detected and not the other spells),
@@ -163,7 +166,8 @@ object PortraitMatch {
 
     // ---------------- 2) the in-game scoreboard (portraits + spell icons under each portrait) ----------------
     // rows (centre y) and portrait centres (x) on your 2712 x 1220 screenshot; your row = the highlighted
-    // one (92 bright against about 60). Upgraded Retribution is NOT detected here (base 12 spells only).
+    // one (92 bright against about 60). Enemy rows: the 12 base spells; your row also the Blessed ones once
+    // Retribution is known (they count as Retribution - the Blessed kind is taken only from the spell button).
     val SB_ROWS = floatArrayOf(0.328f, 0.456f, 0.584f, 0.712f, 0.84f)
     const val SB_LEFT = 0.1675f
     const val SB_RIGHT = 0.8315f
@@ -194,7 +198,10 @@ object PortraitMatch {
                     rowHero = m.first
                 }
             }
-            val mySp = matchScoreboardSpell(px, w, h, SB_LEFT, SB_ROWS[row], expected = GameStateTracker.gemmaSpell ?: GameStateTracker.loadingSpell)
+            // once Retribution is known, your scoreboard icon may be the Blessed one bought in game: it is
+            // compared with those pictures too (and counts as Retribution here; the kind comes from the button)
+            val mySp = matchScoreboardSpell(px, w, h, SB_LEFT, SB_ROWS[row], expected = GameStateTracker.gemmaSpell ?: GameStateTracker.loadingSpell,
+                includeBlessed = GameStateTracker.isRetributionDetected())
             if (mySp != null) {
                 GameStateTracker.onScoreboardSpellVerified(mySp.first, mySp.second)
             }
@@ -232,12 +239,12 @@ object PortraitMatch {
         }
     }
 
-    private fun matchScoreboardSpell(px: IntArray, w: Int, h: Int, cx: Float, rowY: Float, expected: String?): Pair<String, Float>? {
+    private fun matchScoreboardSpell(px: IntArray, w: Int, h: Int, cx: Float, rowY: Float, expected: String?, includeBlessed: Boolean = false): Pair<String, Float>? {
         var bestMatch: Pair<String, Float>? = null
         for (dy in SB_SPELL_DY) {
             for (dx in SB_SPELL_DX) {
                 val p = HeroVerifier.buttonPrint(px, w, h, cx + dx, rowY + dy, 0.0075f) ?: continue
-                val m = bestSpell(p, min = 0.50f, margin = 0.09f, includeBlessed = false, expected = expected) ?: continue
+                val m = bestSpell(p, min = 0.50f, margin = 0.09f, includeBlessed = includeBlessed, expected = expected) ?: continue
                 if (bestMatch == null || m.second > bestMatch.second) bestMatch = m
             }
         }
