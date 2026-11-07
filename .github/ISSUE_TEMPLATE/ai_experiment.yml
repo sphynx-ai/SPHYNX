@@ -1,0 +1,45 @@
+name: AI experiment
+description: Propose or record a measurable AI/model experiment.
+title: "[AI Experiment]: "
+body:
+  - type: dropdown
+    id: model
+    attributes:
+      label: Model or component
+      options:
+        - Gemma 4 E2B strategic engine
+        - Gemma 3 270M experimental tactical model
+        - Kotlin tactical engine
+        - Vision / perception
+        - Learning system
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Hypothesis
+      description: What do you expect to improve, and why?
+    validations:
+      required: true
+  - type: textarea
+    id: method
+    attributes:
+      label: Experiment method
+      description: Inputs, test scenarios, baseline, and procedure.
+    validations:
+      required: true
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Success metrics and acceptance criteria
+      description: Define measurable results and a pass/fail threshold.
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety and fallback
+      description: Explain how experimental behavior is kept from controlling gameplay before validation.
+    validations:
+      required: true
