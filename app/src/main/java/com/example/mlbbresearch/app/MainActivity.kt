@@ -634,7 +634,7 @@ class MainActivity : Activity() {
     private fun homePage() {
         // the app version (and the installed build, if the package says something else)
         val installed = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { null }
-        text("MLBB Research v${com.example.mlbbresearch.core.AppVersion.VERSION} (${com.example.mlbbresearch.core.AppVersion.VERSION})" +
+        text("Sphynx Auto Pilot v${com.example.mlbbresearch.core.AppVersion.VERSION}" +
             (if (installed != null && installed != com.example.mlbbresearch.core.AppVersion.VERSION) " · build $installed" else ""), 12f, color = T.MUTED)
         val c1 = card()
         val status = cardHeader(c1, "", "", T.GREEN)
