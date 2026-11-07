@@ -49,8 +49,8 @@ android {
         applicationId = "com.example.mlbbresearch"
         minSdk = 30
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 3718
+        versionName = "37.18"
 
         vectorDrawables {
             useSupportLibrary = true

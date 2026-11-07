@@ -1,0 +1,24 @@
+# Android / Gradle build outputs
+.gradle/
+build/
+**/build/
+
+# Kotlin build caches
+.kotlin/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+
+# Local SDK configuration
+local.properties
+
+# Code on the Go temporary editor files
+.cg/editor/
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Large media: kept outside the repository (recordings stay in Git history / the Videos branch)
+*.mp4
