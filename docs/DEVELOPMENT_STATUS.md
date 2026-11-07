@@ -88,9 +88,9 @@ The following is historical information from Claude's baseline report, as suppli
 
 ### 3.2 Known baseline issues (Added at conversion — VERIFIED 2026-11-07 unless noted)
 
-- `main` tracked build output (1,395 files under `app/build/`, plus `.gradle/`, `build/`) and a ~25 MB video, and had no `.gitignore`. → Fixed by PR #3 (merged). The video is still in the older Git history.
+- `main` tracked build output (1,395 files under `app/build/`, plus `.gradle/`, `build/`) and a ~25 MB video, and had no `.gitignore`. → Fixed by PR #3 (merged). On 2026-11-07 the history was also rewritten, with owner approval, to remove both videos and all old build output from every branch; see 5.3.
 - `gradlew` was not executable in Git (mode 100644). → Fixed by PR #4 (merged).
-- `litertlm-android:latest.release` is an unpinned dependency, so builds can change without any code change. → PROPOSED: pin to a specific version (not started).
+- `litertlm-android:latest.release` was an unpinned dependency, so builds could change without any code change. → Fixed by PR #8 (merged): pinned to `0.19.1`, which is what `latest.release` resolved to on 2026-11-07, so the build did not change.
 
 ## 4. AI Engine Configuration
 
@@ -118,30 +118,28 @@ Current direction: experimental tactical processing. It is not yet ready for aut
 
 Status labels: VERIFIED, IN PROGRESS, BLOCKED, PROPOSED, REQUIRES OWNER APPROVAL, and UNKNOWN / AWAITING VERIFICATION.
 
-### 5.1 Claude Code — latest state (updated 2026-11-07, after the merges; re-verified against GitHub)
+### 5.1 Claude Code — latest state (updated 2026-11-07, after PR #8 and the history rewrite)
 
-**`main` @ `e4204d9`** (merge of PR #6):
+**Commit hashes:** all hashes in this section are from **after** the history rewrite of 2026-11-07 (see 5.3). Older log entries in section 9 keep the hashes they were written with; 5.3 maps each old hash to its new one.
 
-- **GitHub CI:** the workflow "Android build" (`assembleDebug` + `testDebugUnitTest`) ran on the push to `main` (run #9) and succeeded. VERIFIED.
-- **Local build:** Claude Code also built a fresh copy of `main`. `assembleDebug` succeeds and `testDebugUnitTest` runs 48 tests with 0 failures. VERIFIED.
+**`main` @ `3152b10`** (merge of PR #8):
+
+- **GitHub CI:** the workflow "Android build" ran on the push to `main` (run #16); it was IN PROGRESS when this was written. The commit before it, `237d203` (the rewritten main), passed CI (run #14). VERIFIED.
+- **Local build:** Claude Code built a fresh copy of the rewritten `main` (`237d203`). `assembleDebug` succeeds and `testDebugUnitTest` runs 48 tests with 0 failures. PR #8 was also built locally: same 48 tests pass and the APK is the same size as main's. VERIFIED.
 - **Device testing:** NOT TESTED.
 
-Merge order on `main` (VERIFIED from the commit history): #4 (`7c7be9c`) → #5 (`cc09561`) → #3 (`ed878ba`) → #6 (`e4204d9`).
+Merge order on `main` (VERIFIED from the commit history): #4 (`a565512`) → #5 (`8a76ba0`) → #3 (`6cf44f7`) → #6 (`8eb5c49`) → #7 (`237d203`) → #8 (`3152b10`).
+
+CI results below were recorded before the rewrite, so most quote the **old** commit hashes GitHub ran them on. Each old hash maps to a new one in 5.3.
 
 | PR | Branch | Content | CI on the PR (GitHub Actions "Android build") | CI on `main` after the merge | Status |
 |---|---|---|---|---|---|
 | #4 | `ci/android-build` | CI workflow: builds the APK and runs the unit tests on every PR and every push to main; `gradlew` made executable | Run #1 on `b011f6e`: success | Run #4 on `7c7be9c`: success | **Merged** (VERIFIED) |
 | #5 | `test/synthetic-unit-tests` | First 32 JVM unit tests on synthetic data; `TESTING.md` | Run #2 on `acdd914`: success | Run #6 on `cc09561`: **cancelled**, because the #3 merge right after it started a newer run (the workflow cancels older runs). The same code was then tested by run #8 | **Merged** (VERIFIED) |
-| #3 | `chore/repo-cleanup` | `.gitignore`; build output and video no longer tracked (video preserved outside the repo); version 37.18 everywhere | Run #5 on `2c4d702`: success. Run #7 on `70a8e45` (#3 combined with the unit tests): success; it finished about two minutes after the merge | Run #8 on `ed878ba`: success | **Merged** (VERIFIED) |
+| #3 | `chore/repo-cleanup` | `.gitignore`; build output and video no longer tracked; version 37.18 everywhere | Run #5 on `2c4d702`: success. Run #7 on `70a8e45` (#3 combined with the unit tests): success; it finished about two minutes after the merge | Run #8 on `ed878ba`: success | **Merged** (VERIFIED) |
 | #6 | `feature/spell-icon-retribution-upgrade` | "Retribution Upgraded to Bloody/Ice/Flame" message; Blessed icons read on your own scoreboard row; 16 more tests (48 in total) | Run #3 on `07b415e`: success | Run #9 on `e4204d9`: success | **Merged** (VERIFIED); device test NOT TESTED |
-| #7 | `docs/development-status` | This document | Run #10 on `41a39a2`: in progress when last checked; documentation only | — | **Open** (owner merges) |
-
-PR #7 commit history:
-- `f5bd09f`: the converted document, committed after the owner authorised it.
-- `41a39a2`: status updated after the merges.
-- The 2026-11-07 re-verification commit.
-
-The branch starts from `main` @ `a3ccf6e` and has not been rebased. It still merges into the current `main` without conflicts (VERIFIED with `git merge-tree`).
+| #7 | `docs/development-status` | This document | Run #10 on `41a39a2`: cancelled, superseded by the next push. Run #11 on `a96379a`: success | Run #12 on `e45c7bd`: success. After the rewrite, run #14 on `237d203`: success | **Merged** (VERIFIED) |
+| #8 | `build/pin-litertlm` | `litertlm-android` pinned to `0.19.1` (was `latest.release`) | Run #13 on `e7a5c3d` (before the rewrite): success. Run #15 on `894226e` (after): success | Run #16 on `3152b10`: in progress when written | **Merged** (VERIFIED) by Claude Code at the owner's request, after CI passed |
 
 Open owner decisions:
 
@@ -152,6 +150,44 @@ Open owner decisions:
 ### 5.2 Gemini CLI
 
 UNKNOWN / AWAITING VERIFICATION — no handoff has occurred.
+
+### 5.3 History rewrite of 2026-11-07 (owner-approved)
+
+- **What was removed:** both videos (`VID_20261031_123317.mp4`, ~25 MB, and `VID_20261031_123911.mp4`, ~21 MB, from the `Videos` branch) and all old build output (`app/build/`, `build/`, `.gradle/`, including ~7 debug APKs of ~89 MB each). They were removed from the history of all 18 branches, using `git filter-repo`.
+- **Owner approval:** scope, the `Videos` branch and the force-push were all confirmed by the owner before anything was pushed.
+- **Result (VERIFIED):**
+  - The repository shrank from about 283 MB to about 1.1 MB, and the largest remaining file is 158 KB.
+  - No removed path remains in any commit.
+  - Every branch has exactly the same current files as before.
+  - Only the two "Add files via upload" commits that added the videos were dropped. All other commits, including every merge commit, are kept.
+  - The rewritten main builds and passes all 48 tests.
+  - All 18 branches were force-pushed, each checked against the commit it was expected to replace. GitHub's branches matched the rewritten history afterwards.
+- **Consequences:**
+  - Every commit hash changed.
+  - **Any clone made before the rewrite must be deleted and cloned again.** This includes the owner's and Gemini CLI's. Pulling into an old clone would bring the removed files back.
+- **Not removed:** GitHub's read-only references for PRs #3–#7 (`refs/pull/N/head`) still point to old commits, so the videos and APKs can still be downloaded through them. Only GitHub Support can purge these. That is a pending owner action.
+- **Backup:** a git bundle of all 18 branches as they were before the rewrite (297 MB). SHA-256: `f419039117ce6f7e105cf8327260d6aedbba2158fa0f449b44adb4c7665d232b`. It was given to the owner to store outside GitHub. Do not push it, or anything restored from it, to this repository.
+
+Old → new commit hashes for every hash this document mentions:
+
+| Old | New | Commit |
+|---|---|---|
+| `a3ccf6e` | `0289237` | chore: add AI experiment issue form (the baseline) |
+| `1d3ab3d` | `e021d81` | chore: stop tracking build outputs… (PR #3) |
+| `2c4d702` | `ade021f` | Merge main (CI workflow) into chore/repo-cleanup |
+| `70a8e45` | `7b1d080` | Merge main (unit tests) into chore/repo-cleanup |
+| `b011f6e` | `3ff2d7a` | ci: build the debug APK… (PR #4) |
+| `acdd914` | `b41f085` | test: first JVM unit tests… (PR #5) |
+| `07b415e` | `ebf22c6` | feat: "Retribution Upgraded to <kind>"… (PR #6) |
+| `f5bd09f` | `5a25ba7` | docs: add master development status… (PR #7) |
+| `41a39a2` | `851562d` | docs: update development status after PRs #3–#6… |
+| `a96379a` | `82ef771` | docs: re-verify development status… |
+| `e7a5c3d` | `894226e` | build: pin litertlm-android to 0.19.1 (PR #8) |
+| `7c7be9c` | `a565512` | Merge pull request #4 |
+| `cc09561` | `8a76ba0` | Merge pull request #5 |
+| `ed878ba` | `6cf44f7` | Merge pull request #3 |
+| `e4204d9` | `8eb5c49` | Merge pull request #6 |
+| `e45c7bd` | `237d203` | Merge pull request #7 |
 
 ## 6. Development and Git Safety Rules
 
@@ -201,7 +237,7 @@ The receiving agent must independently inspect repository state before modifying
 | Initial technical roadmap | Completed (reported) | Owner authorized items 1–4 |
 | Strategic engine direction | Established | — |
 | Tactical engine readiness | Experimental / not ready for autonomous action | See finding in 4.1 |
-| Current Claude implementation | In progress; details awaiting latest report | Roadmap items 1–4 merged into `main` (PRs #3–#6). Build and tests VERIFIED; device testing pending |
+| Current Claude implementation | In progress; details awaiting latest report | Roadmap items 1–4 merged into `main` (PRs #3–#6); dependency pin (PR #8) and history cleanup done. Build and tests VERIFIED; device testing pending |
 | Gemini backup readiness | Pending verification | — |
 | Multi-MOBA adapter expansion | Roadmap / future work | — |
 | Universal companion maturity | Long-term objective | — |
@@ -307,6 +343,27 @@ Next recommended task:
 - **Build / test results:** none run for this change (documentation only). The CI results quoted above are GitHub's own.
 - **Outstanding issues:** unchanged. No device testing; the owner decisions in 5.1; `litertlm-android` not pinned; the video still in the history before PR #3.
 - **Next recommended task:** the owner reviews and merges PR #7. Then the device test of the Retribution-upgrade message.
+  - *Update, added later:* PR #7 was merged. Its CI run #10 (noted above as in progress) was cancelled when the next push started run #11, which succeeded.
+
+### 2026-11-07 — Claude Code — litertlm pin (PR #8) and history rewrite
+
+- **Branch / commit:** `build/pin-litertlm` (PR #8), merged as `3152b10`. The history rewrite applied to all 18 branches.
+- **Task 1, PR #8 (owner request):**
+  - Changed `litertlm-android` from `latest.release` to `0.19.1`, the version `latest.release` resolved to that day.
+  - Merged by Claude Code at the owner's request, once CI passed.
+- **Task 2, history rewrite (owner request; scope and force-push confirmed by the owner):** removed both videos and all old build output from every branch's history. Details, verification and the old → new hash table are in 5.3.
+- **Files modified:** PR #8: `app/build.gradle.kts` (one dependency line plus a comment). The rewrite changed no current file on any branch.
+- **Build results:**
+  - PR #8, local: `assembleDebug` succeeds and the APK has the same size as main's.
+  - PR #8, GitHub: CI succeeded on runs #13 and #15.
+  - Rewritten main, local: `assembleDebug` succeeds.
+- **Test results:** 48 tests, 0 failures, both on PR #8 and on the rewritten main.
+- **Outstanding issues:**
+  - No device testing.
+  - The owner decisions in 5.1.
+  - GitHub Support needs to purge `refs/pull/3`–`7`, which still hold the removed files.
+  - All old clones must be re-cloned.
+- **Next recommended task:** the device test of the Retribution-upgrade message. Then the owner chooses the next roadmap item.
 
 ## 10. Architectural Decision Log
 
@@ -331,6 +388,8 @@ For each new decision, record its date, rationale, implementation impact, and ow
 | 2026-11-07 | All substantial changes go through feature branches and pull requests into `main`; no direct pushes to `main` | Repository integrity and reviewability | Every change is a PR; CI runs on each PR and on every push to `main` | Owner approved |
 | 2026-11-07 | Personal gameplay screenshots are not committed; tests use synthetic fixtures until the owner chooses specific images | Privacy; reusable tests | Colour-threshold tuning still needs real crops (see `TESTING.md`) | Owner decision (screenshots pending) |
 | 2026-11-07 | Autonomous tactical actions stay disabled; no major rewrite; preserve MLBB functionality | Stability over speed | See finding 4.1 for the existing gated use | Owner directive |
+| 2026-11-07 | Pin `litertlm-android` to an exact version (`0.19.1`); upgrades go in their own PR | A new LiteRT-LM release could change how the Gemma models load and run without any code change | Builds are reproducible; upgrades must be made on purpose | Owner requested (PR #8) |
+| 2026-11-07 | Remove both videos and all old build output from the Git history of all branches (rewrite + force-push) | Repository size (283 MB → 1.1 MB) and removal of personal videos | All commit hashes changed; old clones must be re-cloned; GitHub PR refs #3–#7 still hold the old files until GitHub Support purges them | Owner approved scope and force-push |
 
 ## 11. Document Maintenance
 
