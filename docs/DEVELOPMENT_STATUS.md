@@ -118,21 +118,34 @@ Current direction: experimental tactical processing. It is not yet ready for aut
 
 Status labels: VERIFIED, IN PROGRESS, BLOCKED, PROPOSED, REQUIRES OWNER APPROVAL, and UNKNOWN / AWAITING VERIFICATION.
 
-### 5.1 Claude Code — latest state (updated 2026-11-07, after the merges)
+### 5.1 Claude Code — latest state (updated 2026-11-07, after the merges; re-verified against GitHub)
 
-**`main` @ `e4204d9`** — VERIFIED by Claude Code on 2026-11-07, from a fresh copy of `main`: `assembleDebug` succeeds, and `testDebugUnitTest` runs 48 tests with 0 failures. This was not tested on a device.
+**`main` @ `e4204d9`** (merge of PR #6):
 
-| PR | Branch | Content | CI | Status |
-|---|---|---|---|---|
-| #4 | `ci/android-build` | CI workflow: builds the APK and runs the unit tests on every PR and every push to main; `gradlew` made executable | VERIFIED success | **Merged** |
-| #5 | `test/synthetic-unit-tests` | First 32 JVM unit tests on synthetic data; `TESTING.md` | VERIFIED success | **Merged** |
-| #3 | `chore/repo-cleanup` | `.gitignore`; build output and video no longer tracked (video preserved outside the repo); version 37.18 everywhere | Merged before its last CI run finished. VERIFIED by a local build and test run of `main` | **Merged** |
-| #6 | `feature/spell-icon-retribution-upgrade` | "Retribution Upgraded to Bloody/Ice/Flame" message; Blessed icons read on your own scoreboard row; 16 more tests (48 in total) | VERIFIED success | **Merged** — device test pending |
-| #7 | `docs/development-status` | This document | none (documentation only) | Open |
+- **GitHub CI:** the workflow "Android build" (`assembleDebug` + `testDebugUnitTest`) ran on the push to `main` (run #9) and succeeded. VERIFIED.
+- **Local build:** Claude Code also built a fresh copy of `main`. `assembleDebug` succeeds and `testDebugUnitTest` runs 48 tests with 0 failures. VERIFIED.
+- **Device testing:** NOT TESTED.
+
+Merge order on `main` (VERIFIED from the commit history): #4 (`7c7be9c`) → #5 (`cc09561`) → #3 (`ed878ba`) → #6 (`e4204d9`).
+
+| PR | Branch | Content | CI on the PR (GitHub Actions "Android build") | CI on `main` after the merge | Status |
+|---|---|---|---|---|---|
+| #4 | `ci/android-build` | CI workflow: builds the APK and runs the unit tests on every PR and every push to main; `gradlew` made executable | Run #1 on `b011f6e`: success | Run #4 on `7c7be9c`: success | **Merged** (VERIFIED) |
+| #5 | `test/synthetic-unit-tests` | First 32 JVM unit tests on synthetic data; `TESTING.md` | Run #2 on `acdd914`: success | Run #6 on `cc09561`: **cancelled**, because the #3 merge right after it started a newer run (the workflow cancels older runs). The same code was then tested by run #8 | **Merged** (VERIFIED) |
+| #3 | `chore/repo-cleanup` | `.gitignore`; build output and video no longer tracked (video preserved outside the repo); version 37.18 everywhere | Run #5 on `2c4d702`: success. Run #7 on `70a8e45` (#3 combined with the unit tests): success; it finished about two minutes after the merge | Run #8 on `ed878ba`: success | **Merged** (VERIFIED) |
+| #6 | `feature/spell-icon-retribution-upgrade` | "Retribution Upgraded to Bloody/Ice/Flame" message; Blessed icons read on your own scoreboard row; 16 more tests (48 in total) | Run #3 on `07b415e`: success | Run #9 on `e4204d9`: success | **Merged** (VERIFIED); device test NOT TESTED |
+| #7 | `docs/development-status` | This document | Run #10 on `41a39a2`: in progress when last checked; documentation only | — | **Open** (owner merges) |
+
+PR #7 commit history:
+- `f5bd09f`: the converted document, committed after the owner authorised it.
+- `41a39a2`: status updated after the merges.
+- The 2026-11-07 re-verification commit.
+
+The branch starts from `main` @ `a3ccf6e` and has not been rebased. It still merges into the current `main` without conflicts (VERIFIED with `git merge-tree`).
 
 Open owner decisions:
 
-1. Which real screenshots (if any) may be committed as test fixtures. `TESTING.md` on PR #5 lists the minimum needed and why.
+1. Which real screenshots (if any) may be committed as test fixtures. `TESTING.md` (on `main` since PR #5) lists the minimum needed and why.
 2. Whether Gemma's unverified reading of the loading-card spell should stop counting as "verified vs wiki icon" (`GameStateTracker.onLoadingCardRead`). This was left unchanged because fixing it would make the strategic engine ask Gemma about the spell for longer.
 3. The Gemma 3 270M gated-control finding (section 4.1).
 
@@ -237,6 +250,7 @@ Next recommended task:
   - `assembleDebug` succeeded locally on every branch.
   - GitHub CI succeeded on #4, #5 and #6.
   - #3 has no CI run yet.
+  - *Update 2026-11-07, added later:* #3 did get CI runs once the workflow reached `main`. Run #5 on `2c4d702` and run #7 on `70a8e45` both succeeded (see 5.1). The text above is kept as it was recorded.
 - **Test results:**
   - 48 JVM tests, 0 failures.
   - Mutation checks confirmed that the tests detect deliberately broken rules.
@@ -252,6 +266,7 @@ Next recommended task:
 
 - **Branch:** `docs/development-status` (from `main` @ `a3ccf6e`).
 - **Commit:** none; uncommitted at the owner's instruction.
+  - *Update, added later:* committed as `f5bd09f` and pushed after the owner authorised it ("commit and push the status doc"). PR #7 was opened from it.
 - **Task:** convert the owner's coordination document into `docs/DEVELOPMENT_STATUS.md`.
 - **Files:** `docs/DEVELOPMENT_STATUS.md` (new). No source code, Gradle or version changes.
 - **Build / test results:** not applicable (documentation only).
@@ -273,6 +288,25 @@ Next recommended task:
 - **Next recommended task:**
   1. Device test of the Retribution-upgrade message.
   2. Then the owner chooses the next roadmap item.
+
+### 2026-11-07 — Claude Code — PR #7 status re-verification (owner assignment)
+
+- **Branch / commit:** `docs/development-status`; this commit follows `41a39a2`. `main` @ `e4204d9`.
+- **Task:** documentation maintenance only. Bring this file in line with the verified GitHub state after PRs #3–#6 were merged.
+- **Evidence checked:**
+  - GitHub: PR #7 is open; #3–#6 are merged.
+  - The list of "Android build" workflow runs #1–#10.
+  - The `main` commit history.
+  - `git merge-tree` of PR #7 against `main`: no conflicts.
+- **Changes made:**
+  - Section 5.1 now records the per-PR and on-`main` CI runs, the merge order, and PR #7's commits.
+  - The earlier "merged before its last CI run finished" wording for #3 is replaced with its actual successful runs (#5, #7).
+  - The `TESTING.md` location is corrected.
+  - Dated update notes were added to two earlier log entries, whose original text is kept.
+- **Files modified:** `docs/DEVELOPMENT_STATUS.md` only.
+- **Build / test results:** none run for this change (documentation only). The CI results quoted above are GitHub's own.
+- **Outstanding issues:** unchanged. No device testing; the owner decisions in 5.1; `litertlm-android` not pinned; the video still in the history before PR #3.
+- **Next recommended task:** the owner reviews and merges PR #7. Then the device test of the Retribution-upgrade message.
 
 ## 10. Architectural Decision Log
 
