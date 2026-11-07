@@ -18,7 +18,7 @@
     }
   ],
   "total_discovered_in_environment": 249,
-  "total_included_reference_assets": 49,
+  "total_included_reference_assets": 50,
   "total_excluded_non_reference_files": 200,
   "assets": [
     {
@@ -1346,6 +1346,29 @@
       "interpretation_confidence": "medium",
       "relevance_to_sphynx_auto_pilot": "Second overlay reference.",
       "capture_resolution": "native"
+    },
+    {
+      "asset_id": "MLBB-MAP-005",
+      "descriptive_filename": "mlbb-map-imperial-3d.glb",
+      "original_filename": "mlbb_map_imperial_free_download.glb",
+      "repository_path": "reference-library/moba-games/mobile-legends/maps/mlbb-map-imperial-3d.glb",
+      "category": "moba-games/mobile-legends/maps",
+      "associated_game": "Mobile Legends: Bang Bang",
+      "hero_or_subject": "Imperial 3D battlefield map (scene contents unverified)",
+      "format": "glTF 2.0 binary (GLB)",
+      "file_size_bytes": 42477504,
+      "sha256": "4032187ceb8f494e74c116708a898fb6f62fefc8838f34267710ae7747a8e2bc",
+      "source_and_provenance": "MLBB MAP IMPERIAL FREE DOWNLOAD by aldrinnacaya45, Sketchfab: https://sketchfab.com/3d-models/mlbb-map-imperial-free-download-edce85a472ab4375956c1f5edddc0d59. Supplied sidecar declares CC BY 4.0; license terms not independently verified.",
+      "license_and_usage": "Declared CC BY 4.0 according to supplied metadata. Preserve attribution and verify original license terms before redistribution, modification, or commercial use. Reference research only; not approved for Android runtime integration or release distribution.",
+      "verified_information": [
+        "Binary glTF 2.0 (GLB) file.",
+        "File size: 42,477,504 bytes.",
+        "SHA-256 checksum verified.",
+        "Supplied sidecar identifies Sketchfab author aldrinnacaya45 and declares CC BY 4.0."
+      ],
+      "ai_generated_interpretation": "Intended as a 3D Mobile Legends map reference. Actual geometry, landmarks, coordinate orientation, and correspondence to the current in-game map have not been independently inspected or validated.",
+      "interpretation_confidence": "low",
+      "relevance_to_sphynx_auto_pilot": "Candidate input for read-only spatial-intelligence feasibility research. Not a validated map database or production runtime asset."
     }
   ],
   "excluded_files": [

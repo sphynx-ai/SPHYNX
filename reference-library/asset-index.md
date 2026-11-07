@@ -2,7 +2,7 @@
 
 - **Repository**: `georgenaval1-blip/Sphynx-Auto-Pilot`
 - **Branch**: `reference-assets`
-- **Total Indexed Reference Assets**: `49`
+- **Total Indexed Reference Assets**: `50`
 - **Total Excluded Non-Reference Captures**: `200`
 
 ## Summary Table
@@ -51,6 +51,7 @@
 | `MLBB-HUD-009` | `mlbb-hud-base-level15-skill-labels-practice.jpg` | `35f03682-image.jpg` | `moba-games/mobile-legends/ui-hud` | Mobile Legends: Bang Bang | Base, level 15, skill labels | JPEG `2712x1220` | `1792255` | `9df7f36617d4c1ee…` |
 | `MLBB-MAP-003` | `mlbb-map-big-map-open-custom-signal.jpg` | `a9a93980-image.jpg` | `moba-games/mobile-legends/maps` | Mobile Legends: Bang Bang | Big map open | JPEG `2712x1220` | `1742222` | `aaf65ad0628916a9…` |
 | `MLBB-MAP-004` | `mlbb-map-minimap-crop-available-in-0.png` | `a6805ce5-image.png` | `moba-games/mobile-legends/maps` | Mobile Legends: Bang Bang | Minimap crop | PNG `152x132` | `36827` | `c8be6ec2e29d007c…` |
+| `MLBB-MAP-005` | `mlbb-map-imperial-3d.glb` | `mlbb_map_imperial_free_download.glb` | `moba-games/mobile-legends/maps` | Mobile Legends: Bang Bang | Imperial 3D battlefield map | GLB (3D model) | `42477504` | `4032187ceb8f494e…` |
 | `MLBB-GAME-001` | `mlbb-gameplay-large-objective-fight-boss-hp-bar.jpg` | `230f313a-image.jpg` | `gameplay-references` | Mobile Legends: Bang Bang | Large neutral objective fight | JPEG `2712x1220` | `1705493` | `3ae4a35363ea29ac…` |
 | `MLBB-GAME-002` | `mlbb-gameplay-jungle-camp-fight-fire-monster.jpg` | `07685694-image.jpg` | `gameplay-references` | Mobile Legends: Bang Bang | Jungle camp fight | JPEG `2712x1220` | `1784270` | `d7523e64088d2484…` |
 | `MLBB-GAME-003` | `mlbb-gameplay-turret-fight-green-range-ring-1.jpg` | `407c5858-image.jpg` | `gameplay-references` | Mobile Legends: Bang Bang | Turret fight (1) | JPEG `2712x1220` | `1588026` | `797dbd5a6b90c1f5…` |
