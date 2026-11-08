@@ -23,6 +23,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-08", Kind.FIXED, "Enemies under your green minimap ring; monsters out of range",
+            "Enemy icons half covered by your own green ring no longer turn into phantom or duplicate enemies, and a covered " +
+                "enemy is kept for a moment instead of vanishing (minimap and screen are combined into one target list). " +
+                "Against jungle monsters the hero now walks into its own attack range and never steps out of the monster's aggro zone.",
+            pr = 22, issue = 2, needsDeviceCheck = true),
         Entry("2026-11-08", Kind.NEW, "Small model readiness test (research R4)",
             "In verified practice, fight moments are recorded (the situation, what the app played, which options were dangerous). " +
                 "A button under Research mode tests the small tactical model on them against the approved criteria. " +
