@@ -75,4 +75,19 @@ class TargetFusionTest {
         val obs = (0 until 7).map { icon(0.1f + it * 0.12f, 0.1f) }
         assertEquals(5, TargetFusion().update(0L, me, obs).size)
     }
+
+    @Test fun screenOnlyTargetsAreDroppedAsMisreads() {
+        val f = TargetFusion()
+        // a jungle monster's red HP bar read as an enemy hero: on screen, never on the minimap
+        assertEquals(1, f.update(0L, me, listOf(screen(0.45f, 0.62f))).size)
+        assertEquals(1, f.update(500L, me, listOf(screen(0.45f, 0.62f))).size)
+        assertTrue(f.update(900L, me, listOf(screen(0.45f, 0.62f))).isEmpty())
+    }
+
+    @Test fun screenTargetConfirmedByTheMapStays() {
+        val f = TargetFusion()
+        f.update(0L, me, listOf(screen(0.60f, 0.40f)))
+        f.update(400L, me, listOf(screen(0.60f, 0.40f), icon(0.61f, 0.41f)))
+        assertEquals(1, f.update(2000L, me, listOf(screen(0.60f, 0.40f))).size)
+    }
 }

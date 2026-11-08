@@ -23,6 +23,10 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-08", Kind.FIXED, "Jungle fights: no more leaving mid-fight, getting stuck or phantom enemies",
+            "From your device test: the hero no longer walks to the next camp while the monster still has HP (hidden HP bars " +
+                "no longer count as a kill), stands still and attacks when a big monster's body stops it, and a jungle monster's " +
+                "red HP bar is no longer taken for an enemy hero on the map.", pr = 26, issue = 2, needsDeviceCheck = true),
         Entry("2026-11-08", Kind.NEW, "Sphynx Auto Pilot is its own app now",
             "New app name everywhere (launcher, header, Accessibility list, notification) and a new app id, " +
                 "com.sphynx.autopilot: it installs next to the old MLBB Research app. Give it its permissions again; " +
