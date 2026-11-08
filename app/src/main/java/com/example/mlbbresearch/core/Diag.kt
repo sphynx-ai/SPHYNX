@@ -17,6 +17,7 @@ object Diag {
 
     @Synchronized
     fun log(level: String, msg: String) {
+        SessionRecorder.log(level, msg)
         val f = file ?: return
         try {
             if (f.exists() && f.length() > 200_000) f.writeText(f.readText().takeLast(100_000))

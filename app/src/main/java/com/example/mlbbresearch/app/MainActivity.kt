@@ -2374,6 +2374,24 @@ class MainActivity : Activity() {
     // =====================================================================
 
     private fun logsPage() {
+        // SESSION RECORDER (data file + video, for bug reports)
+        title("SESSION RECORDER - for bug reports")
+        text("Records what the AI saw and decided (about 10 times a second, every aimed skill, the log) into a data file, " +
+            "and a video of the AI's view with its targets and aim drawn on top. Start it before a match, stop it after; " +
+            "send both files (in Sphynx-Auto-Pilot-Storage/recordings). Screen capture must be on for the video.", 12f, color = T.MUTED)
+        val recInfo = text("", 12f)
+        val recBtn = btn("") {
+            val r = com.example.mlbbresearch.core.SessionRecorder
+            if (r.on) { toast("Saving…"); r.stop(this) { msg -> runOnUiThread { toast(msg.take(200)) } } }
+            else { r.start(this); toast(if (com.example.mlbbresearch.core.VideoRecorder.on) "Recording data + video" else "Recording data (start screen capture for video)") }
+        }
+        upd {
+            val r = com.example.mlbbresearch.core.SessionRecorder
+            recInfo.text = r.status()
+            recInfo.setTextColor(c(if (r.on) T.RED else T.MUTED))
+            recBtn.text = if (r.on) "■ Stop and save the recording" else "● Start recording (data + video)"
+        }
+
         title("DIAGNOSTICS - bugs and errors")
         val cur = text("")
         upd {

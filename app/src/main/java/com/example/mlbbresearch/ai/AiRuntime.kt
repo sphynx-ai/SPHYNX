@@ -311,6 +311,7 @@ object AiRuntime {
                     }
                     // think ahead: the next task is worked out while this one runs
                     TacticalEngine.planAhead(s, d, profile)
+                    com.example.mlbbresearch.core.SessionRecorder.frame(s, d)
                     ActionExecutor.execute(d)
                     com.example.mlbbresearch.core.Speed.decided((tDecide - s.ts - com.example.mlbbresearch.core.Speed.vision.toLong()).coerceAtLeast(0L), System.currentTimeMillis() - tDecide)
                     ExperienceRecorder.record(s, d, plan.plan, plan.aggression + bias)

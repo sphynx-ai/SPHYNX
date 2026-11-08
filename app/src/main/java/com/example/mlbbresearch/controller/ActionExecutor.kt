@@ -99,7 +99,7 @@ object ActionExecutor {
         val self = gs.self ?: return sa.x2 to sa.y2
         val d = latestDecision
         val refreshed = aimDrag(sa.slot, sa.x1, sa.y1, self.x, self.y, d, gs, sa.aimHoldMs, sa.aimHoldMs >= CastTiming.AIM_LONG_DIR_HOLD_MS)
-        return if (refreshed is Act.SkillAim) refreshed.x2 to refreshed.y2 else sa.x2 to sa.y2
+        return (if (refreshed is Act.SkillAim) refreshed.x2 to refreshed.y2 else sa.x2 to sa.y2)
     }
 
     fun testCombo(): String {
@@ -583,14 +583,31 @@ object ActionExecutor {
                 }
             }
             val l = kotlin.math.hypot(wx, wy).coerceAtLeast(1e-3f)
-            return Act.SkillAim(bx, by, bx + wx / l * SKILL_AIM_R, by + wy / l * SKILL_AIM_R * aspect, pressHold, aimHold, 0L, c, retreating, false)
+            val noTarget = Act.SkillAim(bx, by, bx + wx / l * SKILL_AIM_R, by + wy / l * SKILL_AIM_R * aspect, pressHold, aimHold, 0L, c, retreating, false)
+            lastAimInfo = org.json.JSONObject().put("aimAt", if (retreating) "away (retreating)" else "no target: walking direction")
+            return noTarget
         }
         val dx = (tx - sx) * aspect
         val dy = ty - sy
         val l = kotlin.math.hypot(dx, dy).coerceAtLeast(1e-3f)
         val range = SkillBook.get(gs.ownHero)[c]?.range ?: 0.45f
         val reach = SKILL_AIM_R * (0.45f + 0.55f * (l / range).coerceAtMost(1f))
+        lastAimInfo = org.json.JSONObject().put("aimAt", JSONArrayOf(tx, ty)).put("raw", JSONArrayOf(d.targetX, d.targetY))
+            .put("live", liveEnemy?.let { JSONArrayOf(it.id.toFloat(), it.x, it.y, it.vx, it.vy) } ?: org.json.JSONObject.NULL)
+            .put("self", JSONArrayOf(sx, sy))
         return Act.SkillAim(bx, by, bx + dx / l * reach, by + dy / l * reach * aspect, pressHold, aimHold, 0L, c, retreating, false)
+    }
+
+    // for the session recorder: what the last aimDrag aimed at
+    @Volatile private var lastAimInfo: org.json.JSONObject? = null
+    private fun JSONArrayOf(vararg v: Float) = org.json.JSONArray(v.map { com.example.mlbbresearch.core.SessionRecorder.r3(it) })
+    val currentDecision: TacticalDecision get() = latestDecision
+
+    // the session recorder's row for an aimed skill (planned = "aim", at release = "aim2")
+    fun recordAim(kind: String, sa: Act.SkillAim, ex: Float, ey: Float) {
+        if (!com.example.mlbbresearch.core.SessionRecorder.on) return
+        com.example.mlbbresearch.core.SessionRecorder.aim(kind, sa.slot, sa.x1, sa.y1, ex, ey, latestDecision,
+            (lastAimInfo ?: org.json.JSONObject()).put("fixed", sa.fixedEnd).put("hold", sa.aimHoldMs))
     }
 
     // When to keep the thumb on the joystick.
