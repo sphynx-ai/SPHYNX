@@ -47,16 +47,20 @@ object SessionRecorder {
     private var out: java.io.Writer? = null
     private var name = ""
     private val io = Executors.newSingleThreadExecutor()
+    @Volatile private var appCtx: Context? = null
 
     fun r3(v: Float): Double = Math.round(v * 1000.0) / 1000.0
 
     fun status(): String = if (on)
         "RECORDING: $rows rows, ${bytes / 1024} KB, ${(System.currentTimeMillis() - startedAt) / 1000} s; video: " +
-            (if (VideoRecorder.on || VideoRecorder.frames > 0) "${VideoRecorder.frames} frames (${VideoRecorder.note})" else "off (start screen capture first)")
+            (if (VideoRecorder.on || VideoRecorder.frames > 0) "${VideoRecorder.bytesWritten / (1024 * 1024)} of ${VideoRecorder.limitMb} MB, " +
+                "${VideoRecorder.frames} frames (${VideoRecorder.note})" else "off (start screen capture first)") +
+            " - stops and saves by itself at the limit"
     else "Off. Last file: $lastExport"
 
     @Synchronized fun start(ctx: Context) {
         if (on) return
+        appCtx = ctx.applicationContext
         name = "sphynx-session-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date()) + ".jsonl"
         val f = File(ctx.applicationContext.cacheDir, name)
         tmp = f; out = f.bufferedWriter(); rows = 0; bytes = 0L; startedAt = System.currentTimeMillis(); lastFrameAt = 0L; autoFull = false
@@ -65,6 +69,9 @@ object SessionRecorder {
             .put("app", AppVersion.VERSION).put("phone", Build.MANUFACTURER + " " + Build.MODEL).put("android", Build.VERSION.SDK_INT)
             .put("aimSkills", Cfg.aimSkills)
             .put("note", "t = wall-clock ms; ms = match seconds (the in-game timer). Screen positions are 0..1."))
+        val app = ctx.applicationContext
+        // auto-stop: when the video reaches its size limit (or 20 minutes) everything is stopped and saved
+        VideoRecorder.onLimit = { if (on) stop(app) { msg -> lastExport = "auto-stopped: $msg" } }
         if (com.example.mlbbresearch.capture.ScreenCaptureService.running) {
             VideoRecorder.start(File(ctx.applicationContext.cacheDir, name.removeSuffix(".jsonl") + ".mp4"))
         }
@@ -118,7 +125,12 @@ object SessionRecorder {
         val w = out ?: return
         rows++; bytes += line.length
         io.execute { try { w.write(line) } catch (e: Exception) { } }
-        if (bytes > MAX_BYTES && !autoFull) { autoFull = true; Diag.info("Session recorder: size limit reached - press Stop to save the file") }
+        if (bytes > MAX_BYTES && !autoFull) {
+            autoFull = true
+            Diag.info("Session recorder: data limit reached - stopping and saving")
+            val c = appCtx
+            if (c != null) Thread { stop(c) { msg -> lastExport = "auto-stopped: $msg" } }.start()
+        }
     }
     @Volatile var autoFull = false; private set
 

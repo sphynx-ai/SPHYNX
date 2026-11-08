@@ -2385,6 +2385,16 @@ class MainActivity : Activity() {
             if (r.on) { toast("Saving…"); r.stop(this) { msg -> runOnUiThread { toast(msg.take(200)) } } }
             else { r.start(this); toast(if (com.example.mlbbresearch.core.VideoRecorder.on) "Recording data + video" else "Recording data (start screen capture for video)") }
         }
+        val limBtn = btn("") {
+            val v = com.example.mlbbresearch.core.VideoRecorder
+            val ch = v.SIZE_CHOICES_MB
+            v.limitMb = ch[(ch.indexOf(v.limitMb) + 1) % ch.size]
+            toast("Video limit: ${v.limitMb} MB")
+        }
+        upd {
+            val v = com.example.mlbbresearch.core.VideoRecorder
+            limBtn.text = "Auto-stop at ${v.limitMb} MB video (" + (if (v.limitMb <= 25) "fits a GitHub website upload, about 1 minute" else "for a git push, about 4 minutes") + ") - tap to change"
+        }
         upd {
             val r = com.example.mlbbresearch.core.SessionRecorder
             recInfo.text = r.status()

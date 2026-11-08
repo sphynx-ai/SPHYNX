@@ -24,4 +24,12 @@ class RecorderTest {
         SessionRecorder.aimEnd("s1", true)
         assertEquals(0, SessionRecorder.rows)
     }
+
+    @Test fun autoStopLimitsFitTheUploadLimits() {
+        assertEquals(listOf(25, 95), VideoRecorder.SIZE_CHOICES_MB)
+        // stops a little before the limit so the finished file (index included) still fits
+        assertEquals(true, VideoRecorder.limitBytes(25) < 25L * 1024 * 1024)
+        assertEquals(true, VideoRecorder.limitBytes(95) < 100L * 1000 * 1000)
+        assertEquals(true, VideoRecorder.limitBytes(25) > 24L * 1024 * 1024)
+    }
 }

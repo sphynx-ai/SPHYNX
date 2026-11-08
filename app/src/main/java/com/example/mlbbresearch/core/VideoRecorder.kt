@@ -28,7 +28,19 @@ import java.util.Locale
 object VideoRecorder {
 
     const val BITRATE = 3_000_000
-    const val MAX_MS = 20 * 60_000L          // stops by itself after 20 minutes
+    const val MAX_MS = 20 * 60_000L          // never longer than 20 minutes
+
+    // AUTO-STOP (owner request): the recording stops and saves itself when the video reaches this size,
+    // so the file can be sent: 25 MB fits a GitHub website upload, 95 MB a git push (limit 100 MB).
+    val SIZE_CHOICES_MB = listOf(25, 95)
+    var limitMb: Int
+        get() = Cfg.raw("rec_video_limit_mb")?.toIntOrNull()?.takeIf { it in SIZE_CHOICES_MB } ?: 25
+        set(v) = Cfg.setRaw("rec_video_limit_mb", v.toString())
+    // stop a little early: the file's index is written at the end
+    fun limitBytes(mb: Int): Long = mb * 1024L * 1024L * 97 / 100
+    @Volatile var bytesWritten = 0L; private set
+    @Volatile var onLimit: (() -> Unit)? = null      // set by SessionRecorder: stop and save
+    @Volatile private var limitFired = false
 
     @Volatile var on = false; private set
     @Volatile var frames = 0; private set
@@ -57,7 +69,13 @@ object VideoRecorder {
     }
 
     // starts on the next captured frame (its size is not known before)
-    fun start(f: File) { synchronized(lock) { if (on) return; file = f; frames = 0; startedAt = 0L; note = "waiting for the first frame"; on = true } }
+    fun start(f: File) { synchronized(lock) { if (on) return; file = f; frames = 0; bytesWritten = 0L; limitFired = false; startedAt = 0L; note = "waiting for the first frame"; on = true } }
+
+    private fun fireLimit(why: String) {
+        if (limitFired) return
+        limitFired = true; note = why
+        Thread { onLimit?.invoke() }.start()      // never stop from inside the capture or encoder thread
+    }
 
     // called by ScreenCaptureService for each captured frame (capture thread)
     fun frame(b: Bitmap, w: Int, h: Int) {
@@ -66,7 +84,8 @@ object VideoRecorder {
             if (!on) return
             try {
                 if (codec == null) open(w, h)
-                if (System.currentTimeMillis() - startedAt > MAX_MS) { note = "20 minute limit reached - press Stop to save"; return }
+                if (System.currentTimeMillis() - startedAt > MAX_MS) { fireLimit("20 minute limit reached - saved"); return }
+                if (limitFired) return
                 val s = input ?: return
                 // the hardware canvas is what encoder surfaces accept most reliably; software as a fallback
                 val c = try { s.lockHardwareCanvas() } catch (e: Exception) { s.lockCanvas(null) }
@@ -110,8 +129,9 @@ object VideoRecorder {
                 idx >= 0 -> {
                     val buf = c.getOutputBuffer(idx)
                     if (buf != null && info.size > 0 && (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) synchronized(lock) {
-                        if (muxing) { buf.position(info.offset); buf.limit(info.offset + info.size); muxer?.writeSampleData(track, buf, info) }
+                        if (muxing) { buf.position(info.offset); buf.limit(info.offset + info.size); muxer?.writeSampleData(track, buf, info); bytesWritten += info.size }
                     }
+                    if (bytesWritten >= limitBytes(limitMb)) fireLimit("$limitMb MB limit reached - saved")
                     c.releaseOutputBuffer(idx, false)
                     if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) return
                 }

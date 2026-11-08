@@ -26,7 +26,8 @@ object WhatsNew {
         Entry("2026-11-08", Kind.NEW, "Session recorder: data file + video for bug reports",
             "Logs page > Start recording. It saves what the AI saw and decided (about 10 times a second, every aimed skill " +
                 "as planned and as released, the log) and a video of the AI's view with its targets, joystick and aim drawn on " +
-                "top, both stamped with the clock and match timer. Files go to Sphynx-Auto-Pilot-Storage/recordings.",
+                "top, both stamped with the clock and match timer. Files go to Sphynx-Auto-Pilot-Storage/recordings. " +
+                "It stops and saves by itself when the video reaches 25 MB (a GitHub website upload) or 95 MB (git).",
             pr = 27, needsDeviceCheck = true),
         Entry("2026-11-08", Kind.FIXED, "Jungle fights: no more leaving mid-fight, getting stuck or phantom enemies",
             "From your device test: the hero no longer walks to the next camp while the monster still has HP (hidden HP bars " +
