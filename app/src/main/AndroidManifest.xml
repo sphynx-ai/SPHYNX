@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Full file: replace your whole AndroidManifest.xml with this -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Screen capture runs as a foreground service with a notification -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -13,6 +14,9 @@
     <!-- External storage fallback so scenery & minimap calibration survives app uninstall/reinstall -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+    <!-- v37.19: read and write the app's folder /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage
+         (the owner turns it on by hand: Model page > Allow all files access) -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
 
     <application
         android:name=".app.MainApplication"

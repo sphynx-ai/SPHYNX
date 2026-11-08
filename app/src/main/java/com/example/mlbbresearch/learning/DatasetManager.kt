@@ -62,6 +62,11 @@ object DatasetManager {
                 }
             }
             val name = "$prefix-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date()) + ".csv"
+            // v37.19: straight into the app's folder when all files access is on
+            com.example.mlbbresearch.core.Storage.dir()?.let { d ->
+                java.io.File(d, name).writeText(sb.toString())
+                return@onDb "Exported $rows rows to ${com.example.mlbbresearch.core.Storage.writeLabel}/$name"
+            }
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, name)
                 put(MediaStore.Downloads.MIME_TYPE, "text/csv")

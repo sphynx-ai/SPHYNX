@@ -148,14 +148,14 @@ object GroqClient {
                     return@withContext r
                 } catch (e: Exception) { last = e; lastError = e.message ?: "${p.label} failed" }
             }
-            if (!anyKey) throw IllegalStateException("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the MLBB-Research folder")
+            if (!anyKey) throw IllegalStateException("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Auto-Pilot-Storage folder")
             throw last ?: IllegalStateException("All online models are resting after their rate limits: available again in ${waitText()} (${availableAtText()})")
         } finally { lastMs = System.currentTimeMillis() - t0 }
     }
 
     private suspend fun askRaw(prompt: String, wantSearch: Boolean): Pair<String, List<String>> = withContext(Dispatchers.IO) {
         val key = Cfg.groqKey.trim()
-        if (key.isEmpty()) throw IllegalStateException("No Groq API key (put groq_key.txt in the MLBB-Research folder)")
+        if (key.isEmpty()) throw IllegalStateException("No Groq API key (put groq_key.txt in the Sphynx-Auto-Pilot-Storage folder)")
         // still resting after the rate limit: asking now only gets another 429
         if (groqLimited) throw IllegalStateException("Groq rate limit reached: available again at ${java.text.SimpleDateFormat("h:mm a", java.util.Locale.US).format(java.util.Date(groqUntil))}")
         val model = Cfg.groqModel.trim().ifEmpty { Cfg.DEFAULT_GROQ_MODEL }

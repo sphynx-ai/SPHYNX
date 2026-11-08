@@ -28,7 +28,7 @@ import java.util.concurrent.Executors
 //  5. downloads the results straight into Download/MLBB-Research, and the folder scan loads them
 // The notebooks run unattended there (their Kaggle mode) and keep what they learned: the last
 // detector / networks go back up with the next run.
-// Needs kaggle.json (kaggle.com > Settings > API > Create New Token) in the MLBB-Research folder;
+// Needs kaggle.json (kaggle.com > Settings > API > Create New Token) in the Sphynx-Auto-Pilot-Storage folder;
 // for the small model, accept the Gemma licence on kaggle.com once.
 object CloudTrain {
 
@@ -193,7 +193,7 @@ object CloudTrain {
     // ---------------- the button ----------------
 
     fun start(ctx: Context, j: Job, done: (String) -> Unit) {
-        if (!ready()) { done("Put kaggle.json in the MLBB-Research folder first (kaggle.com > Settings > API > Create New Token)"); return }
+        if (!ready()) { done("Put kaggle.json in the Sphynx-Auto-Pilot-Storage folder first (kaggle.com > Settings > API > Create New Token)"); return }
         synchronized(busy) { if (j in busy || Cfg.raw("ct_run_${j.key}") != null) { done("${j.label}: already training"); return }; busy.add(j) }
         val c = ctx.applicationContext
         done("${j.label}: preparing…")
@@ -398,7 +398,7 @@ object CloudTrain {
         if (got.none { it.endsWith(".tflite") || it.endsWith(".zip") || it.endsWith(".litertlm") }) {
             setStatus(j, "finished, but no result file came out: open the notebook on Kaggle to see why"); return
         }
-        setStatus(j, "done: ${got.joinToString()} saved in Download/MLBB-Research and loaded")
+        setStatus(j, "done: ${got.joinToString()} saved in ${com.example.mlbbresearch.core.Storage.writeLabel} and loaded")
         AutoFolder.scan(c)
     }
 
@@ -545,6 +545,14 @@ object CloudTrain {
     }
 
     private fun save(c: Context, name: String, input: InputStream) {
+        // v37.19: straight into the app's folder when all files access is on (the folder scan reads it)
+        com.example.mlbbresearch.core.Storage.dir()?.let { d ->
+            val tmp = java.io.File(d, "$name.part")
+            tmp.outputStream().use { input.copyTo(it, 1 shl 16) }
+            val dst = java.io.File(d, name); dst.delete()
+            if (!tmp.renameTo(dst)) throw IllegalStateException("cannot save $name")
+            return
+        }
         val cr = c.contentResolver
         val rel = Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research/"
         val existing = cr.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.Downloads._ID),

@@ -25,7 +25,7 @@ object LibraryLearner {
 
     fun start(done: (String) -> Unit) {
         if (running) { done("Already learning: $progress"); return }
-        if (!GroqClient.anyKey) { done("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the MLBB-Research folder"); return }
+        if (!GroqClient.anyKey) { done("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Auto-Pilot-Storage folder"); return }
         running = true
         AiRuntime.scope.launch {
             var learned = 0
@@ -92,7 +92,7 @@ object LibraryLearner {
     @Volatile var oneBusy = ""; private set
     fun learnOne(h: String, done: (String) -> Unit) {
         if (oneBusy.isNotEmpty()) { done("Already learning $oneBusy"); return }
-        if (!GroqClient.anyKey) { done("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the MLBB-Research folder"); return }
+        if (!GroqClient.anyKey) { done("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Auto-Pilot-Storage folder"); return }
         oneBusy = h
         AiRuntime.scope.launch {
             val out = StringBuilder("$h - ")
