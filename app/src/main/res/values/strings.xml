@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">MLBB Research</string>
-    <string name="bot_service_desc">MLBB Research: performs the AI\'s touches and shows the floating status icon.</string>
+    <string name="app_name">Sphynx Auto Pilot</string>
+    <string name="bot_service_desc">Sphynx Auto Pilot: performs the AI\'s touches and shows the floating status icon.</string>
 </resources>

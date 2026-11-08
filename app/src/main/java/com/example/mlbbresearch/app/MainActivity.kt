@@ -143,7 +143,7 @@ class MainActivity : Activity() {
         header.addView(ImageView(this).apply { setImageResource(R.mipmap.ic_mlbb) }, LinearLayout.LayoutParams(dp(40), dp(40)))
         val names = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
         names.addView(TextView(this).apply {
-            text = "MLBB Research"
+            text = getString(R.string.app_name)
             textSize = 19f
             setTextColor(Color.WHITE)
             setTypeface(null, Typeface.BOLD)
@@ -539,7 +539,7 @@ class MainActivity : Activity() {
     private fun startStage(stage: String) {
         if (AccessibilityController.instance == null) {
             pendingStage = stage
-            toast("Turn ON 'MLBB Research' in Accessibility, then come back")
+            toast("Turn ON 'Sphynx Auto Pilot' in Accessibility, then come back")
             openAccessibility()
             return
         }
