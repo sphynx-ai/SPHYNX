@@ -39,7 +39,7 @@ class ResearchSession(private val maxLog: Int = 30) {
     fun status(on: Boolean): String = when {
         !on -> "Research: off"
         gate.matchId == 0L -> "Research: blocked - match not identified yet"
-        gate.state == PracticeGate.State.VERIFIED -> "Research: verified practice (all 9 others are Computer) - no experiments active yet"
+        gate.state == PracticeGate.State.VERIFIED -> "Research: verified practice (all 9 others are Computer) - no experiment until Player mode plays"
         gate.state == PracticeGate.State.REVOKED -> "Research: LOCKED for this match - ${gate.reason}"
         else -> "Research: blocked - open the scoreboard once to verify practice"
     }

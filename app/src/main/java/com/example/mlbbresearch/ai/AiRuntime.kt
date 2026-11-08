@@ -259,12 +259,18 @@ object AiRuntime {
                     TacticalAdvisor.tick(s, profile)
                     // the fight-choice network (if on) advises first - it answers at once; the small
                     // model's advice is used when the network is off. Both pass the same Kotlin checks.
-                    val netAdvice = if (option != null && Cfg.fightNetOn && com.example.mlbbresearch.learning.FightNet.usable)
-                        com.example.mlbbresearch.learning.FightNet.advise(TacticalAdvisor.summary(s, profile))?.takeIf { it.second >= 0.4f }?.first
-                            ?.takeIf { TacticalAdvisor.check(it, s) == null } else null
+                    val netRaw = if (option != null && Cfg.fightNetOn && com.example.mlbbresearch.learning.FightNet.usable)
+                        com.example.mlbbresearch.learning.FightNet.advise(TacticalAdvisor.summary(s, profile))?.takeIf { it.second >= 0.4f }
+                            ?.takeIf { TacticalAdvisor.check(it.first, s) == null } else null
+                    val netAdvice = netRaw?.first
                     if (netAdvice != null) { if (netAdvice != option) { Brain.adopt(s, netAdvice); option = netAdvice } }
                     else if (option != null) TacticalAdvisor.validated(s, profile)?.let { a ->
                         if (a != option) { Brain.adopt(s, a); option = a }
+                    }
+                    // research R3 (verified practice vs Computer only, research mode on): the decision
+                    // arbiter picks the fight option; anywhere else this returns the option unchanged
+                    com.example.mlbbresearch.research.ResearchMode.fightChoice(s, option, brainOption, netRaw)?.let { r ->
+                        if (r != option) { Brain.adopt(s, r); option = r }
                     }
                     // logging mode only: records every engine's advice next to what is played (never changes it)
                     com.example.mlbbresearch.engines.DecisionLogging.observe(s, brainOption, option)

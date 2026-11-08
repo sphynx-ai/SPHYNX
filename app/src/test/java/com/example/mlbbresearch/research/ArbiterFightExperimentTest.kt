@@ -1,0 +1,96 @@
+package com.example.mlbbresearch.research
+
+import com.example.mlbbresearch.learning.FightOption
+import com.example.mlbbresearch.universal.Capability
+import com.example.mlbbresearch.universal.CapabilitySet
+import com.example.mlbbresearch.universal.Decision
+import com.example.mlbbresearch.universal.DecisionKind
+import com.example.mlbbresearch.universal.EngineSource
+import com.example.mlbbresearch.universal.MatchPhase
+import com.example.mlbbresearch.universal.Side
+import com.example.mlbbresearch.universal.SupportStatus
+import com.example.mlbbresearch.universal.UniversalMatchState
+import com.example.mlbbresearch.universal.UnitKind
+import com.example.mlbbresearch.universal.UnitState
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class ArbiterFightExperimentTest {
+
+    private val caps = CapabilitySet(mapOf(
+        Capability.UNIT_HEALTH to SupportStatus.PARTIAL,
+        Capability.STRATEGIC_ADVICE to SupportStatus.PARTIAL,
+        Capability.TACTICAL_ADVICE to SupportStatus.EXPERIMENTAL))
+
+    private val st = UniversalMatchState("test", 1000L, MatchPhase.IN_MATCH,
+        self = UnitState(Side.SELF, UnitKind.CHARACTER, health = 0.8f),
+        units = listOf(UnitState(Side.ENEMY, UnitKind.CHARACTER), UnitState(Side.ALLY, UnitKind.CHARACTER),
+            UnitState(Side.ENEMY, UnitKind.MINION)),
+        capabilities = caps)
+
+    private fun d(k: DecisionKind, src: EngineSource, conf: Float? = null) = Decision(k, src, 1000L, 1000L, conf)
+    private val pass: (FightOption) -> String? = { null }
+
+    @Test fun notAllowedLeavesTheNormalChoiceUntouched() {
+        val e = ArbiterFightExperiment()
+        val r = e.choose(false, FightOption.FARM, listOf(d(DecisionKind.RETREAT, EngineSource.STRATEGIC, 0.9f)), st, 1200L, pass)
+        assertEquals(FightOption.FARM, r.option)
+        assertFalse(r.changed)
+        assertEquals(0, e.choices)
+    }
+
+    @Test fun noFightChoiceMeansNothingToDecide() {
+        val r = ArbiterFightExperiment().choose(true, null, listOf(d(DecisionKind.ENGAGE, EngineSource.STRATEGIC)), st, 1200L, pass)
+        assertNull(r.option)
+    }
+
+    @Test fun arbiterPicksWhenAllowed() {
+        val e = ArbiterFightExperiment()
+        val r = e.choose(true, FightOption.FARM, listOf(
+            d(DecisionKind.FARM, EngineSource.RULES), d(DecisionKind.POKE, EngineSource.LEARNED, 0.8f)), st, 1200L, pass)
+        assertEquals(FightOption.POKE, r.option)
+        assertTrue(r.changed)
+        assertEquals(1, e.changed)
+        assertEquals(1, e.recent().size)
+    }
+
+    @Test fun safetyFirstRetreatWins() {
+        val r = ArbiterFightExperiment().choose(true, FightOption.ALL_IN, listOf(
+            d(DecisionKind.ENGAGE, EngineSource.RULES, 0.9f), d(DecisionKind.RETREAT, EngineSource.STRATEGIC, 0.3f)), st, 1200L, pass)
+        assertEquals(FightOption.RETREAT, r.option)
+    }
+
+    @Test fun experimentalTacticalModelCannotWin() {
+        val r = ArbiterFightExperiment().choose(true, FightOption.FARM, listOf(
+            d(DecisionKind.FARM, EngineSource.RULES), d(DecisionKind.ENGAGE, EngineSource.TACTICAL, 1f)), st, 1200L, pass)
+        assertEquals(FightOption.FARM, r.option)
+        assertFalse(r.changed)
+    }
+
+    @Test fun kotlinChecksKeepTheNormalChoice() {
+        val e = ArbiterFightExperiment()
+        val r = e.choose(true, FightOption.FARM, listOf(
+            d(DecisionKind.FARM, EngineSource.RULES), d(DecisionKind.ENGAGE, EngineSource.LEARNED, 0.9f)), st, 1200L) { "too low" }
+        assertEquals(FightOption.FARM, r.option)
+        assertFalse(r.changed)
+        assertEquals(1, e.keptByCheck)
+    }
+
+    @Test fun nonFightKindsKeepTheNormalChoice() {
+        val r = ArbiterFightExperiment().choose(true, FightOption.FARM, listOf(
+            d(DecisionKind.DEFEND, EngineSource.STRATEGIC, 0.9f)), st, 1200L, pass)
+        assertEquals(FightOption.FARM, r.option)
+        assertFalse(r.changed)
+    }
+
+    @Test fun rejectedAdviceCannotWin() {
+        // engage at 15% health is rejected by the validator, so the normal choice stays
+        val low = st.copy(self = UnitState(Side.SELF, UnitKind.CHARACTER, health = 0.15f))
+        val r = ArbiterFightExperiment().choose(true, FightOption.RETREAT, listOf(
+            d(DecisionKind.RETREAT, EngineSource.RULES), d(DecisionKind.ENGAGE, EngineSource.STRATEGIC, 1f)), low, 1200L, pass)
+        assertEquals(FightOption.RETREAT, r.option)
+    }
+}
