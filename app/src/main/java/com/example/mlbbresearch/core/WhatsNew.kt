@@ -23,6 +23,10 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-08", Kind.NEW, "Arbiter vs normal comparison in practice (research R5)",
+            "Each verified practice match is randomly put in an arbiter or a normal group; fight scores, deaths, K/D/A and results " +
+                "are compared under Research mode, with \"not enough data\" until each group has 5 matches.",
+            pr = 21, needsDeviceCheck = true),
         Entry("2026-11-08", Kind.NEW, "Small model readiness test (research R4)",
             "In verified practice, fight moments are recorded (the situation, what the app played, which options were dangerous). " +
                 "A button under Research mode tests the small tactical model on them against the approved criteria. " +
