@@ -64,6 +64,7 @@ object TacticalEngine {
         recallUntil = 0L
         regenUntil = 0L
         JungleNav.reset()
+        com.example.mlbbresearch.game.MapIntel.reset()
     }
 
     // option: what the learning brain chose for this fight (null / RULES = the normal rules)
@@ -74,6 +75,7 @@ object TacticalEngine {
             com.example.mlbbresearch.game.SceneryMap.roamDecision(s, p)?.let { return steerAroundWalls(s, it) }
         }
         var d = decideRaw(s, p, plan, learnedBias, option)
+        d = leashGuard(s, d)
         // game sense: remember enemies that left the map; weigh the options (the "why")
         com.example.mlbbresearch.game.GameMemory.update(s, d.reason.substringBefore(" |").take(60), plan.plan)
         if (s.self != null && s.phase == Phase.IN_GAME) {
@@ -602,7 +604,10 @@ object TacticalEngine {
             p.waveClearSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
             for (sk in p.combo) if ((sk != "ult" || ultToo) && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
             if (s.spell == "Retribution" && lastMonHp <= 0.25f && retriWorthy(lastMonSpecies, lastMonBoss) && CooldownTracker.ready("spell", p)) casts.add("spell")
-            return TacticalDecision(Intent.JUNGLE, 0f, 0f, casts, lastMonX, lastMonY, "monster", lastMonHp, -1,
+            // issue #2: hold if it was inside your attack range; otherwise close in on where it was (never
+            // out of its aggro zone) instead of standing out of range
+            val (hx, hy) = monsterStep(s, p, lastMonX, lastMonY)
+            return TacticalDecision(Intent.JUNGLE, hx, hy, casts, lastMonX, lastMonY, "monster", lastMonHp, -1,
                 "holding position at monster (last seen at ${(lastMonHp * 100).toInt()}% HP)")
         }
 
@@ -1208,10 +1213,9 @@ object TacticalEngine {
         }
         val m = s.creeps.minByOrNull { s.distToSelf(it.x, it.y) }
         if (s.spell == "Retribution" && JungleNav.atBuff && JungleNav.atCampMs > 5000L && CooldownTracker.ready("spell", p)) casts.add("spell")
-        val monStopDist = maxOf(p.attackRange * 1.85f, if (p.ranged) 0.42f else 0.34f)
         if (m != null) {
-            val d = s.distToSelf(m.x, m.y)
-            val (mx, my) = if (d > monStopDist || !inLeash(s, m)) toward(s, m.x, m.y) else (0f to 0f)
+            // issue #2: inside your own attack range, never out of the monster's aggro zone
+            val (mx, my) = monsterStep(s, p, m.x, m.y)
             return TacticalDecision(Intent.JUNGLE, mx, my, casts, m.x, m.y, "monster", m.hp, -1, JungleNav.status)
         }
         // Full-HP creep / buff (no HP bar yet): ALWAYS start with a Basic Attack first for the opening 320 ms before casting skills! (v37.14)
@@ -1249,6 +1253,7 @@ object TacticalEngine {
         }
         lastMonX = m.x; lastMonY = m.y; lastMonHp = m.hp; lastMonAt = s.ts; lastMonSpecies = m.species; lastMonBoss = m.hero
         val d = s.distToSelf(m.x, m.y)
+        // press attack / skills from this far (MLBB's attack button walks you in from there)
         val stopDist = maxOf(p.attackRange * 1.85f, if (p.ranged) 0.42f else 0.34f)
         val activeCont = HeroKit.activeContinuousSkill(s)
         val casts = ArrayList<String>()
@@ -1263,19 +1268,46 @@ object TacticalEngine {
         }
         val mhp = if (m.hero && s.bossHp >= 0f) s.bossHp else m.hp
         if (s.spell == "Retribution" && retriWorthy(m.species, m.hero) && mhp * 100 <= retriPct && d <= 0.45f && CooldownTracker.ready("spell", p)) casts.add("spell")
-        // Stand completely still (0f, 0f) once inside stopDist & leash so we NEVER walk through the monster or reset its aggro!
-        val (mx, my) = if (d > stopDist || !inLeash(s, m)) toward(s, m.x, m.y) else (0f to 0f)
+        // Issue #2: walk in until the monster is inside YOUR attack range (CombatRange), then stand still.
+        // (It used to stop at about twice a melee hero's range and rely on the attack button.)
+        val (mx, my) = monsterStep(s, p, m.x, m.y)
         return TacticalDecision(intent, mx, my, casts, m.x, m.y, if (m.hero) "objective" else "monster", mhp, -1, why)
     }
 
     // A monster fights back only inside the round indicator on the ground around it (seen as a
     // wide ellipse because of the camera tilt); step out and it stops and heals. Measured on
-    // your screenshots: about 0.6 screen heights across and 0.27 up / down. Stay well inside.
-    private fun inLeash(s: GameState, m: Seen): Boolean {
-        val self = s.self ?: return true
-        val dx = (self.x - m.x) * s.aspect / 0.5f
-        val dy = (self.y - m.y) / 0.22f
-        return dx * dx + dy * dy <= 1f
+    // your screenshots: about 0.6 screen heights across and 0.27 up / down. Its numbers live in
+    // universal.CombatRange.Leash (issue #2).
+    // Issue #2: while a monster you are fighting is alive, a jungle / objective move may not take you
+    // out of its aggro zone (it would walk home and heal). Retreat, recall and fights with enemy heroes
+    // are never held back: survival comes first.
+    private fun leashGuard(s: GameState, d: TacticalDecision): TacticalDecision {
+        if (d.intent != Intent.JUNGLE && d.intent != Intent.OBJECTIVE) return d
+        if (d.moveX == 0f && d.moveY == 0f) return d
+        val self = s.self ?: return d
+        val onMonster = d.targetX >= 0f && (d.targetLabel == "monster" || d.targetLabel == "objective")
+        val alive = !(lastMonHp <= 0.18f && s.ts - lastMonAt > 1100)
+        val (mx, my) = when {
+            onMonster -> d.targetX to d.targetY
+            lastMonAt > 0 && s.ts - lastMonAt in 0..2500 && alive -> lastMonX to lastMonY
+            else -> return d
+        }
+        val (kx, ky) = com.example.mlbbresearch.universal.CombatRange.keepInLeash((mx - self.x) * s.aspect, my - self.y, d.moveX, d.moveY)
+        if (kx == d.moveX && ky == d.moveY) return d
+        return TacticalDecision(d.intent, 0f, 0f, d.casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId,
+            d.reason + " (held: would leave the monster's aggro zone)")
+    }
+
+    // Issue #2: the step toward a monster at (x, y) - approach until it is inside your own attack
+    // range, then stand; and never a step that leaves the monster's aggro zone.
+    private fun monsterStep(s: GameState, p: HeroProfile, x: Float, y: Float): Pair<Float, Float> {
+        val self = s.self ?: return 0f to 0f
+        val dx = (x - self.x) * s.aspect; val dy = y - self.y
+        val st = com.example.mlbbresearch.universal.CombatRange.approach(dx, dy, p.attackRange)
+        if (st.inRange) return 0f to 0f
+        val (kx, ky) = com.example.mlbbresearch.universal.CombatRange.keepInLeash(dx, dy, st.moveX, st.moveY)
+        // the same frame as toward(): x already multiplied by the aspect ratio
+        return if (kx == 0f && ky == 0f) 0f to 0f else norm(kx, ky)
     }
 
     // Fighting an enemy HERO: melee walks up close and stays there; ranged keeps a safe distance
