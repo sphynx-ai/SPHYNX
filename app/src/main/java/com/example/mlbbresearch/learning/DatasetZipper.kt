@@ -47,16 +47,28 @@ object DatasetZipper {
         private set
     @Volatile private var busy = false
 
-    private class Item(val id: Long, val name: String, val rel: String)
+    // a saved picture / label: rel is its folder ("…/<folder>/images"), open / delete work on either store
+    private class Item(val name: String, val rel: String, val open: () -> java.io.InputStream?, val delete: () -> Boolean)
 
-    // the app's own files in Download/MLBB-Research/<folder>/...
+    // the app's own files: in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/<folder>/... (all files access)
+    // and in Download/MLBB-Research/<folder>/... (saved without it, or by earlier versions)
     private fun list(c: Context, kind: Kind): List<Item> {
-        val base = Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research/" + kind.folder + "/"
         val out = ArrayList<Item>()
+        com.example.mlbbresearch.core.Storage.dir(kind.folder)?.let { top ->
+            top.walkTopDown().filter { it.isFile }.forEach { f ->
+                val rel = kind.folder + f.parentFile!!.absolutePath.removePrefix(top.absolutePath)
+                out.add(Item(f.name, rel, { f.inputStream() }, { f.delete() }))
+            }
+        }
+        val base = Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research/" + kind.folder + "/"
         c.contentResolver.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
             arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME, MediaStore.Downloads.RELATIVE_PATH),
             MediaStore.Downloads.RELATIVE_PATH + " LIKE ?", arrayOf("$base%"), null)?.use { cur ->
-            while (cur.moveToNext()) out.add(Item(cur.getLong(0), cur.getString(1) ?: continue, cur.getString(2) ?: ""))
+            while (cur.moveToNext()) {
+                val uri = ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cur.getLong(0))
+                out.add(Item(cur.getString(1) ?: continue, cur.getString(2) ?: "", { c.contentResolver.openInputStream(uri) },
+                    { try { c.contentResolver.delete(uri, null, null) > 0 } catch (e: Exception) { false } }))
+            }
         }
         return out
     }
@@ -90,19 +102,23 @@ object DatasetZipper {
         val classes = all.firstOrNull { it.name == "classes.txt" && it.rel.trimEnd('/').endsWith(kind.folder) }
         val newest = pics.maxOf { stamp(it.name, kind) }
         val name = kind.zipName + "-" + SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date()) + ".zip"
-        val values = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, name)
-            put(MediaStore.Downloads.MIME_TYPE, "application/zip")
-            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research")
+        // v37.19: the zip goes straight into the app's folder when all files access is on
+        val direct = com.example.mlbbresearch.core.Storage.dir()
+        val os0: java.io.OutputStream? = if (direct != null) java.io.File(direct, name).outputStream() else {
+            val values = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, name)
+                put(MediaStore.Downloads.MIME_TYPE, "application/zip")
+                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research")
+            }
+            val uri = c.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: throw IllegalStateException("could not create $name")
+            c.contentResolver.openOutputStream(uri)
         }
-        val uri = c.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            ?: throw IllegalStateException("could not create $name")
-        fun uriOf(i: Item) = ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, i.id)
         var n = 0
-        c.contentResolver.openOutputStream(uri)?.use { os ->
+        os0?.use { os ->
             ZipOutputStream(os).use { z ->
                 fun add(path: String, i: Item) {
-                    c.contentResolver.openInputStream(uriOf(i))?.use { input ->
+                    i.open()?.use { input ->
                         z.putNextEntry(ZipEntry(path)); input.copyTo(z); z.closeEntry()
                     }
                 }
@@ -115,8 +131,8 @@ object DatasetZipper {
         Cfg.setRaw(kind.key + "_n", "0")
         // the zip holds them now: remove the zipped pictures and labels from the folder
         var removed = 0
-        for (i in pics + labels) try { if (c.contentResolver.delete(uriOf(i), null, null) > 0) removed++ } catch (e: Exception) { }
-        return "$name: $n pictures ($why) in Download/MLBB-Research" + if (removed > 0) "; the zipped files were removed from ${kind.folder}" else ""
+        for (i in pics + labels) try { if (i.delete()) removed++ } catch (e: Exception) { }
+        return "$name: $n pictures ($why) in ${com.example.mlbbresearch.core.Storage.label(direct != null)}" + if (removed > 0) "; the zipped files were removed from ${kind.folder}" else ""
     }
 
 }

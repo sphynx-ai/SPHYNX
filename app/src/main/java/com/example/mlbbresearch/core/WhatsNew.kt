@@ -23,10 +23,10 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
-        Entry("2026-11-08", Kind.IMPROVED, "Import folder is now /Sphynx-Auto-Pilot (v37.19)",
-            "Put models, detectors, networks and keys in the Sphynx-Auto-Pilot folder at the top of the phone's storage " +
-                "(next to Download) and choose it once on the Model page. A phone that still has Download/MLBB-Research " +
-                "chosen keeps working and is asked to switch. The app's own exports still go to Download/MLBB-Research.",
+        Entry("2026-11-08", Kind.IMPROVED, "One app folder: /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage (v37.19)",
+            "Models, detectors, networks and keys are read from it, and CSV exports, training pictures and zips, Kaggle results " +
+                "and backups are saved in it. Turn on \"All files access\" once on the Model page. Until then everything works " +
+                "as before (the folder you choose, and Download/MLBB-Research for the app's own files).",
             pr = 24, needsDeviceCheck = true),
         Entry("2026-11-08", Kind.NEW, "Arbiter vs normal comparison in practice (research R5)",
             "Each verified practice match is randomly put in an arbiter or a normal group; fight scores, deaths, K/D/A and results " +

@@ -147,11 +147,10 @@ object OnlineBackup {
     // even before the user has re-selected the Download/MLBB-Research folder!
     private fun restoreFromPhoneStorageOnStartup(c: Context) {
         try {
-            // 1. Direct file paths: the import folder /Sphynx-Auto-Pilot first (v37.19), then where the app
-            // saves its own backups (Download/MLBB-Research) and the older Documents/MLBB-Research
+            // 1. Direct file paths: the app's folder /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage first (v37.19),
+            // then where earlier versions saved the backups (Download/MLBB-Research, Documents/MLBB-Research)
             val dirs = listOfNotNull(
-                try { File(Environment.getExternalStorageDirectory(), com.example.mlbbresearch.models.AutoFolder.FOLDER) } catch (e: Exception) { null },
-                try { File("/storage/emulated/0/" + com.example.mlbbresearch.models.AutoFolder.FOLDER) } catch (e: Exception) { null },
+                try { com.example.mlbbresearch.core.Storage.root() } catch (e: Exception) { null },
                 try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MLBB-Research") } catch (e: Exception) { null },
                 try { File("/storage/emulated/0/Download/MLBB-Research") } catch (e: Exception) { null },
                 try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "MLBB-Research") } catch (e: Exception) { null },
@@ -332,6 +331,7 @@ object OnlineBackup {
 
     // Writes to ALL available persistent locations so scenery & minimap sync always survives uninstall/reinstall
     private fun writeEverywhere(c: Context, name: String, text: String) {
+        writeDirect(name, text)
         writeInFolder(c, name, text)
         writeInDownloads(c, name, text)
         try {
@@ -347,7 +347,13 @@ object OnlineBackup {
         } catch (e: Exception) { }
     }
 
+    // v37.19: straight into /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage when all files access is on
+    private fun writeDirect(name: String, text: String): Boolean = try {
+        com.example.mlbbresearch.core.Storage.dir()?.let { d -> File(d, name).writeText(text, Charsets.UTF_8); true } ?: false
+    } catch (e: Exception) { Diag.error("Writing $name in the app's folder", e); false }
+
     private fun write(c: Context, name: String, text: String) {
+        if (writeDirect(name, text)) return
         if (writeInFolder(c, name, text)) {
             writeInDownloads(c, name, text)
             return

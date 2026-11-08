@@ -207,6 +207,10 @@ object DatasetCollector {
     }
 
     private fun write(c: Context, sub: String, name: String, mime: String, body: (java.io.OutputStream) -> Unit) {
+        // v37.19: straight into the app's folder when all files access is on
+        com.example.mlbbresearch.core.Storage.dir("dataset" + if (sub.isEmpty()) "" else "/$sub")?.let { d ->
+            java.io.File(d, name).outputStream().use(body); return
+        }
         val rel = Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research/dataset" + if (sub.isEmpty()) "" else "/$sub"
         // a file of that name may already be there (classes.txt from an earlier run, a re-install):
         // overwrite it instead of failing on the duplicate name
