@@ -147,8 +147,11 @@ object OnlineBackup {
     // even before the user has re-selected the Download/MLBB-Research folder!
     private fun restoreFromPhoneStorageOnStartup(c: Context) {
         try {
-            // 1. Direct public Download/MLBB-Research and Documents/MLBB-Research file paths
+            // 1. Direct file paths: the import folder /Sphynx-Auto-Pilot first (v37.19), then where the app
+            // saves its own backups (Download/MLBB-Research) and the older Documents/MLBB-Research
             val dirs = listOfNotNull(
+                try { File(Environment.getExternalStorageDirectory(), com.example.mlbbresearch.models.AutoFolder.FOLDER) } catch (e: Exception) { null },
+                try { File("/storage/emulated/0/" + com.example.mlbbresearch.models.AutoFolder.FOLDER) } catch (e: Exception) { null },
                 try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MLBB-Research") } catch (e: Exception) { null },
                 try { File("/storage/emulated/0/Download/MLBB-Research") } catch (e: Exception) { null },
                 try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "MLBB-Research") } catch (e: Exception) { null },

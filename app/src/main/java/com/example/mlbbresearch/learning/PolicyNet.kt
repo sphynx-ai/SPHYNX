@@ -160,7 +160,7 @@ object PolicyNet {
         init(ctx)
         loadedKey = ""
         val k = pick(ctx, com.example.mlbbresearch.game.GameStateTracker.ownHero())
-        if (k.isEmpty()) return "No tactical network yet (put mlbb_policies.zip in Download/MLBB-Research)"
+        if (k.isEmpty()) return "No tactical network yet (put mlbb_policies.zip in the Sphynx-Auto-Pilot folder)"
         val err = loadFile(if (k == "_single") modelFile(ctx) else fileFor(ctx, k), k)
         if (err == null) applyInfo(infoFor(k))
         return err

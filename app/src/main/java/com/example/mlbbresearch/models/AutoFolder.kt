@@ -12,9 +12,12 @@ import java.io.InputStream
 // ONE FOLDER FOR EVERYTHING: put the downloaded files in it and the app finds, copies, loads
 // and applies them by itself (when it starts, and when you tap "Scan the folder now").
 //
-// Folder: Download/MLBB-Research (you choose it once on the Model page; Android then lets the
-// app read it for good). The app's own folder Android/data/com.example.mlbbresearch/files/
-// MLBB-Research is read too (no choosing needed, e.g. when copying from a computer).
+// Folder: /Sphynx-Auto-Pilot at the top of the phone's storage (you choose it once on the Model page;
+// Android then lets the app read it for good). The app's own folder
+// Android/data/com.example.mlbbresearch/files/Sphynx-Auto-Pilot is read too (no choosing needed, e.g.
+// when copying from a computer), and so is the older .../files/MLBB-Research.
+// Before v37.19 the folder was Download/MLBB-Research: a phone that still has it chosen keeps
+// working, and the Model page asks to choose /Sphynx-Auto-Pilot instead.
 //
 // What it looks for (names are not case sensitive):
 //   *.litertlm (big: Gemma 4 E2B / 3n E2B)  strategic model   -> copied in, loaded (Gemma 4 preferred)
@@ -36,7 +39,8 @@ import java.io.InputStream
 // on every start.
 object AutoFolder {
 
-    const val FOLDER = "MLBB-Research"
+    const val FOLDER = "Sphynx-Auto-Pilot"
+    const val LEGACY_FOLDER = "MLBB-Research"         // the import folder before v37.19
     @Volatile var status = "folder not chosen yet"
         private set
     @Volatile var busy = false
@@ -47,9 +51,28 @@ object AutoFolder {
     fun localDir(ctx: Context): File? =
         ctx.applicationContext.getExternalFilesDir(null)?.let { File(it, FOLDER).apply { mkdirs() } }
 
-    // the folder picker, opening at Download/MLBB-Research when possible
+    // the app's own folder under its pre-v37.19 name (read only, never created)
+    private fun legacyLocalDir(ctx: Context): File? =
+        ctx.applicationContext.getExternalFilesDir(null)?.let { File(it, LEGACY_FOLDER) }?.takeIf { it.isDirectory }
+
+    // the chosen folder as a path, e.g. "Sphynx-Auto-Pilot" or "Download/MLBB-Research" (null = none)
+    fun chosenPath(): String? = treeUri?.let { u ->
+        try { DocumentsContract.getTreeDocumentId(u).substringAfter(':') } catch (e: Exception) { null }
+    }
+
+    // true while the phone still has the old Download/MLBB-Research chosen
+    fun legacyChosen(): Boolean = chosenPath()?.let { isLegacyPath(it) } ?: false
+    fun isLegacyPath(path: String): Boolean = path.trimEnd('/').endsWith(LEGACY_FOLDER, ignoreCase = true)
+
+    val folderHint: String get() = when {
+        treeUri == null -> "Choose the /$FOLDER folder (Model page: Choose the folder)"
+        legacyChosen() -> "Still reading the old Download/$LEGACY_FOLDER folder: Model page > Change the folder > pick /$FOLDER"
+        else -> "Reading /${chosenPath() ?: FOLDER}"
+    }
+
+    // the folder picker, opening at /Sphynx-Auto-Pilot (top of the phone's storage) when possible
     fun pickIntent(): Intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-        val initial = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Download/$FOLDER")
+        val initial = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:$FOLDER")
         putExtra(DocumentsContract.EXTRA_INITIAL_URI, initial)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
     }
@@ -59,7 +82,8 @@ object AutoFolder {
             ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         } catch (e: Exception) { Diag.error("Folder permission", e) }
         Cfg.setRaw("auto_folder_uri", uri.toString())
-        scan(ctx, done)
+        if (legacyChosen()) Diag.info("Import folder: the old Download/$LEGACY_FOLDER was chosen; /$FOLDER is the new folder")
+        scan(ctx) { msg -> done(if (legacyChosen()) "$msg - note: this is the old folder, /$FOLDER is the new one" else msg) }
     }
 
     class Entry(val name: String, val size: Long, val modified: Long, val open: () -> InputStream?)
@@ -87,7 +111,8 @@ object AutoFolder {
                 status = "cannot read the chosen folder: choose it again"
             }
         }
-        localDir(ctx)?.listFiles()?.forEach { f -> if (f.isFile) out.add(Entry(f.name, f.length(), f.lastModified()) { f.inputStream() }) }
+        for (dir in listOfNotNull(localDir(ctx), legacyLocalDir(ctx)))
+            dir.listFiles()?.forEach { f -> if (f.isFile && out.none { it.name == f.name }) out.add(Entry(f.name, f.length(), f.lastModified()) { f.inputStream() }) }
         return out
     }
 
@@ -173,7 +198,7 @@ object AutoFolder {
             try {
                 val files = list(app)
                 if (treeUri == null && files.isEmpty()) {
-                    status = "folder not chosen yet (Model page: Choose the folder)"
+                    status = "folder not chosen yet (Model page: Choose the folder, pick /$FOLDER)"
                 } else {
                     // the strategic model: the newest kind when several big .litertlm files are there
                 val bigModel = files.filter { it.name.lowercase().endsWith(".litertlm") && !ModelManager.isTactical(it.name, it.size) }

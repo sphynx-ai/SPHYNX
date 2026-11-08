@@ -1166,7 +1166,7 @@ class MainActivity : Activity() {
             val h = GameStateTracker.ownHero()
             when {
                 h == null -> toast("Pick a hero first")
-                !com.example.mlbbresearch.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the MLBB-Research folder")
+                !com.example.mlbbresearch.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Auto-Pilot folder")
                 else -> {
                     toast("Learning $h (skills, then the guide)…")
                     com.example.mlbbresearch.game.SkillBook.fetch(h) { m1 ->
@@ -1792,14 +1792,14 @@ class MainActivity : Activity() {
         }
         val st = text("", 13f, color = T.MUTED)
         upd {
-            st.text = (if (!com.example.mlbbresearch.ai.GroqClient.anyKey) "No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the MLBB-Research folder." else "${gq.calls} answers this session" +
+            st.text = (if (!com.example.mlbbresearch.ai.GroqClient.anyKey) "No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Auto-Pilot folder." else "${gq.calls} answers this session" +
                 (if (gq.tokensLeft >= 0) " · ${gq.tokensLeft} tokens left this minute" else "")) +
                 (if (ma.busy.isNotEmpty()) "\nWorking: ${ma.busy}…" else "") +
                 (if (ma.lastMessage.isNotEmpty()) "\n${ma.lastMessage}" else "")
         }
         val upd1 = btn("Update the patch meta") {
             leaveHooks.forEach { it() }
-            if (!com.example.mlbbresearch.ai.GroqClient.anyKey) toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the MLBB-Research folder") else {
+            if (!com.example.mlbbresearch.ai.GroqClient.anyKey) toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Auto-Pilot folder") else {
                 toast("Asking Groq (10-30 s)…")
                 ma.updateGeneral { msg -> runOnUiThread { toast(msg) } }
             }
@@ -1810,7 +1810,7 @@ class MainActivity : Activity() {
             leaveHooks.forEach { it() }
             val h = HeroDb.match(heroBox.text.toString()) ?: GameStateTracker.ownHero() ?: HeroDb.match(Cfg.myHero)
             when {
-                !com.example.mlbbresearch.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the MLBB-Research folder")
+                !com.example.mlbbresearch.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Auto-Pilot folder")
                 h == null -> toast("Type a hero name")
                 else -> { toast("Asking Groq about $h (10-30 s)…"); ma.updateHero(h) { msg -> runOnUiThread { toast(msg) } } }
             }
@@ -2067,7 +2067,7 @@ class MainActivity : Activity() {
 
     private fun modelPage() {
         title("FILES")
-        text("Put files in Download/MLBB-Research; the app loads them by itself:\n• Gemma 4 E2B (.litertlm) – strategy\n• Gemma 3 270M (.litertlm) – fight advice (optional)\n• mlbb_policies.zip – tactical networks\n• detectors (.tflite + labels) – minimap and screen\n• groq_key.txt – online meta", 13f)
+        text("Put files in the Sphynx-Auto-Pilot folder (top of the phone's storage, next to Download); the app loads them by itself:\n• Gemma 4 E2B (.litertlm) – strategy\n• Gemma 3 270M (.litertlm) – fight advice (optional)\n• mlbb_policies.zip – tactical networks\n• detectors (.tflite + labels) – minimap and screen\n• groq_key.txt – online meta", 13f)
         val mcard = card()
         val st = cardText(mcard, 14f, true)
         upd {
@@ -2114,6 +2114,12 @@ class MainActivity : Activity() {
                 (if (com.example.mlbbresearch.learning.CloudTrain.ready()) "set (${Cfg.kaggleUser})" else "not found (kaggle.json)"))
             sb.append("\n\nMinimap: " + com.example.mlbbresearch.game.MapIntel.status)
             st.text = sb
+        }
+        val folderInfo = text("", 12f, color = T.MUTED)
+        upd {
+            val af = com.example.mlbbresearch.models.AutoFolder
+            folderInfo.text = af.folderHint
+            folderInfo.setTextColor(c(if (af.treeUri == null || af.legacyChosen()) T.GOLD else T.MUTED))
         }
         val pick = btn("") {
             @Suppress("DEPRECATION")
@@ -2180,7 +2186,7 @@ class MainActivity : Activity() {
             ctChip.text = if (ct.ready()) "key set" else "no key"
             ctChip.setTextColor(c(if (ct.ready()) T.GREEN else T.RED))
             ctNote.text = if (ct.ready()) "Tap a training: inputs upload from Download/MLBB-Research, it trains on Kaggle, results download back and load by themselves."
-                else "Put kaggle.json in the MLBB-Research folder (kaggle.com > Settings > API > Create New Token), then Scan the folder on the Model page."
+                else "Put kaggle.json in the Sphynx-Auto-Pilot folder (kaggle.com > Settings > API > Create New Token), then Scan the folder on the Model page."
         }
         for (j in com.example.mlbbresearch.learning.CloudTrain.Job.values()) {
             val jc = card()
