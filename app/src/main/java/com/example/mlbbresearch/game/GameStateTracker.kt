@@ -530,6 +530,10 @@ object GameStateTracker {
         com.example.mlbbresearch.core.Layout.kitSize = com.example.mlbbresearch.vision.ScreenKit.kitFor(hero, HeroKit.count(hero), HeroKit.known(hero))
         com.example.mlbbresearch.vision.HeroDetector.darkGreenSelf = HeroKit.barModel(hero) == HeroKit.BarModel.SEGMENTED
         com.example.mlbbresearch.vision.HeroDetector.specialBar = HeroKit.barModel(hero).let { it != HeroKit.BarModel.NORMAL && it != HeroKit.BarModel.SEGMENTED }
+        // the minimap first: the enemies the AI acts on must be backed by it (see MapIntel.screenEnemiesConfirmed)
+        val seenEnemies = v.enemyHeroes.filter { field(it.x, it.y) }
+        val mapInfo = if (onMap) MapIntel.Info.NONE else MapIntel.read(v.minimap, now, seenEnemies, v.self)
+        val enemies = if (onMap) seenEnemies else MapIntel.screenEnemiesConfirmed(seenEnemies, v.minimap.self, v.self, v.aspect, now)
         return GameState(
             ts = now,
             phase = phase,
@@ -539,7 +543,7 @@ object GameStateTracker {
             selfExtra = v.self?.extra ?: 0f,
             selfHpRaw = v.self?.hp ?: -1f,
             allies = v.allies.filter { field(it.x, it.y) },
-            enemies = v.enemyHeroes.filter { field(it.x, it.y) },
+            enemies = enemies,
             enemyMinions = v.enemyMinions.filter { field(it.x, it.y) },
             allyMinions = v.allyMinions.filter { field(it.x, it.y) },
             minimapEnemies = maxOf(v.minimap.enemies, v.enemyHeroes.count { field(it.x, it.y) }),
@@ -572,7 +576,7 @@ object GameStateTracker {
             xp = v.xp,
             enemyLevel = v.enemyLevel,
             towerRing = v.towerRing,
-            map = if (onMap) MapIntel.Info.NONE else MapIntel.read(v.minimap, now, v.enemyHeroes.filter { field(it.x, it.y) }, v.self),
+            map = mapInfo,
             skillBadgePct = if (onMap) -1f else v.skillBadgePct,
             activeSkillIcons = if (onMap) emptyMap() else v.activeSkillIcons,
             transformBarPct = if (onMap) -1f else v.transformBarPct,

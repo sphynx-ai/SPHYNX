@@ -90,4 +90,23 @@ class TargetFusionTest {
         f.update(400L, me, listOf(screen(0.60f, 0.40f), icon(0.61f, 0.41f)))
         assertEquals(1, f.update(2000L, me, listOf(screen(0.60f, 0.40f))).size)
     }
+
+    @Test fun screenCheckDropsWhatTheMapNeverBacks() {
+        val k = TargetFusion.Companion
+        // the Lithowanderer read as "an enemy at 4%" right below you, no red icon on the map: dropped after 0.8 s
+        assertTrue(k.keepScreenEnemy(firstSeenMs = 0L, nowMs = 500L, mapConfirmedNear = false, distToYou = 0.09f, hp = 0.04f))
+        assertFalse(k.keepScreenEnemy(0L, 1000L, false, 0.09f, 0.04f))
+        // a real enemy the map shows: kept
+        assertTrue(k.keepScreenEnemy(0L, 5000L, true, 0.5f, 0.04f))
+        // a healthy enemy right next to you whose map icon your own icon hides: kept
+        assertTrue(k.keepScreenEnemy(0L, 5000L, false, 0.10f, 0.6f))
+        // something far away the map never shows: dropped
+        assertFalse(k.keepScreenEnemy(0L, 5000L, false, 0.5f, 0.6f))
+    }
+
+    @Test fun mapConfirmedFlag() {
+        val f = TargetFusion()
+        assertFalse(f.update(0L, me, listOf(screen(0.6f, 0.4f))).single().mapConfirmed)
+        assertTrue(f.update(100L, me, listOf(screen(0.6f, 0.4f), icon(0.61f, 0.4f))).single().mapConfirmed)
+    }
 }
