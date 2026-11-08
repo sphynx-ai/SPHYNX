@@ -1,6 +1,7 @@
 package com.example.mlbbresearch.game
 
 import com.example.mlbbresearch.core.Layout
+import com.example.mlbbresearch.universal.TargetFusion
 import com.example.mlbbresearch.vision.MinimapAnalyzer
 import com.example.mlbbresearch.vision.MinimapInfo
 import com.example.mlbbresearch.vision.ObjectDetector
@@ -30,6 +31,12 @@ object MapIntel {
     @Volatile var status = "-"
         private set
     private val history = ArrayDeque<Pair<Long, List<Pair<Float, Float>>>>()
+    private val fusion = TargetFusion()
+    // the fused enemy targets of the latest read (stable ids; occluded = hidden under your icon)
+    @Volatile var targets: List<TargetFusion.Target> = emptyList()
+        private set
+
+    fun reset() { fusion.clear(); targets = emptyList(); history.clear() }
 
     private fun toMap(sx: Float, sy: Float): Pair<Float, Float> {
         val (l, t) = Layout.get("mapTL")
@@ -63,23 +70,24 @@ object MapIntel {
                 null, emptyList(), false
             )
         }
-        // 3D Gameplay Screen <-> Minimap Synchronization (v37.16):
-        // When our Green Ring on the minimap blocks/occludes a nearby enemy hero dot, project all visible 3D on-screen
-        // enemy heroes onto the minimap via SceneryMap.projectToWorld so MapIntel never loses sight of them!
+        // Minimap <-> gameplay-screen synchronization (issue #2): full minimap icons, enemies seen on the
+        // screen (projected onto the map) and the half-covered arcs next to your own icon are FUSED into
+        // one target list with stable ids (universal.TargetFusion), instead of being added together.
+        // A screen enemy next to its own map icon counts once; arcs alone never create an enemy; an enemy
+        // hidden under your icon is kept for a moment instead of vanishing.
+        val r = MinimapAnalyzer.rect
+        fun local(p: Pair<Float, Float>) = toMap(r[0] + p.first * (r[2] - r[0]), r[1] + p.second * (r[3] - r[1]))
         val me0 = mini.self
-        val fusedEnemies = if (me0 != null && self != null && screenEnemies.isNotEmpty()) {
-            val list = baseInfo.enemies.toMutableList()
-            for (e in screenEnemies) {
-                val proj = SceneryMap.projectToWorld(me0, self, e.x, e.y)
-                if (list.none { hypot(it.first - proj.first, it.second - proj.second) < 0.055f }) {
-                    list.add(proj)
-                }
-            }
-            list
-        } else baseInfo.enemies
-        val info0 = if (fusedEnemies.size != baseInfo.enemies.size) {
-            Info(fusedEnemies, baseInfo.allies, baseInfo.objective, baseInfo.turrets, baseInfo.fromDetector)
-        } else baseInfo
+        val obs = ArrayList<TargetFusion.Observation>()
+        baseInfo.enemies.forEach { obs.add(TargetFusion.Observation(it.first, it.second, TargetFusion.Source.MAP_ICON)) }
+        mini.occludedDots.forEach { local(it).let { p -> obs.add(TargetFusion.Observation(p.first, p.second, TargetFusion.Source.PARTIAL_ARC)) } }
+        if (me0 != null && self != null) for (e in screenEnemies) {
+            val proj = SceneryMap.projectToWorld(me0, self, e.x, e.y)
+            obs.add(TargetFusion.Observation(proj.first, proj.second, TargetFusion.Source.SCREEN))
+        }
+        val fused = fusion.update(now, me0, obs)
+        targets = fused
+        val info0 = Info(fused.map { it.x to it.y }, baseInfo.allies, baseInfo.objective, baseInfo.turrets, baseInfo.fromDetector)
         // turtle / lord alive: from the detector, else from the icon in its pit (colour)
         val pitObj = (mini.turtleIcon ?: mini.lordIcon)?.let { toMap((it[0] + it[2]) / 2, (it[1] + it[3]) / 2) }
         val info = if (info0.objective == null && pitObj != null)
@@ -95,7 +103,8 @@ object MapIntel {
                 nearNow.minOrNull()!! < (old.minOfOrNull { hypot(it.first - me.first, it.second - me.second) } ?: 9f) - 0.06f
             ) gankAt = now
         }
-        status = (if (info.fromDetector) "detector" else "colours") + ": ${info.enemies.size} enemies, ${info.allies.size} allies on the map" +
+        status = (if (info.fromDetector) "detector" else "colours") + ": ${info.enemies.size} enemies" +
+            (targets.count { it.occluded }.takeIf { it > 0 }?.let { " ($it under your icon)" } ?: "") + ", ${info.allies.size} allies on the map" +
             (info.objective?.let { ", objective icon up" } ?: "") + if (now - gankAt < 3000) ", ENEMY COMING" else ""
         return info
     }

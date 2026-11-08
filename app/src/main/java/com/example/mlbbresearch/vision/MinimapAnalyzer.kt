@@ -20,7 +20,11 @@ class MinimapInfo(
     val selfIcon: FloatArray? = null,                     // your icon on screen: centre x, y, radius (fractions of width)
     val allyDots: List<Pair<Float, Float>> = emptyList(), // blue portrait rings (same units as enemyDots)
     val lordIcon: FloatArray? = null,                     // the lord / turtle icon in its pit (alive):
-    val turtleIcon: FloatArray? = null                    //   left, top, right, bottom as screen fractions
+    val turtleIcon: FloatArray? = null,                   //   left, top, right, bottom as screen fractions
+    // fragments of enemy icons right next to YOUR icon, which covers the rest of them (issue #2).
+    // Kept apart from enemyDots: they are weak evidence (TargetFusion uses them only to keep an
+    // enemy it already knows), never counted as enemies by themselves.
+    val occludedDots: List<Pair<Float, Float>> = emptyList()
 )
 
 // bonus = red-and-yellow icon: an enemy tower that gives extra gold when attacked
@@ -120,18 +124,13 @@ object MinimapAnalyzer {
             st.towers.none { kotlin.math.hypot(it.x - d.first, it.y - d.second) < 0.045f } &&
                 st.enemyWaves.none { kotlin.math.hypot(it.first - d.first, it.second - d.second) < 0.02f }
         }.toMutableList()
-        // Green-Ring Occlusion Recovery (v37.16):
-        // When our own Green Ring overlaps an enemy hero on the minimap during a close fight, most of the enemy red ring
-        // is covered by the green ring. Scan at 1px resolution around `self` for partially occluded red ring arcs!
-        if (self != null) {
-            for (occ in occludedEnemiesNearSelf(px, w, h, self, st.towers, st.base)) {
-                if (baseHeroDots.none { kotlin.math.hypot(it.first - occ.first, it.second - occ.second) < 0.045f }) {
-                    baseHeroDots.add(occ)
-                }
-            }
-        }
+        // Green-ring occlusion (issue #2): when your own green ring covers most of an enemy's red ring,
+        // the visible red arcs around `self` are reported SEPARATELY as weak evidence. They used to be
+        // added as enemies, which turned arc fragments and minion marks into phantom heroes.
+        val occluded = if (self != null) occludedEnemiesNearSelf(px, w, h, self, st.towers, st.base, st.enemyWaves)
+            .filter { o -> baseHeroDots.none { kotlin.math.hypot(it.first - o.first, it.second - o.second) < 0.045f } } else emptyList()
         val (lord, turtle) = pits(px, w, h)
-        return MinimapInfo(baseHeroDots.size, allies, baseHeroDots, self, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves, icon, blue, lord, turtle)
+        return MinimapInfo(baseHeroDots.size, allies, baseHeroDots, self, camps, st.towers, st.base, st.waves, st.allyTowers, st.enemyWaves, icon, blue, lord, turtle, occluded)
     }
 
     // Fast every-frame self-position refresh (v37.11):
@@ -157,15 +156,13 @@ object MinimapAnalyzer {
         val smoothed = if (pSelf != null && kotlin.math.hypot(rawMe.first - pSelf.first, rawMe.second - pSelf.second) < 0.08f) {
             (pSelf.first * 0.30f + rawMe.first * 0.70f).coerceIn(0f, 1f) to (pSelf.second * 0.30f + rawMe.second * 0.70f).coerceIn(0f, 1f)
         } else rawMe.first.coerceIn(0f, 1f) to rawMe.second.coerceIn(0f, 1f)
-        val updatedDots = prev.enemyDots.toMutableList()
-        for (occ in occludedEnemiesNearSelf(px, w, h, smoothed, prev.towers, prev.enemyBase)) {
-            if (updatedDots.none { kotlin.math.hypot(it.first - occ.first, it.second - occ.second) < 0.045f }) {
-                updatedDots.add(occ)
-            }
-        }
+        // the occluded arcs are re-read every frame (issue #2: they used to be appended to the previous
+        // frame's enemies, so stale points piled up and trailed behind you between full scans)
+        val occluded = occludedEnemiesNearSelf(px, w, h, smoothed, prev.towers, prev.enemyBase, prev.enemyWaves)
+            .filter { o -> prev.enemyDots.none { kotlin.math.hypot(it.first - o.first, it.second - o.second) < 0.045f } }
         return MinimapInfo(
-            updatedDots.size, prev.allies, updatedDots, smoothed, prev.camps, prev.towers, prev.enemyBase,
-            prev.allyWaves, prev.allyTowers, prev.enemyWaves, lastIcon, prev.allyDots, prev.lordIcon, prev.turtleIcon
+            prev.enemies, prev.allies, prev.enemyDots, smoothed, prev.camps, prev.towers, prev.enemyBase,
+            prev.allyWaves, prev.allyTowers, prev.enemyWaves, lastIcon, prev.allyDots, prev.lordIcon, prev.turtleIcon, occluded
         )
     }
 
@@ -513,7 +510,8 @@ object MinimapAnalyzer {
         px: IntArray, w: Int, h: Int,
         self: Pair<Float, Float>,
         towers: List<MapTower>,
-        base: Pair<Float, Float>?
+        base: Pair<Float, Float>?,
+        enemyWaves: List<Pair<Float, Float>> = emptyList()
     ): List<Pair<Float, Float>> {
         val (l, t) = Layout.get("mapTL")
         val (r, b) = Layout.get("mapBR")
@@ -538,6 +536,10 @@ object MinimapAnalyzer {
             if (CLOUDS.any { kotlin.math.hypot(it.first - mx, it.second - my) < 0.05f }) continue
             if (towers.any { kotlin.math.hypot(it.x - mx, it.y - my) < 0.042f }) continue
             if (base != null && kotlin.math.hypot(base.first - mx, base.second - my) < 0.07f) continue
+            // an enemy minion mark is red too: never an enemy hero (issue #2)
+            if (enemyWaves.any { kotlin.math.hypot(it.first - mx, it.second - my) < 0.02f }) continue
+            // arcs of the same half-covered icon are one point
+            if (out.any { kotlin.math.hypot(it.first - mx, it.second - my) < 0.045f }) continue
             out.add(mx to my)
         }
         return out
