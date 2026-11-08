@@ -46,7 +46,9 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.mlbbresearch"
+        // v37.19: a new app id (the code package stays com.example.mlbbresearch). Android and Google Play treat
+        // it as a NEW app: it installs next to the old "MLBB Research" one, which can be uninstalled afterwards.
+        applicationId = "com.sphynx.autopilot"
         minSdk = 30
         targetSdk = 36
         versionCode = 3719

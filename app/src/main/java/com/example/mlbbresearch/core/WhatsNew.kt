@@ -23,10 +23,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
-        Entry("2026-11-08", Kind.IMPROVED, "The app is called Sphynx Auto Pilot everywhere",
-            "The launcher icon, the page header, the Accessibility list and the screen-capture notification now say " +
-                "Sphynx Auto Pilot instead of MLBB Research. It is the same app: your data, settings and permissions stay.",
-            pr = 25),
+        Entry("2026-11-08", Kind.NEW, "Sphynx Auto Pilot is its own app now",
+            "New app name everywhere (launcher, header, Accessibility list, notification) and a new app id, " +
+                "com.sphynx.autopilot: it installs next to the old MLBB Research app. Give it its permissions again; " +
+                "with All files access on it also finds the old app's exports, results and backups in Download/MLBB-Research.",
+            pr = 25, needsDeviceCheck = true),
         Entry("2026-11-08", Kind.IMPROVED, "One app folder: /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage (v37.19)",
             "Models, detectors, networks and keys are read from it, and CSV exports, training pictures and zips, Kaggle results " +
                 "and backups are saved in it. Turn on \"All files access\" once on the Model page. Until then everything works " +
