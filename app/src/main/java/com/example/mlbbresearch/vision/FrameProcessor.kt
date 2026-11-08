@@ -547,7 +547,8 @@ object FrameProcessor {
         val (rr, _) = Layout.get("mapBR")
         val reach = 0.2f * (rr - l)                     // about what the screen shows, in screen widths
         val sx = icon[0]; val sy = icon[1]              // y is a fraction of the width
-        return mini.enemyDots.any { (dx, dy) ->
+        // a half-covered enemy right next to your icon is near too
+        return (mini.enemyDots + mini.occludedDots).any { (dx, dy) ->
             val ex = r[0] + dx * (r[2] - r[0])
             val ey = (r[1] + dy * (r[3] - r[1])) * h / w
             kotlin.math.hypot(ex - sx, ey - sy) < reach
