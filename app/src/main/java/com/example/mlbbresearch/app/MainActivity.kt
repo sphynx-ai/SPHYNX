@@ -715,11 +715,17 @@ class MainActivity : Activity() {
         stageSwitch("Builder (items)", "build") { AiRuntime.builderOn }
         stageSwitch("Research mode (practice vs Computer only; arbiter picks fight option, records moments)", "research") { com.example.mlbbresearch.research.ResearchMode.on }
         val resInfo = text("", 12f, color = T.MUTED)
-        upd { resInfo.text = com.example.mlbbresearch.research.ResearchMode.momentsText() + "\n" + com.example.mlbbresearch.research.ReadinessRun.status() }
+        upd { resInfo.text = com.example.mlbbresearch.research.ResearchMode.momentsText() + "\n" + com.example.mlbbresearch.research.ReadinessRun.status() +
+            "\n" + com.example.mlbbresearch.research.ResearchMode.abText() }
         btn("Test the small model on the practice moments") {
             val rr = com.example.mlbbresearch.research.ReadinessRun
             if (rr.running) { rr.stop(); toast("Stopping the test") }
             else rr.start { msg -> runOnUiThread { toast(msg.take(150)) } }
+        }
+        btn("Clear the arbiter vs normal comparison") {
+            android.app.AlertDialog.Builder(this).setMessage("Clear the arbiter vs normal comparison?")
+                .setPositiveButton("Clear") { _, _ -> com.example.mlbbresearch.research.ResearchMode.clearAb(); toast("Cleared") }
+                .setNegativeButton("Cancel", null).show()
         }
         btn("Delete the recorded practice moments") {
             android.app.AlertDialog.Builder(this).setMessage("Delete all recorded practice moments?")

@@ -23,6 +23,10 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-08", Kind.NEW, "Arbiter vs normal comparison in practice (research R5)",
+            "Each verified practice match is randomly put in an arbiter or a normal group; fight scores, deaths, K/D/A and results " +
+                "are compared under Research mode, with \"not enough data\" until each group has 5 matches.",
+            pr = 21, needsDeviceCheck = true),
         Entry("2026-11-08", Kind.FIXED, "Enemies under your green minimap ring; monsters out of range",
             "Enemy icons half covered by your own green ring no longer turn into phantom or duplicate enemies, and a covered " +
                 "enemy is kept for a moment instead of vanishing (minimap and screen are combined into one target list). " +
