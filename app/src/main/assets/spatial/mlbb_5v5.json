@@ -1,0 +1,375 @@
+{
+ "game": "mlbb",
+ "map": "5v5 classic battlefield",
+ "format_version": 1,
+ "coordinates": "normalised minimap: x 0..1 left to right, y 0..1 top to bottom between Layout mapTL and mapBR; your base bottom-left",
+ "distribution": "PRIVATE RESEARCH USE ONLY - do not include in a public release (see NOTICE.md)",
+ "source": {
+  "model": "MLBB MAP IMPERIAL FREE DOWNLOAD by aldrinnacaya45, Sketchfab, declared CC BY 4.0 (MLBB-MAP-005, sha256 4032187c...a8e2bc)",
+  "fit": "similarity transform on 20 structures measured on minimap screenshot MLBB-HUD-005",
+  "fit_rms": 0.017,
+  "fit_max": 0.0275
+ },
+ "landmarks": [
+  {
+   "id": "ally_base",
+   "kind": "BASE",
+   "side": "ALLY",
+   "label": "your base",
+   "x": 0.1212,
+   "y": 0.8879,
+   "check": {
+    "minimap_error": 0.0173,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "enemy_base",
+   "kind": "BASE",
+   "side": "ENEMY",
+   "label": "enemy base",
+   "x": 0.8676,
+   "y": 0.0918,
+   "check": {
+    "minimap_error": 0.0101,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "ally_mid_turret_1",
+   "kind": "TURRET",
+   "side": "ALLY",
+   "label": "your mid turret 1",
+   "x": 0.2118,
+   "y": 0.7854,
+   "check": {
+    "minimap_error": 0.0089,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "ally_mid_turret_2",
+   "kind": "TURRET",
+   "side": "ALLY",
+   "label": "your mid turret 2",
+   "x": 0.2918,
+   "y": 0.6777,
+   "check": {
+    "minimap_error": 0.0097,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "ally_mid_turret_3",
+   "kind": "TURRET",
+   "side": "ALLY",
+   "label": "your mid turret 3",
+   "x": 0.3924,
+   "y": 0.5734,
+   "check": {
+    "minimap_error": 0.0075,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "ally_gold_turret_1",
+   "kind": "TURRET",
+   "side": "ALLY",
+   "label": "your gold turret 1",
+   "x": 0.2773,
+   "y": 0.9215,
+   "check": {
+    "minimap_error": 0.0156,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "ally_gold_turret_2",
+   "kind": "TURRET",
+   "side": "ALLY",
+   "label": "your gold turret 2",
+   "x": 0.4596,
+   "y": 0.932,
+   "check": {
+    "minimap_error": 0.0195,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "ally_gold_turret_3",
+   "kind": "TURRET",
+   "side": "ALLY",
+   "label": "your gold turret 3",
+   "x": 0.7366,
+   "y": 0.9213,
+   "check": {
+    "minimap_error": 0.0275,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "ally_exp_turret_1",
+   "kind": "TURRET",
+   "side": "ALLY",
+   "label": "your exp turret 1",
+   "x": 0.0577,
+   "y": 0.7187,
+   "check": {
+    "minimap_error": 0.019,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "ally_exp_turret_2",
+   "kind": "TURRET",
+   "side": "ALLY",
+   "label": "your exp turret 2",
+   "x": 0.0492,
+   "y": 0.4619,
+   "check": {
+    "minimap_error": 0.0218,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "ally_exp_turret_3",
+   "kind": "TURRET",
+   "side": "ALLY",
+   "label": "your exp turret 3",
+   "x": 0.0408,
+   "y": 0.2628,
+   "check": {
+    "minimap_error": 0.023,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "enemy_mid_turret_1",
+   "kind": "TURRET",
+   "side": "ENEMY",
+   "label": "enemy mid turret 1",
+   "x": 0.7844,
+   "y": 0.1908,
+   "check": {
+    "minimap_error": 0.0063,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "enemy_mid_turret_2",
+   "kind": "TURRET",
+   "side": "ENEMY",
+   "label": "enemy mid turret 2",
+   "x": 0.7046,
+   "y": 0.2982,
+   "check": {
+    "minimap_error": 0.0061,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "enemy_mid_turret_3",
+   "kind": "TURRET",
+   "side": "ENEMY",
+   "label": "enemy mid turret 3",
+   "x": 0.6042,
+   "y": 0.4032,
+   "check": {
+    "minimap_error": 0.0036,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "enemy_gold_turret_1",
+   "kind": "TURRET",
+   "side": "ENEMY",
+   "label": "enemy gold turret 1",
+   "x": 0.9301,
+   "y": 0.2619,
+   "check": {
+    "minimap_error": 0.0157,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "enemy_gold_turret_2",
+   "kind": "TURRET",
+   "side": "ENEMY",
+   "label": "enemy gold turret 2",
+   "x": 0.94,
+   "y": 0.5194,
+   "check": {
+    "minimap_error": 0.0177,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "enemy_gold_turret_3",
+   "kind": "TURRET",
+   "side": "ENEMY",
+   "label": "enemy gold turret 3",
+   "x": 0.9475,
+   "y": 0.7174,
+   "check": {
+    "minimap_error": 0.0184,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "enemy_exp_turret_1",
+   "kind": "TURRET",
+   "side": "ENEMY",
+   "label": "enemy exp turret 1",
+   "x": 0.7179,
+   "y": 0.0604,
+   "check": {
+    "minimap_error": 0.0197,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "enemy_exp_turret_2",
+   "kind": "TURRET",
+   "side": "ENEMY",
+   "label": "enemy exp turret 2",
+   "x": 0.5355,
+   "y": 0.0496,
+   "check": {
+    "minimap_error": 0.0201,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "enemy_exp_turret_3",
+   "kind": "TURRET",
+   "side": "ENEMY",
+   "label": "enemy exp turret 3",
+   "x": 0.2595,
+   "y": 0.0601,
+   "check": {
+    "minimap_error": 0.0251,
+    "method": "fit point"
+   }
+  },
+  {
+   "id": "lord_pit",
+   "kind": "MAJOR_OBJECTIVE",
+   "side": "NEUTRAL",
+   "label": "lord pit",
+   "x": 0.3065,
+   "y": 0.2967
+  },
+  {
+   "id": "turtle_pit",
+   "kind": "MAJOR_OBJECTIVE",
+   "side": "NEUTRAL",
+   "label": "turtle pit",
+   "x": 0.6861,
+   "y": 0.6874
+  },
+  {
+   "id": "ally_purple_buff",
+   "kind": "BUFF_CAMP",
+   "side": "ALLY",
+   "label": "ally purple buff",
+   "x": 0.2499,
+   "y": 0.5316
+  },
+  {
+   "id": "enemy_purple_buff",
+   "kind": "BUFF_CAMP",
+   "side": "ENEMY",
+   "label": "enemy purple buff",
+   "x": 0.7383,
+   "y": 0.4464
+  },
+  {
+   "id": "ally_orange_buff",
+   "kind": "BUFF_CAMP",
+   "side": "ALLY",
+   "label": "ally orange buff",
+   "x": 0.4569,
+   "y": 0.7738
+  },
+  {
+   "id": "enemy_orange_buff",
+   "kind": "BUFF_CAMP",
+   "side": "ENEMY",
+   "label": "enemy orange buff",
+   "x": 0.529,
+   "y": 0.206
+  },
+  {
+   "id": "ally_camp_1",
+   "kind": "CAMP",
+   "side": "ALLY",
+   "label": "jungle camp",
+   "x": 0.4999,
+   "y": 0.7129,
+   "check": {
+    "minimap_error": 0.0058,
+    "method": "nearest minimap camp icon"
+   }
+  },
+  {
+   "id": "enemy_camp_2",
+   "kind": "CAMP",
+   "side": "ENEMY",
+   "label": "jungle camp",
+   "x": 0.4867,
+   "y": 0.2673,
+   "check": {
+    "minimap_error": 0.0133,
+    "method": "nearest minimap camp icon"
+   }
+  },
+  {
+   "id": "ally_camp_3",
+   "kind": "CAMP",
+   "side": "ALLY",
+   "label": "jungle camp",
+   "x": 0.6171,
+   "y": 0.8091,
+   "check": {
+    "minimap_error": 0.0178,
+    "method": "nearest minimap camp icon"
+   }
+  },
+  {
+   "id": "enemy_camp_4",
+   "kind": "CAMP",
+   "side": "ENEMY",
+   "label": "jungle camp",
+   "x": 0.3687,
+   "y": 0.1721,
+   "check": {
+    "minimap_error": 0.019,
+    "method": "nearest minimap camp icon"
+   }
+  },
+  {
+   "id": "ally_camp_5",
+   "kind": "CAMP",
+   "side": "ALLY",
+   "label": "jungle camp",
+   "x": 0.1612,
+   "y": 0.4263,
+   "check": {
+    "minimap_error": 0.0214,
+    "method": "nearest minimap camp icon"
+   }
+  },
+  {
+   "id": "enemy_camp_6",
+   "kind": "CAMP",
+   "side": "ENEMY",
+   "label": "jungle camp",
+   "x": 0.8278,
+   "y": 0.5509,
+   "check": {
+    "minimap_error": 0.0081,
+    "method": "nearest minimap camp icon"
+   }
+  }
+ ]
+}
