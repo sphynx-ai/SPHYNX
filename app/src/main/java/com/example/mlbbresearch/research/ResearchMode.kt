@@ -15,6 +15,8 @@ import com.example.mlbbresearch.game.GameStateTracker
 // need the accessibility service and never touches the game by itself.
 // R3 experiment: in a verified practice match, while Player mode plays, the DecisionArbiter picks
 // the fight option (ArbiterFightExperiment). Anywhere else the normal choice is played untouched.
+// R4: in verified practice, fight moments are recorded (PracticeMoments) so the small tactical model
+// can be measured on them later (ReadinessRun). Recording never changes what is played.
 object ResearchMode {
 
     const val EVERY_MS = 1500L
@@ -27,8 +29,49 @@ object ResearchMode {
     val experiment = ArbiterFightExperiment()
     @Volatile private var experimentFailed = false
 
-    fun start() { on = true; experiment.reset(); experimentFailed = false; Diag.info("Research mode on (practice-only gate; R3 arbiter experiment in verified practice only)") }
-    fun stop() { on = false }
+    val moments = PracticeMomentSet()
+    @Volatile private var momentsLoaded = false
+    @Volatile private var unsaved = 0
+    @Volatile private var recordFailed = false
+
+    private fun momentsFile(): java.io.File? = com.example.mlbbresearch.vision.HeroVerifier.appContext()?.let {
+        java.io.File(java.io.File(it.filesDir, "research").apply { mkdirs() }, "practice_moments.jsonl") }
+
+    fun loadMoments() {
+        if (momentsLoaded) return
+        momentsLoaded = true
+        try { momentsFile()?.takeIf { it.exists() }?.let { moments.loadJsonLines(it.readText()) } }
+        catch (e: Exception) { Diag.error("Research: practice moments not loaded", e) }
+    }
+
+    fun saveMoments() {
+        if (unsaved == 0) return
+        try { momentsFile()?.writeText(moments.toJsonLines()); unsaved = 0 }
+        catch (e: Exception) { Diag.error("Research: practice moments not saved", e) }
+    }
+
+    fun clearMoments() { moments.clear(); unsaved = 1; saveMoments() }
+
+    // R4: called by the play loop after the fight option is final (verified practice only).
+    // Any error stops recording for the run; it never affects play.
+    fun recordMoment(s: com.example.mlbbresearch.game.GameState, p: com.example.mlbbresearch.game.HeroProfile, played: FightOption?) {
+        if (played == null || recordFailed || !allowsAutonomy()) return
+        try {
+            loadMoments()
+            val unsafe = HashSet<com.example.mlbbresearch.universal.DecisionKind>()
+            if (TacticalAdvisor.check(FightOption.ALL_IN, s) != null) unsafe.add(com.example.mlbbresearch.universal.DecisionKind.ENGAGE)
+            com.example.mlbbresearch.ai.Deliberation.last?.let { if (it.r > 0.5f) unsafe.add(com.example.mlbbresearch.universal.DecisionKind.FARM) }
+            val m = PracticeMoment(GameStateTracker.matchId, s.ts, TacticalAdvisor.summary(s, p), DecisionBridge.kind(played), unsafe,
+                s.selfHp.takeIf { it in 0f..1f }, s.enemiesWithin(0.9f).size, s.allies.count { it.hero }, s.enemyMinions.size, s.monsters.size)
+            if (moments.add(m) && ++unsaved >= 20) saveMoments()
+        } catch (t: Throwable) {
+            recordFailed = true
+            Diag.error("Research R4 recording stopped", t)
+        }
+    }
+
+    fun start() { on = true; experiment.reset(); experimentFailed = false; recordFailed = false; loadMoments(); Diag.info("Research mode on (practice-only gate; R3 arbiter experiment in verified practice only)") }
+    fun stop() { on = false; saveMoments() }
 
     private fun matcher(): ComputerNameMatcher? = matcher ?: if (loadFailed) null else try {
         val ctx = com.example.mlbbresearch.vision.HeroVerifier.appContext() ?: return null
@@ -76,6 +119,14 @@ object ResearchMode {
         val base = session.status(on)
         if (!allowsAutonomy()) return base
         return if (experimentFailed) "$base - R3 experiment stopped after an error"
-        else "Research: verified practice - R3 active: arbiter picks the fight option while Player mode plays (${experiment.summary()})"
+        else "Research: verified practice - R3 active: arbiter picks the fight option while Player mode plays (${experiment.summary()})" +
+            (if (recordFailed) "; R4 recording stopped after an error" else "; R4 recording practice moments")
+    }
+
+    fun momentsText(): String {
+        loadMoments()
+        val mix = moments.mix().entries.sortedByDescending { it.value }.joinToString(", ") { "${it.key.name.lowercase()} ${it.value}" }
+        return "Practice moments recorded: ${moments.size} from ${moments.matches} matches" + (if (mix.isNotEmpty()) " ($mix)" else "") +
+            " - the readiness test needs at least 200"
     }
 }

@@ -672,7 +672,19 @@ class MainActivity : Activity() {
         stageSwitch("Player (plays the hero)", "player") { AiRuntime.playerOn }
         stageSwitch("Drafter (ban & pick)", "draft") { AiRuntime.drafterOn }
         stageSwitch("Builder (items)", "build") { AiRuntime.builderOn }
-        stageSwitch("Research mode (practice vs Computer only; R3: arbiter picks fight option)", "research") { com.example.mlbbresearch.research.ResearchMode.on }
+        stageSwitch("Research mode (practice vs Computer only; arbiter picks fight option, records moments)", "research") { com.example.mlbbresearch.research.ResearchMode.on }
+        val resInfo = text("", 12f, color = T.MUTED)
+        upd { resInfo.text = com.example.mlbbresearch.research.ResearchMode.momentsText() + "\n" + com.example.mlbbresearch.research.ReadinessRun.status() }
+        btn("Test the small model on the practice moments") {
+            val rr = com.example.mlbbresearch.research.ReadinessRun
+            if (rr.running) { rr.stop(); toast("Stopping the test") }
+            else rr.start { msg -> runOnUiThread { toast(msg.take(150)) } }
+        }
+        btn("Delete the recorded practice moments") {
+            android.app.AlertDialog.Builder(this).setMessage("Delete all recorded practice moments?")
+                .setPositiveButton("Delete") { _, _ -> com.example.mlbbresearch.research.ResearchMode.clearMoments(); toast("Deleted") }
+                .setNegativeButton("Cancel", null).show()
+        }
         switch("Autonomous Drafter + Builder", Cfg.autonomous) { Cfg.autonomous = it }
         switch("Dry run: only show where it would tap", Cfg.dryRun) { Cfg.dryRun = it }
         val mode = text("", 12f, color = T.MUTED)

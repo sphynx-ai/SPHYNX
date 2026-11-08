@@ -274,6 +274,8 @@ object AiRuntime {
                     }
                     // logging mode only: records every engine's advice next to what is played (never changes it)
                     com.example.mlbbresearch.engines.DecisionLogging.observe(s, brainOption, option)
+                    // research R4 (verified practice only): records this fight moment for the small-model test
+                    com.example.mlbbresearch.research.ResearchMode.recordMoment(s, profile, option)
                     var d = TacticalEngine.decide(s, profile, plan, bias, option)
                     // fights: play the hero's combo in order instead of pressing everything at once
                     d = ComboRunner.apply(d, s, profile)

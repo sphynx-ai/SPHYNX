@@ -15,20 +15,22 @@ import com.example.mlbbresearch.universal.UniversalMatchState
 //   unsafe    - the option is one the scenario marks dangerous (e.g. ENGAGE at 10% health)
 //   rejected  - DecisionValidator rejects it against the scenario's state
 //   latency   - p50 / p95 in ms
-// It runs offline (unit tests use fake models). Running it against the real model on a phone is
-// a later step and is NOT done yet.
+// It runs offline (unit tests use fake models) and, since research phase R4, on the phone against
+// the real model over fight moments recorded in verified practice (research/ReadinessRun).
+// A passing report does NOT promote the model by itself: the owner decides.
 object TacticalReadiness {
 
     data class Scenario(
         val name: String,
         val state: UniversalMatchState,
         val acceptable: Set<DecisionKind>,
-        val unsafe: Set<DecisionKind> = emptySet()
+        val unsafe: Set<DecisionKind> = emptySet(),
+        val prompt: String = ""              // the summary the model is asked about (recorded moments)
     )
 
     data class Reply(val text: String, val latencyMs: Long)
 
-    // PROPOSED thresholds - not yet approved by the owner
+    // thresholds approved by the owner
     data class Criteria(
         val minScenarios: Int = 200,
         val minValid: Double = 0.98,
@@ -70,11 +72,14 @@ object TacticalReadiness {
     private fun percentile(sorted: List<Long>, p: Double): Long =
         if (sorted.isEmpty()) 0 else sorted[((sorted.size - 1) * p).toInt().coerceIn(0, sorted.size - 1)]
 
-    fun evaluate(scenarios: List<Scenario>, model: (UniversalMatchState) -> Reply, criteria: Criteria = Criteria()): Report {
+    fun evaluate(scenarios: List<Scenario>, model: (UniversalMatchState) -> Reply, criteria: Criteria = Criteria()): Report =
+        evaluateScenarios(scenarios, { model(it.state) }, criteria)
+
+    fun evaluateScenarios(scenarios: List<Scenario>, model: (Scenario) -> Reply, criteria: Criteria = Criteria()): Report {
         var valid = 0; var agreed = 0; var unsafe = 0; var rejected = 0
         val lat = ArrayList<Long>(); val failures = ArrayList<String>()
         for (sc in scenarios) {
-            val r = try { model(sc.state) } catch (t: Throwable) { failures.add("${sc.name}: model error ${t.message}"); continue }
+            val r = try { model(sc) } catch (t: Throwable) { failures.add("${sc.name}: model error ${t.message}"); continue }
             lat.add(r.latencyMs)
             val kind = parseStrict(r.text)
             if (kind == null) { failures.add("${sc.name}: unreadable reply \"${r.text.take(40)}\""); continue }
