@@ -1300,11 +1300,14 @@ object TacticalEngine {
 
     // Issue #2: the step toward a monster at (x, y) - approach until it is inside your own attack
     // range, then stand; and never a step that leaves the monster's aggro zone.
+    private val monsterContact = com.example.mlbbresearch.universal.CombatRange.ContactDetector()
+
     private fun monsterStep(s: GameState, p: HeroProfile, x: Float, y: Float): Pair<Float, Float> {
         val self = s.self ?: return 0f to 0f
         val dx = (x - self.x) * s.aspect; val dy = y - self.y
         val st = com.example.mlbbresearch.universal.CombatRange.approach(dx, dy, p.attackRange)
-        if (st.inRange) return 0f to 0f
+        // in range, or pressed against a big monster's body: stand still so the basic attacks go out
+        if (monsterContact.inContact(s.ts, kotlin.math.hypot(dx, dy), !st.inRange) || st.inRange) return 0f to 0f
         val (kx, ky) = com.example.mlbbresearch.universal.CombatRange.keepInLeash(dx, dy, st.moveX, st.moveY)
         // the same frame as toward(): x already multiplied by the aspect ratio
         return if (kx == 0f && ky == 0f) 0f to 0f else norm(kx, ky)

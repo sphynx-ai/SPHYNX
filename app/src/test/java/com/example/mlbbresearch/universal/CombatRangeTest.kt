@@ -48,4 +48,31 @@ class CombatRangeTest {
         // standing still stays still
         assertEquals(0f to 0f, CombatRange.keepInLeash(0f, 0.20f, 0f, 0f))
     }
+
+    @Test fun contactWhenTheGapStopsShrinking() {
+        val c = CombatRange.ContactDetector()
+        // walking in: the gap shrinks, no contact
+        assertFalse(c.inContact(0L, 0.40f, true))
+        assertFalse(c.inContact(200L, 0.30f, true))
+        assertFalse(c.inContact(400L, 0.22f, true))
+        // pressed against the monster's body: the gap stays at 0.21
+        assertFalse(c.inContact(600L, 0.21f, true))
+        assertFalse(c.inContact(900L, 0.21f, true))
+        assertTrue(c.inContact(1200L, 0.21f, true))       // 0.8 s without getting closer
+        assertTrue(c.inContact(2000L, 0.21f, false))      // stands still and attacks for 1.5 s
+        assertFalse(c.inContact(2800L, 0.21f, true))      // then tries to close in again
+    }
+
+    @Test fun contactEndsWhenTheTargetMovesAway() {
+        val c = CombatRange.ContactDetector()
+        c.inContact(0L, 0.21f, true); c.inContact(300L, 0.21f, true); c.inContact(600L, 0.21f, true)
+        assertTrue(c.inContact(800L, 0.21f, true))
+        assertFalse(c.inContact(900L, 0.35f, true))       // the monster walked off: approach again
+    }
+
+    @Test fun aPauseRestartsTheWatch() {
+        val c = CombatRange.ContactDetector()
+        c.inContact(0L, 0.21f, true)
+        assertFalse(c.inContact(1000L, 0.21f, true))      // 1 s gap between decisions: not a measurement
+    }
 }

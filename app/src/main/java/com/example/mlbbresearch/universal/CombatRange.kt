@@ -27,6 +27,39 @@ object CombatRange {
 
     data class Step(val moveX: Float, val moveY: Float, val inRange: Boolean, val note: String)
 
+    // CONTACT (issue #2 device report: "stuck in its location but still casts skills"):
+    // positions come from HP bars, so a big monster's body can stop you before the measured gap is
+    // inside your range. Holding the joystick then cancels every basic attack. So: if you walk toward
+    // the target and the gap stops shrinking for `windowMs`, you are in contact - stand still and
+    // attack for `holdMs` (then try again, in case the target moved).
+    class ContactDetector(
+        private val windowMs: Long = 700L,
+        private val minGain: Float = 0.015f,
+        private val holdMs: Long = 1500L
+    ) {
+        private var startAt = 0L
+        private var startD = 0f
+        private var lastAt = 0L
+        private var contactUntil = 0L
+        private var watching = false
+
+        fun reset() { watching = false; contactUntil = 0L }
+
+        // d: the current gap; approaching: this decision walks toward the target
+        fun inContact(nowMs: Long, d: Float, approaching: Boolean): Boolean {
+            if (nowMs < contactUntil) {
+                if (d > startD + 0.08f) { contactUntil = 0L } else return true   // it moved well away: approach again
+            }
+            if (!approaching || !watching || nowMs - lastAt > 400L || d > startD + 0.05f) {
+                watching = approaching; startAt = nowMs; startD = d; lastAt = nowMs; return false
+            }
+            lastAt = nowMs
+            if (d < startD - minGain) { startAt = nowMs; startD = d; return false }   // still getting closer
+            if (nowMs - startAt >= windowMs) { contactUntil = nowMs + holdMs; startD = d; watching = false; return true }
+            return false
+        }
+    }
+
     // Approach a target until it is within reach, then stand still and hit it.
     fun approach(dx: Float, dy: Float, attackRange: Float): Step {
         val d = hypot(dx, dy)

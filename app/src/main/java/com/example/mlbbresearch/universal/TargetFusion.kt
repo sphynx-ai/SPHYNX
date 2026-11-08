@@ -21,13 +21,18 @@ import kotlin.math.hypot
 //     covered, not gone: it is kept (marked occluded) for `occludedKeepMs`; anywhere else for
 //     `lostKeepMs` only.
 //  5. At most `maxTargets` (5 in a 5v5 game), most recently confirmed first.
+//  6. SCREEN alone is not enough for long (device test, issue #2: jungle monsters have red HP bars
+//     like enemy heroes and were taken for them). Every enemy your team can see is also on the
+//     minimap, so a target that only the screen reports must be backed by a map icon or a covered arc
+//     within `screenOnlyMs`, or it is dropped as a misread.
 class TargetFusion(
     private val mergeGate: Float = 0.05f,
     private val trackGate: Float = 0.09f,
     private val occlusionRadius: Float = 0.07f,
     private val occludedKeepMs: Long = 1500L,
     private val lostKeepMs: Long = 400L,
-    private val maxTargets: Int = 5
+    private val maxTargets: Int = 5,
+    private val screenOnlyMs: Long = 800L
 ) {
     enum class Source(val strength: Int) { MAP_ICON(3), SCREEN(2), PARTIAL_ARC(1) }
 
@@ -43,7 +48,8 @@ class TargetFusion(
         val occluded: Boolean        // not seen this frame, kept because your icon covers it
     )
 
-    private class T(var id: Int, var x: Float, var y: Float, var lastSeen: Long, var confirmed: Long, var sources: Set<Source>)
+    private class T(var id: Int, var x: Float, var y: Float, var lastSeen: Long, var confirmed: Long, var sources: Set<Source>,
+                    val born: Long, var mapSeen: Long? = null)
 
     private val tracks = ArrayList<T>()
     private var nextId = 1
@@ -80,15 +86,19 @@ class TargetFusion(
             matched.add(t); usedGroups.add(i)
             t.x = g.first.first; t.y = g.first.second; t.lastSeen = nowMs; t.sources = g.second
             if (Source.MAP_ICON in g.second || Source.SCREEN in g.second) t.confirmed = nowMs
+            if (Source.MAP_ICON in g.second || Source.PARTIAL_ARC in g.second) t.mapSeen = nowMs
         }
         // 3. new targets: only from a full icon or the screen, never from arcs alone
         for ((i, g) in groups.withIndex()) {
             if (i in usedGroups) continue
             if (g.second == setOf(Source.PARTIAL_ARC)) continue
-            tracks.add(T(nextId++, g.first.first, g.first.second, nowMs, nowMs, g.second))
+            tracks.add(T(nextId++, g.first.first, g.first.second, nowMs, nowMs, g.second, born = nowMs,
+                mapSeen = if (Source.MAP_ICON in g.second) nowMs else null))
         }
         // 4. forget targets that are gone (longer when your own icon covers them)
         tracks.removeAll { t ->
+            // 6. only the screen ever saw it, for too long: a misread (e.g. a monster's red HP bar)
+            if (t.mapSeen == null && nowMs - t.born > screenOnlyMs) return@removeAll true
             val age = nowMs - t.lastSeen
             val covered = self != null && hypot(t.x - self.first, t.y - self.second) < occlusionRadius
             age > (if (covered) occludedKeepMs else lostKeepMs)

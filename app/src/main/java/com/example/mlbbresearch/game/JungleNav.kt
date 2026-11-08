@@ -16,6 +16,7 @@ object JungleNav {
     private var arrivedAt = 0L
     private val skipped = HashMap<Pair<Int, Int>, Long>()   // camp grid cell -> skip until
     private var sawMonsterAt = 0L
+    private var lastMonsterHp = 1f        // the lowest HP bar seen at the current camp (issue #2)
     private var patrolIdx = 0
     @Volatile var next: Camp? = null           // planned while the current camp is being fought
         private set
@@ -127,15 +128,19 @@ object JungleNav {
             val sameQuadrantBonus = if (inTopLeftQuadrant == (c.x < 0.44f && c.y < 0.70f)) 0.06f else 0f
             walkDist - buffBonus - sameQuadrantBonus
         }!!
-        if (t !== keep && t !== target) { target = t; arrivedAt = 0L; sawMonsterAt = 0L }
+        if (t !== keep && t !== target) { target = t; arrivedAt = 0L; sawMonsterAt = 0L; lastMonsterHp = 1f }
 
         val stand = SceneryMap.pitStandSpot(t.x, t.y)
         val d = minOf(hypot(t.x - me.first, t.y - me.second), hypot(stand.first - me.first, stand.second - me.second))
         val creepInReach = s.creeps.any { s.distToSelf(it.x, it.y) <= 0.36f }
         if (d < 0.068f || creepInReach) {
             if (arrivedAt == 0L) arrivedAt = now
-            if (s.creeps.isNotEmpty() || s.boss != null) sawMonsterAt = now
-            val killed = sawMonsterAt > 0 && now - sawMonsterAt > 1200
+            if (s.creeps.isNotEmpty() || s.boss != null) {
+                sawMonsterAt = now
+                (s.creeps.map { it.hp } + listOfNotNull(s.boss?.hp)).minOrNull()?.let { lastMonsterHp = it }
+            }
+            val campIconUp = s.camps.any { !it.enemy && hypot(it.x - t.x, it.y - t.y) < 0.05f }
+            val killed = campDone(sawMonsterAt, lastMonsterHp, now, campIconUp)
             val giveUp = if (sawMonsterAt > 0) now - arrivedAt > 38_000 else now - arrivedAt > 5_200
             next = camps.filter { hypot(it.x - t.x, it.y - t.y) > 0.05f }
                 .minByOrNull { WallMap.distance(t.x to t.y, SceneryMap.pitStandSpot(it.x, it.y)) - if (it.buff) 0.14f else 0f }
@@ -143,6 +148,7 @@ object JungleNav {
                 skipped[cell(t)] = now + if (t.buff) 115_000 else 65_000
                 arrivedAt = 0L
                 sawMonsterAt = 0L
+                lastMonsterHp = 1f
                 if (killed) campsKilled++
                 val n = next
                 target = n
@@ -171,6 +177,18 @@ object JungleNav {
         status = "walking to ${if (t.buff) "buff" else "camp"} (${(d * 100).toInt()}% away" +
             (if (path != null) ", around walls)" else ")")
         return Triple(dx, dy, "to a jungle ${if (t.buff) "buff" else "camp"}")
+    }
+
+    // Issue #2 (device test: the hero "left mid-fight" with "to the next jungle camp" on screen, and the
+    // monster went home and healed): a camp used to count as killed after its HP bars were unseen for
+    // 1.2 s - but skill effects and damage numbers hide them that long. Now it is done only when:
+    //  - the bars are gone for 1.2 s AND the monster was last seen nearly dead (25% or less), or
+    //  - the bars are gone for 1.2 s AND the camp's icon has left the minimap (it respawns later), or
+    //  - nothing has been seen for 6 s (it really is gone, or we cannot see it at all).
+    internal fun campDone(sawMonsterAt: Long, lastMonsterHp: Float, now: Long, campIconUp: Boolean): Boolean {
+        if (sawMonsterAt <= 0L) return false
+        val unseen = now - sawMonsterAt
+        return unseen > 1200 && (lastMonsterHp <= 0.25f || !campIconUp) || unseen > 6000
     }
 
     private fun norm(x: Float, y: Float): Pair<Float, Float> {
