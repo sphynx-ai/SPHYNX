@@ -97,12 +97,31 @@ object SessionRecorder {
                 val m1 = export(app, f).also { f.delete() }
                 val m2 = video?.let { v -> try { export(app, v, "video/mp4").also { v.delete() } } catch (e: Exception) { "video not saved: ${e.message}" } }
                     ?: "no video (screen capture was off, or no frame arrived)"
-                "$m1; $m2"
+                val m3 = exportResearch(app, f.name.removeSuffix(".jsonl"))
+                "$m1; $m2" + (if (m3.isNotEmpty()) "; $m3" else "")
             } catch (e: Exception) { "Saving the recording failed: ${e.message}" }
             lastExport = msg
             Diag.info(msg)
             done(msg)
         }
+    }
+
+    // the research files (R5 comparison ab_log.json, R4 practice_moments.jsonl, readiness_report.txt) live in
+    // the app's private storage; copies go next to the recording: <session>-ab_log.json etc.
+    private fun exportResearch(c: Context, base: String): String {
+        try { com.example.mlbbresearch.research.ResearchMode.saveMoments() } catch (e: Exception) { }
+        val dir = File(c.filesDir, "research")
+        val files = dir.listFiles()?.filter { it.isFile && it.length() > 0 } ?: return ""
+        if (files.isEmpty()) return ""
+        val tmp = File(c.cacheDir, "research-export").apply { mkdirs() }
+        var n = 0
+        for (src in files) try {
+            val copy = File(tmp, "$base-${src.name}")
+            src.copyTo(copy, overwrite = true)
+            export(c, copy, if (src.name.endsWith(".txt")) "text/plain" else "application/json")
+            copy.delete(); n++
+        } catch (e: Exception) { }
+        return if (n > 0) "$n research file(s) (R5 comparison, practice moments, readiness report)" else ""
     }
 
     private fun export(c: Context, f: File, mime: String = "application/json"): String {
@@ -162,6 +181,9 @@ object SessionRecorder {
             }))
             o.put("jg", com.example.mlbbresearch.game.JungleNav.status.take(80))
             o.put("lat", Speed.total().toInt())
+            // research mode: rs = [verified practice?, arm (ARBITER / NORMAL)] - R3 / R5
+            if (com.example.mlbbresearch.research.ResearchMode.on) o.put("rs", JSONArray(listOf(
+                com.example.mlbbresearch.research.ResearchMode.allowsAutonomy(), com.example.mlbbresearch.research.ResearchMode.arm().name)))
             write(o)
         } catch (e: Exception) { }
     }
@@ -180,6 +202,12 @@ object SessionRecorder {
             extra?.let { e -> e.keys().forEach { o.put(it, e.get(it)) } }
             write(o)
         } catch (e: Exception) { }
+    }
+
+    // a research row (R3 arbiter choice "arb", R5 scored fight "fight"); "t" is added here
+    fun event(o: JSONObject) {
+        if (!accept()) return
+        try { write(o.put("t", System.currentTimeMillis())) } catch (e: Exception) { }
     }
 
     fun aimEnd(slot: String, completed: Boolean) {

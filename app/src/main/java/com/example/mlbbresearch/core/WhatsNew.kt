@@ -28,7 +28,9 @@ object WhatsNew {
                 "as planned and as released, the log) and a video of the AI's view with its targets, joystick and aim drawn on " +
                 "top, both stamped with the clock and match timer. Files go to Sphynx-Auto-Pilot-Storage/recordings. " +
                 "It stops and saves by itself when the video reaches 25 MB (a GitHub website upload) or 95 MB (git). " +
-                "Also on the floating window: ● REC starts, ■ REC stops and saves; the round icon gets a red ring while recording.",
+                "Also on the floating window: ● REC starts, ■ REC stops and saves; the round icon gets a red ring while recording. " +
+                "Research mode is recorded too (verified practice, the arbiter / normal group, each arbiter choice and scored fight), " +
+                "and saving also copies the R5 comparison, the practice moments and the readiness report next to the recording.",
             pr = 27, needsDeviceCheck = true),
         Entry("2026-11-08", Kind.FIXED, "Jungle fights: no more leaving mid-fight, getting stuck or phantom enemies",
             "From your device test: the hero no longer walks to the next camp while the monster still has HP (hidden HP bars " +
