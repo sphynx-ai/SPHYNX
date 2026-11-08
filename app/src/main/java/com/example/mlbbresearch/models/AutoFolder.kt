@@ -16,7 +16,7 @@ import java.io.InputStream
 // reads it directly, nothing to choose. Without it you choose the folder once on the Model page
 // (Android then lets the app read it for good). Also read: the app's own files in Download/MLBB-Research
 // (exports and Kaggle results saved without the permission), and the app's own folder
-// Android/data/com.example.mlbbresearch/files/Sphynx-Auto-Pilot-Storage (no choosing needed, e.g. when
+// Android/data/com.sphynx.autopilot/files/Sphynx-Auto-Pilot-Storage (no choosing needed, e.g. when
 // copying from a computer) plus the older .../files/MLBB-Research.
 // Before v37.19 the chosen folder was Download/MLBB-Research: a phone that still has it chosen keeps
 // working, and the Model page asks to switch.
@@ -115,8 +115,13 @@ object AutoFolder {
                 status = "cannot read the chosen folder: choose it again"
             }
         }
-        // the storage folder itself when all files access is on, then the app's own folders
-        for (dir in listOfNotNull(com.example.mlbbresearch.core.Storage.dir(), localDir(ctx), legacyLocalDir(ctx)))
+        // the storage folder itself when all files access is on, then the app's own folders; with all files
+        // access also Download/MLBB-Research read as plain files, so files left there by the old app id
+        // (com.example.mlbbresearch: exports, Kaggle results, backups) are found by this one too
+        val oldDownloads = if (com.example.mlbbresearch.core.Storage.allFilesAccess) try {
+            java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), LEGACY_FOLDER).takeIf { it.isDirectory }
+        } catch (e: Exception) { null } else null
+        for (dir in listOfNotNull(com.example.mlbbresearch.core.Storage.dir(), localDir(ctx), legacyLocalDir(ctx), oldDownloads))
             dir.listFiles()?.forEach { f -> if (f.isFile && out.none { it.name == f.name }) out.add(Entry(f.name, f.length(), f.lastModified()) { f.inputStream() }) }
         // the app's own files saved in Download/MLBB-Research without the permission (exports, Kaggle results)
         try {
