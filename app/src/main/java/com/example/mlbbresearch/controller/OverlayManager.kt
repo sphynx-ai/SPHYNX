@@ -78,6 +78,7 @@ class OverlayManager(private val ctx: Context) {
     private var power: TextView? = null
     private var panelPower: TextView? = null
     private var comboBtn: TextView? = null
+    private var recBtn: TextView? = null
     private var calib: FrameLayout? = null
 
     @Volatile var markersOn = false
@@ -132,7 +133,7 @@ class OverlayManager(private val ctx: Context) {
         for (v in listOf<View?>(icon, panel, pointer)) {
             if (v != null) try { wm.removeView(v) } catch (e: Exception) { }
         }
-        icon = null; panel = null; pointer = null; badge = null; panelLines = null; power = null; panelPower = null; comboBtn = null
+        icon = null; panel = null; pointer = null; badge = null; panelLines = null; power = null; panelPower = null; comboBtn = null; recBtn = null
         ScreenMasks.overlay = emptyList()
     }
 
@@ -268,6 +269,27 @@ class OverlayManager(private val ctx: Context) {
             background = GradientDrawable().apply { setColor(Color.parseColor("#C62828")); cornerRadius = dp(6).toFloat() }
             setOnClickListener { AiRuntime.emergencyStop("status window") }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        // RECORD: the session recorder (data file + video for bug reports) without leaving the game
+        val rBtn = TextView(ctx).apply {
+            setTextColor(Color.WHITE); textSize = 10.5f; setTypeface(null, Typeface.BOLD)
+            gravity = Gravity.CENTER
+            setPadding(dp(6), dp(3), dp(6), dp(3))
+            setOnClickListener {
+                val r = com.example.mlbbresearch.core.SessionRecorder
+                if (r.on) {
+                    android.widget.Toast.makeText(ctx, "Saving the recording…", android.widget.Toast.LENGTH_SHORT).show()
+                    r.stop(ctx) { msg -> android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        android.widget.Toast.makeText(ctx, msg.take(200), android.widget.Toast.LENGTH_LONG).show() } }
+                } else {
+                    r.start(ctx)
+                    android.widget.Toast.makeText(ctx, if (com.example.mlbbresearch.core.VideoRecorder.on) "Recording data + video"
+                        else "Recording data only (screen capture is off: no video)", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                refresh()
+            }
+        }
+        recBtn = rBtn
+        bottom.addView(rBtn, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(4) })
         // TEST COMBO: your hero's combo once, in bursts (disabled when Player is on - v37.01)
         val cBtn = TextView(ctx).apply {
             text = "⚔ COMBO"
@@ -395,7 +417,15 @@ class OverlayManager(private val ctx: Context) {
         badge?.let {
             val err = AiRuntime.lastError.isNotEmpty() && !running
             it.text = when { running && Cfg.dryRun && Cfg.autonomous -> "DRY"; running -> "ON"; err -> "ERR"; else -> "OFF" }
-            it.background = circle(Color.parseColor(if (running) "#2E7D32" else if (err) "#C62828" else "#616161"))
+            it.background = circle(Color.parseColor(if (running) "#2E7D32" else if (err) "#C62828" else "#616161")).apply {
+                // a red ring around the round icon while the session recorder runs
+                if (com.example.mlbbresearch.core.SessionRecorder.on) setStroke(dp(3), Color.parseColor("#FF1744"))
+            }
+        }
+        val rec = com.example.mlbbresearch.core.SessionRecorder.on
+        recBtn?.text = if (rec) "■ REC " + (com.example.mlbbresearch.core.VideoRecorder.bytesWritten / (1024 * 1024)) + "MB" else "● REC"
+        recBtn?.background = GradientDrawable().apply {
+            setColor(Color.parseColor(if (rec) "#D50000" else "#6D4C41")); cornerRadius = dp(6).toFloat()
         }
         val on = running
         power?.background = circle(Color.parseColor(if (on) "#43A047" else "#455A64")).apply { setStroke(dp(1), Color.WHITE) }

@@ -175,6 +175,7 @@ class ScreenCaptureService : Service() {
                 b!!.copyPixelsFromBuffer(pad)
             }
             FrameHub.submit(b, w, h, "screen capture")
+            if (com.example.mlbbresearch.core.VideoRecorder.on) com.example.mlbbresearch.core.VideoRecorder.frame(b, w, h)
         } catch (e: Exception) {
             Diag.error("Capture frame failed", e)
         } finally {

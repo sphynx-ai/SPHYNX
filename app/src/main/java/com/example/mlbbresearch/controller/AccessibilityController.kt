@@ -255,6 +255,7 @@ class AccessibilityController : AccessibilityService() {
         // Stage 1: Press skill button (x1, y1) and hold for 0.3s (pressHoldMs = 300ms) with willContinue = true
         // Stage 2: Compute LIVE target aim endpoint via ActionExecutor.freshAimEnd(skillAim) and drag while holding for 0.3s / 0.5s, then release!
         if (skillAim != null && n < GestureDescription.getMaxStrokeCount()) {
+            ActionExecutor.recordAim("aim", skillAim, skillAim.x2, skillAim.y2)
             val sx1 = skillAim.x1 * w
             val sy1 = skillAim.y1 * h
             val sx1End = sx1 + 0.5f
@@ -284,6 +285,7 @@ class AccessibilityController : AccessibilityService() {
                         joyStroke = nextJoy
                         // Re-evaluate the target's live position right at the start of Stage 2 so moving enemies/creeps are hit accurately!
                         val (liveX2, liveY2) = ActionExecutor.freshAimEnd(skillAim)
+                        ActionExecutor.recordAim("aim2", skillAim, liveX2, liveY2)
                         val p2 = Path().apply {
                             moveTo(sx1End, sy1)
                             lineTo(liveX2 * w, liveY2 * h)
@@ -293,8 +295,9 @@ class AccessibilityController : AccessibilityService() {
                         val mine2 = nextJoy
                         val ok2 = try {
                             dispatchGesture(g2.build(), object : GestureResultCallback() {
-                                override fun onCompleted(gd: GestureDescription?) { next() }
+                                override fun onCompleted(gd: GestureDescription?) { com.example.mlbbresearch.core.SessionRecorder.aimEnd(skillAim.slot, true); next() }
                                 override fun onCancelled(gd: GestureDescription?) {
+                                    com.example.mlbbresearch.core.SessionRecorder.aimEnd(skillAim.slot, false)
                                     joyStroke = null
                                     if (mine2 == null && !com.example.mlbbresearch.ai.AiRuntime.playerOn) {
                                         userTouchAt = System.currentTimeMillis()

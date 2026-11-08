@@ -92,7 +92,11 @@ object ResearchMode {
     // verified practice match while Player mode plays are counted.
     fun onFightScored(reward: Float, died: Boolean, byYou: Boolean) {
         if (byYou || !com.example.mlbbresearch.ai.AiRuntime.playerOn || !allowsAutonomy()) return
-        try { loadAb(); ab.fight(GameStateTracker.matchId, reward, died) } catch (t: Throwable) { Diag.error("Research R5", t) }
+        try {
+            loadAb(); ab.fight(GameStateTracker.matchId, reward, died)
+            com.example.mlbbresearch.core.SessionRecorder.event(org.json.JSONObject().put("k", "fight")
+                .put("arm", arm().name).put("reward", com.example.mlbbresearch.core.SessionRecorder.r3(reward)).put("died", died))
+        } catch (t: Throwable) { Diag.error("Research R5", t) }
     }
 
     // R5: a match ended (GameStateTracker.logMatch)
@@ -145,6 +149,9 @@ object ResearchMode {
             DecisionBridge.fromPlan(StrategicAdvisor.plan)?.let { advice.add(it) }
             val r = experiment.choose(allowsAutonomy(), normal, advice, MlbbAdapter.toUniversal(s), now) { TacticalAdvisor.check(it, s) }
             if (r.changed) Diag.info("Research R3: ${normal.label} -> ${r.option?.label} (${r.note})")
+            com.example.mlbbresearch.core.SessionRecorder.event(org.json.JSONObject().put("k", "arb")
+                .put("normal", normal.name).put("played", r.option?.name ?: "-").put("changed", r.changed).put("note", r.note.take(100))
+                .put("advice", org.json.JSONArray(advice.map { "${it.source.name.lowercase()}:${it.kind.name}" + (it.confidence?.let { c -> "@" + "%.2f".format(java.util.Locale.US, c) } ?: "") })))
             r.option
         } catch (t: Throwable) {
             experimentFailed = true
