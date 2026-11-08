@@ -79,6 +79,20 @@ class OverlayManager(private val ctx: Context) {
     private var panelPower: TextView? = null
     private var comboBtn: TextView? = null
     private var recBtn: TextView? = null
+    private var stopBtn: TextView? = null
+    private var roamBtnV: TextView? = null
+    // the panel's bottom buttons all get the same width and height and one line of text; under
+    // COMPACT_DP of panel width they show icons only (owner: buttons broke into vertical letters)
+    private val COMPACT_DP = 380
+    private fun panelBtn(tv: TextView) = tv.apply {
+        setSingleLine(true); maxLines = 1; ellipsize = null
+        textSize = 10f; setTypeface(null, Typeface.BOLD); setTextColor(Color.WHITE)
+        gravity = Gravity.CENTER
+        setPadding(dp(2), 0, dp(2), 0)
+        includeFontPadding = false
+    }
+    private fun btnLp(first: Boolean = false) = LinearLayout.LayoutParams(0, dp(28), 1f).apply { if (!first) leftMargin = dp(3) }
+    private val compact: Boolean get() = (panelLp?.width ?: dp(300)) < dp(COMPACT_DP)
     private var calib: FrameLayout? = null
 
     @Volatile var markersOn = false
@@ -134,6 +148,7 @@ class OverlayManager(private val ctx: Context) {
             if (v != null) try { wm.removeView(v) } catch (e: Exception) { }
         }
         icon = null; panel = null; pointer = null; badge = null; panelLines = null; power = null; panelPower = null; comboBtn = null; recBtn = null
+        stopBtn = null; roamBtnV = null
         ScreenMasks.overlay = emptyList()
     }
 
@@ -261,19 +276,14 @@ class OverlayManager(private val ctx: Context) {
             addView(body, android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         val bottom = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        bottom.addView(TextView(ctx).apply {
-            text = "■ STOP ALL"
-            setTextColor(Color.WHITE); textSize = 10.5f; setTypeface(null, Typeface.BOLD)
-            gravity = Gravity.CENTER
-            setPadding(dp(6), dp(3), dp(6), dp(3))
+        val sBtn = panelBtn(TextView(ctx)).apply {
             background = GradientDrawable().apply { setColor(Color.parseColor("#C62828")); cornerRadius = dp(6).toFloat() }
             setOnClickListener { AiRuntime.emergencyStop("status window") }
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        stopBtn = sBtn
+        bottom.addView(sBtn, btnLp(first = true))
         // RECORD: the session recorder (data file + video for bug reports) without leaving the game
-        val rBtn = TextView(ctx).apply {
-            setTextColor(Color.WHITE); textSize = 10.5f; setTypeface(null, Typeface.BOLD)
-            gravity = Gravity.CENTER
-            setPadding(dp(6), dp(3), dp(6), dp(3))
+        val rBtn = panelBtn(TextView(ctx)).apply {
             setOnClickListener {
                 val r = com.example.mlbbresearch.core.SessionRecorder
                 if (r.on) {
@@ -289,13 +299,9 @@ class OverlayManager(private val ctx: Context) {
             }
         }
         recBtn = rBtn
-        bottom.addView(rBtn, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(4) })
+        bottom.addView(rBtn, btnLp())
         // TEST COMBO: your hero's combo once, in bursts (disabled when Player is on - v37.01)
-        val cBtn = TextView(ctx).apply {
-            text = "⚔ COMBO"
-            setTextColor(Color.WHITE); textSize = 10.5f; setTypeface(null, Typeface.BOLD)
-            gravity = Gravity.CENTER
-            setPadding(dp(6), dp(3), dp(6), dp(3))
+        val cBtn = panelBtn(TextView(ctx)).apply {
             background = GradientDrawable().apply { setColor(Color.parseColor("#3949AB")); cornerRadius = dp(6).toFloat() }
             setOnClickListener {
                 if (AiRuntime.playerOn) {
@@ -307,29 +313,23 @@ class OverlayManager(private val ctx: Context) {
             }
         }
         comboBtn = cBtn
-        bottom.addView(cBtn, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(4) })
-        val roamBtn = TextView(ctx).apply {
-            text = "🗺 ROAM"
-            setTextColor(Color.WHITE); textSize = 10.5f; setTypeface(null, Typeface.BOLD)
-            gravity = Gravity.CENTER
-            setPadding(dp(6), dp(3), dp(6), dp(3))
+        bottom.addView(cBtn, btnLp())
+        val roamBtn = panelBtn(TextView(ctx)).apply {
             background = GradientDrawable().apply { setColor(Color.parseColor("#00695C")); cornerRadius = dp(6).toFloat() }
             setOnClickListener {
                 val msg = com.example.mlbbresearch.game.SceneryMap.toggleRoam()
                 android.widget.Toast.makeText(ctx, msg, android.widget.Toast.LENGTH_SHORT).show()
             }
         }
-        bottom.addView(roamBtn, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(4) })
-        val ppw = TextView(ctx).apply {
-            setTextColor(Color.WHITE); textSize = 10.5f; setTypeface(null, Typeface.BOLD)
-            gravity = Gravity.CENTER
-            setPadding(dp(6), dp(3), dp(6), dp(3))
+        roamBtnV = roamBtn
+        bottom.addView(roamBtn, btnLp())
+        val ppw = panelBtn(TextView(ctx)).apply {
             setOnClickListener { toggleAi() }
         }
-        bottom.addView(ppw, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(4) })
+        bottom.addView(ppw, btnLp())
         val handle = TextView(ctx).apply {
             text = "◢"; textSize = 16f; setTextColor(Color.parseColor("#9AA0A6"))
-            setPadding(dp(16), 0, 0, 0)
+            setPadding(dp(8), 0, 0, 0)
         }
         bottom.addView(handle)
         pn.addView(bottom)
@@ -413,6 +413,7 @@ class OverlayManager(private val ctx: Context) {
     }
 
     private fun refresh() {
+        val cmp = compact
         val running = AiRuntime.anyOn()
         badge?.let {
             val err = AiRuntime.lastError.isNotEmpty() && !running
@@ -423,13 +424,16 @@ class OverlayManager(private val ctx: Context) {
             }
         }
         val rec = com.example.mlbbresearch.core.SessionRecorder.on
-        recBtn?.text = if (rec) "■ REC " + (com.example.mlbbresearch.core.VideoRecorder.bytesWritten / (1024 * 1024)) + "MB" else "● REC"
+        val recMb = com.example.mlbbresearch.core.VideoRecorder.bytesWritten / (1024 * 1024)
+        recBtn?.text = if (rec) (if (cmp) "■$recMb" else "■ REC ${recMb}MB") else (if (cmp) "●" else "● REC")
         recBtn?.background = GradientDrawable().apply {
             setColor(Color.parseColor(if (rec) "#D50000" else "#6D4C41")); cornerRadius = dp(6).toFloat()
         }
         val on = running
         power?.background = circle(Color.parseColor(if (on) "#43A047" else "#455A64")).apply { setStroke(dp(1), Color.WHITE) }
-        panelPower?.text = if (on) "⏻ AI OFF" else "⏻ AI ON"
+        stopBtn?.text = if (cmp) "■" else "■ STOP ALL"
+        roamBtnV?.text = if (cmp) "🗺" else "🗺 ROAM"
+        panelPower?.text = if (cmp) "⏻" else if (on) "⏻ AI OFF" else "⏻ AI ON"
         panelPower?.background = GradientDrawable().apply {
             setColor(Color.parseColor(if (on) "#455A64" else "#2E7D32")); cornerRadius = dp(8).toFloat()
         }
@@ -437,7 +441,7 @@ class OverlayManager(private val ctx: Context) {
         val comboAllowed = !AiRuntime.playerOn
         comboBtn?.isEnabled = comboAllowed
         comboBtn?.alpha = if (comboAllowed) 1f else 0.42f
-        comboBtn?.text = if (comboAllowed) "⚔ COMBO" else "⚔ COMBO (off)"
+        comboBtn?.text = if (cmp) "⚔" else if (comboAllowed) "⚔ COMBO" else "⚔ OFF"
         comboBtn?.background = GradientDrawable().apply {
             setColor(Color.parseColor(if (comboAllowed) "#3949AB" else "#455A64")); cornerRadius = dp(6).toFloat()
         }

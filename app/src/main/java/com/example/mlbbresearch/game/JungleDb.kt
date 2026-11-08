@@ -60,9 +60,15 @@ object JungleDb {
     val FIRE_BEETLE = Monster("fire_beetle", "Fire Beetle", listOf("Crammer"), MonsterKind.CAMP,
         "a small red / magenta beetle; when killed it turns into a little Crammer (lives about 15 s)",
         "the Healing Buff; its Crammer gives the extra EXP that reaches level 4 in the first clear")
-    val LITHOWANDERER = Monster("lithowanderer", "Lithowanderer", listOf("Stone Roamer"), MonsterKind.RIVER,
-        "a small walking green rock in the river (it never attacks)",
-        "Walkie Grass: extra movement speed in the river for 120 s", gold = 92)
+    // owner's notes (v37.19): spawns at 0:35 in the river by the mid lane, respawns every 120 s; never
+    // attacks back and scurries away (so it is never "an enemy to chase"); its bar is thin. When killed it
+    // splits into Walkie Grass (a green thing that FOLLOWS the killer: +15% speed in the river and 1% mana
+    // per second for 45 s, also to nearby allies) and a Stone Roamer (a FRIENDLY patrol, blue segmented
+    // bar, that reveals enemies around it for 45 s). Neither of the two is a target.
+    val LITHOWANDERER = Monster("lithowanderer", "Lithowanderer", listOf("Stone Roamer", "Walkie Grass"), MonsterKind.RIVER,
+        "a small walking green rock in the river by the mid lane (spawns 0:35, back every 120 s); it never attacks and runs away",
+        "Walkie Grass follows the killer: +15% movement speed in the river and 1% mana per second for 45 s (nearby allies too); " +
+            "the Stone Roamer is a friendly patrol that reveals enemies around it for 45 s", gold = 92)
     val CRAB = Monster("crab", "Scavenger Crab", listOf("crab", "Little Crab"), MonsterKind.RIVER,
         "a crab with a purple crystal shell and orange legs, by the river (a little crab first; upgraded at 2:00)",
         "the Gold Buff or EXP Buff (depends on the lane; 30 s). The EXP-lane crab gives the EXP of a siege minion", gold = 36)

@@ -499,6 +499,10 @@ object ScreenReader {
         val left = avg(px, w, h, 0.15f, 0.15f, 0.35f, 0.20f)
         val right = avg(px, w, h, 0.62f, 0.15f, 0.85f, 0.20f)
         if (midDark && left[2] - left[0] >= 30 && right[0] - right[2] >= 20) return ScreenHint.SCOREBOARD
+        // the scoreboard is semi-transparent: bright portraits and item icons can bring the middle under 70%
+        // dark (owner's recording, match 6:21: about 71%, so the AI kept playing on the scoreboard and read
+        // its red marks as enemies). A clearly coloured VS header with a half-dark middle is enough.
+        if (left[2] - left[0] >= 40 && right[0] - right[2] >= 30 && f(0.10f, 0.25f, 0.90f, 0.85f) { isDark(it) } > 0.5f) return ScreenHint.SCOREBOARD
 
         // shop: a big dark panel over the middle of the screen (measured: the shop 93% dark;
         // dark jungle and the lord pit in play reach 66-79%, so the line sits at 86%)

@@ -38,6 +38,20 @@ object MapIntel {
 
     fun reset() { fusion.clear(); targets = emptyList(); history.clear() }
 
+    // the enemies seen on the screen that the minimap backs up (TargetFusion.keepScreenEnemy); without
+    // your own minimap position nothing can be checked, so then all are kept
+    fun screenEnemiesConfirmed(enemies: List<com.example.mlbbresearch.vision.Track>, me: Pair<Float, Float>?,
+                               self: com.example.mlbbresearch.vision.Seen?, aspect: Float, now: Long): List<com.example.mlbbresearch.vision.Track> {
+        if (me == null || self == null) return enemies
+        val confirmed = targets.filter { it.mapConfirmed }
+        return enemies.filter { e ->
+            val p = SceneryMap.projectToWorld(me, self, e.x, e.y)
+            val near = confirmed.any { hypot(it.x - p.first, it.y - p.second) < 0.09f }
+            val d = hypot((e.x - self.x) * aspect, e.y - self.y)
+            TargetFusion.keepScreenEnemy(e.firstSeen, now, near, d, e.hp)
+        }
+    }
+
     private fun toMap(sx: Float, sy: Float): Pair<Float, Float> {
         val (l, t) = Layout.get("mapTL")
         val (r, b) = Layout.get("mapBR")
