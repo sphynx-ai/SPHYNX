@@ -23,6 +23,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-08", Kind.FIXED, "Skills released where they were aimed; no more chasing the Lithowanderer",
+            "From your 13 recordings: a skill was re-aimed at release with the AI's newest decision - a third of skills went 90 degrees " +
+                "off (\"aimed right, cast elsewhere\"). Now it releases at the target it was aimed at. On-screen \"enemies\" the minimap " +
+                "never shows (the Lithowanderer's thin bar, companions) are dropped, the in-match scoreboard is recognised reliably " +
+                "(the AI no longer plays on it), and the floating window's buttons stay one line and the same size.",
+            pr = 28, issue = 2, needsDeviceCheck = true),
         Entry("2026-11-08", Kind.NEW, "Session recorder: data file + video for bug reports",
             "Logs page > Start recording. It saves what the AI saw and decided (about 10 times a second, every aimed skill " +
                 "as planned and as released, the log) and a video of the AI's view with its targets, joystick and aim drawn on " +

@@ -37,7 +37,8 @@ sealed class Act {
         val startMs: Long = 0L,
         val slot: String = "",
         val retreating: Boolean = false,
-        val fixedEnd: Boolean = false
+        val fixedEnd: Boolean = false,
+        val planned: com.example.mlbbresearch.ai.TacticalDecision? = null   // the decision it was aimed with
     ) : Act() {
         val totalMs: Long get() = pressHoldMs + aimHoldMs
     }
@@ -97,7 +98,9 @@ object ActionExecutor {
         if (sa.fixedEnd || sa.slot.isEmpty()) return sa.x2 to sa.y2
         val gs = GameStateTracker.state
         val self = gs.self ?: return sa.x2 to sa.y2
-        val d = latestDecision
+        // issue #2: re-aim only at the target the skill was aimed at (AimRelease), never at a changed decision
+        val d = AimRelease.releaseDecision(sa.planned, latestDecision) { ax, ay, bx2, by2 -> gs.dist(ax, ay, bx2, by2) < 0.15f }
+            ?: return sa.x2 to sa.y2
         val refreshed = aimDrag(sa.slot, sa.x1, sa.y1, self.x, self.y, d, gs, sa.aimHoldMs, sa.aimHoldMs >= CastTiming.AIM_LONG_DIR_HOLD_MS)
         return (if (refreshed is Act.SkillAim) refreshed.x2 to refreshed.y2 else sa.x2 to sa.y2)
     }
@@ -532,7 +535,7 @@ object ActionExecutor {
                 val dx = (wall.first - sx) * aspect
                 val dy = wall.second - sy
                 val l = kotlin.math.hypot(dx, dy).coerceAtLeast(1e-3f)
-                return Act.SkillAim(bx, by, bx + dx / l * SKILL_AIM_R, by + dy / l * SKILL_AIM_R * aspect, pressHold, aimHold, 0L, c, retreating, true)
+                return Act.SkillAim(bx, by, bx + dx / l * SKILL_AIM_R, by + dy / l * SKILL_AIM_R * aspect, pressHold, aimHold, 0L, c, retreating, true, planned = d)
             }
         }
 
@@ -543,15 +546,16 @@ object ActionExecutor {
                 val dx = (blade.first - sx) * aspect
                 val dy = blade.second - sy
                 val l = kotlin.math.hypot(dx, dy).coerceAtLeast(1e-3f)
-                return Act.SkillAim(bx, by, bx + dx / l * SKILL_AIM_R, by + dy / l * SKILL_AIM_R * aspect, pressHold, aimHold, 0L, c, retreating, true)
+                return Act.SkillAim(bx, by, bx + dx / l * SKILL_AIM_R, by + dy / l * SKILL_AIM_R * aspect, pressHold, aimHold, 0L, c, retreating, true, planned = d)
             }
         }
 
         // Find live target coordinates (refresh from live enemy hero or monster if available!)
         var tx = d.targetX
         var ty = d.targetY
+        // the decision's own target only (issue #2: falling back to "the nearest enemy" aimed at the wrong one)
         val liveEnemy = if (d.targetId >= 0) {
-            gs.enemies.firstOrNull { it.id == d.targetId } ?: gs.enemies.minByOrNull { gs.distToSelf(it.x, it.y) }
+            gs.enemies.firstOrNull { it.id == d.targetId }
         } else if (d.intent == Intent.ENGAGE) {
             gs.enemies.minByOrNull { gs.distToSelf(it.x, it.y) }
         } else null
@@ -583,7 +587,7 @@ object ActionExecutor {
                 }
             }
             val l = kotlin.math.hypot(wx, wy).coerceAtLeast(1e-3f)
-            val noTarget = Act.SkillAim(bx, by, bx + wx / l * SKILL_AIM_R, by + wy / l * SKILL_AIM_R * aspect, pressHold, aimHold, 0L, c, retreating, false)
+            val noTarget = Act.SkillAim(bx, by, bx + wx / l * SKILL_AIM_R, by + wy / l * SKILL_AIM_R * aspect, pressHold, aimHold, 0L, c, retreating, false, planned = d)
             lastAimInfo = org.json.JSONObject().put("aimAt", if (retreating) "away (retreating)" else "no target: walking direction")
             return noTarget
         }
@@ -595,7 +599,7 @@ object ActionExecutor {
         lastAimInfo = org.json.JSONObject().put("aimAt", JSONArrayOf(tx, ty)).put("raw", JSONArrayOf(d.targetX, d.targetY))
             .put("live", liveEnemy?.let { JSONArrayOf(it.id.toFloat(), it.x, it.y, it.vx, it.vy) } ?: org.json.JSONObject.NULL)
             .put("self", JSONArrayOf(sx, sy))
-        return Act.SkillAim(bx, by, bx + dx / l * reach, by + dy / l * reach * aspect, pressHold, aimHold, 0L, c, retreating, false)
+        return Act.SkillAim(bx, by, bx + dx / l * reach, by + dy / l * reach * aspect, pressHold, aimHold, 0L, c, retreating, false, planned = d)
     }
 
     // for the session recorder: what the last aimDrag aimed at

@@ -45,7 +45,8 @@ class TargetFusion(
         val lastSeenMs: Long,        // last frame any source saw it
         val confirmedMs: Long,       // last frame a full icon or the screen saw it
         val sources: Set<Source>,    // what saw it on the latest frame it was seen
-        val occluded: Boolean        // not seen this frame, kept because your icon covers it
+        val occluded: Boolean,       // not seen this frame, kept because your icon covers it
+        val mapConfirmed: Boolean = false   // a map icon or a covered arc has backed it at least once
     )
 
     private class T(var id: Int, var x: Float, var y: Float, var lastSeen: Long, var confirmed: Long, var sources: Set<Source>,
@@ -105,7 +106,20 @@ class TargetFusion(
         }
         // 5. the most recently confirmed first, at most maxTargets
         return tracks.sortedByDescending { it.confirmed }.take(maxTargets).map { t ->
-            Target(t.id, t.x, t.y, t.lastSeen, t.confirmed, t.sources, occluded = t.lastSeen < nowMs)
+            Target(t.id, t.x, t.y, t.lastSeen, t.confirmed, t.sources, occluded = t.lastSeen < nowMs, mapConfirmed = t.mapSeen != null)
         }
+    }
+
+    companion object {
+        // SCREEN CHECK (owner's recordings: the Lithowanderer's thin red bar was read as "an enemy hero at
+        // 4%" and chased, and summons / companions can look like bars too). An enemy seen on the screen
+        // is kept when:
+        //  - it was first seen less than `graceMs` ago (the map scan is slower than the screen), or
+        //  - a map-confirmed target (red hero icon, or its arc under your icon) is at its map spot, or
+        //  - it is right next to you with real HP (your own icon may hide its map icon completely).
+        // Everything else is a misread: creeps, companions and summons never get a red hero icon.
+        fun keepScreenEnemy(firstSeenMs: Long, nowMs: Long, mapConfirmedNear: Boolean, distToYou: Float, hp: Float,
+                            graceMs: Long = 800L, nearYou: Float = 0.12f, realHp: Float = 0.15f): Boolean =
+            nowMs - firstSeenMs < graceMs || mapConfirmedNear || (distToYou <= nearYou && hp >= realHp)
     }
 }
