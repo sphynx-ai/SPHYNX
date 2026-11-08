@@ -88,9 +88,9 @@ class MainActivity : Activity() {
     private var headerStatus: TextView? = null
     private var navScroll: HorizontalScrollView? = null
 
-    private val pages = listOf("home", "player", "draft", "build", "meta", "library", "model", "learn", "speed", "logs", "setup")
+    private val pages = listOf("home", "news", "player", "draft", "build", "meta", "library", "model", "learn", "speed", "logs", "setup")
     private val labels = mapOf(
-        "home" to "Home", "player" to "Player", "draft" to "Draft", "build" to "Build", "meta" to "Meta", "library" to "Library",
+        "home" to "Home", "news" to "What's new", "player" to "Player", "draft" to "Draft", "build" to "Build", "meta" to "Meta", "library" to "Library",
         "model" to "Model", "learn" to "Learn", "speed" to "Speed", "logs" to "Logs", "setup" to "Setup"
     )
 
@@ -505,6 +505,7 @@ class MainActivity : Activity() {
         page = p
         when (p) {
             "home" -> homePage()
+            "news" -> newsPage()
             "player" -> playerPage()
             "draft" -> draftPage()
             "build" -> buildPage()
@@ -631,11 +632,51 @@ class MainActivity : Activity() {
     //  HOME: dashboard
     // =====================================================================
 
+    // WHAT'S NEW (core.WhatsNew): fixed bugs and new features, newest first
+    private fun whatsNewRow(cd: LinearLayout, e: com.example.mlbbresearch.core.WhatsNew.Entry, details: Boolean) {
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(6), 0, dp(2)) }
+        row.addView(chip(e.kind.label, e.kind.color))
+        row.addView(TextView(this).apply {
+            text = e.title; textSize = 14f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD); setPadding(dp(8), 0, 0, 0)
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        cd.addView(row)
+        if (details) cardNote(cd, e.details + "\n" + com.example.mlbbresearch.core.WhatsNew.ref(e) +
+            (if (e.needsDeviceCheck) " · not yet checked on a phone" else ""))
+    }
+
+    private fun whatsNewPreview() {
+        val cd = card()
+        cardHeader(cd, "What's new", "v${com.example.mlbbresearch.core.AppVersion.VERSION}")
+        for (e in com.example.mlbbresearch.core.WhatsNew.latest(3)) whatsNewRow(cd, e, false)
+        val more = Button(this).apply {
+            text = "See all changes"; isAllCaps = false; textSize = 13f; stateListAnimator = null
+            background = ripple(T.SURF2, 12, T.STROKE); setTextColor(c(T.TEXT))
+            setOnClickListener { go("news") }
+        }
+        cd.addView(more, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(40)).apply { topMargin = dp(8) })
+    }
+
+    private fun newsPage() {
+        val wn = com.example.mlbbresearch.core.WhatsNew
+        title("WHAT'S NEW")
+        val n = wn.counts()
+        text("Sphynx Auto Pilot v${com.example.mlbbresearch.core.AppVersion.VERSION} · " +
+            com.example.mlbbresearch.core.WhatsNew.Kind.values().joinToString(" · ") { "${n[it] ?: 0} ${it.label.lowercase()}" }, 12f, color = T.MUTED)
+        for ((date, entries) in wn.byDate()) {
+            val cd = card()
+            cardHeader(cd, date)
+            for (e in entries) whatsNewRow(cd, e, true)
+        }
+        text("Changes still waiting to be merged are not listed. \"Not yet checked on a phone\" means the change is built " +
+            "and unit tested but has not been confirmed in a real match yet.", 12f, color = T.MUTED)
+    }
+
     private fun homePage() {
         // the app version (and the installed build, if the package says something else)
         val installed = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { null }
         text("Sphynx Auto Pilot v${com.example.mlbbresearch.core.AppVersion.VERSION}" +
             (if (installed != null && installed != com.example.mlbbresearch.core.AppVersion.VERSION) " · build $installed" else ""), 12f, color = T.MUTED)
+        whatsNewPreview()
         val c1 = card()
         val status = cardHeader(c1, "", "", T.GREEN)
         val sChip = (status.parent as LinearLayout).getChildAt(1) as TextView
