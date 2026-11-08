@@ -70,6 +70,44 @@ object ResearchMode {
         }
     }
 
+    // R5: the controlled comparison (arbiter vs normal) inside verified practice
+    val ab = ResearchAB()
+    @Volatile private var abLoaded = false
+
+    private fun abFile(): java.io.File? = com.example.mlbbresearch.vision.HeroVerifier.appContext()?.let {
+        java.io.File(java.io.File(it.filesDir, "research").apply { mkdirs() }, "ab_log.json") }
+
+    private fun loadAb() {
+        if (abLoaded) return
+        abLoaded = true
+        try { abFile()?.takeIf { it.exists() }?.let { ab.load(it.readText()) } } catch (e: Exception) { Diag.error("Research: comparison not loaded", e) }
+    }
+
+    fun clearAb() { loadAb(); ab.clear(); try { abFile()?.writeText(ab.toJson()) } catch (e: Exception) {} }
+
+    // the arm of the current match: decided by its id, so it never changes during a match
+    fun arm(): ResearchAB.Arm = ResearchAB.armOf(GameStateTracker.matchId)
+
+    // R5: a fight choice scored by the learning brain (4 s later). Only the AI's own choices in a
+    // verified practice match while Player mode plays are counted.
+    fun onFightScored(reward: Float, died: Boolean, byYou: Boolean) {
+        if (byYou || !com.example.mlbbresearch.ai.AiRuntime.playerOn || !allowsAutonomy()) return
+        try { loadAb(); ab.fight(GameStateTracker.matchId, reward, died) } catch (t: Throwable) { Diag.error("Research R5", t) }
+    }
+
+    // R5: a match ended (GameStateTracker.logMatch)
+    fun onMatchEnd(k: Int, d: Int, a: Int, seconds: Int, win: Boolean?) {
+        try {
+            loadAb()
+            if (ab.matchEnd(k, d, a, seconds, win)) {
+                abFile()?.writeText(ab.toJson())
+                Diag.info("Research R5: practice match saved - " + ab.report().verdict)
+            }
+        } catch (t: Throwable) { Diag.error("Research R5", t) }
+    }
+
+    fun abText(): String { loadAb(); return ab.text() }
+
     fun start() { on = true; experiment.reset(); experimentFailed = false; recordFailed = false; loadMoments(); Diag.info("Research mode on (practice-only gate; R3 arbiter experiment in verified practice only)") }
     fun stop() { on = false; saveMoments() }
 
@@ -96,6 +134,7 @@ object ResearchMode {
     // Fail-closed: not allowed, or any error (which also stops the experiment for this run) -> normal.
     fun fightChoice(s: com.example.mlbbresearch.game.GameState, normal: FightOption?, brainChoice: FightOption?, netAdvice: Pair<FightOption, Float>?): FightOption? {
         if (normal == null || experimentFailed || !allowsAutonomy()) return normal
+        if (arm() == ResearchAB.Arm.NORMAL) return normal       // R5: the comparison arm plays the usual order
         return try {
             val now = System.currentTimeMillis()
             val advice = ArrayList<Decision>()
@@ -119,7 +158,9 @@ object ResearchMode {
         val base = session.status(on)
         if (!allowsAutonomy()) return base
         return if (experimentFailed) "$base - R3 experiment stopped after an error"
-        else "Research: verified practice - R3 active: arbiter picks the fight option while Player mode plays (${experiment.summary()})" +
+        else if (arm() == ResearchAB.Arm.NORMAL) "Research: verified practice - this match is the NORMAL arm of the comparison (usual fight choice)" +
+            (if (recordFailed) "; R4 recording stopped after an error" else "; R4 recording practice moments")
+        else "Research: verified practice - ARBITER arm: arbiter picks the fight option while Player mode plays (${experiment.summary()})" +
             (if (recordFailed) "; R4 recording stopped after an error" else "; R4 recording practice moments")
     }
 

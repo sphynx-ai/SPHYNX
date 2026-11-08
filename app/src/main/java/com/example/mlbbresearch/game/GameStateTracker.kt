@@ -629,6 +629,7 @@ object GameStateTracker {
             ((lastInGame - matchStartAt) / 1000).toInt(), com.example.mlbbresearch.ai.AiRuntime.playerOn, lastResultWin)
         com.example.mlbbresearch.learning.ABCompare.matchEnd(com.example.mlbbresearch.ai.AiRuntime.playerOn, kills, deaths, assists,
             ((lastInGame - matchStartAt) / 1000).toInt(), lastResultWin)
+        com.example.mlbbresearch.research.ResearchMode.onMatchEnd(kills, deaths, assists, ((lastInGame - matchStartAt) / 1000).toInt(), lastResultWin)
         lastResultWin = null
     }
 
