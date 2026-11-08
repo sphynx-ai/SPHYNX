@@ -672,6 +672,7 @@ class MainActivity : Activity() {
         stageSwitch("Player (plays the hero)", "player") { AiRuntime.playerOn }
         stageSwitch("Drafter (ban & pick)", "draft") { AiRuntime.drafterOn }
         stageSwitch("Builder (items)", "build") { AiRuntime.builderOn }
+        stageSwitch("Research mode (practice vs Computer only; no actions yet)", "research") { com.example.mlbbresearch.research.ResearchMode.on }
         switch("Autonomous Drafter + Builder", Cfg.autonomous) { Cfg.autonomous = it }
         switch("Dry run: only show where it would tap", Cfg.dryRun) { Cfg.dryRun = it }
         val mode = text("", 12f, color = T.MUTED)

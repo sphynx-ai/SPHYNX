@@ -66,13 +66,14 @@ object AiRuntime {
         GameStateTracker.onNewMatch = { stdSelectAt = 0L; stdSelectTries = 0 }
     }
 
-    fun anyOn() = playerOn || drafterOn || builderOn || learnOn
+    fun anyOn() = playerOn || drafterOn || builderOn || learnOn || com.example.mlbbresearch.research.ResearchMode.on
 
     // Returns an error message, or null when started
     fun start(stage: String): String? {
         // learning only watches the screen: it needs no accessibility service (no touches)
         val svc = AccessibilityController.instance
-        if (svc == null && stage != "learn") return "Turn on the accessibility service first (Setup page)"
+        // research mode (R2) only reads the scoreboard: it needs no touches either
+        if (svc == null && stage != "learn" && stage != "research") return "Turn on the accessibility service first (Setup page)"
         if (needsGemma(stage) && !GemmaEngine.ready) return "The Gemma model is not loaded (put the .litertlm file in the MLBB-Research folder)"
         when (stage) {
             "player" -> {
@@ -82,6 +83,7 @@ object AiRuntime {
             }
             "draft" -> drafterOn = true
             "build" -> builderOn = true
+            "research" -> com.example.mlbbresearch.research.ResearchMode.start()
             "learn" -> {
                 learnOn = true
                 DemoRecorder.resetSession()
@@ -118,6 +120,7 @@ object AiRuntime {
             "draft" -> drafterOn = false
             "build" -> builderOn = false
             "learn" -> { learnOn = false; FrameProcessor.trackPlayer = false }
+            "research" -> com.example.mlbbresearch.research.ResearchMode.stop()
         }
         ActionExecutor.note("$stage stopped")
         if (!anyOn()) stopLoops()
@@ -130,6 +133,7 @@ object AiRuntime {
         drafterOn = false
         builderOn = false
         learnOn = false
+        com.example.mlbbresearch.research.ResearchMode.stop()
         paused = emptyList()
         FrameProcessor.trackPlayer = false
         FrameProcessor.trackMotion = false
@@ -152,7 +156,8 @@ object AiRuntime {
         if (anyOn()) {
             paused = listOfNotNull(
                 if (playerOn) "player" else null, if (drafterOn) "draft" else null,
-                if (builderOn) "build" else null, if (learnOn) "learn" else null
+                if (builderOn) "build" else null, if (learnOn) "learn" else null,
+                if (com.example.mlbbresearch.research.ResearchMode.on) "research" else null
             )
             for (st in paused) stop(st)
             ActionExecutor.cancelAll()
@@ -391,7 +396,8 @@ object AiRuntime {
             if (playerOn) (if (Cfg.coachMode) "Player (coach)" else "Player") else null,
             if (drafterOn) (if (Cfg.ranked) "Drafter (ranked)" else "Drafter (standard)") else null,
             if (builderOn) "Builder" else null,
-            if (learnOn) "Learning from you" else null
+            if (learnOn) "Learning from you" else null,
+            if (com.example.mlbbresearch.research.ResearchMode.on) "Research (practice gate)" else null
         ).joinToString(" + ") + if (Cfg.autonomous && drafterOn && builderOn) " (autonomous${if (Cfg.dryRun) ", dry run" else ""})" else ""
     }
 
@@ -399,6 +405,7 @@ object AiRuntime {
         val s = GameStateTracker.state
         val sb = StringBuilder()
         sb.append(statusLine()).append('\n')
+        if (com.example.mlbbresearch.research.ResearchMode.on) sb.append(com.example.mlbbresearch.research.ResearchMode.status()).append('\n')
         sb.append("Gemma: ").append(GemmaEngine.state)
         if (StrategicAdvisor.busyWith.isNotEmpty()) sb.append(" (thinking: ").append(StrategicAdvisor.busyWith).append(")")
         sb.append('\n')
