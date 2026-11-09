@@ -178,3 +178,11 @@ Phases follow the owner's numbering. One change is recommended.
 
 Implementation still requires the owner's explicit "authorize Phase One".
 
+## 0.10 Owner priority (2026-11-09): the app must build and install with Code on the Go
+
+This is a **hard constraint on every phase**:
+- Nothing may require the NDK, CMake or a C++ compile in the owner's build. Code on the Go must keep building the APK from this repository as it does today.
+- Native build path resolved to **option (b)**. llama.cpp's `.so` is compiled by CI at a pinned commit (arm64-v8a) and committed under `app/src/main/jniLibs/`. Code on the Go only packages it, the same way it packages LiteRT-LM's native libraries from the AAR today.
+- **Phase 3a pass/fail criterion:** the spike branch must build and install in Code on the Go, confirmed by the owner on the POCO X6 Pro. If not, GGUF is postponed and the LiteRT-LM phases continue without it.
+- Every phase's PR states: "Code on the Go build: confirmed / pending owner check".
+
