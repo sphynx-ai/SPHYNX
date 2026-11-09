@@ -188,3 +188,5 @@ This is a **hard constraint on every phase**:
 
 
 **Baseline confirmed by the owner (2026-11-09):** `main` at 37.19 (`716af66`) builds and installs with Code on the Go on the POCO X6 Pro. Any phase that breaks this is a regression.
+
+**Update (2026-11-09, owner screenshots):** Code on the Go has an **NDK Installer** plugin (`org.appdevforall.ndkinstaller` v1.1.1, enabled on the owner's phone). It installs a bundled NDK into the IDE's Android SDK. On-phone C++ builds may therefore be possible. Still unknown: the bundled NDK version, and whether CMake (needed by `externalNativeBuild`) is available. Plan unchanged and safe: **prebuilt `.so` from CI is the default** (cannot break the Code on the Go build). Phase 3a also tests an **on-phone source build on a separate branch**; if that works on the POCO, the project may later switch to building from source (no committed binaries).
