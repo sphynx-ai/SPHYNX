@@ -166,3 +166,15 @@ Phases follow the owner's numbering. One change is recommended.
 2. **Model storage:** keep **copying into app storage** (today's reliable approach, with a free-space check before copying), or also allow referencing files in place through SAF. Recommendation: copy (current), with a storage check; references later if needed.
 3. **Auto-load at startup:** today the folder scan loads models automatically. Should loading become an explicit action, or stay automatic but go through the resource manager's admission check? Recommendation: admission-checked auto-load.
 4. **Moving Phase 3a up** (the feasibility spike right after Phase One).
+
+## 0.9 Owner answers (2026-11-09)
+
+| Question | Answer | Effect on the plan |
+|---|---|---|
+| 1. Native build path | **No preference yet** | Decided after the Phase 3a spike. The spike measures the CI-built APK and the CI-built `.so` (committed) options; Code on the Go NDK is tried only if the owner asks. |
+| 2. Model storage | **Both, chosen per model at import** | The registry stores either an app-storage copy (with a free-space check first) or a SAF document reference (persistable permission; reported as unavailable if the original is moved or deleted). Originals are never deleted. |
+| 3. Startup loading | **Auto-load after a memory check** | Assigned models load at start only when the resource manager admits them; otherwise they wait and the app shows why. |
+| 4. Order | **Spike first (3a right after Phase One)** | Sequence: One → 3a → Two → 3b → Four → Five → Six → Seven → Eight. |
+
+Implementation still requires the owner's explicit "authorize Phase One".
+
