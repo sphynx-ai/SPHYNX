@@ -7,7 +7,7 @@ import com.example.mlbbresearch.universal.EngineSource
 import com.example.mlbbresearch.universal.UniversalMatchState
 
 // READINESS OF THE SMALL TACTICAL MODEL (Gemma 3 270M; Stage 2, step 4).
-// The model stays advice-only until it passes measured criteria that the owner approves. This
+// The owner removed the model's Experimental label on 2026-11-09; these measured criteria remain the yardstick. This
 // harness runs any model (a function from a situation to a reply + latency) over a set of
 // scenarios and measures:
 //   valid     - the reply names exactly one known option

@@ -395,7 +395,7 @@ Next recommended task:
 | Final authority | Human project owner |
 | Strategic AI | Gemma 4 E2B |
 | Tactical AI | Gemma 3 270M |
-| Tactical autonomy | Not authorized; advice-only pending validation |
+| Tactical AI status | Gemma 3 270M is no longer Experimental (owner, 2026-11-09): its advice may be used like the other engines', always after the Kotlin checks and the validator |
 | Repository scope | Sphynx-Auto-Pilot only |
 
 For each new decision, record its date, rationale, implementation impact, and owner approval where required.
@@ -409,6 +409,7 @@ For each new decision, record its date, rationale, implementation impact, and ow
 | 2026-11-07 | Autonomous tactical actions stay disabled; no major rewrite; preserve MLBB functionality | Stability over speed | See finding 4.1 for the existing gated use | Owner directive |
 | 2026-11-07 | Pin `litertlm-android` to an exact version (`0.19.1`); upgrades go in their own PR | A new LiteRT-LM release could change how the Gemma models load and run without any code change | Builds are reproducible; upgrades must be made on purpose | Owner requested (PR #8) |
 | 2026-11-07 | Remove both videos and all old build output from the Git history of all branches (rewrite + force-push) | Repository size (283 MB → 1.1 MB) and removal of personal videos | All commit hashes changed; old clones must be re-cloned; GitHub PR refs #3–#7 still hold the old files until GitHub Support purges them | Owner approved scope and force-push |
+| 2026-11-09 | Remove the Experimental label from the small tactical model (Gemma 3 270M); MLBB `TACTICAL_ADVICE` = Partially Operational | Owner decision; the approved readiness test (200+ moments) has not been run yet | Its advice is accepted by the validator and can win the arbiter; Kotlin checks and validator rejections still apply; R4 readiness test stays available as a measurement | Owner decision |
 
 ## 11. Document Maintenance
 

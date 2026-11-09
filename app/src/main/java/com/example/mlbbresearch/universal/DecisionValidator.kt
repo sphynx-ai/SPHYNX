@@ -5,7 +5,7 @@ package com.example.mlbbresearch.universal
 //  - REJECTED: the advice contradicts what is known (all in at very low health, fight with no
 //    enemy in view, farm with nothing to farm, group with no ally in view, malformed / expired).
 //  - ADVISORY ONLY: the advice is valid, but its engine's capability is not usable for this game
-//    (e.g. the small tactical model is Experimental): it may be shown / logged, never acted on.
+//    (an engine whose capability is Experimental for this game): it may be shown / logged, never acted on.
 // Unknown values (null) never cause a rejection - only known contradictions do.
 object DecisionValidator {
 
