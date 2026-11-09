@@ -186,3 +186,5 @@ This is a **hard constraint on every phase**:
 - **Phase 3a pass/fail criterion:** the spike branch must build and install in Code on the Go, confirmed by the owner on the POCO X6 Pro. If not, GGUF is postponed and the LiteRT-LM phases continue without it.
 - Every phase's PR states: "Code on the Go build: confirmed / pending owner check".
 
+
+**Baseline confirmed by the owner (2026-11-09):** `main` at 37.19 (`716af66`) builds and installs with Code on the Go on the POCO X6 Pro. Any phase that breaks this is a regression.
