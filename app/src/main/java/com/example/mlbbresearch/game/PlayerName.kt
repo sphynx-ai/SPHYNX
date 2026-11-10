@@ -80,7 +80,7 @@ object PlayerName {
                 "hero's name is written above the player's name (the skin name, if any, is above the hero name - do not use it); " +
                 "the battle spell icon is at the bottom left of the card.$me$spells Reply with ONLY one JSON object, no other " +
                 "words: {\"top_row\":[{\"player\":\"\",\"hero\":\"\",\"spell\":\"\"}],\"bottom_row\":[{\"player\":\"\",\"hero\":\"\",\"spell\":\"\"}]} " +
-                "with 5 entries each, left to right."
+                "with 5 entries each, left to right (a 1 vs 1 practice shows only one card per row: then 1 entry each)."
         else
             "Mobile Legends: Bang Bang screenshot. This should be the IN-GAME scoreboard (opened during the match - not the " +
                 "end-of-match result screen, which looks different: if it is the end-of-match screen, reply {} only). On the in-game " +
@@ -89,7 +89,7 @@ object PlayerName {
                 "portrait is the battle spell; the small number at the bottom left of each portrait is the hero's LEVEL.$me$spells " +
                 "Reply with ONLY one JSON object, no other words: " +
                 "{\"my_team\":[{\"player\":\"\",\"hero\":\"\",\"spell\":\"\",\"level\":0}],\"enemy_team\":[{\"player\":\"\",\"hero\":\"\",\"spell\":\"\",\"level\":0}]} " +
-                "with 5 entries each, top to bottom."
+                "with 5 entries each, top to bottom (only the rows that show a player)."
     }
 
     // Gemma's answer -> my team, the enemies and me - found ONLY by my name (null when it cannot be told:

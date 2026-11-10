@@ -743,10 +743,10 @@ class MainActivity : Activity() {
         switch("Show where the AI touches", Cfg.showTouches) { Cfg.showTouches = it }
 
         title("RUN")
-        stageSwitch("Player (plays in practice vs Computer; advises in other matches)", "player") { AiRuntime.playerOn }
+        // ONE SWITCH (owner, 2026-11-10): the Player and research mode are one button
+        stageSwitch("Player + research (plays in practice vs Computer; advises in other matches)", "player") { AiRuntime.playerOn }
         stageSwitch("Drafter (ban & pick)", "draft") { AiRuntime.drafterOn }
         stageSwitch("Builder (items)", "build") { AiRuntime.builderOn }
-        stageSwitch("Research mode (practice vs Computer only; arbiter picks fight option, records moments)", "research") { com.example.mlbbresearch.research.ResearchMode.on }
         val resInfo = text("", 12f, color = T.MUTED)
         upd { resInfo.text = com.example.mlbbresearch.research.ResearchMode.momentsText() + "\n" + com.example.mlbbresearch.research.ReadinessRun.status() +
             "\n" + com.example.mlbbresearch.research.ResearchMode.abText() }
