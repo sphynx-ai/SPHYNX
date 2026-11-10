@@ -192,3 +192,88 @@ Each phase adds JVM unit tests for the following, using fakes; no device needed:
 - the thermal and memory policies.
 
 The existing suite (168 tests, VERIFIED on `716af66`) must stay green. Real-device checks are listed separately and are never reported as passed without a device run.
+
+## A.9 Hardware-aware deployment profiles (owner-approved direction, 2026-11-10)
+
+**Origin.** A tier proposal from the project manager (entry / midrange / flagship phones, with a model per tier). Claude Code checked it against published figures and the app's real constraints. The owner approved adding the corrected version here as the plan for the resource manager:
+- hybrid inference **Phase Six**;
+- **Phase F** in this document.
+
+It refines the three intelligence levels of A.6 and does not replace them:
+- Lite ≈ Level 1;
+- Balanced / Advanced ≈ Level 2 / 3;
+- Maximum is new.
+
+The A.6 recommendation "LiteRT-LM as the only runtime" is superseded by the owner's hybrid LiteRT-LM + GGUF directive (`HYBRID_INFERENCE_AUDIT.md`).
+
+### A.9.1 Facts checked (2026-11-10)
+| Fact | Source / status |
+|---|---|
+| llama.cpp b11900 (the pinned spike version, PR #34) has the `gemma4`, `lfm2` and `qwen35` architectures | VERIFIED in `src/llama-arch.cpp` |
+| Gemma 4 E2B on a Galaxy S26 Ultra (LiteRT-LM):<ul><li>GPU: ~3,800 prefill / ~52 decode tok/s, ~680 MB peak *CPU* memory;</li><li>CPU: ~560 / ~47 tok/s, ~1.7 GB.</li></ul>E4B:<ul><li>GPU: ~1,300 / ~22 tok/s, ~710 MB;</li><li>CPU: ~3.3 GB.</li></ul>On phones the GPU uses the same RAM, so the GPU memory figures are **not** the total. | Google's published figures (LiteRT-LM Gemma 4 page and model cards); flagship only, midrange unknown |
+| Gemma 4 E2B as a Q4_K_M GGUF: **3.1–3.4 GB file** | Hugging Face quant listings |
+| LFM2.5-1.2B (Liquid AI): Q4 GGUF about 0.86 GB | Model card (desktop figures only) |
+| LFM2.5 license: **LFM Open License v1.0**, free commercial use only under US$10M yearly revenue | Liquid AI license page |
+| Qwen3.5 0.8B: released March 2026, natively multimodal; community GGUFs exist | Release coverage; license to confirm on the official model card |
+| Representative entry chips (Helio G85 / G81, Unisoc T7250, Dimensity 6080) have Cortex-A75/A76 + A55 cores, which can run the spike's `armv8.2-a+dotprod` build | Public chip specs |
+| MLBB's own RAM need: about 2 GB minimum, 3–4 GB comfortable | Third-party guides only; no official Moonton figure found |
+
+### A.9.2 Corrections to the proposal
+1. **No 3+ GB GGUF strategist on 4 GB phones.** The Gemma 4 E2B GGUF does not fit next to Android and MLBB. It would also be CPU-only and text-only, which loses draft and line-up reading. For Gemma, the LiteRT-LM GPU path is the lighter one.
+2. **A bigger tactical model must be fast enough *and* better:**
+   - the tactical adviser's budget is about 350 ms (Speed page);
+   - prompt prefill dominates, and a 1.2B model is roughly 4× the work of 270M;
+   - it is used only if the measured time to the first token fits the budget **and** the practice benchmark / readiness test shows better advice.
+3. **"Both models loaded" is a runtime decision, not a tier setting:**
+   - during a match MLBB is the foreground app and Sphynx is a background process, the first one Android closes under memory pressure;
+   - a GPU strategist competes with the game's rendering;
+   - a CPU tactical model competes with the game and with screen reading.
+4. **The play loop never waits for a language model, on every tier.** Screen → decision → touch stays on the rules engine (with the optional TFLite networks); LLMs only steer. The screen-to-touch recorder (PR #35) checks this per device.
+5. **Licenses.** Users bring their own model files, so the app distributes none. LFM's revenue limit and Gemma's terms matter only if Sphynx is ever sold.
+
+### A.9.3 Profiles (to be validated per device; not guarantees)
+| Profile | Chosen when (measured on this phone) | Strategist | Tactical |
+|---|---|---|---|
+| **Lite** | Free memory with MLBB running too low for a strategist, or no LiteRT-LM backend loads | Only during the draft and between matches, then unloaded; otherwise rules and the online meta | Rules only, or Gemma 3 270M if its time to first token fits the budget |
+| **Balanced** | Gemma 4 E2B loads on the GPU with headroom left | Gemma 4 E2B (LiteRT-LM, GPU) | Gemma 3 270M (CPU) |
+| **Advanced** | Balanced, plus a 0.8–1.2B model meets the tactical budget **and** improves the practice / readiness scores | Gemma 4 E2B (LiteRT-LM, GPU) | Qwen3.5 0.8B or LFM2.5 1.2B (GGUF, CPU) |
+| **Maximum** | A flagship-class phone with enough measured free memory for E4B on the GPU plus the tactical model | Gemma 4 E4B (LiteRT-LM, **GPU only**) | LFM2.5 1.2B or Gemma 4 E2B |
+
+**What the selector reads** (all measured; never the brand name or the advertised RAM):
+1. available memory **while MLBB is running**;
+2. which backend actually loaded each model (load sentinel and blocklist, Phase Two);
+3. speed-test results on this phone: time to first token and tokens/s per model and backend (`ModelSpeed`, PR #35);
+4. screen-to-touch with the models on vs off (`TouchSpeed`, PR #35);
+5. thermal status over a whole match.
+
+**Stepping down during a match:**
+- one profile down when the thermal status reaches MODERATE (2) or higher, or when Android signals low memory (`onTrimMemory`);
+- back up only after a cool-down and at a quiet moment (not in a fight).
+
+**Profile per device:**
+- the chosen profile and the evidence behind it are shown on the Model / Speed page;
+- the owner can force a lower profile, never a higher one than measured.
+
+### A.9.4 Requirements to publish
+| | Minimum (experimental) | Recommended |
+|---|---|---|
+| CPU / ABI | 64-bit ARM (arm64-v8a); LiteRT-LM ships only arm64 and x86_64 | Upper-midrange or flagship |
+| Android | 11 (the app's minSdk 30) | Latest supported |
+| RAM | **6 GB**: Lite profile only, not full autonomy | **8–12 GB**: Balanced / Advanced |
+| Storage | Enough for the chosen model files plus a copy, with the free-space check before import | 256 GB |
+
+**Validation status:**
+- Only the owner's POCO X6 Pro (midrange; Balanced / Advanced candidate) can be tested today.
+- The other phones in the proposal are examples. A phone becomes "validated for profile X" only with speed-test and practice-benchmark results from it (Phase G).
+
+### A.9.5 Where it is built
+| Step | Phase |
+|---|---|
+| Measurement | **Done in PR #35** (speed recorder) and **PR #34** (GGUF test card) |
+| Load sentinel and blocklist | Phase Two |
+| Model registry | Phase Four |
+| Assignment per engine | Phase Five |
+| Profile selector, runtime step-down, profile display | **Phase Six** (resource manager) = Phase F here |
+| Per-device validation | Phase G |
+
+Unit tests use fakes for the selector rules: memory and thermal thresholds, step-down / step-up, and never above the measured profile.
