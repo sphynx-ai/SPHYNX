@@ -27,7 +27,9 @@ object ScoreboardNameCheck {
     // empty one. Empty rows are not players, so they are not checked.
     const val ALLY_GOLD_X0 = 0.450f; const val ALLY_GOLD_X1 = 0.492f
     const val ENEMY_GOLD_X0 = 0.508f; const val ENEMY_GOLD_X1 = 0.550f
-    const val GOLD_MIN_FRACTION = 0.004f
+    // (device test 2026-11-10: at the app's 800x359 capture the digits are blurred into the dark row, so
+    // the colour test is looser. Measured at 800x359: 1.9..14% in a player's row, 0 in an empty one)
+    const val GOLD_MIN_FRACTION = 0.008f
 
     fun check(px: IntArray, w: Int, h: Int, m: ComputerNameMatcher): Result =
         decide(highlightedRow(px, w, h),
@@ -58,7 +60,7 @@ object ScoreboardNameCheck {
         var n = 0; var all = 0
         for (y in y0 until y1) for (x in x0 until x1) {
             val p = px[y * w + x]; val r = (p shr 16) and 255; val g = (p shr 8) and 255; val b = p and 255
-            if (r >= 200 && g >= 165 && r - b >= 60 && r - g in 15..65) n++
+            if (r >= 130 && r - b >= 45 && g - b >= 20 && r - g in 8..75) n++
             all++
         }
         return all > 0 && n.toFloat() / all >= GOLD_MIN_FRACTION

@@ -83,4 +83,13 @@ class LoadingNameCheckTest {
         assertEquals(Verdict.ALL_COMPUTER, LoadingNameCheck.fromSolo(0.94f).verdict)
         assertEquals(Verdict.NOT_PROVEN, LoadingNameCheck.fromSolo(0.40f).verdict)
     }
+
+    // at the app's 800x359 capture (device test 2026-11-10; the owner's screenshots shrunk to that size)
+    @Test fun atTheAppsCaptureSize() {
+        val practice = listOf(0.36f, 0.88f, 0.87f, 0.84f, 0.88f, 0.89f, 0.87f, 0.88f, 0.86f, 0.88f)
+        assertEquals(Verdict.ALL_COMPUTER, LoadingNameCheck.fromGrid(practice).verdict)
+        val real = listOf(0.17f, 0.12f, 0.17f, 0.10f, 0.12f, 0.25f, 0.25f, 0.18f, 0.30f, 0.50f)
+        assertEquals(Verdict.NOT_PROVEN, LoadingNameCheck.fromGrid(real).verdict)
+        assertEquals(Verdict.ALL_COMPUTER, LoadingNameCheck.fromSolo(0.81f).verdict)
+    }
 }

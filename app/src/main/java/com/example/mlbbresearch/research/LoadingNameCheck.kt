@@ -55,7 +55,9 @@ object LoadingNameCheck {
     //  - 5v5 practice vs Computer: your card 0.22, the 9 others 0.90..0.94;
     //  - 5v5 with real players (two screenshots): 0.30 at most on every spot;
     //  - solo practice: the enemy card 0.94, your card 0.27.
-    const val PIXEL_COMPUTER = 0.80f
+    //  At the app's 800x359 capture (device test 2026-11-10; screenshots shrunk to that size): 5v5 practice
+    //  0.84..0.89, solo enemy card 0.81, real players 0.50 at most - so the line sits at 0.75.
+    const val PIXEL_COMPUTER = 0.75f
 
     // 5v5: ten spots (top row then bottom row); at least 9 must read "Computer" (yours is the 10th)
     fun fromGrid(scores: List<Float>): Result {
