@@ -710,7 +710,7 @@ class MainActivity : Activity() {
         switch("Show where the AI touches", Cfg.showTouches) { Cfg.showTouches = it }
 
         title("RUN")
-        stageSwitch("Player (plays the hero - practice vs Computer only)", "player") { AiRuntime.playerOn }
+        stageSwitch("Player (plays in practice vs Computer; advises in other matches)", "player") { AiRuntime.playerOn }
         stageSwitch("Drafter (ban & pick)", "draft") { AiRuntime.drafterOn }
         stageSwitch("Builder (items)", "build") { AiRuntime.builderOn }
         stageSwitch("Research mode (practice vs Computer only; arbiter picks fight option, records moments)", "research") { com.example.mlbbresearch.research.ResearchMode.on }

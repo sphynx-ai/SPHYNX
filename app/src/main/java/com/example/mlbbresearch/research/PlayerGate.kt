@@ -8,6 +8,8 @@ package com.example.mlbbresearch.research
 //  - WAIT:    not verified yet (open the scoreboard once)       -> nothing is sent, the thumb is lifted
 //  - LOCKED:  a human player was seen in this match            -> nothing is sent for the rest of it
 //  - UNKNOWN: the match is not identified (id 0)               -> nothing is sent
+// In every verdict but PLAY the Player becomes a COMPANION: strategist + tactical advisor keep working
+// and their advice is shown, nothing is touched (AiRuntime.advise).
 // Drafter and Builder are NOT gated (owner decision): they do not play against other players.
 object PlayerGate {
 
