@@ -23,6 +23,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-10", Kind.FIXED, "Practice check reads \"Computer\" at the app's capture size",
+            "The app reads the screen at 800x359, where \"Computer\" is only about 49x9 pixels: the practice check read it as " +
+                "unclear (0.66) and never unlocked the Player. It now matches the word at that size (0.92 on the scoreboard, " +
+                "0.81-0.89 on loading cards; real players' names 0.50 at most), and finds the scoreboard rows with a player there too.",
+            pr = 42, needsDeviceCheck = true),
         Entry("2026-11-10", Kind.NEW, "Practice check: 5v5 loading screen read without Gemma",
             "A 5v5 practice match vs Computer is verified on its loading screen from the picture alone, like solo practice: " +
                 "the 9 other cards must read \"Computer\" (measured 0.90-0.94 on your screenshot; real players' names 0.30 at most).",
