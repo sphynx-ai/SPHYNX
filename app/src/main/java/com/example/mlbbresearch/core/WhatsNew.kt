@@ -26,7 +26,8 @@ object WhatsNew {
         Entry("2026-11-10", Kind.IMPROVED, "Player mode is for practice vs Computer only",
             "Your decision: the Player plays the hero only in a match verified as practice against Computer (open the scoreboard " +
                 "once). In Ranked, Classic or any other match it becomes your companion: the strategist and the tactical advisor " +
-                "keep working and show their advice on the floating panel, but nothing is touched. Drafter and Builder are unchanged.",
+                "keep working and show their advice on the floating panel, including which skill to level up next, but nothing is " +
+                "touched (skills are leveled for you only in practice). Drafter and Builder are unchanged.",
             pr = 30, needsDeviceCheck = true),
         Entry("2026-11-08", Kind.FIXED, "Skills released where they were aimed; no more chasing the Lithowanderer",
             "From your 13 recordings: a skill was re-aimed at release with the AI's newest decision - a third of skills went 90 degrees " +

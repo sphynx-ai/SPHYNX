@@ -434,7 +434,10 @@ object AiRuntime {
             TacticalAdvisor.tick(s, profile)
             val d = TacticalEngine.decide(s, profile, StrategicAdvisor.plan, Cfg.learnedBias(hero ?: "unknown"), null)
             val small = TacticalAdvisor.latestAdvice()?.takeIf { now - it.second < 1500 }?.first
-            advice = d.describe() + (small?.let { " | small model: ${it.label}" } ?: "")
+            // skill leveling is advice only here: no tap (maybeUpgrade stays in the practice play loop)
+            val skills = com.example.mlbbresearch.game.SkillAdvice.line(
+                com.example.mlbbresearch.game.SkillOrder.of(hero), s.hud.upgradeReady)
+            advice = d.describe() + (small?.let { " | small model: ${it.label}" } ?: "") + "\n  " + skills
         } catch (t: Throwable) {
             advice = "-"
             Diag.error("Advice", t)
