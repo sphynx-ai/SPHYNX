@@ -162,17 +162,58 @@ object ResearchMode {
     // the practice gate also watches the scoreboard while Player mode is on (Player is practice-only)
     fun gateWatching(): Boolean = on || com.example.mlbbresearch.ai.AiRuntime.playerOn
 
+    // THE GATE'S LAST READING, shown on the floating panel (device test 2026-11-10: "blocked" alone did not
+    // tell whether the scoreboard was read at all, or read and found unclear)
+    @Volatile var lastReading = "no loading screen / scoreboard reading yet"; private set
+    @Volatile var lastReadingAt = 0L; private set
+    private fun reading(text: String, nowMs: Long) { lastReading = text; lastReadingAt = nowMs }
+    private fun f2(v: Float) = "%.2f".format(java.util.Locale.US, v)
+
     fun observeScoreboard(px: IntArray, w: Int, h: Int, nowMs: Long = System.currentTimeMillis()) {
         if (!gateWatching() || nowMs - lastAt < EVERY_MS) return
         // the app's floating window / boxes are hidden on the scoreboard; read only once they are gone
         // (screen capture records them over the names - device test 2026-11-10)
-        if (!com.example.mlbbresearch.controller.OverlayManager.clearOfOverlay(nowMs)) return
+        if (!com.example.mlbbresearch.controller.OverlayManager.clearOfOverlay(nowMs)) {
+            reading("scoreboard seen - waiting for the floating window to hide", nowMs); return
+        }
         lastAt = nowMs
+        val m = matcher() ?: run { reading("scoreboard seen - the 'Computer' picture could not be loaded", nowMs); return }
+        val id = GameStateTracker.matchId
+        if (id == 0L) { reading("scoreboard seen - match not identified yet", nowMs); return }
+        val before = session.gate.state
+        val r = ScoreboardNameCheck.check(px, w, h, m)
+        session.observe(id, r, nowMs)
+        reading("scoreboard ${w}x$h: ${r.verdict.name.lowercase().replace('_', ' ')} - ${r.note}" +
+            (if (r.selfRow >= 0) " (your row ${r.selfRow + 1})" else "") +
+            "; ally " + r.ally.joinToString(" ") { f2(it) } + " | enemy " + r.enemy.joinToString(" ") { f2(it) }, nowMs)
+        if (session.gate.state != before) { Diag.info(session.status(true)); GateFeedback.changed(session.gate.state) }
+    }
+
+    // SOLO PRACTICE LOADING SCREEN, from the pixels alone (no Gemma needed - owner 2026-11-10): the enemy
+    // card's player name is "Computer" at 0.8x the scoreboard size. Measured on the owner's 2712x1220
+    // loading screenshot: 0.94 at x 0.581, y 0.889; your own card's name ("100%KO") 0.27.
+    // Only verifies; anything else leaves the match to the scoreboard.
+    const val SOLO_NAME_X = 0.5808f
+    const val SOLO_NAME_Y = 0.8893f
+    const val SOLO_NAME_SIZE = 0.8f
+    @Volatile private var lastLoadAt = 0L
+
+    fun observeLoadingFrame(px: IntArray, w: Int, h: Int, nowMs: Long = System.currentTimeMillis()) {
+        if (!gateWatching() || nowMs - lastLoadAt < EVERY_MS) return
+        if (!com.example.mlbbresearch.vision.ScreenReader.soloLoading(px, w, h)) return
+        if (!com.example.mlbbresearch.controller.OverlayManager.clearOfOverlay(nowMs)) return
+        lastLoadAt = nowMs
         val m = matcher() ?: return
         val id = GameStateTracker.matchId
+        if (id == 0L) { reading("solo loading screen - match not identified yet", nowMs); return }
+        val sc = m.score(px, w, h, SOLO_NAME_X, SOLO_NAME_Y, sizeMul = SOLO_NAME_SIZE)
+        val r = LoadingNameCheck.Result(
+            if (sc >= ScoreboardNameCheck.IS_COMPUTER) LoadingNameCheck.Verdict.ALL_COMPUTER else LoadingNameCheck.Verdict.NOT_PROVEN,
+            "solo practice loading card: 'Computer' ${f2(sc)}")
         val before = session.gate.state
-        session.observe(id, ScoreboardNameCheck.check(px, w, h, m), nowMs)
-        if (session.gate.state != before) Diag.info(session.status(true))
+        session.observeLoading(id, r, nowMs)
+        reading("solo loading screen ${w}x$h: ${r.note}", nowMs)
+        if (session.gate.state != before) { Diag.info(session.status(true)); GateFeedback.changed(session.gate.state) }
     }
 
     // the loading screen (StrategicAdvisor's line-up read of it): all 9 others "Computer" verifies the
@@ -183,7 +224,9 @@ object ResearchMode {
         val before = session.gate.state
         val r = LoadingNameCheck.check(reply, green, myName)
         session.observeLoading(id, r, nowMs)
+        reading("loading screen (Gemma): ${r.note}", nowMs)
         Diag.info(if (session.gate.state != before) session.status(true) else "Practice check, loading screen: ${r.note}")
+        if (session.gate.state != before) GateFeedback.changed(session.gate.state)
     }
 
     // read the loading screen again while this match is not verified yet
@@ -230,7 +273,13 @@ object ResearchMode {
     }
 
     fun status(): String {
-        if (on) session.sync(GameStateTracker.matchId, System.currentTimeMillis())
+        val now = System.currentTimeMillis()
+        if (on) session.sync(GameStateTracker.matchId, now)
+        val last = "\n  gate's last reading" + (if (lastReadingAt > 0) " (${(now - lastReadingAt) / 1000} s ago)" else "") + ": $lastReading"
+        return statusBase() + last
+    }
+
+    private fun statusBase(): String {
         val base = session.status(on)
         if (!allowsAutonomy()) return base
         return if (experimentFailed) "$base - R3 experiment stopped after an error"

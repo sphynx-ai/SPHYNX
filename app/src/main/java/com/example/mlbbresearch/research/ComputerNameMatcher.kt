@@ -29,8 +29,9 @@ class ComputerNameMatcher(template: ByteArray, private val tw: Int = 169, privat
 
     // best match of the template with its top-left corner near (x0, y0), in screen fractions;
     // searches +-dx / +-dy reference pixels. Returns -1 when the window leaves the frame.
-    fun score(px: IntArray, w: Int, h: Int, x0: Float, y0: Float, dx: Int = 24, dy: Int = 16): Float {
-        val scale = w.toFloat() / REF_WIDTH
+    // sizeMul: the word's size relative to the scoreboard's (the solo loading card: 0.8)
+    fun score(px: IntArray, w: Int, h: Int, x0: Float, y0: Float, dx: Int = 24, dy: Int = 16, sizeMul: Float = 1f): Float {
+        val scale = w.toFloat() / REF_WIDTH * sizeMul
         val (tp, sw, sh) = scaledTemplate(scale)
         var tMean = 0f; for (v in tp) tMean += v; tMean /= tp.size
         var tVar = 0f; for (v in tp) tVar += (v - tMean) * (v - tMean)

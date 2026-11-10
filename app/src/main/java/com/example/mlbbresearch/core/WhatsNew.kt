@@ -23,6 +23,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-10", Kind.FIXED, "Practice check: solo loading card read without Gemma; last reading on the panel; vibration",
+            "Solo practice is verified from the enemy card's \"Computer\" on the loading screen, from the picture alone (Gemma " +
+                "not needed). The floating panel shows the practice check's last reading (what it saw and its scores), and the " +
+                "phone vibrates once when the Player is unlocked and three times when a real player locks the match.",
+            pr = 40, needsDeviceCheck = true),
         Entry("2026-11-10", Kind.FIXED, "Solo practice is identified; scenery calibration waits for the unlocked Player",
             "Solo practice (you vs one Computer) was never identified as a match - its loading screen was not recognised and a " +
                 "quick restart was not seen as a new match - so the practice check never unlocked the Player. Both are fixed. " +
