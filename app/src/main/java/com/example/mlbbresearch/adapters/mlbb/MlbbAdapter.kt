@@ -40,7 +40,9 @@ object MlbbAdapter : GameAdapter<GameState> {
         Capability.ITEMS_GOLD to SupportStatus.EXPERIMENTAL,
         Capability.OBJECTIVES to SupportStatus.PARTIAL,
         Capability.STRATEGIC_ADVICE to SupportStatus.PARTIAL,
-        Capability.TACTICAL_ADVICE to SupportStatus.EXPERIMENTAL,
+        // owner decision 2026-11-09: the small tactical model (Gemma 3 270M) is no longer Experimental -
+        // its advice may be used like the other engines' (it still passes the Kotlin checks and the validator)
+        Capability.TACTICAL_ADVICE to SupportStatus.PARTIAL,
         Capability.DRAFT_ADVICE to SupportStatus.PARTIAL,
         Capability.BUILD_ADVICE to SupportStatus.PARTIAL,
         Capability.POST_MATCH to SupportStatus.EXPERIMENTAL

@@ -14,7 +14,7 @@ import java.io.File
 // (>= 200 moments, >= 98% valid replies, >= 85% agreement, 0 unsafe, p95 <= 300 ms).
 // It is a test bench only: it never touches the game, it runs only while Player mode is off (so it
 // does not compete with play for the CPU and the latency is measured fairly), and a passing report
-// does NOT promote the model - the small model stays advisory until the owner decides.
+// measures the model on real practice moments (the owner removed its Experimental label on 2026-11-09).
 object ReadinessRun {
 
     @Volatile var running = false; private set
@@ -73,7 +73,7 @@ object ReadinessRun {
     fun stop() { stopAsked = true }
 
     fun describe(r: TacticalReadiness.Report, n: Int): String = buildString {
-        append(if (r.ready) "Small model MEETS the criteria on $n practice moments (still advisory: promotion is the owner's decision)"
+        append(if (r.ready) "Small model MEETS the criteria on $n practice moments"
         else "Small model NOT READY on $n practice moments: " + r.reasons.joinToString("; "))
         append("\nvalid %.1f%%, agreement %.1f%%, unsafe %d, rejected by the validator %d, latency p50 %d ms / p95 %d ms".format(
             java.util.Locale.US, r.validRate * 100, r.agreementRate * 100, r.unsafe, r.rejectedByValidator, r.p50LatencyMs, r.p95LatencyMs))

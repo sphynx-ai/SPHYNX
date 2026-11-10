@@ -395,7 +395,7 @@ Next recommended task:
 | Final authority | Human project owner |
 | Strategic AI | Gemma 4 E2B |
 | Tactical AI | Gemma 3 270M |
-| Tactical autonomy | Not authorized; advice-only pending validation |
+| Tactical AI status | Gemma 3 270M is no longer Experimental (owner, 2026-11-09): its advice may be used like the other engines', always after the Kotlin checks and the validator |
 | Repository scope | Sphynx-Auto-Pilot only |
 
 For each new decision, record its date, rationale, implementation impact, and owner approval where required.
@@ -409,6 +409,7 @@ For each new decision, record its date, rationale, implementation impact, and ow
 | 2026-11-07 | Autonomous tactical actions stay disabled; no major rewrite; preserve MLBB functionality | Stability over speed | See finding 4.1 for the existing gated use | Owner directive |
 | 2026-11-07 | Pin `litertlm-android` to an exact version (`0.19.1`); upgrades go in their own PR | A new LiteRT-LM release could change how the Gemma models load and run without any code change | Builds are reproducible; upgrades must be made on purpose | Owner requested (PR #8) |
 | 2026-11-07 | Remove both videos and all old build output from the Git history of all branches (rewrite + force-push) | Repository size (283 MB → 1.1 MB) and removal of personal videos | All commit hashes changed; old clones must be re-cloned; GitHub PR refs #3–#7 still hold the old files until GitHub Support purges them | Owner approved scope and force-push |
+| 2026-11-09 | Remove the Experimental label from the small tactical model (Gemma 3 270M); MLBB `TACTICAL_ADVICE` = Partially Operational | Owner decision; the approved readiness test (200+ moments) has not been run yet | Its advice is accepted by the validator and can win the arbiter; Kotlin checks and validator rejections still apply; R4 readiness test stays available as a measurement | Owner decision |
 | 2026-11-10 | **Player mode is practice-only:** it plays only in a match verified as practice vs Computer (scoreboard check, `research/PlayerGate`); never in matches with real players. Goal: match or beat the game's own AI and use practice as the learning environment. Drafter and Builder stay available in all matches | Owner: "I don't want to use it to play live matches against real players anymore"; autonomy development needs one safe boundary | All autonomous play (Player, R3 arbiter, future autonomy levels) is behind the practice gate | Owner decision |
 | 2026-11-10 | **Companion split in non-practice matches:** skill leveling is advice only (panel shows which skill to level); item actives (Frozen, Wind Chant, Conceal) are pressed automatically by the Builder; quick buy and the low-HP item swap stay automatic | Owner: "It should just advise what to prioritize leveling up"; owner chose option 2 (automatic, part of the Builder) for item actives | `SkillAdvice` (no taps); `ActionExecutor.builderActive` gated by `PlayerGate.builderPressesActives`; setting "Press item actives" on the Build page | Owner decision |
 

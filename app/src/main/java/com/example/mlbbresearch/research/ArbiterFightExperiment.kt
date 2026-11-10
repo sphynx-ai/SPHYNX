@@ -14,7 +14,8 @@ import com.example.mlbbresearch.universal.UniversalMatchState
 //  - no fight choice this moment (no enemy nearby) -> nothing to decide;
 //  - the arbiter picks nothing, or a kind that is not a fight option (push, defend, ...) -> normal;
 //  - the arbiter's option fails the app's own Kotlin checks (TacticalAdvisor.check) -> normal.
-// The small tactical model stays advisory: the validator never lets an Experimental engine win.
+// Engines whose capability is Experimental stay advisory (the validator never lets them win). Since the owner's
+// decision of 2026-11-09 the small tactical model is not Experimental for MLBB, so it competes like the others.
 // This decides WHICH fight option is played; it adds no new kind of action.
 class ArbiterFightExperiment(private val maxLog: Int = 30) {
 

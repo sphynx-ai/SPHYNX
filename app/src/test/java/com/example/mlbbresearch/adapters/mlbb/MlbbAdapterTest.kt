@@ -111,9 +111,21 @@ class MlbbAdapterTest {
     @Test fun capabilitiesMatchTheAuditMatrix() {
         val c = MlbbAdapter.toUniversal(state()).capabilities
         assertEquals(SupportStatus.UNSUPPORTED, c.status(Capability.GAME_RECOGNITION))
-        assertEquals(SupportStatus.EXPERIMENTAL, c.status(Capability.TACTICAL_ADVICE))
+        assertEquals(SupportStatus.PARTIAL, c.status(Capability.TACTICAL_ADVICE))   // owner, 2026-11-09: no longer Experimental
         assertEquals(SupportStatus.PARTIAL, c.status(Capability.STRATEGIC_ADVICE))
         // nothing is device-verified yet, so nothing may claim OPERATIONAL
         assertTrue(c.all().values.none { it == SupportStatus.OPERATIONAL })
+    }
+
+    // the small tactical model's advice is now accepted for MLBB - but the validator's checks still apply
+    @Test fun tacticalModelAdviceIsAcceptedButStillChecked() {
+        val u = MlbbAdapter.toUniversal(state())
+        val ok = com.example.mlbbresearch.universal.Decision(com.example.mlbbresearch.universal.DecisionKind.RETREAT,
+            com.example.mlbbresearch.universal.EngineSource.TACTICAL, u.timestampMs, 1000L)
+        assertEquals(com.example.mlbbresearch.universal.DecisionValidator.Outcome.ACCEPTED,
+            com.example.mlbbresearch.universal.DecisionValidator.validate(ok, u, u.timestampMs).outcome)
+        val bad = ok.copy(kind = com.example.mlbbresearch.universal.DecisionKind.ENGAGE, confidence = 2f)
+        assertEquals(com.example.mlbbresearch.universal.DecisionValidator.Outcome.REJECTED,
+            com.example.mlbbresearch.universal.DecisionValidator.validate(bad, u, u.timestampMs).outcome)
     }
 }
