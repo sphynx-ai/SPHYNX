@@ -23,6 +23,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-10", Kind.FIXED, "Solo practice is identified; scenery calibration waits for the unlocked Player",
+            "Solo practice (you vs one Computer) was never identified as a match - its loading screen was not recognised and a " +
+                "quick restart was not seen as a new match - so the practice check never unlocked the Player. Both are fixed. " +
+                "The scenery calibration tour now starts only once the practice check has unlocked the Player.",
+            pr = 39, needsDeviceCheck = true),
         Entry("2026-11-10", Kind.FIXED, "Practice check from the loading screen; overlay hidden on loading and scoreboard; one Player switch",
             "The floating window and the boxes are hidden on the loading screen and the scoreboard (they covered the names, so a " +
                 "practice match was locked). A practice match is now verified on the loading screen when the 9 others are " +
