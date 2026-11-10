@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "skills": {
+    "android-architecture": {
+      "source": "new-silvermoon/awesome-android-agent-skills",
+      "sourceType": "github",
+      "skillPath": ".github/skills/architecture/android-architecture/SKILL.md",
+      "computedHash": "3bf982219357fc33d70ce9f598f358d06f9b0135c3cd40e3a036496841504367"
+    },
+    "android-testing": {
+      "source": "new-silvermoon/awesome-android-agent-skills",
+      "sourceType": "github",
+      "skillPath": ".github/skills/testing_and_automation/android-testing/SKILL.md",
+      "computedHash": "744cd26fe4f2b741f86a93d20e72b27399edd8aef8345e908aceae9df37c278c"
+    },
+    "claude-api": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/claude-api/SKILL.md",
+      "computedHash": "b0d8cf8ac6b744f9e8feb3aa0f5c8e2c621952974cd114bea4dbd009c57b2cf3"
+    },
+    "gradle-build-performance": {
+      "source": "new-silvermoon/awesome-android-agent-skills",
+      "sourceType": "github",
+      "skillPath": ".github/skills/performance/gradle-build-performance/SKILL.md",
+      "computedHash": "4d9868684c2a41e519604e797df4cd8c6b32aa604dcb0d6b63174ea316a7f19f"
+    },
+    "kotlin-concurrency-expert": {
+      "source": "new-silvermoon/awesome-android-agent-skills",
+      "sourceType": "github",
+      "skillPath": ".github/skills/concurrency_and_networking/kotlin-concurrency-expert/SKILL.md",
+      "computedHash": "9b85fad8c81892908c8a4a7d0895c8f8b9647669640a22caa17f33c4553e3b49"
+    },
+    "litert-lm": {
+      "source": "android/skills",
+      "sourceType": "github",
+      "skillPath": "device-ai/litert/litert-lm/SKILL.md",
+      "computedHash": "601dfa597e913e88f28efc58f8f49c16962ea7c787123be55284523e1c9a90b1"
+    },
+    "litert-runtime": {
+      "source": "android/skills",
+      "sourceType": "github",
+      "skillPath": "device-ai/litert/litert-runtime/SKILL.md",
+      "computedHash": "c1d87869831aab293d871ff4f3b4662ae96f41ad4d4ba8893af10cff386f74cd"
+    },
+    "llama-cpp": {
+      "source": "tt-a1i/hermes-agent",
+      "sourceType": "github",
+      "skillPath": "skills/mlops/inference/llama-cpp/SKILL.md",
+      "computedHash": "e26e7390d67e3c963944286a89b5faaee4db427a8bfc25bfc18749841696bc63"
+    },
+    "retrieving-developer-knowledge": {
+      "source": "google/skills",
+      "sourceType": "github",
+      "skillPath": "skills/developers/retrieving-developer-knowledge/SKILL.md",
+      "computedHash": "f4ac5fd363551ef83a6151b9455332fda818fc74507d78193988d8dcadc813b2"
+    }
+  }
+}
