@@ -27,6 +27,7 @@ object WhatsNew {
             "The floating window and the boxes are hidden on the loading screen and the scoreboard (they covered the names, so a " +
                 "practice match was locked). A practice match is now verified on the loading screen when the 9 others are " +
                 "\"Computer\", and a real player must be seen twice in a row to lock it. The Player and research mode are one switch. " +
+                "Solo practice (you and one Computer enemy) is verified too: empty scoreboard rows are skipped. " +
                 "A Blessed Retribution icon now counts as Retribution, so the hero goes to the jungle.",
             pr = 38, needsDeviceCheck = true),
         Entry("2026-11-10", Kind.NEW, "Speed recorder: both language models and screen to touch",
