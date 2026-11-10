@@ -13,10 +13,12 @@ object Speed {
     private var loggedAt = 0L
 
     private fun avg(old: Float, v: Long) = if (old == 0f) v.toFloat() else old * 0.9f + v * 0.1f
-    fun vision(ms: Long) { vision = avg(vision, ms) }
-    fun touch(ms: Long) { touch = avg(touch, ms) }
+    // every raw value also goes to the screen-to-touch recorder (TouchSpeed), which keeps exact samples
+    fun vision(ms: Long) { vision = avg(vision, ms); TouchSpeed.log.reading(ms) }
+    fun touch(ms: Long) { touch = avg(touch, ms); TouchSpeed.log.touchQueue(ms) }
     fun decided(waitMs: Long, decideMs: Long) {
         wait = avg(wait, waitMs); decide = avg(decide, decideMs)
+        TouchSpeed.log.decided(waitMs, decideMs)
         val now = System.currentTimeMillis()
         if (now - loggedAt > 15_000) { loggedAt = now; Diag.info("Speed: " + text()) }
     }

@@ -110,6 +110,7 @@ object SessionRecorder {
     // the app's private storage; copies go next to the recording: <session>-ab_log.json etc.
     private fun exportResearch(c: Context, base: String): String {
         try { com.example.mlbbresearch.research.ResearchMode.saveMoments() } catch (e: Exception) { }
+        try { com.example.mlbbresearch.ai.ModelSpeed.save(sync = true); TouchSpeed.save(sync = true) } catch (e: Exception) { }
         val dir = File(c.filesDir, "research")
         val files = dir.listFiles()?.filter { it.isFile && it.length() > 0 } ?: return ""
         if (files.isEmpty()) return ""
@@ -121,8 +122,11 @@ object SessionRecorder {
             export(c, copy, if (src.name.endsWith(".txt")) "text/plain" else "application/json")
             copy.delete(); n++
         } catch (e: Exception) { }
-        return if (n > 0) "$n research file(s) (R5 comparison, practice moments, readiness report)" else ""
+        return if (n > 0) "$n research file(s) (R5 comparison, practice moments, readiness report, model speed, screen to touch)" else ""
     }
+
+    // one file into the recordings folder (used by the Speed page's export)
+    fun exportFile(c: Context, f: File, mime: String): String = export(c, f, mime)
 
     private fun export(c: Context, f: File, mime: String = "application/json"): String {
         Storage.dir(FOLDER)?.let { d ->

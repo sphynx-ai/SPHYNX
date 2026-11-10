@@ -1936,6 +1936,56 @@ class MainActivity : Activity() {
         fun gradeColor(g: Int) = c(when (g) { 0 -> T.GREEN; 1 -> T.GOLD; else -> T.RED })
         text("Live speed of every part of the AI. Dashed line = target.", 13f, color = T.MUTED)
 
+        // ---- SPEED RECORDER: both language models + screen to touch, kept and exported for review ----
+        title("SPEED RECORDER (to send)")
+        text("Recorded all the time: every answer of the strategist and the tactical model (and every load), and the " +
+            "screen-to-touch time while the Player plays. Export and send the CSV files.", 12f, color = T.MUTED)
+        val rc = card()
+        cardHeader(rc, "Language models")
+        val mText = cardText(rc, 12f)
+        val rc2 = card()
+        cardHeader(rc2, "Screen to touch")
+        val tText = cardText(rc2, 12f)
+        val testInfo = text("", 12f, color = T.MUTED)
+        upd {
+            mText.text = com.example.mlbbresearch.ai.ModelSpeed.text()
+            tText.text = com.example.mlbbresearch.core.TouchSpeed.text()
+            val ms = com.example.mlbbresearch.ai.ModelSpeed
+            testInfo.text = "Speed test: " + ms.testStatus + (if (ms.testRunning) " (running)" else "")
+        }
+        switch("Detailed model figures (tokens per second, time to first token); applies when the models next load", Cfg.modelSpeedDetailed) {
+            Cfg.modelSpeedDetailed = it
+            toast(if (it) "On: restart the app (or reload the models) to apply" else "Off: applies when the models next load")
+        }
+        btn("Run the speed test (both models, same questions every time)") {
+            com.example.mlbbresearch.ai.ModelSpeed.runTest { msg -> runOnUiThread { toast(msg.take(150)) } }
+        }
+        btn("Export the speed data (CSV)") {
+            Thread {
+                val msg = try {
+                    val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
+                    com.example.mlbbresearch.ai.ModelSpeed.save(sync = true); com.example.mlbbresearch.core.TouchSpeed.save(sync = true)
+                    val out = ArrayList<String>()
+                    for ((name, body) in listOf("model_speed" to com.example.mlbbresearch.ai.ModelSpeed.csv(),
+                                                "screen_to_touch" to com.example.mlbbresearch.core.TouchSpeed.csv())) {
+                        val f = java.io.File(cacheDir, "$name-$stamp.csv")
+                        f.writeText(body)
+                        out.add(com.example.mlbbresearch.core.SessionRecorder.exportFile(this, f, "text/csv"))
+                        f.delete()
+                    }
+                    out.joinToString("; ")
+                } catch (e: Exception) { "Export failed: ${e.message}" }
+                runOnUiThread { toast(msg.take(200)) }
+            }.start()
+        }
+        btn("Clear the speed data") {
+            AlertDialog.Builder(this).setTitle("Delete the recorded model speed and screen-to-touch data?")
+                .setPositiveButton("Delete") { _, _ ->
+                    com.example.mlbbresearch.ai.ModelSpeed.clear(); com.example.mlbbresearch.core.TouchSpeed.clear(); toast("Deleted")
+                }
+                .setNegativeButton("Cancel", null).show()
+        }
+
         // ---- the phone: CPU, GPU, RAM, ROM (DeviceStats) ----
         val ds = com.example.mlbbresearch.core.DeviceStats
         val pc = card()
