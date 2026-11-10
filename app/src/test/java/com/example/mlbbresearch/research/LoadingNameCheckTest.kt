@@ -63,4 +63,24 @@ class LoadingNameCheckTest {
         // the green card is in the top row: the bottom card can never be "you"
         assertEquals(Verdict.NOT_PROVEN, LoadingNameCheck.check(reply(listOf("Computer"), listOf("xXSlayerXx")), 0 to 2, "").verdict)
     }
+
+    // ---- from the pixels: the scores measured on the owner's loading screenshots (2026-11-10) ----
+    @Test fun fiveVsFivePracticeLoadingVerifies() {
+        val practice = listOf(0.22f, 0.93f, 0.93f, 0.90f, 0.93f, 0.94f, 0.93f, 0.93f, 0.93f, 0.93f)
+        assertEquals(Verdict.ALL_COMPUTER, LoadingNameCheck.fromGrid(practice).verdict)
+    }
+
+    @Test fun fiveVsFiveWithRealPlayersIsNotProven() {
+        val real = listOf(0.18f, 0.20f, 0.19f, 0.13f, 0.10f, 0.22f, 0.22f, 0.20f, 0.25f, 0.30f)
+        assertEquals(Verdict.NOT_PROVEN, LoadingNameCheck.fromGrid(real).verdict)
+        // one real player among 8 bots (mixed match): never proven
+        val mixed = listOf(0.22f, 0.93f, 0.93f, 0.90f, 0.93f, 0.25f, 0.93f, 0.93f, 0.93f, 0.93f)
+        assertEquals(Verdict.NOT_PROVEN, LoadingNameCheck.fromGrid(mixed).verdict)
+        assertEquals(Verdict.NOT_PROVEN, LoadingNameCheck.fromGrid(List(9) { 0.95f }).verdict)   // not 10 spots
+    }
+
+    @Test fun soloLoadingFromPixels() {
+        assertEquals(Verdict.ALL_COMPUTER, LoadingNameCheck.fromSolo(0.94f).verdict)
+        assertEquals(Verdict.NOT_PROVEN, LoadingNameCheck.fromSolo(0.40f).verdict)
+    }
 }

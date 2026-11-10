@@ -23,6 +23,10 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-10", Kind.NEW, "Practice check: 5v5 loading screen read without Gemma",
+            "A 5v5 practice match vs Computer is verified on its loading screen from the picture alone, like solo practice: " +
+                "the 9 other cards must read \"Computer\" (measured 0.90-0.94 on your screenshot; real players' names 0.30 at most).",
+            pr = 41, needsDeviceCheck = true),
         Entry("2026-11-10", Kind.FIXED, "Practice check: solo loading card read without Gemma; last reading on the panel; vibration",
             "Solo practice is verified from the enemy card's \"Computer\" on the loading screen, from the picture alone (Gemma " +
                 "not needed). The floating panel shows the practice check's last reading (what it saw and its scores), and the " +
