@@ -121,8 +121,11 @@ object ResearchMode {
     } catch (e: Exception) { loadFailed = true; Diag.error("Research: template not loaded", e); null }
 
     // called from FrameProcessor on in-match scoreboard frames
+    // the practice gate also watches the scoreboard while Player mode is on (Player is practice-only)
+    fun gateWatching(): Boolean = on || com.example.mlbbresearch.ai.AiRuntime.playerOn
+
     fun observeScoreboard(px: IntArray, w: Int, h: Int, nowMs: Long = System.currentTimeMillis()) {
-        if (!on || nowMs - lastAt < EVERY_MS) return
+        if (!gateWatching() || nowMs - lastAt < EVERY_MS) return
         lastAt = nowMs
         val m = matcher() ?: return
         val id = GameStateTracker.matchId
@@ -133,6 +136,13 @@ object ResearchMode {
 
     // for R3 experiments: true only in a verified practice match, while research mode is on
     fun allowsAutonomy(): Boolean = on && session.allowsAutonomy(GameStateTracker.matchId)
+
+    // Player mode (practice-only): may the Player act in the current match? (independent of research on/off)
+    fun playerVerdict(nowMs: Long = System.currentTimeMillis()): PlayerGate.Verdict {
+        val id = GameStateTracker.matchId
+        session.sync(id, nowMs)
+        return PlayerGate.verdict(id, session.gate.matchId, session.gate.state)
+    }
 
     // R3: called by the play loop once the normal fight option is final. Returns the option to play.
     // Fail-closed: not allowed, or any error (which also stops the experiment for this run) -> normal.

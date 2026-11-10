@@ -226,6 +226,8 @@ object Cfg {
 
     // ---- auto quick buy (item swap when about to die) ----
     var qbOn: Boolean get() = b("qb_on", false); set(v) = put("qb_on", v)
+    // Builder presses item actives (Frozen, Wind Chant, Conceal) in every match the Player does not play
+    var builderActives: Boolean get() = b("builder_actives", true); set(v) = put("builder_actives", v)
     var qbRequireFull: Boolean get() = b("qb_full", true); set(v) = put("qb_full", v)
     var qbRequireGold: Boolean get() = b("qb_gold", true); set(v) = put("qb_gold", v)
     var qbHpPercent: Int get() = i("qb_hp", 25); set(v) = put("qb_hp", v)
