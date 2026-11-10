@@ -189,35 +189,35 @@ object ResearchMode {
         if (session.gate.state != before) { Diag.info(session.status(true)); GateFeedback.changed(session.gate.state) }
     }
 
-    // SOLO PRACTICE LOADING SCREEN, from the pixels alone (no Gemma needed - owner 2026-11-10): the enemy
-    // card's player name is "Computer" at 0.8x the scoreboard size. Measured on the owner's 2712x1220
-    // loading screenshot: 0.94 at x 0.581, y 0.889; your own card's name ("100%KO") 0.27.
+    // THE LOADING SCREEN FROM THE PIXELS ALONE (no Gemma needed - owner 2026-11-10), at 0.8x the
+    // scoreboard's word size (measured on the owner's 2712x1220 screenshots - see LoadingNameCheck):
+    //  - solo practice: the enemy card's name at x 0.581, y 0.889;
+    //  - 5v5: a fixed grid, one card every 0.1073 of the width; name tops at y 0.349 (top row, from
+    //    x 0.0796) and y 0.889 (bottom row, from x 0.3894).
     // Only verifies; anything else leaves the match to the scoreboard.
     const val SOLO_NAME_X = 0.5808f
     const val SOLO_NAME_Y = 0.8893f
-    const val SOLO_NAME_SIZE = 0.8f
+    const val NAME_SIZE = 0.8f
+    private val GRID = (0 until 5).map { (0.0796f + 0.1073f * it) to 0.3492f } + (0 until 5).map { (0.3894f + 0.1073f * it) to 0.8893f }
     @Volatile private var lastLoadAt = 0L
 
     fun observeLoadingFrame(px: IntArray, w: Int, h: Int, nowMs: Long = System.currentTimeMillis()) {
         if (!gateWatching() || nowMs - lastLoadAt < EVERY_MS) return
-        if (!com.example.mlbbresearch.vision.ScreenReader.soloLoading(px, w, h)) return
         if (!com.example.mlbbresearch.controller.OverlayManager.clearOfOverlay(nowMs)) return
         lastLoadAt = nowMs
         val m = matcher() ?: return
         val id = GameStateTracker.matchId
-        if (id == 0L) { reading("solo loading screen - match not identified yet", nowMs); return }
-        val sc = m.score(px, w, h, SOLO_NAME_X, SOLO_NAME_Y, sizeMul = SOLO_NAME_SIZE)
-        val r = LoadingNameCheck.Result(
-            if (sc >= ScoreboardNameCheck.IS_COMPUTER) LoadingNameCheck.Verdict.ALL_COMPUTER else LoadingNameCheck.Verdict.NOT_PROVEN,
-            "solo practice loading card: 'Computer' ${f2(sc)}")
+        if (id == 0L) { reading("loading screen - match not identified yet", nowMs); return }
+        if (session.gate.matchId == id && session.gate.state != PracticeGate.State.UNVERIFIED) return   // already decided
+        val r = if (com.example.mlbbresearch.vision.ScreenReader.soloLoading(px, w, h))
+            LoadingNameCheck.fromSolo(m.score(px, w, h, SOLO_NAME_X, SOLO_NAME_Y, sizeMul = NAME_SIZE))
+        else LoadingNameCheck.fromGrid(GRID.map { (x, y) -> m.score(px, w, h, x, y, dx = 40, sizeMul = NAME_SIZE) })
         val before = session.gate.state
         session.observeLoading(id, r, nowMs)
-        reading("solo loading screen ${w}x$h: ${r.note}", nowMs)
+        reading("loading screen ${w}x$h: ${r.note}", nowMs)
         if (session.gate.state != before) { Diag.info(session.status(true)); GateFeedback.changed(session.gate.state) }
     }
 
-    // the loading screen (StrategicAdvisor's line-up read of it): all 9 others "Computer" verifies the
-    // match before it starts, so the Player is not waiting for the scoreboard (owner, 2026-11-10)
     fun observeLoading(reply: String?, green: Pair<Int, Int>?, myName: String, nowMs: Long = System.currentTimeMillis()) {
         if (!gateWatching()) return
         val id = GameStateTracker.matchId

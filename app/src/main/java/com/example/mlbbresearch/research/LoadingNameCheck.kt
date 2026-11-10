@@ -49,4 +49,23 @@ object LoadingNameCheck {
             if (solo) "solo practice: the 1 other player is 'Computer'" else "all 9 other players are 'Computer'")
         else Result(Verdict.NOT_PROVEN, "${others.size} other card(s) are not 'Computer'")
     }
+
+    // ---- from the PIXELS (no Gemma): the "Computer" picture's scores at the cards' name spots ----
+    // Measured on the owner's 2712x1220 loading screenshots (2026-11-10), at 0.8x the scoreboard size:
+    //  - 5v5 practice vs Computer: your card 0.22, the 9 others 0.90..0.94;
+    //  - 5v5 with real players (two screenshots): 0.30 at most on every spot;
+    //  - solo practice: the enemy card 0.94, your card 0.27.
+    const val PIXEL_COMPUTER = 0.80f
+
+    // 5v5: ten spots (top row then bottom row); at least 9 must read "Computer" (yours is the 10th)
+    fun fromGrid(scores: List<Float>): Result {
+        val n = scores.count { it >= PIXEL_COMPUTER }
+        val shown = scores.joinToString(" ") { "%.2f".format(java.util.Locale.US, it) }
+        return if (scores.size == 10 && n >= 9) Result(Verdict.ALL_COMPUTER, "5v5 loading cards: $n of 10 read 'Computer' ($shown)")
+        else Result(Verdict.NOT_PROVEN, "5v5 loading cards: $n of 10 read 'Computer' ($shown)")
+    }
+
+    // solo practice: the enemy card's one spot
+    fun fromSolo(score: Float): Result = Result(if (score >= PIXEL_COMPUTER) Verdict.ALL_COMPUTER else Verdict.NOT_PROVEN,
+        "solo practice loading card: 'Computer' %.2f".format(java.util.Locale.US, score))
 }
