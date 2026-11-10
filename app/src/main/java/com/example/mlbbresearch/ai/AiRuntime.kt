@@ -346,7 +346,10 @@ object AiRuntime {
                 if (learnOn && Cfg.liveLearn && !stale && s.phase == Phase.LIVE) com.example.mlbbresearch.learning.LiveRecorder.record(s)
                 if (builderOn && inGame) {
                     if (Cfg.qbOn) QuickBuySwap.watch(s)
-                    if (Cfg.autonomous && drafterOn && !(playerOn && Cfg.playerQuickBuy)) ActionExecutor.maybeQuickBuy(s, blind = true)
+                    // the Builder leaves buying to the Player only while the Player really plays (verified practice);
+                    // in Ranked / Classic the Player only advises, so the Builder keeps buying (owner, 2026-11-10)
+                    val playerBuys = playerOn && Cfg.playerQuickBuy && playerGate == com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY
+                    if (Cfg.autonomous && drafterOn && !playerBuys) ActionExecutor.maybeQuickBuy(s, blind = true)
                 }
                 if (drafterOn && !Cfg.ranked && Cfg.autonomous && !stale) standardSelect(s)
                 PerformanceEvaluator.evaluateDue()
