@@ -23,6 +23,10 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-09", Kind.IMPROVED, "Small tactical model is no longer experimental",
+            "Your decision: Gemma 3 270M is a full engine now. Its fight advice can be used like the other engines' - in the decision " +
+                "arbiter too - but it still has to pass the app's Kotlin checks and the validator (no all-in at low HP, etc.).",
+            pr = 29, needsDeviceCheck = true),
         Entry("2026-11-08", Kind.FIXED, "Skills released where they were aimed; no more chasing the Lithowanderer",
             "From your 13 recordings: a skill was re-aimed at release with the AI's newest decision - a third of skills went 90 degrees " +
                 "off (\"aimed right, cast elsewhere\"). Now it releases at the target it was aimed at. On-screen \"enemies\" the minimap " +

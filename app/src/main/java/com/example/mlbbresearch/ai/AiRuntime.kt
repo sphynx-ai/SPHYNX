@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
 //   vision        10-15 fps   (FrameProcessor -> GameStateTracker)
 //   tactics       5 per sec   (TacticalEngine -> ActionExecutor)
 //   strategy      event-based (StrategicAdvisor -> Gemma 4 E2B / 3n E2B)
-//   tactical LLM  in fights, ~3 per second, background (TacticalAdvisor -> small Gemma; advice only)
+//   tactical LLM  in fights, ~3 per second, background (TacticalAdvisor -> small Gemma; its answer passes the Kotlin checks first)
 object AiRuntime {
 
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
