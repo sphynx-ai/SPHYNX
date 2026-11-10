@@ -497,7 +497,8 @@ object AiRuntime {
         sb.append(statusLine()).append('\n')
         if (com.example.mlbbresearch.research.ResearchMode.on) sb.append(com.example.mlbbresearch.research.ResearchMode.status()).append('\n')
         if (playerOn) {
-            val g = playerGate
+            // (the play loop reads the verdict only in play: on the loading screen / scoreboard it is read here)
+            val g = playerGate ?: if (GameStateTracker.matchId != 0L) com.example.mlbbresearch.research.ResearchMode.playerVerdict() else null
             if (g == null || g == com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY) sb.append("Player: ").append(g?.label ?: "waiting for the match").append('\n')
             else sb.append("Advice (you play - ").append(g.label).append("):\n  ").append(advice).append('\n')
         }

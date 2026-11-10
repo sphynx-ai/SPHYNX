@@ -102,6 +102,8 @@ object FrameProcessor {
         // the end-of-match scoreboard: your highlighted row's hero verifies and locks the detection (v36.87)
         if (hint == ScreenHint.RESULT_BOARD && frameNo % 5 == 0L) try { EndBoard.observe(px, w, h) } catch (e: Exception) { }
         // the loading screen: your card = the one with the GREEN name (v36.92), and its spell icon vs the 12 wiki pictures (v37.00)
+        // the practice gate: solo practice is verified from its loading card (no Gemma needed)
+        if (hint == ScreenHint.LOADING) try { com.example.mlbbresearch.research.ResearchMode.observeLoadingFrame(px, w, h) } catch (e: Exception) { }
         if (hint == ScreenHint.LOADING && frameNo % 5 == 1L) try {
             val green = com.example.mlbbresearch.game.PlayerName.greenCard(px, w, h)
                 ?.also { com.example.mlbbresearch.game.GameStateTracker.loadingGreen = it }
