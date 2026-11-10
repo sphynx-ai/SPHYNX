@@ -27,7 +27,8 @@ object WhatsNew {
             "Your decision: the Player plays the hero only in a match verified as practice against Computer (open the scoreboard " +
                 "once). In Ranked, Classic or any other match it becomes your companion: the strategist and the tactical advisor " +
                 "keep working and show their advice on the floating panel, including which skill to level up next, but nothing is " +
-                "touched (skills are leveled for you only in practice). Drafter and Builder are unchanged.",
+                "touched (skills are leveled for you only in practice). Drafter and Builder stay automatic in every match, and the " +
+                "Builder now also presses item actives (Frozen, Wind Chant, Conceal) when the Player is not playing.",
             pr = 30, needsDeviceCheck = true),
         Entry("2026-11-08", Kind.FIXED, "Skills released where they were aimed; no more chasing the Lithowanderer",
             "From your 13 recordings: a skill was re-aimed at release with the AI's newest decision - a third of skills went 90 degrees " +

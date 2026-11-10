@@ -23,4 +23,14 @@ class PlayerGateTest {
     @Test fun unidentifiedMatchNeverPlays() {
         assertEquals(Verdict.UNKNOWN, PlayerGate.verdict(0L, 0L, PracticeGate.State.VERIFIED))
     }
+
+    @Test fun builderPressesItemActivesUnlessThePlayerPlays() {
+        val V = PlayerGate.Verdict.values()
+        for (v in V) org.junit.Assert.assertTrue(PlayerGate.builderPressesActives(true, false, v))
+        org.junit.Assert.assertTrue(PlayerGate.builderPressesActives(true, true, null))
+        org.junit.Assert.assertTrue(PlayerGate.builderPressesActives(true, true, PlayerGate.Verdict.WAIT))
+        org.junit.Assert.assertTrue(PlayerGate.builderPressesActives(true, true, PlayerGate.Verdict.LOCKED))
+        org.junit.Assert.assertFalse(PlayerGate.builderPressesActives(true, true, PlayerGate.Verdict.PLAY))
+        org.junit.Assert.assertFalse(PlayerGate.builderPressesActives(false, false, PlayerGate.Verdict.WAIT))
+    }
 }

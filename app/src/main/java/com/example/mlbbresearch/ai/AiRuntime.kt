@@ -346,6 +346,11 @@ object AiRuntime {
                 if (learnOn && Cfg.liveLearn && !stale && s.phase == Phase.LIVE) com.example.mlbbresearch.learning.LiveRecorder.record(s)
                 if (builderOn && inGame) {
                     if (Cfg.qbOn) QuickBuySwap.watch(s)
+                    // item actives: the Builder presses them in every match the Player does not play (owner, 2026-11-10)
+                    if (!stale && com.example.mlbbresearch.research.PlayerGate.builderPressesActives(Cfg.builderActives, playerOn, playerGate)) {
+                        val d = adviceDecision?.takeIf { System.currentTimeMillis() - adviceDecisionAt < 1500 }
+                        ActionExecutor.builderActive(s, d)
+                    }
                     // the Builder leaves buying to the Player only while the Player really plays (verified practice);
                     // in Ranked / Classic the Player only advises, so the Builder keeps buying (owner, 2026-11-10)
                     val playerBuys = playerOn && Cfg.playerQuickBuy && playerGate == com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY
@@ -437,6 +442,7 @@ object AiRuntime {
             // skill leveling is advice only here: no tap (maybeUpgrade stays in the practice play loop)
             val skills = com.example.mlbbresearch.game.SkillAdvice.line(
                 com.example.mlbbresearch.game.SkillOrder.of(hero), s.hud.upgradeReady)
+            adviceDecision = d; adviceDecisionAt = now
             advice = d.describe() + (small?.let { " | small model: ${it.label}" } ?: "") + "\n  " + skills
         } catch (t: Throwable) {
             advice = "-"
@@ -444,6 +450,8 @@ object AiRuntime {
         }
     }
     @Volatile private var playerHeld = false
+    @Volatile private var adviceDecision: TacticalDecision? = null
+    @Volatile private var adviceDecisionAt = 0L
 
     fun statusLine(): String = when {
         !anyOn() -> "Stopped"

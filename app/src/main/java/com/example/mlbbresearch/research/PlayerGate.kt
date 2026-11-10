@@ -20,6 +20,10 @@ object PlayerGate {
         UNKNOWN("waiting: match not identified yet")
     }
 
+    /** The Builder presses item actives itself unless the Player is really playing (it presses them then). */
+    fun builderPressesActives(enabled: Boolean, playerOn: Boolean, gate: Verdict?): Boolean =
+        enabled && !(playerOn && gate == Verdict.PLAY)
+
     fun verdict(matchId: Long, gateMatchId: Long, state: PracticeGate.State): Verdict = when {
         matchId == 0L -> Verdict.UNKNOWN
         gateMatchId != matchId -> Verdict.WAIT
