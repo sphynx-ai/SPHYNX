@@ -2,7 +2,7 @@
 
 **Directive:** owner's "Hybrid LiteRT-LM + GGUF Inference Architecture".
 **Author:** Claude Code, 2026-11-09.
-**Status:** no source changed; awaiting owner authorization for Phase One.
+**Status:** audit complete (no source changed by the audit). Phase One authorized by the owner on 2026-11-10.
 
 All statements are VERIFIED by reading the code, the build files or the built APK on the date above, unless marked otherwise. Nothing was device-tested.
 
@@ -177,6 +177,8 @@ Phases follow the owner's numbering. One change is recommended.
 | 4. Order | **Spike first (3a right after Phase One)** | Sequence: One → 3a → Two → 3b → Four → Five → Six → Seven → Eight. |
 
 Implementation still requires the owner's explicit "authorize Phase One".
+
+**2026-11-10: the owner wrote "authorize Phase One".** Phase One (contracts, pure Kotlin, no behaviour change) starts on its own branch from `main`.
 
 ## 0.10 Owner priority (2026-11-09): the app must build and install with Code on the Go
 
