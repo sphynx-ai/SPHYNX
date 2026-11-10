@@ -23,6 +23,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-10", Kind.NEW, "Practice benchmark: a scorecard for every practice match",
+            "New Practice page. Every practice match vs Computer that the Player plays gets a scorecard: result, K/D/A, level at " +
+                "5 and 10 minutes, how long the AI stood idle or got stuck, and every death with what the AI was doing just before " +
+                "(fighting, farming, escaping; outnumbered or not). The page shows the trend (last 5 matches vs the 5 before), " +
+                "per hero, and the most common death causes; export as CSV. It only measures - it never touches the game.",
+            pr = 31, needsDeviceCheck = true),
         Entry("2026-11-10", Kind.IMPROVED, "Player mode is for practice vs Computer only",
             "Your decision: the Player plays the hero only in a match verified as practice against Computer (open the scoreboard " +
                 "once). In Ranked, Classic or any other match it becomes your companion: the strategist and the tactical advisor " +

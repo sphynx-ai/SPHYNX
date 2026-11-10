@@ -124,6 +124,9 @@ object SessionRecorder {
         return if (n > 0) "$n research file(s) (R5 comparison, practice moments, readiness report)" else ""
     }
 
+    // one file into the recordings folder (used by the Practice page's export)
+    fun exportFile(c: Context, f: File, mime: String): String = export(c, f, mime)
+
     private fun export(c: Context, f: File, mime: String = "application/json"): String {
         Storage.dir(FOLDER)?.let { d ->
             f.copyTo(File(d, f.name), overwrite = true)

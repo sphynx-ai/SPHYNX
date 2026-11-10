@@ -88,10 +88,10 @@ class MainActivity : Activity() {
     private var headerStatus: TextView? = null
     private var navScroll: HorizontalScrollView? = null
 
-    private val pages = listOf("home", "news", "player", "draft", "build", "meta", "library", "model", "learn", "speed", "logs", "setup")
+    private val pages = listOf("home", "news", "player", "draft", "build", "meta", "library", "model", "learn", "practice", "speed", "logs", "setup")
     private val labels = mapOf(
         "home" to "Home", "news" to "What's new", "player" to "Player", "draft" to "Draft", "build" to "Build", "meta" to "Meta", "library" to "Library",
-        "model" to "Model", "learn" to "Learn", "speed" to "Speed", "logs" to "Logs", "setup" to "Setup"
+        "model" to "Model", "learn" to "Learn", "practice" to "Practice", "speed" to "Speed", "logs" to "Logs", "setup" to "Setup"
     )
 
     private val reqCapture = 42
@@ -513,6 +513,7 @@ class MainActivity : Activity() {
             "library" -> libraryPage()
             "model" -> modelPage()
             "learn" -> learnPage()
+            "practice" -> practicePage()
             "speed" -> speedPage()
             "logs" -> logsPage()
             "setup" -> setupPage()
@@ -654,6 +655,38 @@ class MainActivity : Activity() {
             setOnClickListener { go("news") }
         }
         cd.addView(more, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(40)).apply { topMargin = dp(8) })
+    }
+
+    // PRACTICE BENCHMARK: how the AI does against Computer, match by match
+    private fun practicePage() {
+        val rm = com.example.mlbbresearch.research.ResearchMode
+        title("PRACTICE BENCHMARK")
+        text("One scorecard per practice match vs Computer that the Player played (verified: open the scoreboard once; " +
+            "the Player must play at least a minute). Matches with a real player are never counted. " +
+            "Goal: play as well as the game's own AI, or better.", 13f, color = T.MUTED)
+        val cd = card()
+        cardHeader(cd, "Scorecards")
+        val body = text("", 12f)
+        upd { body.text = rm.benchText() }
+        text("Idle: the AI had nothing to do. Stuck: walking but the camera did not move. Death cause: what the AI was " +
+            "doing in the 5 s before (fighting, farming, escaping, ...), and \"outnumbered\" when more enemy heroes than " +
+            "allies were close.", 12f, color = T.MUTED)
+        btn("Export the scorecards (CSV)") {
+            Thread {
+                val msg = try {
+                    val f = java.io.File(cacheDir, "practice_benchmark-" +
+                        java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date()) + ".csv")
+                    f.writeText(rm.benchCsv())
+                    com.example.mlbbresearch.core.SessionRecorder.exportFile(this, f, "text/csv").also { f.delete() }
+                } catch (e: Exception) { "Export failed: ${e.message}" }
+                runOnUiThread { toast(msg.take(150)) }
+            }.start()
+        }
+        btn("Clear the scorecards") {
+            AlertDialog.Builder(this).setTitle("Delete all practice scorecards?")
+                .setPositiveButton("Delete") { _, _ -> rm.clearBench(); toast("Deleted") }
+                .setNegativeButton("Cancel", null).show()
+        }
     }
 
     private fun newsPage() {
