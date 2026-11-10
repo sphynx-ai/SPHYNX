@@ -79,6 +79,8 @@ object AiRuntime {
             "player" -> {
                 playerOn = true
                 FrameProcessor.trackMotion = true
+                // ONE SWITCH (owner, 2026-11-10): the Player and research mode are started and stopped together
+                if (!com.example.mlbbresearch.research.ResearchMode.on) com.example.mlbbresearch.research.ResearchMode.start()
                 if (Cfg.playLikeMe) ImitationPolicy.ensureLoaded(GameStateTracker.ownHero())
             }
             "draft" -> drafterOn = true
@@ -116,7 +118,10 @@ object AiRuntime {
 
     fun stop(stage: String) {
         when (stage) {
-            "player" -> { playerOn = false; FrameProcessor.trackMotion = false; ActionExecutor.release() }
+            "player" -> {
+                playerOn = false; FrameProcessor.trackMotion = false; ActionExecutor.release()
+                com.example.mlbbresearch.research.ResearchMode.stop()      // one switch with the Player
+            }
             "draft" -> drafterOn = false
             "build" -> builderOn = false
             "learn" -> { learnOn = false; FrameProcessor.trackPlayer = false }
@@ -157,7 +162,7 @@ object AiRuntime {
             paused = listOfNotNull(
                 if (playerOn) "player" else null, if (drafterOn) "draft" else null,
                 if (builderOn) "build" else null, if (learnOn) "learn" else null,
-                if (com.example.mlbbresearch.research.ResearchMode.on) "research" else null
+                if (com.example.mlbbresearch.research.ResearchMode.on && !playerOn) "research" else null
             )
             for (st in paused) stop(st)
             ActionExecutor.cancelAll()

@@ -45,6 +45,14 @@ class OverlayManager(private val ctx: Context) {
         @Volatile private var current: OverlayManager? = null
         private val main = Handler(Looper.getMainLooper())
         fun cleanNow(): Boolean = System.currentTimeMillis() in cleanFrom..cleanUntil
+        // hidden on the loading screen and the scoreboard (OverlayQuiet), back on any other screen
+        val quiet = OverlayQuiet()
+        // nothing of the app is on the screen picture (for readings of the names on those screens)
+        fun clearOfOverlay(nowMs: Long = System.currentTimeMillis()): Boolean {
+            val c = current
+            if (c == null || !c.shown) return true
+            return quiet.hiddenFor(nowMs) >= 400L
+        }
         fun requestClean(from: Long, until: Long) {
             cleanFrom = from; cleanUntil = until
             val now = System.currentTimeMillis()
@@ -55,9 +63,21 @@ class OverlayManager(private val ctx: Context) {
     init { current = this }
 
     private fun applyClean() {
-        val a = if (cleanNow()) 0f else 1f
+        val a = if (cleanNow() || quiet.hidden) 0f else 1f
         icon?.alpha = a; panel?.alpha = a
         pointer?.invalidate()
+    }
+
+    // loading screen / scoreboard: invisible AND not touchable (taps go to the game), then back
+    private fun applyQuiet() {
+        applyClean()
+        val off = quiet.hidden
+        for ((v, lp) in listOf(icon to iconLp, panel to panelLp)) {
+            if (v == null || lp == null) continue
+            val f = if (off) lp.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                else lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+            if (f != lp.flags) { lp.flags = f; try { wm.updateViewLayout(v, lp) } catch (e: Exception) { } }
+        }
     }
 
     private val wm = ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -413,6 +433,8 @@ class OverlayManager(private val ctx: Context) {
     }
 
     private fun refresh() {
+        val lv = FrameProcessor.latest
+        if (quiet.update(lv?.hint, lv?.ts ?: 0L, System.currentTimeMillis())) applyQuiet()
         val cmp = compact
         val running = AiRuntime.anyOn()
         badge?.let {
@@ -757,7 +779,7 @@ class OverlayManager(private val ctx: Context) {
             val w = rw.toFloat()
             val h = rh.toFloat()
             val now = System.currentTimeMillis()
-            if (cleanNow()) return          // a clean picture is being taken: draw nothing
+            if (cleanNow() || quiet.hidden) return   // a clean picture / loading screen / scoreboard: draw nothing
             val o = screenOffset()
             c.save()
             c.translate(-o[0].toFloat(), -o[1].toFloat())

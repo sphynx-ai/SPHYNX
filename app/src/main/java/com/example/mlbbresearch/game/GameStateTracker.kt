@@ -222,7 +222,10 @@ object GameStateTracker {
     fun onButtonSpellVerified(rawSpell: String, score: Float) {
         val blessed = PortraitMatch.blessedKind(rawSpell)
         if (blessed != null) {
-            if (!isRetributionDetected()) return
+            // a Blessed icon exists only for Retribution: with NO spell known yet (the loading card and the
+            // first button readings were missed) it proves Retribution, so the hero goes to the jungle
+            // (bug 5, device test 2026-11-10: Retribution equipped, no jungling). Another spell known -> ignored.
+            if (!isRetributionDetected() && spell() != null) return
             buttonSpell = "Retribution"
             iconSpell = "Retribution"
             if (blessedRetribution != blessed) {

@@ -34,6 +34,15 @@ class ResearchSession(private val maxLog: Int = 30) {
         }
     }
 
+    // the loading screen's reading (before the match starts): may verify the match, never locks it
+    @Synchronized fun observeLoading(matchId: Long, r: LoadingNameCheck.Result, nowMs: Long) {
+        sync(matchId, nowMs)
+        if (matchId == 0L) return                          // unidentified match: never verifies
+        val before = gate.state
+        gate.observeLoading(r)
+        add(matchId, nowMs, if (gate.state != before) "${gate.state} from the loading screen: ${r.note}" else "loading screen: ${r.note}")
+    }
+
     @Synchronized fun allowsAutonomy(matchId: Long): Boolean = matchId != 0L && matchId == gate.matchId && gate.allowsAutonomy()
 
     fun status(on: Boolean): String = when {

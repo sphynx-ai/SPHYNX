@@ -38,11 +38,21 @@ class ResearchSessionTest {
         val s = ResearchSession()
         s.observe(100L, r(Verdict.ALL_COMPUTER), 1L)
         s.observe(100L, r(Verdict.HUMAN_PRESENT), 2L)
-        s.observe(100L, r(Verdict.ALL_COMPUTER), 3L)
+        s.observe(100L, r(Verdict.HUMAN_PRESENT), 3L)
+        s.observe(100L, r(Verdict.ALL_COMPUTER), 4L)
         assertFalse(s.allowsAutonomy(100L))
         assertTrue(s.status(true).startsWith("Research: LOCKED"))
         val events = s.recent().map { it.event }
         assertTrue(events.toString(), events.any { it.startsWith("VERIFIED") } && events.any { it.startsWith("REVOKED") })
+    }
+
+    @Test fun loadingScreenVerifiesThisMatchOnly() {
+        val s = ResearchSession()
+        s.observeLoading(100L, LoadingNameCheck.Result(LoadingNameCheck.Verdict.ALL_COMPUTER, "all 9"), 1L)
+        assertTrue(s.allowsAutonomy(100L))
+        assertFalse(s.allowsAutonomy(101L))
+        s.observeLoading(0L, LoadingNameCheck.Result(LoadingNameCheck.Verdict.ALL_COMPUTER, "all 9"), 2L)
+        assertFalse(s.allowsAutonomy(0L))
     }
 
     @Test fun statusTexts() {

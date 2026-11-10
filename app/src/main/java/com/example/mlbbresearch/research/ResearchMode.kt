@@ -164,12 +164,33 @@ object ResearchMode {
 
     fun observeScoreboard(px: IntArray, w: Int, h: Int, nowMs: Long = System.currentTimeMillis()) {
         if (!gateWatching() || nowMs - lastAt < EVERY_MS) return
+        // the app's floating window / boxes are hidden on the scoreboard; read only once they are gone
+        // (screen capture records them over the names - device test 2026-11-10)
+        if (!com.example.mlbbresearch.controller.OverlayManager.clearOfOverlay(nowMs)) return
         lastAt = nowMs
         val m = matcher() ?: return
         val id = GameStateTracker.matchId
         val before = session.gate.state
         session.observe(id, ScoreboardNameCheck.check(px, w, h, m), nowMs)
         if (session.gate.state != before) Diag.info(session.status(true))
+    }
+
+    // the loading screen (StrategicAdvisor's line-up read of it): all 9 others "Computer" verifies the
+    // match before it starts, so the Player is not waiting for the scoreboard (owner, 2026-11-10)
+    fun observeLoading(reply: String?, green: Pair<Int, Int>?, myName: String, nowMs: Long = System.currentTimeMillis()) {
+        if (!gateWatching()) return
+        val id = GameStateTracker.matchId
+        val before = session.gate.state
+        val r = LoadingNameCheck.check(reply, green, myName)
+        session.observeLoading(id, r, nowMs)
+        Diag.info(if (session.gate.state != before) session.status(true) else "Practice check, loading screen: ${r.note}")
+    }
+
+    // read the loading screen again while this match is not verified yet
+    fun loadingCheckWanted(): Boolean {
+        if (!gateWatching()) return false
+        val id = GameStateTracker.matchId
+        return id != 0L && (session.gate.matchId != id || session.gate.state == PracticeGate.State.UNVERIFIED)
     }
 
     // for R3 experiments: true only in a verified practice match, while research mode is on

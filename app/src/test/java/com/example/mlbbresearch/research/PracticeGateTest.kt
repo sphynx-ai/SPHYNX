@@ -32,7 +32,7 @@ class PracticeGateTest {
     @Test fun humanRevokesForTheRestOfTheMatch() {
         val g = PracticeGate(); g.newMatch(1L)
         g.observe(r(Verdict.ALL_COMPUTER))
-        g.observe(r(Verdict.HUMAN_PRESENT))
+        g.observe(r(Verdict.HUMAN_PRESENT)); g.observe(r(Verdict.HUMAN_PRESENT))
         assertEquals(PracticeGate.State.REVOKED, g.state)
         g.observe(r(Verdict.ALL_COMPUTER))                 // sticky: cannot be re-verified
         assertFalse(g.allowsAutonomy())
@@ -40,7 +40,30 @@ class PracticeGateTest {
 
     @Test fun humanBeforeVerificationAlsoRevokes() {
         val g = PracticeGate(); g.newMatch(1L)
-        g.observe(r(Verdict.HUMAN_PRESENT)); g.observe(r(Verdict.ALL_COMPUTER))
+        g.observe(r(Verdict.HUMAN_PRESENT)); g.observe(r(Verdict.HUMAN_PRESENT)); g.observe(r(Verdict.ALL_COMPUTER))
+        assertFalse(g.allowsAutonomy())
+    }
+
+    // device test 2026-11-10: one frame with the app's boxes over the names locked a practice match
+    @Test fun oneHumanReadingDoesNotLock() {
+        val g = PracticeGate(); g.newMatch(1L)
+        g.observe(r(Verdict.HUMAN_PRESENT))
+        assertEquals(PracticeGate.State.UNVERIFIED, g.state)
+        g.observe(r(Verdict.ALL_COMPUTER))
+        assertTrue(g.allowsAutonomy())
+        g.observe(r(Verdict.HUMAN_PRESENT)); g.observe(r(Verdict.ALL_COMPUTER)); g.observe(r(Verdict.HUMAN_PRESENT))
+        assertTrue(g.allowsAutonomy())                     // never two in a row
+    }
+
+    @Test fun loadingScreenVerifiesButNeverLocks() {
+        val g = PracticeGate(); g.newMatch(1L)
+        g.observeLoading(LoadingNameCheck.Result(LoadingNameCheck.Verdict.NOT_PROVEN, "x"))
+        assertEquals(PracticeGate.State.UNVERIFIED, g.state)
+        g.observeLoading(LoadingNameCheck.Result(LoadingNameCheck.Verdict.ALL_COMPUTER, "x"))
+        assertTrue(g.allowsAutonomy())
+        g.observe(r(Verdict.HUMAN_PRESENT)); g.observe(r(Verdict.HUMAN_PRESENT))
+        assertEquals(PracticeGate.State.REVOKED, g.state)  // the scoreboard still catches a real player
+        g.observeLoading(LoadingNameCheck.Result(LoadingNameCheck.Verdict.ALL_COMPUTER, "x"))
         assertFalse(g.allowsAutonomy())
     }
 
