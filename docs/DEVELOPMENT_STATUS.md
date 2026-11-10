@@ -409,6 +409,7 @@ For each new decision, record its date, rationale, implementation impact, and ow
 | 2026-11-07 | Autonomous tactical actions stay disabled; no major rewrite; preserve MLBB functionality | Stability over speed | See finding 4.1 for the existing gated use | Owner directive |
 | 2026-11-07 | Pin `litertlm-android` to an exact version (`0.19.1`); upgrades go in their own PR | A new LiteRT-LM release could change how the Gemma models load and run without any code change | Builds are reproducible; upgrades must be made on purpose | Owner requested (PR #8) |
 | 2026-11-07 | Remove both videos and all old build output from the Git history of all branches (rewrite + force-push) | Repository size (283 MB → 1.1 MB) and removal of personal videos | All commit hashes changed; old clones must be re-cloned; GitHub PR refs #3–#7 still hold the old files until GitHub Support purges them | Owner approved scope and force-push |
+| 2026-11-10 | **Player mode is practice-only:** it plays only in a match verified as practice vs Computer (scoreboard check, `research/PlayerGate`); never in matches with real players. Goal: match or beat the game's own AI and use practice as the learning environment. Drafter and Builder stay available in all matches | Owner: "I don't want to use it to play live matches against real players anymore"; autonomy development needs one safe boundary | All autonomous play (Player, R3 arbiter, future autonomy levels) is behind the practice gate | Owner decision |
 
 ## 11. Document Maintenance
 

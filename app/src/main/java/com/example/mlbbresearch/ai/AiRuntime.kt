@@ -244,7 +244,14 @@ object AiRuntime {
                     com.example.mlbbresearch.game.AutoTune.autoCalibrate(s.phase)
                 // the hero still plays with the big map open; shop / scoreboard pause it
                 val inGame = !stale && (s.phase == Phase.IN_GAME || s.phase == Phase.MAP)
-                if (playerOn && inGame) {
+                // Player mode is practice-only (owner, 2026-11-10): it acts only in a verified practice
+                // match vs Computer; otherwise nothing is sent (the thumb is lifted once)
+                val gate = if (playerOn && inGame) com.example.mlbbresearch.research.ResearchMode.playerVerdict() else null
+                playerGate = gate
+                if (gate != null && gate != com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY) {
+                    if (!playerHeld) { ActionExecutor.release(); playerHeld = true; Diag.info("Player waits: ${gate.label}") }
+                } else if (playerOn && inGame) {
+                    if (playerHeld) { playerHeld = false; Diag.info("Player plays: verified practice vs Computer") }
                     val tDecide = System.currentTimeMillis()
                     val hero = s.ownHero
                     // what Coach learned from you (e.g. your wave-clear skill) on top of the hero's profile
@@ -399,6 +406,10 @@ object AiRuntime {
 
     // ---------- status for the screens ----------
 
+    @Volatile var playerGate: com.example.mlbbresearch.research.PlayerGate.Verdict? = null
+        private set
+    @Volatile private var playerHeld = false
+
     fun statusLine(): String = when {
         !anyOn() -> "Stopped"
         else -> "Running: " + listOfNotNull(
@@ -415,6 +426,7 @@ object AiRuntime {
         val sb = StringBuilder()
         sb.append(statusLine()).append('\n')
         if (com.example.mlbbresearch.research.ResearchMode.on) sb.append(com.example.mlbbresearch.research.ResearchMode.status()).append('\n')
+        if (playerOn) sb.append("Player: ").append(playerGate?.label ?: "waiting for the match").append('\n')
         sb.append("Gemma: ").append(GemmaEngine.state)
         if (StrategicAdvisor.busyWith.isNotEmpty()) sb.append(" (thinking: ").append(StrategicAdvisor.busyWith).append(")")
         sb.append('\n')

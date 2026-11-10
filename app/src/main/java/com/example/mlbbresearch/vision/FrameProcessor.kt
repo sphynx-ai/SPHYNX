@@ -160,7 +160,7 @@ object FrameProcessor {
             PortraitMatch.observeScoreboard(px, w, h)
         } catch (e: Exception) { }
         // research mode (R2): prove from the scoreboard that all 9 others are "Computer" (reads only)
-        if (hint == ScreenHint.SCOREBOARD && com.example.mlbbresearch.research.ResearchMode.on) try {
+        if (hint == ScreenHint.SCOREBOARD && com.example.mlbbresearch.research.ResearchMode.gateWatching()) try {
             com.example.mlbbresearch.research.ResearchMode.observeScoreboard(px, w, h)
         } catch (e: Exception) { }
         if (hint == ScreenHint.NONE && self != null && frameNo % 30 == 11L && com.example.mlbbresearch.game.GameStateTracker.modelHero == null &&
