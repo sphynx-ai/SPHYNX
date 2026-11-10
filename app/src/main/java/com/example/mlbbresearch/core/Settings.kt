@@ -30,6 +30,8 @@ object Cfg {
 
     // ---- model ----
     var useGpu: Boolean get() = b("gpu", true); set(v) = put("gpu", v)
+    // model speed recorder: LiteRT-LM's detailed figures (tokens per second); takes effect when the models load
+    var modelSpeedDetailed: Boolean get() = b("model_speed_detailed", false); set(v) = put("model_speed_detailed", v)
     // the small tactical language model (second slot): off until you turn it on (Model page)
     var tacticalLlmOn: Boolean get() = b("tactical_llm", false); set(v) = put("tactical_llm", v)
     // the fight-choice network (numeric, from the tactical-network notebook) advises in fights

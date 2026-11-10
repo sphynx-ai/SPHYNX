@@ -437,7 +437,7 @@ object StrategicAdvisor {
     private suspend fun ask(what: String, prompt: String, img: android.graphics.Bitmap?, temp: Double = 0.2): String? {
         busyWith = what
         return try {
-            GemmaEngine.ask(prompt, img, temp)
+            GemmaEngine.ask(prompt, img, temp, purpose = what)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (t: Throwable) {

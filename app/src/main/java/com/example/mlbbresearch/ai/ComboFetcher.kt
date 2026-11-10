@@ -60,7 +60,7 @@ object ComboFetcher {
         val prompt = "Mobile Legends hero $hero. Here is text about the hero's skills:\n\"\"\"$part\"\"\"\n" +
             "Write the best fighting combo using s1, s2, ult and a (basic attack). " +
             "Reply with ONLY one JSON object, no other words: {\"combo\":\"s1 > s2 > a > ult\"}"
-        val reply = try { GemmaEngine.ask(prompt, null, 0.2) } catch (e: Exception) { return "Gemma failed: ${e.message}" }
+        val reply = try { GemmaEngine.ask(prompt, null, 0.2, purpose = "combo") } catch (e: Exception) { return "Gemma failed: ${e.message}" }
         val combo = Regex("\"combo\"\\s*:\\s*\"([^\"]+)\"").find(reply)?.groupValues?.get(1) ?: ComboParser.find(reply)
         val steps = if (combo != null) ComboBook.parse(combo) else emptyList()
         if (steps.size < 2) return "Could not get a combo ($where). Gemma said: ${reply.take(120)}"

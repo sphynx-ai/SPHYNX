@@ -23,6 +23,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-10", Kind.NEW, "Speed recorder: both language models and screen to touch",
+            "Speed page: every answer of the strategist and the tactical model is recorded (time, engine, GPU or CPU, with or " +
+                "without a picture, the phone's temperature and free memory), and while the Player plays, the screen-to-touch " +
+                "time every 5 s. Optional detailed figures (tokens per second, time to the first token), a speed test with the " +
+                "same questions every time, and a CSV export to send. It only measures.",
+            pr = 35, needsDeviceCheck = true),
         Entry("2026-11-10", Kind.NEW, "Practice benchmark: a scorecard for every practice match",
             "New Practice page. Every practice match vs Computer that the Player plays gets a scorecard: result, K/D/A, level at " +
                 "5 and 10 minutes, how long the AI stood idle or got stuck, and every death with what the AI was doing just before " +

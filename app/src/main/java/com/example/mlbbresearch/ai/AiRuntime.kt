@@ -199,6 +199,7 @@ object AiRuntime {
                 }
                 val v = FrameProcessor.processNext()
                 com.example.mlbbresearch.core.SpeedLog.tick()
+                com.example.mlbbresearch.core.TouchSpeed.tick()
                 if (v != null) {
                     GameStateTracker.update(v)
                     if (learnOn && v.hint != com.example.mlbbresearch.vision.ScreenHint.LIVE && v.hint != com.example.mlbbresearch.vision.ScreenHint.LIVE_DEAD) DemoRecorder.observe(v, aiPlaying = playerOn, s = GameStateTracker.state)
@@ -326,6 +327,8 @@ object AiRuntime {
                     com.example.mlbbresearch.core.SessionRecorder.frame(s, d)
                     benchMoving = d.moveX != 0f || d.moveY != 0f
                     ActionExecutor.execute(d)
+                    // screen-to-touch recorder: from the start of reading this frame to its touches being queued
+                    com.example.mlbbresearch.core.TouchSpeed.log.frameToDecision(System.currentTimeMillis() - s.ts)
                     com.example.mlbbresearch.core.Speed.decided((tDecide - s.ts - com.example.mlbbresearch.core.Speed.vision.toLong()).coerceAtLeast(0L), System.currentTimeMillis() - tDecide)
                     ExperienceRecorder.record(s, d, plan.plan, plan.aggression + bias)
                     ActionExecutor.maybeUpgrade(s)
