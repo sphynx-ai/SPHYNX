@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
 //   vision        10-15 fps   (FrameProcessor -> GameStateTracker)
 //   tactics       5 per sec   (TacticalEngine -> ActionExecutor)
 //   strategy      event-based (StrategicAdvisor -> Gemma 4 E2B / 3n E2B)
-//   tactical LLM  in fights, ~3 per second, background (TacticalAdvisor -> small Gemma; advice only)
+//   tactical LLM  in fights, ~3 per second, background (TacticalAdvisor -> small Gemma; its answer passes the Kotlin checks first)
 object AiRuntime {
 
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -244,7 +244,18 @@ object AiRuntime {
                     com.example.mlbbresearch.game.AutoTune.autoCalibrate(s.phase)
                 // the hero still plays with the big map open; shop / scoreboard pause it
                 val inGame = !stale && (s.phase == Phase.IN_GAME || s.phase == Phase.MAP)
-                if (playerOn && inGame) {
+                // Player mode is practice-only (owner, 2026-11-10): it acts only in a verified practice
+                // match vs Computer; otherwise nothing is sent (the thumb is lifted once)
+                val gate = if (playerOn && inGame) com.example.mlbbresearch.research.ResearchMode.playerVerdict() else null
+                playerGate = gate
+                if (gate != null && gate != com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY) {
+                    if (!playerHeld) { ActionExecutor.release(); playerHeld = true; Diag.info("Player advises only (you play): ${gate.label}") }
+                    // COMPANION ADVICE (owner, 2026-11-10): in Ranked / Classic / any unverified match the strategist and
+                    // the tactical advisor keep working and their advice is shown - nothing is touched
+                    advise(s)
+                } else if (playerOn && inGame) {
+                    advice = "-"
+                    if (playerHeld) { playerHeld = false; Diag.info("Player plays: verified practice vs Computer") }
                     val tDecide = System.currentTimeMillis()
                     val hero = s.ownHero
                     // what Coach learned from you (e.g. your wave-clear skill) on top of the hero's profile
@@ -335,7 +346,15 @@ object AiRuntime {
                 if (learnOn && Cfg.liveLearn && !stale && s.phase == Phase.LIVE) com.example.mlbbresearch.learning.LiveRecorder.record(s)
                 if (builderOn && inGame) {
                     if (Cfg.qbOn) QuickBuySwap.watch(s)
-                    if (Cfg.autonomous && drafterOn && !(playerOn && Cfg.playerQuickBuy)) ActionExecutor.maybeQuickBuy(s, blind = true)
+                    // item actives: the Builder presses them in every match the Player does not play (owner, 2026-11-10)
+                    if (!stale && com.example.mlbbresearch.research.PlayerGate.builderPressesActives(Cfg.builderActives, playerOn, playerGate)) {
+                        val d = adviceDecision?.takeIf { System.currentTimeMillis() - adviceDecisionAt < 1500 }
+                        ActionExecutor.builderActive(s, d)
+                    }
+                    // the Builder leaves buying to the Player only while the Player really plays (verified practice);
+                    // in Ranked / Classic the Player only advises, so the Builder keeps buying (owner, 2026-11-10)
+                    val playerBuys = playerOn && Cfg.playerQuickBuy && playerGate == com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY
+                    if (Cfg.autonomous && drafterOn && !playerBuys) ActionExecutor.maybeQuickBuy(s, blind = true)
                 }
                 if (drafterOn && !Cfg.ranked && Cfg.autonomous && !stale) standardSelect(s)
                 PerformanceEvaluator.evaluateDue()
@@ -399,6 +418,41 @@ object AiRuntime {
 
     // ---------- status for the screens ----------
 
+    @Volatile var playerGate: com.example.mlbbresearch.research.PlayerGate.Verdict? = null
+        private set
+    // the advice shown while you play yourself (any match that is not verified practice)
+    @Volatile var advice: String = "-"
+        private set
+    private var adviceAt = 0L
+
+    // Advice only: the same Kotlin engine decision the Player would play, plus the small tactical model's
+    // advice and Gemma's plan - shown, never executed. The learning parts that assume the AI played the
+    // move (Brain choice credit, combos, recorded AI moments) are left out, so your own play is not
+    // mixed into the AI's learning.
+    private fun advise(s: com.example.mlbbresearch.game.GameState) {
+        val now = System.currentTimeMillis()
+        if (now - adviceAt < 400L) return
+        adviceAt = now
+        try {
+            val hero = s.ownHero
+            val profile = com.example.mlbbresearch.learning.Coach.adjust(HeroDb.profile(hero), hero)
+            TacticalAdvisor.tick(s, profile)
+            val d = TacticalEngine.decide(s, profile, StrategicAdvisor.plan, Cfg.learnedBias(hero ?: "unknown"), null)
+            val small = TacticalAdvisor.latestAdvice()?.takeIf { now - it.second < 1500 }?.first
+            // skill leveling is advice only here: no tap (maybeUpgrade stays in the practice play loop)
+            val skills = com.example.mlbbresearch.game.SkillAdvice.line(
+                com.example.mlbbresearch.game.SkillOrder.of(hero), s.hud.upgradeReady)
+            adviceDecision = d; adviceDecisionAt = now
+            advice = d.describe() + (small?.let { " | small model: ${it.label}" } ?: "") + "\n  " + skills
+        } catch (t: Throwable) {
+            advice = "-"
+            Diag.error("Advice", t)
+        }
+    }
+    @Volatile private var playerHeld = false
+    @Volatile private var adviceDecision: TacticalDecision? = null
+    @Volatile private var adviceDecisionAt = 0L
+
     fun statusLine(): String = when {
         !anyOn() -> "Stopped"
         else -> "Running: " + listOfNotNull(
@@ -415,6 +469,11 @@ object AiRuntime {
         val sb = StringBuilder()
         sb.append(statusLine()).append('\n')
         if (com.example.mlbbresearch.research.ResearchMode.on) sb.append(com.example.mlbbresearch.research.ResearchMode.status()).append('\n')
+        if (playerOn) {
+            val g = playerGate
+            if (g == null || g == com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY) sb.append("Player: ").append(g?.label ?: "waiting for the match").append('\n')
+            else sb.append("Advice (you play - ").append(g.label).append("):\n  ").append(advice).append('\n')
+        }
         sb.append("Gemma: ").append(GemmaEngine.state)
         if (StrategicAdvisor.busyWith.isNotEmpty()) sb.append(" (thinking: ").append(StrategicAdvisor.busyWith).append(")")
         sb.append('\n')

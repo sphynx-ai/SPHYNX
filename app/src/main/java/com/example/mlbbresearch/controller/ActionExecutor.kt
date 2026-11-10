@@ -875,6 +875,21 @@ object ActionExecutor {
 
     // ---------------- builder (autonomous) ----------------
 
+    // Builder: item actives in matches the Player does not play (Ranked, Classic, ...). Same rules as the
+    // Player's press (ActiveItems.decide); never during a skill hold or the low-HP item swap.
+    fun builderActive(s: GameState, d: TacticalDecision?) {
+        if (System.currentTimeMillis() < holdUntil) return
+        val k = ActiveItems.decide(d, s) ?: return
+        val (x, y) = Layout.get(k)
+        if (Cfg.dryRun) {
+            AccessibilityController.instance?.overlay?.flashMarker(x, y, "AI would press")
+            note("[dry run] Active (Builder): " + ActiveItems.lastNote)
+            return
+        }
+        perform(listOf(Act.Tap(x, y, 0L, 110L)))
+        note("Active (Builder): " + ActiveItems.lastNote)
+    }
+
     fun maybeQuickBuy(s: GameState, blind: Boolean = false) {
         val now = System.currentTimeMillis()
         if (now - lastQuickBuyTap < (if (blind) 8000 else 2500)) return

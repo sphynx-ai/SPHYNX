@@ -710,7 +710,7 @@ class MainActivity : Activity() {
         switch("Show where the AI touches", Cfg.showTouches) { Cfg.showTouches = it }
 
         title("RUN")
-        stageSwitch("Player (plays the hero)", "player") { AiRuntime.playerOn }
+        stageSwitch("Player (plays in practice vs Computer; advises in other matches)", "player") { AiRuntime.playerOn }
         stageSwitch("Drafter (ban & pick)", "draft") { AiRuntime.drafterOn }
         stageSwitch("Builder (items)", "build") { AiRuntime.builderOn }
         stageSwitch("Research mode (practice vs Computer only; arbiter picks fight option, records moments)", "research") { com.example.mlbbresearch.research.ResearchMode.on }
@@ -1383,6 +1383,10 @@ class MainActivity : Activity() {
             banGrid.set(bans)
             dNote.text = if (picks.isEmpty() && bans.isEmpty()) "No draft yet: update the patch meta (Meta page) or start the Drafter." else "From $src."
         }
+
+        title("Item actives")
+        switch("Press item actives (Frozen, Wind Chant, Conceal)", Cfg.builderActives) { Cfg.builderActives = it }
+        text("In every match the Player does not play (Ranked, Classic). Frozen and Wind Chant when you are low on HP with enemies on you; Conceal only when the Player switch is on (it needs the engage / retreat advice).", 12f, color = T.MUTED)
 
         title("Auto quick buy (item swap)")
         switch("Auto quick buy when about to die", Cfg.qbOn) { Cfg.qbOn = it }

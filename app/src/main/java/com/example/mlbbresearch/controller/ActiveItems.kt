@@ -48,8 +48,10 @@ object ActiveItems {
         }
     }
 
-    // the button to press now, or null
-    fun decide(d: TacticalDecision, s: GameState): String? {
+    // the button to press now, or null. d is the tactical decision when one exists (the Player playing,
+    // or the companion advice); without one, Conceal (which needs to know engage / retreat) is skipped.
+    // Used by the Player in practice and by the Builder in every other match (owner decision 2026-11-10).
+    fun decide(d: TacticalDecision?, s: GameState): String? {
         val now = System.currentTimeMillis()
         if (now - lastPress < 3000 || now < QuickBuySwap.busyUntil) return null
         val hp = s.selfHp
@@ -64,7 +66,7 @@ object ActiveItems {
                 if (physical && hp in 0f..0.35f && close.isNotEmpty())
                     return mark(now, "Wind Chant (Wind of Nature): physical enemies on you at ${(hp * 100).toInt()}% HP")
             }
-            Kind.CONCEAL -> {
+            Kind.CONCEAL -> if (d != null) {
                 val sneaking = (d.intent == Intent.ENGAGE || d.intent == Intent.AMBUSH) && nearest in 0.45f..1.0f
                 val escaping = d.intent == Intent.RETREAT && hp in 0f..0.5f && nearest in 0f..0.6f
                 if (sneaking || escaping) return mark(now, if (sneaking) "Conceal: sneaking up on the fight" else "Conceal: slipping away")

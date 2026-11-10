@@ -23,6 +23,17 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-10", Kind.IMPROVED, "Player mode is for practice vs Computer only",
+            "Your decision: the Player plays the hero only in a match verified as practice against Computer (open the scoreboard " +
+                "once). In Ranked, Classic or any other match it becomes your companion: the strategist and the tactical advisor " +
+                "keep working and show their advice on the floating panel, including which skill to level up next, but nothing is " +
+                "touched (skills are leveled for you only in practice). Drafter and Builder stay automatic in every match, and the " +
+                "Builder now also presses item actives (Frozen, Wind Chant, Conceal) when the Player is not playing.",
+            pr = 30, needsDeviceCheck = true),
+        Entry("2026-11-09", Kind.IMPROVED, "Small tactical model is no longer experimental",
+            "Your decision: Gemma 3 270M is a full engine now. Its fight advice can be used like the other engines' - in the decision " +
+                "arbiter too - but it still has to pass the app's Kotlin checks and the validator (no all-in at low HP, etc.).",
+            pr = 29, needsDeviceCheck = true),
         Entry("2026-11-08", Kind.FIXED, "Skills released where they were aimed; no more chasing the Lithowanderer",
             "From your 13 recordings: a skill was re-aimed at release with the AI's newest decision - a third of skills went 90 degrees " +
                 "off (\"aimed right, cast elsewhere\"). Now it releases at the target it was aimed at. On-screen \"enemies\" the minimap " +
