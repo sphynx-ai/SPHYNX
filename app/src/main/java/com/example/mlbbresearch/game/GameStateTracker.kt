@@ -434,7 +434,9 @@ object GameStateTracker {
             return liveState(v, now, v.hint == ScreenHint.LIVE)
         val wasInMatch = now - lastInGame < 120_000
         val before = state.phase
-        if (v.self != null && !wasInMatch) {
+        // (or the match clock is not running: a new match started less than 2 minutes after the last one
+        // ended - quick solo practice restarts, owner 2026-11-10 - used to stay unidentified for good)
+        if (v.self != null && (!wasInMatch || matchStartAt == 0L)) {
             // first look at your hero after hero select / loading: the match clock starts
             logMatch()                      // a match without a hero-select screen in between
             kills = 0; deaths = 0; assists = 0
@@ -505,7 +507,10 @@ object GameStateTracker {
         }
         if (phase == Phase.LOADING) {
             // a loading screen after 2 minutes without one = a new match: recording starts here
-            if (now - loadingSeenAt > 120_000) { matchId = now; Diag.info("Match recording started (loading screen)") }
+            // (also right after a match: a loading screen once the last one ended / was played is a new match)
+            if (now - loadingSeenAt > 120_000 || lastMatchEndAt > loadingSeenAt || lastInGame > loadingSeenAt) {
+                matchId = now; Diag.info("Match recording started (loading screen)")
+            }
             loadingSeenAt = now
         }
         if (phase != state.phase) phaseSince = now

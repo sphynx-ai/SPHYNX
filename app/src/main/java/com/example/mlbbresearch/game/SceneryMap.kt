@@ -420,11 +420,13 @@ object SceneryMap {
         roamActive = true
         roamIdx = 0
         waypointArrivedAt = 0L
-        waypointStartedAt = System.currentTimeMillis()
+        // (the tour's clock starts at its first step, once the practice gate has unlocked the Player)
+        waypointStartedAt = 0L
         if (!com.example.mlbbresearch.ai.AiRuntime.playerOn) {
             com.example.mlbbresearch.ai.AiRuntime.start("player")
         }
-        status = "roaming map (1/${tourWaypoints.size}: ${tourWaypoints[0].name})"
+        status = if (playerUnlocked()) "roaming map (1/${tourWaypoints.size}: ${tourWaypoints[0].name})"
+            else "waiting: starts when the practice gate unlocks the Player (open the scoreboard once)"
         Diag.info("Scenery calibration roam started (${tourWaypoints.size} waypoints)")
         return status
     }
@@ -561,8 +563,18 @@ object SceneryMap {
     }
 
     // Autonomous Practice Mode Roam Tour decision
+    // SCENERY CALIBRATION ONLY IN AN UNLOCKED MATCH (owner, 2026-11-10): the tour starts, and moves on,
+    // only while the practice gate lets the Player play (verified practice vs Computer)
+    fun playerUnlocked(): Boolean = com.example.mlbbresearch.ai.AiRuntime.playerOn &&
+        com.example.mlbbresearch.ai.AiRuntime.playerGate == com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY
+
     fun roamDecision(s: GameState, p: HeroProfile): TacticalDecision? {
         if (!roamActive) return null
+        if (!playerUnlocked()) {
+            status = "waiting: starts when the practice gate unlocks the Player (open the scoreboard once)"
+            waypointStartedAt = 0L; waypointArrivedAt = 0L
+            return null
+        }
         val me = s.minimapSelf ?: return TacticalDecision(
             Intent.PUSH, 0.7f, -0.7f, emptyList(), -1f, -1f, "-", -1f, -1,
             "Scenery calibration: waiting for minimap position"
