@@ -32,4 +32,20 @@ class SceneryTourTest {
         val last = SceneryMap.returnWaypoints.last()
         assertTrue(last.x < 0.12f && last.y > 0.88f)
     }
+
+    // the jungle pits are where the owner's 20 jungle screenshots put them (2026-11-11): standing at a camp's
+    // pit is standing where the owner stood fighting it; the old built-in pits (e.g. a "Rockursa") are gone
+    @Test fun pitsMatchTheOwnersJungleScreenshots() {
+        SceneryMap.ensureLoaded()
+        for ((x, y) in listOf(0.29f to 0.52f, 0.46f to 0.78f, 0.48f to 0.70f, 0.58f to 0.82f, 0.20f to 0.41f, 0.38f to 0.37f)) {
+            val pit = SceneryMap.pits.minByOrNull { hypot(it.standX - x, it.standY - y) }!!
+            assertTrue("no pit to stand at near $x,$y", hypot(pit.standX - x, pit.standY - y) <= 0.03f)
+        }
+        // the enemy jungle: the same, turned half a turn
+        val enemyLizard = SceneryMap.pitStandSpot(0.82f, 0.59f)
+        assertTrue(hypot(enemyLizard.first - 0.80f, enemyLizard.second - 0.59f) <= 0.03f)
+        assertTrue(SceneryMap.isOldDefaultPit(0.20f, 0.66f))           // the old "Rockursa"
+        assertTrue(!SceneryMap.isOldDefaultPit(0.18f, 0.41f))
+        assertTrue(SceneryMap.pits.none { it.label.contains("rockursa") })
+    }
 }
