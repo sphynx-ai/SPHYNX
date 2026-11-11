@@ -17,7 +17,9 @@ class AutoFolderPathTest {
 
     @Test fun messagesNameWhereFilesGo() {
         assertEquals("/CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage", Storage.label(true))
-        assertEquals("Download/MLBB-Research", Storage.label(false))
+        // without all files access: Download/Sphynx-Auto-Pilot-Storage (owner, 2026-11-11), never Download/MLBB-Research
+        assertEquals("Download/Sphynx-Auto-Pilot-Storage", Storage.label(false))
+        assertEquals("Download/Sphynx-Auto-Pilot-Storage", Storage.FALLBACK_REL)
     }
 
     @Test fun recognisesTheOldFolder() {

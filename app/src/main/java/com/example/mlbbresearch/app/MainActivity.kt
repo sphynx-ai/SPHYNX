@@ -1061,7 +1061,7 @@ class MainActivity : Activity() {
         }
 
         title("IN-GAME SCENERY & MINIMAP SYNCHRONIZATION")
-        text("Synchronizes 3D screen scenery (towers, monster pits, bushes, walls) with the 2D minimap on every frame. Saved persistently on your phone (mlbb-scenery-sync.json in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage, or Download/MLBB-Research without all files access) across app uninstall/reinstall — only deleted when you press Clear saved map scenery or Reset minimap sync offsets.", 12f, color = "#9AA0A6")
+        text("Synchronizes 3D screen scenery (towers, monster pits, bushes, walls) with the 2D minimap on every frame. Saved persistently on your phone (mlbb-scenery-sync.json in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage, or Download/Sphynx-Auto-Pilot-Storage without all files access) across app uninstall/reinstall — only deleted when you press Clear saved map scenery or Reset minimap sync offsets.", 12f, color = "#9AA0A6")
         switch("Auto-sync 3D screen scenery with minimap landmarks", Cfg.sceneryAutoSync) { Cfg.sceneryAutoSync = it }
         val sceneryInfo = text("", 13f)
         val camPresetBtn = btn("") {
@@ -2442,7 +2442,7 @@ class MainActivity : Activity() {
         upd {
             ctChip.text = if (ct.ready()) "key set" else "no key"
             ctChip.setTextColor(c(if (ct.ready()) T.GREEN else T.RED))
-            ctNote.text = if (ct.ready()) "Tap a training: inputs upload from Download/MLBB-Research, it trains on Kaggle, results download back and load by themselves."
+            ctNote.text = if (ct.ready()) "Tap a training: inputs upload from Download/Sphynx-Auto-Pilot-Storage, it trains on Kaggle, results download back and load by themselves."
                 else "Put kaggle.json in the Sphynx-Auto-Pilot-Storage folder (kaggle.com > Settings > API > Create New Token), then Scan the folder on the Model page."
         }
         for (j in com.example.mlbbresearch.learning.CloudTrain.Job.values()) {

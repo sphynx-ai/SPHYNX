@@ -23,6 +23,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-11", Kind.IMPROVED, "Without All files access, files go to Download/Sphynx-Auto-Pilot-Storage",
+            "Recordings (\u25cf REC), CSV exports, training pictures and zips, cloud-training results and backups are saved in " +
+                "Download/Sphynx-Auto-Pilot-Storage when the app has no All files access. The old Download/MLBB-Research folder is " +
+                "ignored completely - not written and not read (backups there no longer restore); delete it yourself once you " +
+                "have moved anything you want to keep. With All files access nothing changes: " +
+                "/CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage.",
+            pr = 52, needsDeviceCheck = true),
         Entry("2026-11-11", Kind.FIXED, "Solo calibration no longer waits for lane marks",
             "Solo practice never shows the \"$\" / \"E\" lane marks (only 5v5 does), so the calibration tour waited forever. In " +
                 "Solo, which lane is on top is now read from the Lord and Turtle icons on the minimap: the Lord's pit is on the Gold " +
