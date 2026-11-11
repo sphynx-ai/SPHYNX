@@ -648,6 +648,7 @@ object GameStateTracker {
     }
 
     fun newMatch() {
+        Lithowanderer.reset()          // its kill / Stone Roamer belong to one match
         logMatch()
         enemySpells = emptyMap(); allySpells = emptyMap(); lineupReadAt = 0L
         onNewMatch?.invoke()

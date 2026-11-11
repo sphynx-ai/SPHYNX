@@ -121,10 +121,12 @@ object FrameProcessor {
             ?: MinimapAnalyzer.analyze(px, w, h, live)
         lastMini = mini; lastMiniLive = live
         val masks = if (live) ScreenReader.LIVE_MASKS else hud
-        val seen = if (live) liveUnits(px, w, h, mini, banner, hint == ScreenHint.LIVE) else monstersFromRedBars(withoutAttachedBars(ownBars(hint, HeroDetector.scan(
+        val seen0 = if (live) liveUnits(px, w, h, mini, banner, hint == ScreenHint.LIVE) else monstersFromRedBars(withoutAttachedBars(ownBars(hint, HeroDetector.scan(
             px, w, h, hud + ScreenMasks.overlay + (if (banner) listOf(ScreenReader.bannerRect) else emptyList()),
             Cfg.heroBarMinWidthPct / 100f, Cfg.bodyBelowBarPct / 100f
         ), px, w, h)), px, w, h, mini)
+        // the Lithowanderer: is it on screen (and how low)? After its kill the Stone Roamer is not an ally hero
+        val seen = if (live) seen0 else lithoAndRoamer(seen0, mini, t0)
         // optional trained detector: runs on its own thread a few times a second
         ObjectDetector.maybeRun(px, w, h)
         if (Cfg.detectorOn) ScreenDetector.maybeRun(px, w, h)
@@ -390,6 +392,30 @@ object FrameProcessor {
     // near you (red-ringed portrait); a monster's bar has no badge (0.0-0.17). Wide red bars
     // without a badge, or with no enemy near you on the minimap, are monsters. Small red pieces
     // right next to a monster bar (its tick segments) are dropped.
+    // THE LITHOWANDERER'S KILL AND THE STONE ROAMER (owner, 2026-11-11; game.Lithowanderer): the kill is noted
+    // from the Lithowanderer vanishing at low HP; for 45 s after it, near its spot, blue "ally heroes" on the
+    // screen beyond the ally icons around you on the minimap are the Stone Roamer - a friendly patrol, not
+    // backup and not a minion: it is left out of the units altogether. (Its bar is not measured yet, so the
+    // narrowest blue bars are taken as the Roamer.)
+    private fun lithoAndRoamer(seen: List<Seen>, mini: MinimapInfo, nowMs: Long): List<Seen> {
+        val litho = com.example.mlbbresearch.game.Lithowanderer
+        litho.observe(nowMs, mini.self, seen.firstOrNull { it.team == Team.NEUTRAL && it.species == com.example.mlbbresearch.game.JungleDb.LITHOWANDERER.id }?.hp)
+        val me = mini.self ?: return seen
+        if (!litho.roamerActive(nowMs, me)) return seen
+        val r = MinimapAnalyzer.rect
+        val (l, t) = Layout.get("mapTL"); val (rr, b) = Layout.get("mapBR")
+        val alliesNear = mini.allyDots.count { (dx, dy) ->
+            val mx = ((r[0] + dx * (r[2] - r[0])) - l) / (rr - l).coerceAtLeast(0.01f)
+            val my = ((r[1] + dy * (r[3] - r[1])) - t) / (b - t).coerceAtLeast(0.01f)
+            kotlin.math.hypot(mx - me.first, my - me.second) <= 0.15f
+        }
+        val screenAllies = seen.filter { it.team == Team.ALLY && it.hero }
+        val drop = litho.roamerCount(screenAllies.size, alliesNear)
+        if (drop == 0) return seen
+        val roamers = screenAllies.sortedBy { it.barRight - it.barLeft }.take(drop).toSet()
+        return seen.filter { it !in roamers }
+    }
+
     private fun monstersFromRedBars(all: List<Seen>, px: IntArray, w: Int, h: Int, mini: MinimapInfo): List<Seen> {
         val enemyNearOnMap = enemyNearOnMinimap(mini, w, h)
         val nearEnemyTower = mini.self?.let { me ->
@@ -438,7 +464,12 @@ object FrameProcessor {
                 val species = when (kind) {
                     com.example.mlbbresearch.game.MonsterKind.BOSS -> com.example.mlbbresearch.game.JungleDb.boss(mini, com.example.mlbbresearch.game.GameStateTracker.state.matchSec).id
                     com.example.mlbbresearch.game.MonsterKind.BUFF -> (com.example.mlbbresearch.game.JungleDb.buff(col[0], col[1]) ?: com.example.mlbbresearch.game.JungleDb.CREEP).id
-                    else -> com.example.mlbbresearch.game.JungleDb.camp(col[0], col[1], col[2]).id
+                    else -> com.example.mlbbresearch.game.JungleDb.camp(col[0], col[1], col[2]).let { c ->
+                        // an unnamed jungle monster at a Lithowanderer spot after 0:35 is the Lithowanderer (owner, 2026-11-11)
+                        if (c == com.example.mlbbresearch.game.JungleDb.CREEP &&
+                            com.example.mlbbresearch.game.Lithowanderer.isIt(mini.self, com.example.mlbbresearch.game.GameStateTracker.state.matchSec))
+                            com.example.mlbbresearch.game.JungleDb.LITHOWANDERER else c
+                    }.id
                 }
                 val m = Seen(Team.NEUTRAL, boss, s.x, s.y, hp, s.barLeft, s.barTop, s.barLeft + fullW, s.barBottom, species)
                 monsters.add(m); out.add(m)
