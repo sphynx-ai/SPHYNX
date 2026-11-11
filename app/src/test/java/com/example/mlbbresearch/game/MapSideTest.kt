@@ -80,4 +80,15 @@ class MapSideTest {
         MapSide.reset(); repeat(3) { MapSide.observe(MapSide.Mark.GOLD) }
         assertEquals(JungleDb.HORNED_LIZARD, JungleSpots.at(0.21f to 0.40f, MonsterKind.CAMP))   // not mirrored
     }
+
+    // Solo practice shows no lane marks (owner, 2026-11-11): the side comes from the boss icons' pits
+    @Test fun soloSideFromTheBossIcons() {
+        // the owner's Solo screenshot (01:26): the Lord top-left, the Turtle bottom-right -> Gold on top
+        assertEquals(MapSide.Mark.GOLD, MapSide.fromPits(0.30f to 0.27f, 0.68f to 0.70f))
+        assertEquals(MapSide.Mark.EXP, MapSide.fromPits(0.66f to 0.69f, 0.31f to 0.25f))
+        assertEquals(MapSide.Mark.NONE, MapSide.fromPits(0.30f to 0.27f, null))      // both must show
+        assertEquals(MapSide.Mark.NONE, MapSide.fromPits(0.30f to 0.27f, 0.32f to 0.26f))   // not opposite pits
+        repeat(3) { MapSide.observe(MapSide.fromPits(0.30f to 0.27f, 0.68f to 0.70f)) }
+        assertEquals(true, MapSide.goldTop)
+    }
 }

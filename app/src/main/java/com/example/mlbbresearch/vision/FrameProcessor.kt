@@ -152,6 +152,14 @@ object FrameProcessor {
         if (hint == ScreenHint.NONE && self != null && frameNo % 5 == 2L && com.example.mlbbresearch.game.MapSide.goldTop == null &&
             com.example.mlbbresearch.game.GameStateTracker.state.matchSec in 0..com.example.mlbbresearch.game.MapSide.READ_UNTIL_SEC)
             com.example.mlbbresearch.game.MapSide.observe(com.example.mlbbresearch.game.MapSide.mark(px, w, h))
+        // ... and in Solo practice (no lane marks there - owner, 2026-11-11) from the Lord / Turtle icons' pits
+        if (hint == ScreenHint.NONE && self != null && frameNo % 5 == 3L && com.example.mlbbresearch.game.MapSide.goldTop == null &&
+            (com.example.mlbbresearch.game.MatchKind.current() == com.example.mlbbresearch.game.MatchKind.Kind.SOLO ||
+                com.example.mlbbresearch.game.GameStateTracker.state.matchSec in 0 until 480)) {
+            val (l, t) = Layout.get("mapTL"); val (r, b) = Layout.get("mapBR")
+            fun mm(box: FloatArray?) = box?.let { (((it[0] + it[2]) / 2f - l) / (r - l).coerceAtLeast(0.01f)) to (((it[1] + it[3]) / 2f - t) / (b - t).coerceAtLeast(0.01f)) }
+            com.example.mlbbresearch.game.MapSide.observe(com.example.mlbbresearch.game.MapSide.fromPits(mm(mini.lordIcon), mm(mini.turtleIcon)))
+        }
         // which skill buttons the screen shows (normal / large HUD, 2-3-4 skills)
         if (hint == ScreenHint.NONE && self != null && frameNo % 10 == 5L) ScreenKit.observe(px, w, h)
         // which hero you play: its skill icons against learned looks and the wiki pictures (HeroVerifier)
