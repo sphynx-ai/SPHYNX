@@ -529,6 +529,8 @@ object AiRuntime {
         if (s.selfHp >= 0) sb.append(" | HP ").append((s.selfHp * 100).toInt()).append('%')
         if (s.self != null) sb.append(" | level ").append(s.level)
         sb.append(" | ").append(s.lane.label)
+        com.example.mlbbresearch.game.MapSide.goldTop?.let { sb.append(if (it) " (Gold lane on top)" else " (EXP lane on top)") }
+        com.example.mlbbresearch.game.MatchKind.current().takeIf { it != com.example.mlbbresearch.game.MatchKind.Kind.UNKNOWN }?.let { sb.append(" | ").append(it.label) }
         sb.append("\nHero: ").append(GameStateTracker.verifiedHeroPanel()).append(" | spell: ").append(GameStateTracker.verifiedSpellPanel())
         sb.append("\nGemma: ").append(GemmaEngine.state)
         if (StrategicAdvisor.busyWith.isNotEmpty()) sb.append(" (").append(StrategicAdvisor.busyWith).append(")")

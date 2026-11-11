@@ -441,6 +441,7 @@ object GameStateTracker {
             logMatch()                      // a match without a hero-select screen in between
             kills = 0; deaths = 0; assists = 0
             matchStartAt = now
+            MapSide.reset()                 // a new match: its lane marks are read again
             // (the loading screen was missed: the match is recorded from here)
             if (matchId == 0L) { matchId = now; Diag.info("Match recording started (hero seen; no loading screen)") }
             com.example.mlbbresearch.vision.ScreenReader.clearResult()
@@ -649,6 +650,7 @@ object GameStateTracker {
 
     fun newMatch() {
         Lithowanderer.reset()          // its kill / Stone Roamer belong to one match
+        MapSide.reset()                // which lane is on top is read again in every match
         logMatch()
         enemySpells = emptyMap(); allySpells = emptyMap(); lineupReadAt = 0L
         onNewMatch?.invoke()

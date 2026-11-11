@@ -95,7 +95,7 @@ object SceneryMap {
         Waypoint(0.29f, 0.52f, "Ally Purple Buff Pit"),
         Waypoint(0.38f, 0.37f, "River Lithowanderer (top)"),
         Waypoint(0.50f, 0.50f, "Mid Lane River Crossing"),
-        Waypoint(0.30f, 0.29f, "Top-Left Lord Pit"),
+        Waypoint(0.30f, 0.29f, "Top-Left Boss Pit (Lord or Turtle)"),
         Waypoint(0.21f, 0.27f, "Top River Crab & Bush"),
         Waypoint(0.10f, 0.55f, "EXP Lane Inner Tower"),
         Waypoint(0.09f, 0.30f, "EXP Lane Mid Tower & Bush"),
@@ -107,7 +107,7 @@ object SceneryMap {
         Waypoint(0.58f, 0.36f, "Enemy Mid Bush"),
         Waypoint(0.71f, 0.48f, "Enemy Purple Buff Pit"),
         Waypoint(0.79f, 0.59f, "Enemy Horned Lizard Pit"),
-        Waypoint(0.68f, 0.70f, "Bottom-Right Turtle Pit"),
+        Waypoint(0.68f, 0.70f, "Bottom-Right Boss Pit (Turtle or Lord)"),
         Waypoint(0.79f, 0.72f, "Bottom River Crab & Gold Bush"),
         Waypoint(0.88f, 0.88f, "Gold Lane Corner & Bush"),
         Waypoint(0.88f, 0.62f, "Gold Lane Enemy Tower"),
@@ -253,7 +253,7 @@ object SceneryMap {
         }
 
         // 2) 3D Monsters on screen <-> Minimap Camps & Boss Pits
-        val allMapCamps = s.camps.map { it.x to it.y } + MinimapAnalyzer.PITS + defaultPits.map { it.x to it.y }
+        val allMapCamps = s.camps.map { it.x to it.y } + MinimapAnalyzer.PITS + defaultPits.map { MapSide.view(it.x to it.y) }
         for (m in s.monsters) {
             val (px, py) = projectToWorld(me, self, m.x, m.y)
             val nearCamp = allMapCamps.minByOrNull { hypot(it.first - px, it.second - py) }
@@ -313,15 +313,16 @@ object SceneryMap {
 
     // Re-applies memorized 3D walls and bushes onto WallMap whenever WallMap.update() refreshes the 40x40 minimap grid
     fun reapplyToWallMap() {
+        // (the saved scenery is on the owner's usual map; on a mirrored one it is put where it really is - MapSide)
         ensureLoaded()
         for (i in 0 until G * G) {
             if (walls[i]) {
-                val wx = (i % G + 0.5f) / G
-                val wy = (i / G + 0.5f) / G
+                val (wx, wy) = MapSide.view(((i % G + 0.5f) / G) to ((i / G + 0.5f) / G))
                 WallMap.markSceneryWall(wx, wy)
             }
         }
-        for ((bx, by) in bushes) {
+        for (b in bushes) {
+            val (bx, by) = MapSide.view(b)
             WallMap.markSceneryBush(bx, by)
         }
     }
@@ -452,8 +453,8 @@ object SceneryMap {
         if (!com.example.mlbbresearch.ai.AiRuntime.playerOn) {
             com.example.mlbbresearch.ai.AiRuntime.start("player")
         }
-        status = if (playerUnlocked()) "roaming map (1/${tourWaypoints.size}: ${tourWaypoints[0].name})"
-            else "waiting: starts when the practice gate unlocks the Player (open the scoreboard once)"
+        status = calibrationBlock(playerUnlocked(), MatchKind.current(), MapSide.goldTop != null)
+            ?: "roaming map (1/${tourWaypoints.size}: ${tourWaypoints[0].name})"
         Diag.info("Scenery calibration roam started (${tourWaypoints.size} waypoints)")
         return status
     }
@@ -477,7 +478,12 @@ object SceneryMap {
     // Observe the actual 3D screen scenery every frame, synchronize landmarks with the minimap, and map into world coordinates
     fun observe(s: GameState) {
         ensureLoaded()
+        // A MIRRORED MATCH (EXP lane on top - owner, 2026-11-11: Solo matches can be either): what is seen is
+        // projected on THIS match's map, then stored on the saved scenery's map (Gold on top, Lord top-left) through
+        // MapSide.view - its own inverse. The live WallMap stays on this match's map. (Not mirrored: view = as is.)
+        fun keep(p: Pair<Float, Float>) = MapSide.view(p)
         val me = s.minimapSelf ?: return
+        val meKept = keep(me)
         val self = s.self ?: return
         val now = s.ts
 
@@ -485,8 +491,8 @@ object SceneryMap {
         syncWithMinimap(s, forceManual = false)
 
         // 0) Where the hero is standing right now is walkable ground, never a wall!
-        val selfGx = (me.first * G).toInt().coerceIn(0, G - 1)
-        val selfGy = (me.second * G).toInt().coerceIn(0, G - 1)
+        val selfGx = (meKept.first * G).toInt().coerceIn(0, G - 1)
+        val selfGy = (meKept.second * G).toInt().coerceIn(0, G - 1)
         walls[selfGy * G + selfGx] = false
         wallHits[selfGy * G + selfGx] = 0
         WallMap.clearWallCell(me.first, me.second)
@@ -508,8 +514,9 @@ object SceneryMap {
                 val sy = (gy + 0.5f) / 20f
                 if (hypot(sx - self.x, sy - self.y) < 0.07f) continue
                 val (wx, wy) = projectToWorld(me, self, sx, sy)
-                val wgx = (wx * G).toInt().coerceIn(0, G - 1)
-                val wgy = (wy * G).toInt().coerceIn(0, G - 1)
+                val (kx, ky) = keep(wx to wy)
+                val wgx = (kx * G).toInt().coerceIn(0, G - 1)
+                val wgy = (ky * G).toInt().coerceIn(0, G - 1)
                 if (wgx == selfGx && wgy == selfGy) continue
                 val idx = wgy * G + wgx
                 wallHits[idx]++
@@ -525,8 +532,9 @@ object SceneryMap {
         // 2) Project 3D screen bushes into world coordinates
         for (b in s.bushes) {
             val (wx, wy) = projectToWorld(me, self, b.x, b.y)
-            if (bushes.none { hypot(it.first - wx, it.second - wy) < 0.025f }) {
-                bushes.add(wx to wy)
+            val (kx, ky) = keep(wx to wy)
+            if (bushes.none { hypot(it.first - kx, it.second - ky) < 0.025f }) {
+                bushes.add(kx to ky)
                 WallMap.markSceneryBush(wx, wy)
                 changed = true
             }
@@ -534,32 +542,32 @@ object SceneryMap {
 
         // 3) Project 3D screen monsters into memorized Monster Pits along with walkable entrance stand-spot
         for (m in s.monsters) {
-            val (wx, wy) = projectToWorld(me, self, m.x, m.y)
+            val (wx, wy) = keep(projectToWorld(me, self, m.x, m.y))
             val dx = (m.x - self.x) * s.aspect
             val dy = m.y - self.y
             val dl = hypot(dx, dy).coerceAtLeast(1e-3f)
-            val ux = dx / dl; val uy = dy / dl
+            val (ux, uy) = MapSide.viewDir((dx / dl) to (dy / dl))
             val isBuff = com.example.mlbbresearch.game.JungleDb.isBuff(m.species)
             val existing = pits.firstOrNull { hypot(it.x - wx, it.y - wy) < 0.055f }
             if (existing != null) {
                 existing.x = existing.x * 0.7f + wx * 0.3f
                 existing.y = existing.y * 0.7f + wy * 0.3f
                 if (s.distToSelf(m.x, m.y) <= 0.34f) {
-                    existing.standX = existing.standX * 0.6f + me.first * 0.4f
-                    existing.standY = existing.standY * 0.6f + me.second * 0.4f
+                    existing.standX = existing.standX * 0.6f + meKept.first * 0.4f
+                    existing.standY = existing.standY * 0.6f + meKept.second * 0.4f
                     existing.dirX = ux; existing.dirY = uy
                 }
                 if (m.species.isNotEmpty()) existing.label = m.species
                 if (isBuff) existing.buff = true
             } else {
-                pits.add(PitSpot(wx, wy, me.first, me.second, ux, uy, m.species.ifEmpty { "camp" }, isBuff))
+                pits.add(PitSpot(wx, wy, meKept.first, meKept.second, ux, uy, m.species.ifEmpty { "camp" }, isBuff))
                 changed = true
             }
         }
 
         // 4) Project 3D enemy tower rings seen on screen into memorized Towers
         if (s.towerRing.zone != TowerRing.Zone.NONE) {
-            val (wx, wy) = projectToWorld(me, self, s.towerRing.cx, s.towerRing.cy)
+            val (wx, wy) = keep(projectToWorld(me, self, s.towerRing.cx, s.towerRing.cy))
             if (towers.none { hypot(it.first - wx, it.second - wy) < 0.04f }) {
                 towers.add(wx to wy)
                 changed = true
@@ -572,21 +580,23 @@ object SceneryMap {
     }
 
     // Best walkable entrance / stand-spot for a camp at (campX, campY)
+    // (the pits are kept on the owner's usual map, Gold lane on top / Lord top-left; with the EXP lane on top they are mirrored - MapSide)
     fun pitStandSpot(campX: Float, campY: Float): Pair<Float, Float> {
         ensureLoaded()
-        val p = pits.minByOrNull { hypot(it.x - campX, it.y - campY) }
-        if (p != null && hypot(p.x - campX, p.y - campY) < 0.07f) {
-            return p.standX to p.standY
+        val (cx, cy) = MapSide.view(campX to campY)
+        val p = pits.minByOrNull { hypot(it.x - cx, it.y - cy) }
+        if (p != null && hypot(p.x - cx, p.y - cy) < 0.07f) {
+            return MapSide.view(p.standX to p.standY)
         }
         return campX to campY
     }
 
     // Screen direction toward the monster inside the pit when standing at a memorized pit before HP bar appears
     fun pitAimDirection(s: GameState): Pair<Float, Float>? {
-        val me = s.minimapSelf ?: return null
+        val me = MapSide.view(s.minimapSelf ?: return null)
         val p = pits.minByOrNull { hypot(it.standX - me.first, it.standY - me.second) } ?: return null
         if (hypot(p.standX - me.first, p.standY - me.second) > 0.055f) return null
-        return p.dirX to p.dirY
+        return MapSide.viewDir(p.dirX to p.dirY)
     }
 
     // Autonomous Practice Mode Roam Tour decision
@@ -607,10 +617,25 @@ object SceneryMap {
     private fun stepLabel(i: Int): String = if (i < tourWaypoints.size) "${i + 1}/${tourWaypoints.size}"
         else "returning to base ${i - tourWaypoints.size + 1}/${returnWaypoints.size}"
 
+    // WHEN THE CALIBRATION TOUR MAY RUN (null = it may; else why it waits):
+    //  - the practice gate has unlocked the Player;
+    //  - SOLO PRACTICE only (owner, 2026-11-11: god mode, which keeps the hero alive on the tour, can only be
+    //    turned on in Solo mode vs computer) - not in a 5v5, and not while the kind of match is not read yet;
+    //  - the minimap's lane mark has been read (Solo matches can have either lane on top - owner, 2026-11-11):
+    //    what is learned on a mirrored map is stored mirrored back, so the side must be known.
+    fun calibrationBlock(unlocked: Boolean, kind: MatchKind.Kind, markRead: Boolean): String? = when {
+        !unlocked -> "waiting: starts when the practice gate unlocks the Player (open the scoreboard once)"
+        kind == MatchKind.Kind.FIVE_V_FIVE -> "waiting: scenery calibration runs only in Solo mode vs computer (god mode) - this is a 5v5"
+        kind != MatchKind.Kind.SOLO -> "waiting: is this Solo mode? (read from the loading screen or the scoreboard - open the scoreboard once)"
+        !markRead -> "waiting: the minimap's lane mark (\"$\" or \"E\") is not read yet - it is read in the first 90 s; if it was missed, start a new Solo match"
+        else -> null
+    }
+
     fun roamDecision(s: GameState, p: HeroProfile): TacticalDecision? {
         if (!roamActive) return null
-        if (!playerUnlocked()) {
-            status = "waiting: starts when the practice gate unlocks the Player (open the scoreboard once)"
+        val block = calibrationBlock(playerUnlocked(), MatchKind.current(), MapSide.goldTop != null)
+        if (block != null) {
+            status = block
             waypointStartedAt = 0L; waypointArrivedAt = 0L
             return null
         }
@@ -627,7 +652,9 @@ object SceneryMap {
         // (the way back is long: more time per stop)
         val stopTimeout = if (roamIdx < tourWaypoints.size) wp.timeoutMs else 30_000L
         if (waypointStartedAt == 0L) waypointStartedAt = now
-        val dist = hypot(wp.x - me.first, wp.y - me.second)
+        // (the tour is written on the usual map; on a mirrored one each stop is its mirror - the same places)
+        val (wpx, wpy) = MapSide.view(wp.x to wp.y)
+        val dist = hypot(wpx - me.first, wpy - me.second)
 
         if (dist < 0.045f || now - waypointStartedAt > stopTimeout) {
             if (waypointArrivedAt == 0L) {
@@ -655,8 +682,9 @@ object SceneryMap {
         }
 
         val nextWp = route[roamIdx]
-        val (dx, dy) = WallMap.direction(me, nextWp.x to nextWp.y) ?: run {
-            val rx = nextWp.x - me.first; val ry = nextWp.y - me.second
+        val nextAt = MapSide.view(nextWp.x to nextWp.y)
+        val (dx, dy) = WallMap.direction(me, nextAt) ?: run {
+            val rx = nextAt.first - me.first; val ry = nextAt.second - me.second
             val l = hypot(rx, ry).coerceAtLeast(1e-4f)
             (rx / l) to (ry / l)
         }

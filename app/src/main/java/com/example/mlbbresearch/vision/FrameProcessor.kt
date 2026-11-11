@@ -148,6 +148,10 @@ object FrameProcessor {
 
         // the active item / Conceal buttons: showing and lit? (ActiveItems presses them)
         if (hint == ScreenHint.NONE && self != null && frameNo % 3 == 1L) com.example.mlbbresearch.controller.ActiveItems.observe(px, w, h)
+        // which lane is on top (the minimap's lane marks, shown only at the start of the match - game.MapSide)
+        if (hint == ScreenHint.NONE && self != null && frameNo % 5 == 2L && com.example.mlbbresearch.game.MapSide.goldTop == null &&
+            com.example.mlbbresearch.game.GameStateTracker.state.matchSec in 0..com.example.mlbbresearch.game.MapSide.READ_UNTIL_SEC)
+            com.example.mlbbresearch.game.MapSide.observe(com.example.mlbbresearch.game.MapSide.mark(px, w, h))
         // which skill buttons the screen shows (normal / large HUD, 2-3-4 skills)
         if (hint == ScreenHint.NONE && self != null && frameNo % 10 == 5L) ScreenKit.observe(px, w, h)
         // which hero you play: its skill icons against learned looks and the wiki pictures (HeroVerifier)
@@ -465,12 +469,14 @@ object FrameProcessor {
                 // HP = the red part over the FULL bar (the hero-width cap cut long bars short)
                 val hp = (s.hp * (s.barRight - s.barLeft) / fullW).coerceIn(0f, 1f)
                 // which monster: its spot first (owner's 20 jungle screenshots - game.JungleSpots), then its colour
-                val sec = com.example.mlbbresearch.game.GameStateTracker.state.matchSec
+                // (Solo practice: every monster is up from 0:00 - MatchKind.jungleSec)
+                val sec = com.example.mlbbresearch.game.MatchKind.jungleSec(com.example.mlbbresearch.game.GameStateTracker.state.matchSec)
                 val species = when (kind) {
                     com.example.mlbbresearch.game.MonsterKind.BOSS -> com.example.mlbbresearch.game.JungleDb.boss(mini, sec).id
                     com.example.mlbbresearch.game.MonsterKind.BUFF -> (com.example.mlbbresearch.game.JungleSpots.at(mini.self, kind, sec)
                         ?: com.example.mlbbresearch.game.JungleDb.buff(col[0], col[1]) ?: com.example.mlbbresearch.game.JungleDb.CREEP).id
-                    else -> (com.example.mlbbresearch.game.JungleSpots.at(mini.self, kind, sec)
+                    // (only one Lithowanderer is up at a time - nowMs lets it rule out the other spot)
+                    else -> (com.example.mlbbresearch.game.JungleSpots.at(mini.self, kind, sec, System.currentTimeMillis())
                         ?: com.example.mlbbresearch.game.JungleDb.camp(col[0], col[1], col[2])).id
                 }
                 val m = Seen(Team.NEUTRAL, boss, s.x, s.y, hp, s.barLeft, s.barTop, s.barLeft + fullW, s.barBottom, species)

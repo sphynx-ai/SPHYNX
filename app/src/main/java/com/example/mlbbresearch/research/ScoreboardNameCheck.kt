@@ -19,7 +19,8 @@ object ScoreboardNameCheck {
 
     enum class Verdict { ALL_COMPUTER, HUMAN_PRESENT, UNREADABLE }
 
-    data class Result(val verdict: Verdict, val selfRow: Int, val ally: List<Float>, val enemy: List<Float>, val note: String)
+    data class Result(val verdict: Verdict, val selfRow: Int, val ally: List<Float>, val enemy: List<Float>, val note: String,
+                      val players: Int = 0)   // players in the match (you included); 0 = not read
 
     // EMPTY ROWS (solo practice, owner 2026-11-10: only you and one Computer enemy): a row with a player
     // always shows its gold number in yellow; an empty row has none. Measured on the owner's 2712x1220
@@ -43,10 +44,11 @@ object ScoreboardNameCheck {
         if (others.isEmpty()) return Result(Verdict.UNREADABLE, self, ally, enemy, "no other player's row found")
         val human = others.count { it <= IS_NAME }
         val unclear = others.count { it > IS_NAME && it < IS_COMPUTER }
+        val players = others.size + 1
         return when {
-            human > 0 -> Result(Verdict.HUMAN_PRESENT, self, ally, enemy, "$human row(s) are not 'Computer'")
-            unclear > 0 -> Result(Verdict.UNREADABLE, self, ally, enemy, "$unclear row(s) unclear")
-            else -> Result(Verdict.ALL_COMPUTER, self, ally, enemy, "all ${others.size} other player(s) are 'Computer'" +
+            human > 0 -> Result(Verdict.HUMAN_PRESENT, self, ally, enemy, players = players, note = "$human row(s) are not 'Computer'")
+            unclear > 0 -> Result(Verdict.UNREADABLE, self, ally, enemy, players = players, note = "$unclear row(s) unclear")
+            else -> Result(Verdict.ALL_COMPUTER, self, ally, enemy, players = players, note = "all ${others.size} other player(s) are 'Computer'" +
                 if (others.size < 9) " (${others.size + 1} players in this match)" else "")
         }
     }
