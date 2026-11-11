@@ -568,6 +568,18 @@ object SceneryMap {
     fun playerUnlocked(): Boolean = com.example.mlbbresearch.ai.AiRuntime.playerOn &&
         com.example.mlbbresearch.ai.AiRuntime.playerGate == com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY
 
+    // RETURN TO BASE (owner, 2026-11-11): after the last tour stop the Research player walks back to its base
+    // (gate, then fountain). The scenery is still observed the whole way and re-synced / saved at each of
+    // these stops, so the walk back revalidates what the tour learned. The calibration ends at the fountain.
+    val returnWaypoints: List<Waypoint> = listOf(
+        Waypoint(0.18f, 0.82f, "Return: Ally Base Gate"),
+        Waypoint(0.07f, 0.93f, "Return: Base (fountain)")
+    )
+    private val route: List<Waypoint> by lazy { tourWaypoints + returnWaypoints }
+    fun returning(): Boolean = roamActive && roamIdx >= tourWaypoints.size
+    private fun stepLabel(i: Int): String = if (i < tourWaypoints.size) "${i + 1}/${tourWaypoints.size}"
+        else "returning to base ${i - tourWaypoints.size + 1}/${returnWaypoints.size}"
+
     fun roamDecision(s: GameState, p: HeroProfile): TacticalDecision? {
         if (!roamActive) return null
         if (!playerUnlocked()) {
@@ -580,40 +592,42 @@ object SceneryMap {
             "Scenery calibration: waiting for minimap position"
         )
         val now = s.ts
-        if (roamIdx >= tourWaypoints.size) {
+        if (roamIdx >= route.size) {
             stopRoam()
             return null
         }
-        val wp = tourWaypoints[roamIdx]
+        val wp = route[roamIdx]
+        // (the way back is long: more time per stop)
+        val stopTimeout = if (roamIdx < tourWaypoints.size) 9500L else 30_000L
         if (waypointStartedAt == 0L) waypointStartedAt = now
         val dist = hypot(wp.x - me.first, wp.y - me.second)
 
-        if (dist < 0.045f || now - waypointStartedAt > 9500L) {
+        if (dist < 0.045f || now - waypointStartedAt > stopTimeout) {
             if (waypointArrivedAt == 0L) {
                 waypointArrivedAt = now
                 syncWithMinimap(s, forceManual = true)
                 saveNow()
             }
             if (now - waypointArrivedAt < 350L) {
-                status = "scanning ${wp.name} (${roamIdx + 1}/${tourWaypoints.size}) · ${summary()}"
+                status = "scanning ${wp.name} (${stepLabel(roamIdx)}) · ${summary()}"
                 return TacticalDecision(
                     Intent.PUSH, 0f, 0f, emptyList(), -1f, -1f, wp.name, -1f, -1,
-                    "Scenery calibration (${roamIdx + 1}/${tourWaypoints.size}): scanning ${wp.name}"
+                    "Scenery calibration (${stepLabel(roamIdx)}): scanning ${wp.name}"
                 )
             }
             roamIdx++
             waypointArrivedAt = 0L
             waypointStartedAt = now
-            if (roamIdx >= tourWaypoints.size) {
+            if (roamIdx >= route.size) {
                 saveNow()
                 roamActive = false
-                status = "completed 100% · " + summary()
+                status = "completed 100% · back at base · " + summary()
                 Diag.info("Scenery calibration complete: $status")
                 return null
             }
         }
 
-        val nextWp = tourWaypoints[roamIdx]
+        val nextWp = route[roamIdx]
         val (dx, dy) = WallMap.direction(me, nextWp.x to nextWp.y) ?: run {
             val rx = nextWp.x - me.first; val ry = nextWp.y - me.second
             val l = hypot(rx, ry).coerceAtLeast(1e-4f)
@@ -623,10 +637,10 @@ object SceneryMap {
         HeroDb.dashSlot(s.ownHero)?.let { dash ->
             if (dash != "ult" && CooldownTracker.ready(dash, p)) casts.add(dash)
         }
-        status = "roaming ${roamIdx + 1}/${tourWaypoints.size}: ${nextWp.name} · ${summary()}"
+        status = (if (returning()) "" else "roaming ") + "${stepLabel(roamIdx)}: ${nextWp.name} · ${summary()}"
         return TacticalDecision(
             Intent.PUSH, dx, dy, casts, -1f, -1f, nextWp.name, -1f, -1,
-            "Scenery calibration (${roamIdx + 1}/${tourWaypoints.size}): -> ${nextWp.name}"
+            "Scenery calibration (${stepLabel(roamIdx)}): -> ${nextWp.name}"
         )
     }
 }
