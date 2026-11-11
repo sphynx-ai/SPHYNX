@@ -123,9 +123,10 @@ object AutoFolder {
         } catch (e: Exception) { null } else null
         for (dir in listOfNotNull(com.example.mlbbresearch.core.Storage.dir(), localDir(ctx), legacyLocalDir(ctx), oldDownloads))
             dir.listFiles()?.forEach { f -> if (f.isFile && out.none { it.name == f.name }) out.add(Entry(f.name, f.length(), f.lastModified()) { f.inputStream() }) }
-        // the app's own files saved in Download/MLBB-Research without the permission (exports, Kaggle results)
+        // the app's own files saved in Download without the permission (exports, Kaggle results): the app's
+        // Download/Sphynx-Auto-Pilot-Storage, then - read only - the old Download/MLBB-Research
+        for (rel in listOf(com.example.mlbbresearch.core.Storage.downloadsRel() + "/", android.os.Environment.DIRECTORY_DOWNLOADS + "/" + LEGACY_FOLDER + "/"))
         try {
-            val rel = android.os.Environment.DIRECTORY_DOWNLOADS + "/" + LEGACY_FOLDER + "/"
             cr.query(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                 arrayOf(android.provider.MediaStore.Downloads._ID, android.provider.MediaStore.Downloads.DISPLAY_NAME,
                     android.provider.MediaStore.Downloads.SIZE, android.provider.MediaStore.Downloads.DATE_MODIFIED),

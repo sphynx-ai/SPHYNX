@@ -13,20 +13,27 @@ import java.io.File
 //
 // Android lets an app write into a folder of its own choosing at the top of the storage only with
 // "All files access" (Settings > Apps > special access). The Model page has a button for it.
-// Until it is allowed, the app keeps working exactly as before: it reads the folder you choose on
-// the Model page, and writes its own files into Download/MLBB-Research (where earlier versions put them).
+// Until it is allowed, the app reads the folder you choose on the Model page and writes its own files
+// into Download/Sphynx-Auto-Pilot-Storage (owner, 2026-11-11: no longer Download/MLBB-Research - that old
+// folder is only READ, so backups and exports saved there by earlier versions are still found).
+
 object Storage {
 
     const val REL = "CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage"
-    const val LEGACY_REL = "Download/MLBB-Research"     // where the app wrote before v37.19 (and without the permission)
+    const val LEGACY_REL = "Download/MLBB-Research"     // where earlier versions wrote: only read now, never written
     const val LEGACY_NAME = "MLBB-Research"
+    // where the app writes without "All files access" (a folder in Download, the same name as the app's folder)
+    const val FALLBACK_NAME = "Sphynx-Auto-Pilot-Storage"
+    const val FALLBACK_REL = "Download/$FALLBACK_NAME"
+    // the MediaStore RELATIVE_PATH of that folder (or a sub-folder), e.g. "Download/Sphynx-Auto-Pilot-Storage/recordings"
+    fun downloadsRel(sub: String = ""): String = Environment.DIRECTORY_DOWNLOADS + "/" + FALLBACK_NAME + (if (sub.isEmpty()) "" else "/$sub")
 
     // "All files access" granted (Android 11+; the app needs Android 11)
     val allFilesAccess: Boolean get() = try { Environment.isExternalStorageManager() } catch (e: Throwable) { false }
 
     fun root(): File = File(Environment.getExternalStorageDirectory(), REL)
 
-    // the folder (or a sub-folder) to write into directly; null = no permission, use Download/MLBB-Research
+    // the folder (or a sub-folder) to write into directly; null = no permission, use Download/Sphynx-Auto-Pilot-Storage
     fun dir(sub: String = ""): File? {
         if (!allFilesAccess) return null
         val d = if (sub.isEmpty()) root() else File(root(), sub)
@@ -35,7 +42,7 @@ object Storage {
 
     // where the app's own files go right now, for messages
     val writeLabel: String get() = label(allFilesAccess)
-    fun label(direct: Boolean): String = if (direct) "/$REL" else LEGACY_REL
+    fun label(direct: Boolean): String = if (direct) "/$REL" else FALLBACK_REL
 
     // the system screen where the owner turns "All files access" on for this app
     fun requestIntent(ctx: Context): Intent =
@@ -43,5 +50,5 @@ object Storage {
 
     fun status(): String = if (allFilesAccess) "Folder: /$REL (all files access on: imports and exports both use it)"
         else "Folder: /$REL needs \"All files access\" to save into it. Until then the app reads the folder you choose " +
-            "below and saves its own files in $LEGACY_REL."
+            "below and saves its own files in $FALLBACK_REL."
 }

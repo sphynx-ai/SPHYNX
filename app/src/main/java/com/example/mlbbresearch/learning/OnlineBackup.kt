@@ -144,13 +144,15 @@ object OnlineBackup {
     }
 
     // Automatically restores mlbb-scenery-sync.json (and mlbb-learned.json) on startup after an uninstall & reinstall,
-    // even before the user has re-selected the Download/MLBB-Research folder!
+    // even before the user has re-selected the import folder!
     private fun restoreFromPhoneStorageOnStartup(c: Context) {
         try {
             // 1. Direct file paths: the app's folder /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage first (v37.19),
-            // then where earlier versions saved the backups (Download/MLBB-Research, Documents/MLBB-Research)
+            // then Download/Sphynx-Auto-Pilot-Storage (without all files access), then - read only - where earlier
+            // versions saved the backups (Download/MLBB-Research, Documents/MLBB-Research)
             val dirs = listOfNotNull(
                 try { com.example.mlbbresearch.core.Storage.root() } catch (e: Exception) { null },
+                try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), com.example.mlbbresearch.core.Storage.FALLBACK_NAME) } catch (e: Exception) { null },
                 try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MLBB-Research") } catch (e: Exception) { null },
                 try { File("/storage/emulated/0/Download/MLBB-Research") } catch (e: Exception) { null },
                 try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "MLBB-Research") } catch (e: Exception) { null },
@@ -167,7 +169,7 @@ object OnlineBackup {
                 }
             }
 
-            // 2. MediaStore.Downloads query (reads Download/MLBB-Research/mlbb-scenery-sync.json across reinstalls)
+            // 2. MediaStore.Downloads query (reads the app's mlbb-scenery-sync.json etc. in Download across reinstalls)
             val cr = c.contentResolver
             for (base in listOf(SCENERY_SYNC, LEARNED, META, SKILLS)) {
                 try {
@@ -335,7 +337,7 @@ object OnlineBackup {
         writeInFolder(c, name, text)
         writeInDownloads(c, name, text)
         try {
-            val pubDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MLBB-Research")
+            val pubDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), com.example.mlbbresearch.core.Storage.FALLBACK_NAME)
             if (pubDir.exists() || pubDir.mkdirs()) {
                 File(pubDir, name).writeText(text, Charsets.UTF_8)
             }
@@ -383,7 +385,7 @@ object OnlineBackup {
     private fun writeInDownloads(c: Context, name: String, text: String) {
         try {
             val cr = c.contentResolver
-            val rel = Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research/"
+            val rel = com.example.mlbbresearch.core.Storage.downloadsRel() + "/"
             val existing = cr.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.Downloads._ID),
                 MediaStore.Downloads.DISPLAY_NAME + " = ? AND " + MediaStore.Downloads.RELATIVE_PATH + " = ?", arrayOf(name, rel), null)
                 ?.use { if (it.moveToFirst()) ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, it.getLong(0)) else null }

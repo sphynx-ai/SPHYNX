@@ -16,7 +16,7 @@ import java.util.concurrent.Executors
 // SESSION RECORDER (for bug reports, owner request): while it is on, it writes what the AI saw and
 // decided, about 10 times a second, plus every aimed skill and every log line, to one file:
 //   sphynx-session-<date>.jsonl   (one JSON object per line)
-// in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/recordings (or Download/MLBB-Research/recordings
+// in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/recordings (or Download/Sphynx-Auto-Pilot-Storage/recordings
 // without all files access). Record the screen at the same time: every row has the wall-clock time
 // ("t", ms) and the in-game match timer ("ms" = match seconds), so file and video line up.
 // Row types ("k"):
@@ -136,11 +136,11 @@ object SessionRecorder {
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, f.name)
             put(MediaStore.Downloads.MIME_TYPE, mime)
-            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/" + Storage.LEGACY_NAME + "/" + FOLDER)
+            put(MediaStore.Downloads.RELATIVE_PATH, Storage.downloadsRel(FOLDER))
         }
         val uri = c.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: throw IllegalStateException("cannot create ${f.name}")
         c.contentResolver.openOutputStream(uri)?.use { o -> f.inputStream().use { it.copyTo(o) } }
-        return "Saved ${f.name} (${f.length() / 1024} KB) in ${Storage.LEGACY_REL}/$FOLDER"
+        return "Saved ${f.name} (${f.length() / 1024} KB) in ${Storage.FALLBACK_REL}/$FOLDER"
     }
 
     private fun write(o: JSONObject) {
