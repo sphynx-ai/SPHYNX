@@ -51,8 +51,7 @@ object DatasetZipper {
     private class Item(val name: String, val rel: String, val open: () -> java.io.InputStream?, val delete: () -> Boolean)
 
     // the app's own files: in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/<folder>/... (all files access)
-    // and in Download/Sphynx-Auto-Pilot-Storage/<folder>/... (saved without it) - plus, read only, the old
-    // Download/MLBB-Research/<folder>/... of earlier versions
+    // and in Download/Sphynx-Auto-Pilot-Storage/<folder>/... (saved without it)
     private fun list(c: Context, kind: Kind): List<Item> {
         val out = ArrayList<Item>()
         com.example.mlbbresearch.core.Storage.dir(kind.folder)?.let { top ->
@@ -61,8 +60,7 @@ object DatasetZipper {
                 out.add(Item(f.name, rel, { f.inputStream() }, { f.delete() }))
             }
         }
-        for (base in listOf(com.example.mlbbresearch.core.Storage.downloadsRel(kind.folder) + "/",
-                Environment.DIRECTORY_DOWNLOADS + "/" + com.example.mlbbresearch.core.Storage.LEGACY_NAME + "/" + kind.folder + "/"))
+        val base = com.example.mlbbresearch.core.Storage.downloadsRel(kind.folder) + "/"
         c.contentResolver.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
             arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME, MediaStore.Downloads.RELATIVE_PATH),
             MediaStore.Downloads.RELATIVE_PATH + " LIKE ?", arrayOf("$base%"), null)?.use { cur ->

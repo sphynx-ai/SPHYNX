@@ -148,14 +148,11 @@ object OnlineBackup {
     private fun restoreFromPhoneStorageOnStartup(c: Context) {
         try {
             // 1. Direct file paths: the app's folder /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage first (v37.19),
-            // then Download/Sphynx-Auto-Pilot-Storage (without all files access), then - read only - where earlier
-            // versions saved the backups (Download/MLBB-Research, Documents/MLBB-Research)
+            // then Download/Sphynx-Auto-Pilot-Storage (without all files access). The old MLBB-Research folders
+            // are not read (owner, 2026-11-11)
             val dirs = listOfNotNull(
                 try { com.example.mlbbresearch.core.Storage.root() } catch (e: Exception) { null },
                 try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), com.example.mlbbresearch.core.Storage.FALLBACK_NAME) } catch (e: Exception) { null },
-                try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MLBB-Research") } catch (e: Exception) { null },
-                try { File("/storage/emulated/0/Download/MLBB-Research") } catch (e: Exception) { null },
-                try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "MLBB-Research") } catch (e: Exception) { null },
                 com.example.mlbbresearch.models.AutoFolder.localDir(c)
             ).distinctBy { it.absolutePath }
 
@@ -169,15 +166,16 @@ object OnlineBackup {
                 }
             }
 
-            // 2. MediaStore.Downloads query (reads the app's mlbb-scenery-sync.json etc. in Download across reinstalls)
+            // 2. MediaStore.Downloads query (reads the app's mlbb-scenery-sync.json etc. in
+            // Download/Sphynx-Auto-Pilot-Storage across reinstalls - only there)
             val cr = c.contentResolver
             for (base in listOf(SCENERY_SYNC, LEARNED, META, SKILLS)) {
                 try {
                     cr.query(
                         MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                         arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME, MediaStore.Downloads.DATE_MODIFIED),
-                        MediaStore.Downloads.DISPLAY_NAME + " LIKE ?",
-                        arrayOf("$base%.json"),
+                        MediaStore.Downloads.DISPLAY_NAME + " LIKE ? AND " + MediaStore.Downloads.RELATIVE_PATH + " = ?",
+                        arrayOf("$base%.json", com.example.mlbbresearch.core.Storage.downloadsRel() + "/"),
                         MediaStore.Downloads.DATE_MODIFIED + " DESC"
                     )?.use { cur ->
                         while (cur.moveToNext()) {

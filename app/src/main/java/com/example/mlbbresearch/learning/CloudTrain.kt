@@ -70,10 +70,8 @@ object CloudTrain {
     private fun inputs(ctx: Context): List<Input> {
         val byName = LinkedHashMap<String, Input>()
         try { for (e in AutoFolder.files(ctx)) byName[e.name] = Input(e.name, e.size, e.open) } catch (e: Exception) { }
-        // the app's own files in Download/Sphynx-Auto-Pilot-Storage (exports, zips, results), then - read only -
-        // the old Download/MLBB-Research of earlier versions
-        for (base in listOf(com.example.mlbbresearch.core.Storage.downloadsRel() + "/",
-                Environment.DIRECTORY_DOWNLOADS + "/" + com.example.mlbbresearch.core.Storage.LEGACY_NAME + "/"))
+        // the app's own files in Download/Sphynx-Auto-Pilot-Storage (exports, zips, results)
+        val base = com.example.mlbbresearch.core.Storage.downloadsRel() + "/"
         try {
             ctx.contentResolver.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                 arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME, MediaStore.Downloads.SIZE, MediaStore.Downloads.RELATIVE_PATH),

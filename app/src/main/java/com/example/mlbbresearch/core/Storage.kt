@@ -14,13 +14,13 @@ import java.io.File
 // Android lets an app write into a folder of its own choosing at the top of the storage only with
 // "All files access" (Settings > Apps > special access). The Model page has a button for it.
 // Until it is allowed, the app reads the folder you choose on the Model page and writes its own files
-// into Download/Sphynx-Auto-Pilot-Storage (owner, 2026-11-11: no longer Download/MLBB-Research - that old
-// folder is only READ, so backups and exports saved there by earlier versions are still found).
+// into Download/Sphynx-Auto-Pilot-Storage (owner, 2026-11-11: the old Download/MLBB-Research is ignored
+// completely - neither written nor read).
 
 object Storage {
 
     const val REL = "CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage"
-    const val LEGACY_REL = "Download/MLBB-Research"     // where earlier versions wrote: only read now, never written
+    const val LEGACY_REL = "Download/MLBB-Research"     // where earlier versions wrote: ignored now (not read, not written)
     const val LEGACY_NAME = "MLBB-Research"
     // where the app writes without "All files access" (a folder in Download, the same name as the app's folder)
     const val FALLBACK_NAME = "Sphynx-Auto-Pilot-Storage"
