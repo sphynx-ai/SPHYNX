@@ -76,7 +76,8 @@ object SceneryMap {
         PitSpot(0.67f, 0.68f, 0.64f, 0.65f, 0.5f, 0.6f, "lord_bot", false)
     )
 
-    class Waypoint(val x: Float, val y: Float, val name: String)
+    // timeoutMs: how long the stop may take before the tour moves on (the enemy-base stops are farther apart)
+    class Waypoint(val x: Float, val y: Float, val name: String, val timeoutMs: Long = 9500L)
     val tourWaypoints: List<Waypoint> = listOf(
         Waypoint(0.18f, 0.82f, "Ally Base Gate"),
         Waypoint(0.22f, 0.65f, "Ally Rockursa Pit"),
@@ -105,7 +106,19 @@ object SceneryMap {
         Waypoint(0.60f, 0.73f, "Ally Fire Beetle Pit"),
         Waypoint(0.36f, 0.64f, "Mid Lane Ally Tower"),
         Waypoint(0.62f, 0.38f, "Mid Lane Enemy Tower"),
-        Waypoint(0.50f, 0.50f, "Center River Return")
+        // THE ENEMY BASE (owner, 2026-11-11: solo practice vs Computer with god mode on, so the Research player
+        // cannot die there). Measured on the owner's minimap (screenshot, 2026-11-10): enemy tower icons at
+        // top lane 0.27/0.54/0.72 (y 0.06), mid 0.60,0.42 / 0.70,0.32 / 0.78,0.21, gold lane 0.93,0.73 /
+        // 0.93,0.53 / 0.92,0.27, base core 0.87,0.10. Each stop is just on the lane side of its tower.
+        Waypoint(0.68f, 0.35f, "Mid Lane Enemy Inner Tower", 20_000L),
+        Waypoint(0.76f, 0.25f, "Mid Lane Enemy Base Tower", 20_000L),
+        Waypoint(0.83f, 0.15f, "Enemy Base (core)", 20_000L),
+        Waypoint(0.71f, 0.10f, "Top Lane Enemy Base Tower", 20_000L),
+        Waypoint(0.54f, 0.09f, "Top Lane Enemy Inner Tower", 20_000L),
+        Waypoint(0.89f, 0.29f, "Gold Lane Enemy Base Tower", 20_000L),
+        Waypoint(0.89f, 0.53f, "Gold Lane Enemy Inner Tower", 20_000L),
+        Waypoint(0.90f, 0.72f, "Gold Lane Enemy Outer Tower", 20_000L),
+        Waypoint(0.50f, 0.50f, "Center River Return", 20_000L)
     )
 
     // Perspective-foreshortened projection from 3D screen (sx, sy) to 2D minimap world coordinates (0..1)
@@ -598,7 +611,7 @@ object SceneryMap {
         }
         val wp = route[roamIdx]
         // (the way back is long: more time per stop)
-        val stopTimeout = if (roamIdx < tourWaypoints.size) 9500L else 30_000L
+        val stopTimeout = if (roamIdx < tourWaypoints.size) wp.timeoutMs else 30_000L
         if (waypointStartedAt == 0L) waypointStartedAt = now
         val dist = hypot(wp.x - me.first, wp.y - me.second)
 

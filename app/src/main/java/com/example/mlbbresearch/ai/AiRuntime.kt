@@ -335,6 +335,8 @@ object AiRuntime {
                     TacticalEngine.planAhead(s, d, profile)
                     com.example.mlbbresearch.core.SessionRecorder.frame(s, d)
                     benchMoving = d.moveX != 0f || d.moveY != 0f
+                    // never into the enemy fountain, whatever the mode (owner, 2026-11-11) - applied last
+                    d = FountainGuard.apply(s, d)
                     ActionExecutor.execute(d)
                     // screen-to-touch recorder: from the start of reading this frame to its touches being queued
                     com.example.mlbbresearch.core.TouchSpeed.log.frameToDecision(System.currentTimeMillis() - s.ts)
