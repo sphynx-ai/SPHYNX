@@ -52,11 +52,11 @@ class MapSideTest {
     @Test fun theBossFollowsTheMap() {
         fun mini(x: Float, y: Float) = com.example.mlbbresearch.vision.MinimapInfo(0, 0, emptyList(), self = x to y)
         repeat(3) { MapSide.observe(MapSide.Mark.EXP) }
-        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.29f, 0.30f), 300))  // EXP on top: the Turtle is top-left
-        assertEquals(JungleDb.LORD, JungleDb.boss(mini(0.70f, 0.70f), 600))
+        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.29f, 0.30f), 300, MatchKind.Kind.SOLO))  // EXP on top: the Turtle is top-left
+        assertEquals(JungleDb.LORD, JungleDb.boss(mini(0.70f, 0.70f), 600, MatchKind.Kind.SOLO))
         MapSide.reset(); repeat(3) { MapSide.observe(MapSide.Mark.GOLD) }
-        assertEquals(JungleDb.LORD, JungleDb.boss(mini(0.29f, 0.30f), 600))    // Gold on top: the Lord is top-left
-        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.70f, 0.70f), 300))
+        assertEquals(JungleDb.LORD, JungleDb.boss(mini(0.29f, 0.30f), 600, MatchKind.Kind.SOLO))    // Gold on top: the Lord is top-left
+        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.70f, 0.70f), 300, MatchKind.Kind.SOLO))
     }
 
     // the mirrored map (EXP on top): the base stays, the top-left and bottom-right corners trade places

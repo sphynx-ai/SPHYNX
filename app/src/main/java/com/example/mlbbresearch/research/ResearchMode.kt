@@ -182,6 +182,8 @@ object ResearchMode {
         if (id == 0L) { reading("scoreboard seen - match not identified yet", nowMs); return }
         val before = session.gate.state
         val r = ScoreboardNameCheck.check(px, w, h, m)
+        // solo practice (2 players) or 5v5 (6+): the boss timers depend on it (game.MatchKind)
+        com.example.mlbbresearch.game.MatchKind.set(id, com.example.mlbbresearch.game.MatchKind.fromPlayers(r.players))
         session.observe(id, r, nowMs)
         reading("scoreboard ${w}x$h: ${r.verdict.name.lowercase().replace('_', ' ')} - ${r.note}" +
             (if (r.selfRow >= 0) " (your row ${r.selfRow + 1})" else "") +
@@ -209,9 +211,12 @@ object ResearchMode {
         val id = GameStateTracker.matchId
         if (id == 0L) { reading("loading screen - match not identified yet", nowMs); return }
         if (session.gate.matchId == id && session.gate.state != PracticeGate.State.UNVERIFIED) return   // already decided
-        val r = if (com.example.mlbbresearch.vision.ScreenReader.soloLoading(px, w, h))
-            LoadingNameCheck.fromSolo(m.score(px, w, h, SOLO_NAME_X, SOLO_NAME_Y, sizeMul = NAME_SIZE))
+        val solo = com.example.mlbbresearch.vision.ScreenReader.soloLoading(px, w, h)
+        val r = if (solo) LoadingNameCheck.fromSolo(m.score(px, w, h, SOLO_NAME_X, SOLO_NAME_Y, sizeMul = NAME_SIZE))
         else LoadingNameCheck.fromGrid(GRID.map { (x, y) -> m.score(px, w, h, x, y, dx = 40, sizeMul = NAME_SIZE) })
+        // solo practice or 5v5 (game.MatchKind): the solo layout says solo; the 5v5 grid only when it was read
+        if (solo) com.example.mlbbresearch.game.MatchKind.set(id, com.example.mlbbresearch.game.MatchKind.Kind.SOLO)
+        else if (r.verdict == LoadingNameCheck.Verdict.ALL_COMPUTER) com.example.mlbbresearch.game.MatchKind.set(id, com.example.mlbbresearch.game.MatchKind.Kind.FIVE_V_FIVE)
         val before = session.gate.state
         session.observeLoading(id, r, nowMs)
         reading("loading screen ${w}x$h: ${r.note}", nowMs)

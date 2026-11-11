@@ -49,15 +49,42 @@ class JungleSpotsTest {
         val icon = floatArrayOf(0f, 0f, 0.01f, 0.01f)
         // solo practice: both are up (both icons on the minimap) - the pit decides, at any time
         fun both(x: Float, y: Float) = com.example.mlbbresearch.vision.MinimapInfo(0, 0, emptyList(), self = x to y, lordIcon = icon, turtleIcon = icon)
-        assertEquals(JungleDb.LORD, JungleDb.boss(both(0.29f, 0.30f), 340))
-        assertEquals(JungleDb.TURTLE, JungleDb.boss(both(0.70f, 0.70f), 600))
+        assertEquals(JungleDb.LORD, JungleDb.boss(both(0.29f, 0.30f), 340, MatchKind.Kind.UNKNOWN))
+        assertEquals(JungleDb.TURTLE, JungleDb.boss(both(0.70f, 0.70f), 600, MatchKind.Kind.UNKNOWN))
         // icons not read: the pit before 9:00
         fun mini(x: Float, y: Float) = com.example.mlbbresearch.vision.MinimapInfo(0, 0, emptyList(), self = x to y)
-        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.70f, 0.70f), 300))
+        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.70f, 0.70f), 300, MatchKind.Kind.UNKNOWN))
         // a real match (wiki): from 9:00 there is no Turtle - the Lord can stand in its pit
-        assertEquals(JungleDb.LORD, JungleDb.boss(mini(0.70f, 0.70f), 600))
+        assertEquals(JungleDb.LORD, JungleDb.boss(mini(0.70f, 0.70f), 600, MatchKind.Kind.UNKNOWN))
         // only the Lord's icon shows (it replaced the Turtle at 8:00): the Lord, even in the Turtle's pit
-        assertEquals(JungleDb.LORD, JungleDb.boss(com.example.mlbbresearch.vision.MinimapInfo(0, 0, emptyList(), self = 0.70f to 0.70f, lordIcon = icon), 500))
+        assertEquals(JungleDb.LORD, JungleDb.boss(com.example.mlbbresearch.vision.MinimapInfo(0, 0, emptyList(), self = 0.70f to 0.70f, lordIcon = icon), 500, MatchKind.Kind.UNKNOWN))
+    }
+
+    // the owner's setup (2026-11-11): solo practice for calibration (both bosses up, no timers), 5v5 for real data
+    @Test fun soloPracticeAndFiveVFive() {
+        MapSide.reset()
+        val solo = MatchKind.Kind.SOLO; val five = MatchKind.Kind.FIVE_V_FIVE
+        fun mini(x: Float, y: Float) = com.example.mlbbresearch.vision.MinimapInfo(0, 0, emptyList(), self = x to y)
+        // solo: the pit decides at any time, even far off and with no icons read
+        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.70f, 0.70f), 900, solo))
+        assertEquals(JungleDb.LORD, JungleDb.boss(mini(0.29f, 0.30f), 10, solo))
+        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.55f, 0.95f), 900, solo))   // nearer the Turtle's pit
+        // 5v5: from 9:00 no Turtle, whatever the icons show
+        val icon = floatArrayOf(0f, 0f, 0.01f, 0.01f)
+        assertEquals(JungleDb.LORD, JungleDb.boss(com.example.mlbbresearch.vision.MinimapInfo(0, 0, emptyList(),
+            self = 0.70f to 0.70f, lordIcon = icon, turtleIcon = icon), 600, five))
+        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.70f, 0.70f), 200, five))
+    }
+
+    @Test fun theMatchKind() {
+        MatchKind.reset()
+        assertEquals(MatchKind.Kind.SOLO, MatchKind.fromPlayers(2))
+        assertEquals(MatchKind.Kind.FIVE_V_FIVE, MatchKind.fromPlayers(10))
+        assertEquals(MatchKind.Kind.UNKNOWN, MatchKind.fromPlayers(0))
+        MatchKind.set(7L, MatchKind.Kind.SOLO)
+        assertEquals(MatchKind.Kind.SOLO, MatchKind.of(7L))
+        assertEquals(MatchKind.Kind.UNKNOWN, MatchKind.of(8L))      // a new match starts unknown
+        MatchKind.reset()
     }
 
     // the owner's 5 enemy-jungle screenshots (2026-11-11), measured where the hero stood
