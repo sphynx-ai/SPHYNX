@@ -89,3 +89,28 @@ class StackBar(ctx: Context) : View(ctx) {
         c.restore()
     }
 }
+
+// A ring that fills with a share (Performance page: memory in use) and shows it in the middle:
+// the big number and a small caption under it.
+class RingGauge(ctx: Context) : View(ctx) {
+    private var frac = 0f
+    private var big = ""
+    private var caption = ""
+    private val d = resources.displayMetrics.density
+    private val track = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 9f * d; color = Color.parseColor("#33FFFFFF") }
+    private val arc = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 9f * d; strokeCap = Paint.Cap.ROUND }
+    private val bigP = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; textAlign = Paint.Align.CENTER; textSize = 24f * d; isFakeBoldText = true }
+    private val capP = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#C8D2F0"); textAlign = Paint.Align.CENTER; textSize = 12f * d }
+    fun set(fraction: Float, bigText: String, captionText: String, color: Int) {
+        frac = fraction.coerceIn(0f, 1f); big = bigText; caption = captionText; arc.color = color; invalidate()
+    }
+    override fun onDraw(c: Canvas) {
+        val pad = track.strokeWidth
+        val r = RectF(pad, pad, width - pad, height - pad)
+        c.drawArc(r, 0f, 360f, false, track)
+        if (frac > 0f) c.drawArc(r, -90f, 360f * frac, false, arc)
+        val cx = width / 2f; val cy = height / 2f
+        c.drawText(big, cx, cy + bigP.textSize * 0.25f, bigP)
+        c.drawText(caption, cx, cy + bigP.textSize * 0.25f + capP.textSize * 1.4f, capP)
+    }
+}
