@@ -23,6 +23,14 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-11", Kind.NEW, "Recommended lanes per hero: primary, secondary and flex pick",
+            "Every hero now has a recommended primary lane, a secondary lane, and whether it is a flex pick (playable in almost " +
+                "any lane) - from its online guide (now asked for both lanes and flex) and every wiki laning list it is in. Shown " +
+                "on the Library's hero list and hero page. The automatic lane uses it: the primary lane; without Retribution never " +
+                "the Jungle (the secondary instead); a flex pick takes its secondary when an ally's primary is the same lane. Your own " +
+                "setting per hero comes first (Player page, under the selected hero: e.g. \"exp, jungle\" or \"exp, jungle, flex\"), " +
+                "then lanes you confirmed (Alice: EXP, then Jungle - not Roam or Mid), then the online guide, then the wiki.",
+            pr = 49, needsDeviceCheck = true),
         Entry("2026-11-11", Kind.NEW, "Gold and EXP lanes swapped between matches: read from the minimap's lane marks",
             "Some matches put the Gold lane on top, others the EXP lane, with the Lord and Turtle pits swapped too: the Turtle is " +
                 "always by the EXP lane, the Lord by the Gold lane. At the start of each match the minimap's top-left lane mark (gold " +

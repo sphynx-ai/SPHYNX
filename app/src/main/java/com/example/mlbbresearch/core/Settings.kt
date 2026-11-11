@@ -112,6 +112,18 @@ object Cfg {
         }
     }
 
+    // the hero's recommended lanes as YOU set them (owner, 2026-11-11), e.g. "exp, jungle" or "exp, jungle, flex";
+    // they come before the online guide and the wiki (game.HeroLanes). null = not set
+    fun manualLanes(hero: String?): String? =
+        if (hero.isNullOrBlank()) null else prefs.getString("manual_lanes_" + normHeroKey(hero), null)?.trim()?.takeIf { it.isNotEmpty() }
+
+    fun setManualLanes(hero: String?, v: String?) {
+        if (hero.isNullOrBlank()) return
+        val k = "manual_lanes_" + normHeroKey(hero)
+        val clean = v?.trim().orEmpty()
+        if (clean.isEmpty()) prefs.edit().remove(k).apply() else put(k, clean)
+    }
+
     fun heroCombo(hero: String): String? = manualCombo(hero)
     fun setHeroCombo(hero: String, v: String?) = setManualCombo(hero, v)
 
