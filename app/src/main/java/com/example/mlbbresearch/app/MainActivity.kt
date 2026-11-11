@@ -1612,6 +1612,15 @@ class MainActivity : Activity() {
             val pb = com.example.mlbbresearch.game.HeroPlaybook.of(h)
             append(HeroDb.role(h).name.lowercase()).append(if (HeroDb.isRanged(h)) ", ranged" else ", melee")
             append(" · dash ").append(HeroDb.dashSlot(h) ?: "none")
+            // recommended lanes (online guide + wiki): what the automatic lane uses
+            com.example.mlbbresearch.game.HeroLanes.of(h).let { r ->
+                append("\nRecommended lanes: ").append(r.primary.label)
+                r.secondary?.let { append(" (primary) · ").append(it.label).append(" (secondary)") }
+                append(if (r.flex) " · FLEX PICK: can be played in almost any lane" else "")
+                append("  [").append(r.source).append("]")
+                val wiki = com.example.mlbbresearch.game.WikiLanes.lanes(h)
+                if (wiki.isNotEmpty()) append("\nWiki lists it for: ").append(wiki.joinToString { it.label })
+            }
             com.example.mlbbresearch.game.CooldownTracker.ultCooldown(h)?.let { append(" · ultimate cooldown ").append(it.toInt()).append(" s") }
             val dmgT = HeroDb.damageText(h)
             append("\nDamage type: ").append(dmgT).append(" · its equipment: ")
@@ -1664,7 +1673,8 @@ class MainActivity : Activity() {
                 }
                 val errS = if (!skills) ll.lastError(h, "skills") else null
                 val errG = if (!guide) ll.lastError(h, "guide") else null
-                val st = (if (errS != null || errG != null) "⚠ last try failed · " else "") + HeroDb.role(h).name.lowercase() + " · skills " + skillsSt +
+                val st = (if (errS != null || errG != null) "⚠ last try failed · " else "") + HeroDb.role(h).name.lowercase() +
+                    " · " + com.example.mlbbresearch.game.HeroLanes.of(h).text() + " · skills " + skillsSt +
                     " · guide " + (if (guide) "learned" else "not yet")
                 row(h, true, st, skills && guide, onLong = {
                     toast("Learning $h now (wiki skills + guide)…")
