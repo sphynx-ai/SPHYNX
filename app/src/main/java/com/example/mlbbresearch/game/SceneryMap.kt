@@ -68,7 +68,7 @@ object SceneryMap {
     // Measured on the owner's 20 jungle screenshots (2026-11-11; game.JungleSpots): the stand spot is where the
     // hero stood fighting it, the pit is the monster beside it on the screen. Your jungle, then the enemy's
     // (the same map turned half a turn: 1 - x, 1 - y; the way to the monster turned too).
-    // (There is no "Rockursa" camp in the owner's jungle: the old pit list had one, and its Lithowanderer,
+    // (The Rockursa is gone - replaced by the Lava Golem (owner, 2026-11-11); the old pit list still had it, and its Lithowanderer,
     // Horned Lizard and Fire Beetle were in the wrong places.)
     private val ownPits = listOf(
         PitSpot(0.27f, 0.52f, 0.29f, 0.52f, -1.0f, 0.0f, "purple_buff", true),
