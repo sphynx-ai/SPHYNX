@@ -454,7 +454,12 @@ class OverlayManager(private val ctx: Context) {
         val on = running
         power?.background = circle(Color.parseColor(if (on) "#43A047" else "#455A64")).apply { setStroke(dp(1), Color.WHITE) }
         stopBtn?.text = if (cmp) "■" else "■ STOP ALL"
-        roamBtnV?.text = if (cmp) "🗺" else "🗺 ROAM"
+        // scenery calibration from the floating window (owner, 2026-11-11): the button shows whether it runs
+        val calibrating = com.example.mlbbresearch.game.SceneryMap.roamActive
+        roamBtnV?.text = if (cmp) (if (calibrating) "■🗺" else "🗺") else if (calibrating) "■ STOP CALIB" else "🗺 CALIBRATE"
+        roamBtnV?.background = GradientDrawable().apply {
+            setColor(Color.parseColor(if (calibrating) "#BF360C" else "#00695C")); cornerRadius = dp(6).toFloat()
+        }
         panelPower?.text = if (cmp) "⏻" else if (on) "⏻ AI OFF" else "⏻ AI ON"
         panelPower?.background = GradientDrawable().apply {
             setColor(Color.parseColor(if (on) "#455A64" else "#2E7D32")); cornerRadius = dp(8).toFloat()
