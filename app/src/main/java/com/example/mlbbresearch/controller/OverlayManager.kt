@@ -280,7 +280,7 @@ class OverlayManager(private val ctx: Context) {
         }
         val header = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         header.addView(TextView(ctx).apply {
-            text = "MLBB AI  (drag me)"
+            text = "SPHYNX AI  (drag me)"
             setTextColor(Color.WHITE); textSize = 11.5f; setTypeface(null, Typeface.BOLD)
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         header.addView(TextView(ctx).apply {

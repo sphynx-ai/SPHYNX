@@ -26,7 +26,8 @@ object WhatsNew {
         Entry("2026-11-11", Kind.FIXED, "Solo calibration no longer waits for lane marks",
             "Solo practice never shows the \"$\" / \"E\" lane marks (only 5v5 does), so the calibration tour waited forever. In " +
                 "Solo, which lane is on top is now read from the Lord and Turtle icons on the minimap: the Lord's pit is on the Gold " +
-                "lane's side (Lord top-left = Gold on top). Both icons must show in their pits.",
+                "lane's side (Lord top-left = Gold on top). Both icons must show in their pits. Also: the floating panel's title is " +
+                "now SPHYNX AI.",
             pr = 51, needsDeviceCheck = true),
         Entry("2026-11-11", Kind.FIXED, "Your lane corrections for 10 heroes",
             "Alpha: Jungle, then EXP · Chou: EXP, then Roam · Lapu-Lapu: EXP only · Lunox: Mid, then Gold · Masha: EXP, then Roam · Minsitthar: EXP, " +
