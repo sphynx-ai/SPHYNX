@@ -23,6 +23,10 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-11", Kind.IMPROVED, "Scenery calibration tour reaches the enemy base",
+            "The calibration tour now also visits the enemy inner and base towers of all three lanes and the enemy base itself " +
+                "(placed from the towers on your minimap), then walks back to your base. Meant for 1v1 vs Computer with god mode on.",
+            pr = 46, needsDeviceCheck = true),
         Entry("2026-11-11", Kind.NEW, "Scenery calibration ends with a walk back to base",
             "After the last stop of the calibration tour the Research player walks back to its base (base gate, then the " +
                 "fountain), still without fighting. The scenery keeps being read on the way and is re-synced and saved at both " +
