@@ -83,7 +83,9 @@ object JungleNav {
         if (isJungler && s.matchSec in 0..21 && s.creeps.isEmpty()) {
             val orangeStart = RoleProfile.preferOrangeBuffStart(s.ownHero)
             val buffName = if (orangeStart) "Orange Buff" else "Purple Buff"
-            val startStand = if (orangeStart) SceneryMap.pitStandSpot(0.49f, 0.77f) else SceneryMap.pitStandSpot(0.27f, 0.52f)
+            // (pitStandSpot works on this match's map; the buff pits are given on the usual map - MapSide)
+            val startStand = if (orangeStart) SceneryMap.pitStandSpot(MapSide.view(0.49f to 0.77f).first, MapSide.view(0.49f to 0.77f).second)
+                else SceneryMap.pitStandSpot(MapSide.view(0.27f to 0.52f).first, MapSide.view(0.27f to 0.52f).second)
             val dStart = hypot(startStand.first - me.first, startStand.second - me.second)
             if (dStart < 0.042f) {
                 status = "waiting at $buffName pit for 0:20 spawn"
@@ -100,7 +102,7 @@ object JungleNav {
 
         // If Jungler sees no minimap camp dots (e.g. occluded by hero icons), check canonical 6 ally pits not on skip cooldown
         if (camps.isEmpty() && isJungler && s.matchSec >= 20) {
-            camps = ALLY_ROTATION.filter { (skipped[cell(it)] ?: 0L) < now && hypot(it.x - me.first, it.y - me.second) <= maxDist }
+            camps = ALLY_ROTATION.map { c -> MapSide.view(c.x to c.y).let { (x, y) -> Camp(x, y, c.buff, c.enemy) } }.filter { (skipped[cell(it)] ?: 0L) < now && hypot(it.x - me.first, it.y - me.second) <= maxDist }
         }
 
         // the target camp's icon is hidden under YOUR icon when you stand on it: it is not gone

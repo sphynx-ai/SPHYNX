@@ -71,7 +71,7 @@ object AutoTune {
         if (since > 90_000L || since < 2000L) return
         val spawn = s.ts - since
         if (abs(spawn - laneTimedSpawn) < 5000) return            // this spawn is already timed
-        val onLane = when (s.lane) {
+        val onLane = when (MapSide.geo(s.lane)) {        // the top / bottom lane (MapSide: which is EXP / Gold)
             Lane.EXP -> me.first < 0.14f && me.second < 0.6f || me.second < 0.14f
             Lane.GOLD -> me.second > 0.86f && me.first > 0.4f || me.first > 0.86f
             Lane.MID -> abs(me.first + me.second - 1f) < 0.1f && me.first > 0.3f

@@ -148,6 +148,10 @@ object FrameProcessor {
 
         // the active item / Conceal buttons: showing and lit? (ActiveItems presses them)
         if (hint == ScreenHint.NONE && self != null && frameNo % 3 == 1L) com.example.mlbbresearch.controller.ActiveItems.observe(px, w, h)
+        // which lane is on top (the minimap's lane marks, shown only at the start of the match - game.MapSide)
+        if (hint == ScreenHint.NONE && self != null && frameNo % 5 == 2L && com.example.mlbbresearch.game.MapSide.goldTop == null &&
+            com.example.mlbbresearch.game.GameStateTracker.state.matchSec in 0..com.example.mlbbresearch.game.MapSide.READ_UNTIL_SEC)
+            com.example.mlbbresearch.game.MapSide.observe(com.example.mlbbresearch.game.MapSide.mark(px, w, h))
         // which skill buttons the screen shows (normal / large HUD, 2-3-4 skills)
         if (hint == ScreenHint.NONE && self != null && frameNo % 10 == 5L) ScreenKit.observe(px, w, h)
         // which hero you play: its skill icons against learned looks and the wiki pictures (HeroVerifier)

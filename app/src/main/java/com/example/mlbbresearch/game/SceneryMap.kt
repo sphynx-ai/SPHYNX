@@ -95,7 +95,7 @@ object SceneryMap {
         Waypoint(0.29f, 0.52f, "Ally Purple Buff Pit"),
         Waypoint(0.38f, 0.37f, "River Lithowanderer (top)"),
         Waypoint(0.50f, 0.50f, "Mid Lane River Crossing"),
-        Waypoint(0.30f, 0.29f, "Top-Left Lord Pit"),
+        Waypoint(0.30f, 0.29f, "Top-Left Boss Pit (Lord or Turtle)"),
         Waypoint(0.21f, 0.27f, "Top River Crab & Bush"),
         Waypoint(0.10f, 0.55f, "EXP Lane Inner Tower"),
         Waypoint(0.09f, 0.30f, "EXP Lane Mid Tower & Bush"),
@@ -107,7 +107,7 @@ object SceneryMap {
         Waypoint(0.58f, 0.36f, "Enemy Mid Bush"),
         Waypoint(0.71f, 0.48f, "Enemy Purple Buff Pit"),
         Waypoint(0.79f, 0.59f, "Enemy Horned Lizard Pit"),
-        Waypoint(0.68f, 0.70f, "Bottom-Right Turtle Pit"),
+        Waypoint(0.68f, 0.70f, "Bottom-Right Boss Pit (Turtle or Lord)"),
         Waypoint(0.79f, 0.72f, "Bottom River Crab & Gold Bush"),
         Waypoint(0.88f, 0.88f, "Gold Lane Corner & Bush"),
         Waypoint(0.88f, 0.62f, "Gold Lane Enemy Tower"),
@@ -313,6 +313,7 @@ object SceneryMap {
 
     // Re-applies memorized 3D walls and bushes onto WallMap whenever WallMap.update() refreshes the 40x40 minimap grid
     fun reapplyToWallMap() {
+        if (MapSide.mirrored()) return          // the saved walls are the usual map's (see observe)
         ensureLoaded()
         for (i in 0 until G * G) {
             if (walls[i]) {
@@ -477,6 +478,9 @@ object SceneryMap {
     // Observe the actual 3D screen scenery every frame, synchronize landmarks with the minimap, and map into world coordinates
     fun observe(s: GameState) {
         ensureLoaded()
+        // a mirrored match (Gold lane on top): what is seen is NOT learned - the saved scenery is the usual map's,
+        // and mixing the two would put walls and bushes in the wrong places (owner, 2026-11-11)
+        if (MapSide.mirrored()) return
         val me = s.minimapSelf ?: return
         val self = s.self ?: return
         val now = s.ts
@@ -572,21 +576,23 @@ object SceneryMap {
     }
 
     // Best walkable entrance / stand-spot for a camp at (campX, campY)
+    // (the pits are kept on the usual map, EXP lane on top; with the Gold lane on top they are mirrored - MapSide)
     fun pitStandSpot(campX: Float, campY: Float): Pair<Float, Float> {
         ensureLoaded()
-        val p = pits.minByOrNull { hypot(it.x - campX, it.y - campY) }
-        if (p != null && hypot(p.x - campX, p.y - campY) < 0.07f) {
-            return p.standX to p.standY
+        val (cx, cy) = MapSide.view(campX to campY)
+        val p = pits.minByOrNull { hypot(it.x - cx, it.y - cy) }
+        if (p != null && hypot(p.x - cx, p.y - cy) < 0.07f) {
+            return MapSide.view(p.standX to p.standY)
         }
         return campX to campY
     }
 
     // Screen direction toward the monster inside the pit when standing at a memorized pit before HP bar appears
     fun pitAimDirection(s: GameState): Pair<Float, Float>? {
-        val me = s.minimapSelf ?: return null
+        val me = MapSide.view(s.minimapSelf ?: return null)
         val p = pits.minByOrNull { hypot(it.standX - me.first, it.standY - me.second) } ?: return null
         if (hypot(p.standX - me.first, p.standY - me.second) > 0.055f) return null
-        return p.dirX to p.dirY
+        return MapSide.viewDir(p.dirX to p.dirY)
     }
 
     // Autonomous Practice Mode Roam Tour decision
@@ -609,6 +615,11 @@ object SceneryMap {
 
     fun roamDecision(s: GameState, p: HeroProfile): TacticalDecision? {
         if (!roamActive) return null
+        if (MapSide.mirrored()) {
+            status = "waiting: this match has the Gold lane on top (a mirrored map) - calibrate in a match with the EXP lane on top"
+            waypointStartedAt = 0L; waypointArrivedAt = 0L
+            return null
+        }
         if (!playerUnlocked()) {
             status = "waiting: starts when the practice gate unlocks the Player (open the scoreboard once)"
             waypointStartedAt = 0L; waypointArrivedAt = 0L

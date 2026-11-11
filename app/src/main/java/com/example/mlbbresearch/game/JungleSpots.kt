@@ -27,7 +27,8 @@ object JungleSpots {
 
     // the monster at your minimap position for a bar of this kind; null = no spot near
     fun at(me: Pair<Float, Float>?, kind: MonsterKind, matchSec: Int = 9999): Monster? {
-        val m = me ?: return null
+        // (the table is the usual map: with the Gold lane on top this match's map is its mirror - MapSide)
+        val m = me?.let { MapSide.view(it) } ?: return null
         val pool = when (kind) { MonsterKind.BUFF -> BUFFS; MonsterKind.CAMP, MonsterKind.RIVER -> CAMPS; else -> return null }
         val s = pool.minByOrNull { hypot(it.x - m.first, it.y - m.second) } ?: return null
         if (hypot(s.x - m.first, s.y - m.second) > NEAR) return null

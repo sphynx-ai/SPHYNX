@@ -110,10 +110,11 @@ object JungleDb {
     }
 
     // Lord or Turtle: the pit you stand next to on the minimap (else the pit icon, else the time)
-    private val LORD_PIT = 0.31f to 0.26f
-    private val TURTLE_PIT = 0.67f to 0.68f
+    // the Lord is on the EXP lane's side, the Turtle on the Gold lane's: which pit is which follows the map
+    // (MapSide - the minimap's lane marks; the Lord top-left while unknown)
     fun boss(mini: MinimapInfo?, matchSec: Int): Monster {
         val me = mini?.self
+        val LORD_PIT = MapSide.lordPit(); val TURTLE_PIT = MapSide.turtlePit()
         if (me != null) {
             val dl = kotlin.math.hypot(me.first - LORD_PIT.first, me.second - LORD_PIT.second)
             val dt = kotlin.math.hypot(me.first - TURTLE_PIT.first, me.second - TURTLE_PIT.second)

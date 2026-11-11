@@ -1362,7 +1362,8 @@ object TacticalEngine {
         0.45f to 0.55f, 0.39f to 0.61f, 0.56f to 0.44f, 0.74f to 0.76f, 0.34f to 0.32f
     )
 
-    private fun corridorOf(lane: Lane): List<Pair<Float, Float>> = when (lane) {
+    // (the corridors are drawn for "EXP lane on top"; MapSide.geo swaps them when the Gold lane is on top)
+    private fun corridorOf(lane: Lane): List<Pair<Float, Float>> = when (com.example.mlbbresearch.game.MapSide.geo(lane)) {
         Lane.EXP -> EXP_CORRIDOR
         Lane.GOLD -> GOLD_CORRIDOR
         else -> MID_CORRIDOR
@@ -1373,9 +1374,10 @@ object TacticalEngine {
         val travelling = s.sinceSpawnMs < Cfg.laneTravelSec * 1000L
         fun t(v: Pair<Float, Float>, what: String) = Triple(v.first, v.second, what)
         return when (s.lane) {
-            Lane.EXP, Lane.GOLD, Lane.MID -> laneByMap(s) ?: when (s.lane) {
-                Lane.EXP -> if (travelling) t(0f to -1f, "walking up EXP lane corridor") else t(1f to 0f, "advancing along EXP lane")
-                Lane.GOLD -> if (travelling) t(1f to 0f, "walking right along Gold lane corridor") else t(0f to -1f, "advancing along Gold lane")
+            Lane.EXP, Lane.GOLD, Lane.MID -> laneByMap(s) ?: when (com.example.mlbbresearch.game.MapSide.geo(s.lane)) {
+                // the top lane / the bottom lane (which of EXP / Gold is on top: MapSide)
+                Lane.EXP -> if (travelling) t(0f to -1f, "walking up the ${s.lane.label} corridor (top lane)") else t(1f to 0f, "advancing along the ${s.lane.label} (top lane)")
+                Lane.GOLD -> if (travelling) t(1f to 0f, "walking right along the ${s.lane.label} corridor (bottom lane)") else t(0f to -1f, "advancing along the ${s.lane.label} (bottom lane)")
                 else -> t(pushVector(), "walking Mid lane (${Cfg.pushDir})")
             }
             Lane.JUNGLE -> {

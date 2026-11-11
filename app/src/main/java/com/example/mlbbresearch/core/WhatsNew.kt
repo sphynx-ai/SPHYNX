@@ -23,6 +23,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-11", Kind.NEW, "Gold and EXP lanes swapped between matches: read from the minimap's lane marks",
+            "Some matches put the Gold lane on top and the EXP lane at the bottom, with the Lord and Turtle pits swapped too. " +
+                "At the start of each match the minimap's top-left lane mark (gold \"$\" or lavender \"E\") is read; with the Gold " +
+                "lane on top (a mirrored map), lane walking, tower targets, the Lord / Turtle pits and the jungle camps follow the mirror; " +
+                "scenery is not learned in such a match and the calibration tour waits for one with the EXP lane on top. Until the mark " +
+                "is read, EXP on top is assumed.",
+            pr = 48, needsDeviceCheck = true),
         Entry("2026-11-11", Kind.IMPROVED, "Every jungle monster named; the Stone Roamer is not counted as an ally",
             "From your 20 jungle screenshots: each monster is named from where you stand on the minimap and its bar's size - " +
                 "Thunder Fenrir, Molten Fiend, Lava Golem, Fire Beetle, Horned Lizard, Scavenger Crab (both river ends) and the " +
