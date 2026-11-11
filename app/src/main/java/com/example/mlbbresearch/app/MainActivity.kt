@@ -950,6 +950,31 @@ class MainActivity : Activity() {
                 ?: GameStateTracker.ownHero()
                 ?: HeroDb.match(Cfg.myHero)
 
+        // RECOMMENDED LANES for the selected hero (owner, 2026-11-11): your setting comes first (game.HeroLanes)
+        val lanesBox = field("Recommended lanes for selected hero: primary, secondary, \"flex\" if it fits any lane " +
+            "(e.g. exp, jungle   or   exp, jungle, flex; empty = automatic: online guide + wiki)", Cfg.manualLanes(selectedComboHero()).orEmpty(), false) { }
+        val lanesInfo = text("", 12f, color = "#9AA0A6")
+        fun showLanes() {
+            val h = selectedComboHero()
+            lanesInfo.text = if (h == null) "Select a hero under YOUR HERO first" else
+                "$h: " + com.example.mlbbresearch.game.HeroLanes.of(h).let { "${it.text()}  [${it.source}]" }
+        }
+        showLanes()
+        btn("Save recommended lanes for this hero") {
+            val h = selectedComboHero()
+            val raw = lanesBox.text.toString()
+            when {
+                h == null -> toast("Select or enter a hero under YOUR HERO first")
+                raw.isNotBlank() && com.example.mlbbresearch.game.HeroLanes.parse(raw) == null ->
+                    toast("Use exp, gold, mid, roam, jungle (primary first), and flex if it fits any lane")
+                else -> {
+                    Cfg.setManualLanes(h, raw.ifBlank { null })
+                    toast(if (raw.isBlank()) "$h: lanes back to automatic (online guide + wiki)" else "$h: lanes saved")
+                    showLanes()
+                }
+            }
+        }
+
         val comboCard = card()
         val comboInfo = cardText(comboCard, 13f, true)
         val comboBuiltInList = cardNote(comboCard)

@@ -42,4 +42,20 @@ class HeroLanesTest {
         val rec = HeroLanes.Rec(Lane.JUNGLE, Lane.EXP, false, "test")
         assertEquals(Lane.EXP, HeroLanes.assign(rec, false, emptyList())!!.first)
     }
+
+    // the owner (2026-11-11): Alice is played EXP or Jungle - not Roam or Mid, though the wiki lists her for Mid
+    @Test fun aliceAsTheOwnerSays() {
+        val a = HeroLanes.of("Alice", null, Role.MAGE)
+        assertEquals(Lane.EXP, a.primary); assertEquals(Lane.JUNGLE, a.secondary); assertFalse(a.flex)
+        assertEquals(Lane.EXP, HeroLanes.assign(a, false, emptyList())!!.first)
+        assertEquals(Lane.JUNGLE, HeroLanes.assign(HeroLanes.Rec(Lane.JUNGLE, Lane.EXP, false, "t"), true, emptyList())!!.first)
+    }
+
+    @Test fun yourSettingComesFirst() {
+        val r = HeroLanes.of("Alice", null, Role.MAGE, manual = "jungle, exp, flex")
+        assertEquals(Lane.JUNGLE, r.primary); assertEquals(Lane.EXP, r.secondary); assertTrue(r.flex)
+        assertEquals(Lane.GOLD, HeroLanes.parse("Gold")!!.primary)
+        assertNull(HeroLanes.parse("something"))
+        assertNull(HeroLanes.parse(""))
+    }
 }

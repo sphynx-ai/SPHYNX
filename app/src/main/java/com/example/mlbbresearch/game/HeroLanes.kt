@@ -1,13 +1,15 @@
 package com.example.mlbbresearch.game
 
 // RECOMMENDED LANES PER HERO (owner, 2026-11-11): a PRIMARY lane, a SECONDARY lane, and whether the hero is
-// a FLEX pick (can be played in almost any lane) - from the online guide and the wiki, shown on the Library's
-// hero page and used for the automatic lane (LaneLogic.effective).
-//  - primary: the online guide's "lane", else the wiki's best list (WikiLanes.lane), else the hero's role;
-//  - secondary: the online guide's "lane2", else the next lane the wiki lists the hero for (the "also played
-//    there" lists included), else none;
-//  - flex: the online guide's "flex", else listed by the wiki for 3 or more lanes.
-// Pure logic (the online guide is passed in), unit tested.
+// a FLEX pick (can be played in almost any lane) - shown on the Library's hero page and used for the automatic
+// lane (LaneLogic.effective). Where it comes from, first found wins:
+//  1. YOUR setting for the hero (Settings: "exp, jungle" / "exp, jungle, flex");
+//  2. lanes YOU confirmed, built in (CONFIRMED - e.g. Alice: EXP or Jungle, never Roam or Mid, though her role
+//     is tank / mage and the wiki also lists her for Mid);
+//  3. the online guide ("lane", "lane2", "flex");
+//  4. the wiki's laning lists (WikiLanes.lanes - every list the hero is in; flex if 3 or more lanes);
+//  5. the hero's role.
+// Pure logic (settings and guide are passed in), unit tested.
 object HeroLanes {
 
     class Rec(val primary: Lane, val secondary: Lane?, val flex: Boolean, val source: String) {
@@ -23,8 +25,24 @@ object HeroLanes {
         Role.UNKNOWN -> Lane.MID
     }
 
-    // meta = the online guide (null = none learned / online meta off)
-    fun of(hero: String?, meta: HeroMeta?, role: Role = HeroDb.role(hero)): Rec {
+    // lanes you confirmed (owner): kept here so they hold even before any guide is learned
+    val CONFIRMED: Map<String, Rec> = mapOf(
+        "Alice" to Rec(Lane.EXP, Lane.JUNGLE, false, "confirmed by you")
+    )
+
+    // "exp, jungle" / "gold" / "exp, jungle, flex" -> a recommendation; null = nothing usable
+    fun parse(text: String?): Rec? {
+        if (text.isNullOrBlank()) return null
+        val words = text.lowercase().split(Regex("[,/;\\s>|]+")).map { it.trim() }.filter { it.isNotEmpty() }
+        val lanes = words.mapNotNull { w -> Lane.of(when (w) { "gold lane", "marksman" -> "gold"; "roamer", "roaming" -> "roam"; "jungler" -> "jungle"; else -> w }) }.distinct()
+        val primary = lanes.firstOrNull() ?: return null
+        return Rec(primary, lanes.getOrNull(1), "flex" in words || "flexible" in words, "your setting")
+    }
+
+    // meta = the online guide (null = none learned / online meta off); manual = your setting for the hero
+    fun of(hero: String?, meta: HeroMeta?, role: Role = HeroDb.role(hero), manual: String? = null): Rec {
+        parse(manual)?.let { return it }
+        hero?.let { h -> CONFIRMED.entries.firstOrNull { it.key.equals(h, ignoreCase = true) }?.let { return it.value } }
         val wiki = WikiLanes.lanes(hero)
         val primary = meta?.lane ?: wiki.firstOrNull() ?: byRole(role)
         val src = when {
@@ -38,7 +56,7 @@ object HeroLanes {
     }
 
     // the hero's recommendation with the saved online guide (if any)
-    fun of(hero: String?): Rec = of(hero, MetaStore.hero(hero))
+    fun of(hero: String?): Rec = of(hero, MetaStore.hero(hero), HeroDb.role(hero), com.example.mlbbresearch.core.Cfg.manualLanes(hero))
 
     // THE AUTOMATIC LANE from the recommendation (no lane chosen in the settings):
     //  - Retribution: Jungle (decided before this, in LaneLogic);
