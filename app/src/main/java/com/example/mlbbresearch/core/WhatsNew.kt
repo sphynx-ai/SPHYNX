@@ -28,7 +28,8 @@ object WhatsNew {
                 "Thunder Fenrir, Molten Fiend, Lava Golem, Fire Beetle, Horned Lizard, Scavenger Crab (both river ends) and the " +
                 "Lithowanderer (in the river by the mid crossing), on both sides of the map. After a Lithowanderer kill, the Stone " +
                 "Roamer (blue bar, no level badge) is a friendly patrol for 45 s: not counted as an ally hero or minion. The Walkie " +
-                "Grass is never a target.",
+                "Grass is never a target. The jungle route uses these camp positions too (there is no \"Rockursa\" camp; the Lizard, " +
+                "Fire Beetle and Lithowanderer were in the wrong places), and the scenery calibration tour visits the real pits.",
             pr = 47, needsDeviceCheck = true),
         Entry("2026-11-11", Kind.IMPROVED, "Scenery calibration tour reaches the enemy base; never into the enemy fountain",
             "The calibration tour now also visits the enemy inner and base towers of all three lanes and the enemy base itself " +

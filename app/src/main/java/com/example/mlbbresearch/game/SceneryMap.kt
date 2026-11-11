@@ -64,46 +64,59 @@ object SceneryMap {
     private var waypointArrivedAt = 0L
     private var waypointStartedAt = 0L
 
-    // Default MLBB monster pits with open-mouth entrance stand-spots
-    private val defaultPits = listOf(
-        PitSpot(0.27f, 0.56f, 0.29f, 0.58f, -0.5f, -0.5f, "purple_buff", true),
-        PitSpot(0.52f, 0.77f, 0.50f, 0.75f, 0.5f, 0.5f, "orange_buff", true),
-        PitSpot(0.20f, 0.66f, 0.22f, 0.65f, -0.6f, 0.2f, "rockursa", false),
-        PitSpot(0.39f, 0.62f, 0.38f, 0.64f, 0.3f, -0.6f, "lithowanderer", false),
-        PitSpot(0.44f, 0.84f, 0.44f, 0.81f, 0.0f, 0.8f, "horned_lizard", false),
-        PitSpot(0.62f, 0.72f, 0.60f, 0.73f, 0.6f, -0.3f, "fire_beetle", false),
-        PitSpot(0.31f, 0.26f, 0.33f, 0.29f, -0.5f, -0.6f, "turtle_top", false),
-        PitSpot(0.67f, 0.68f, 0.64f, 0.65f, 0.5f, 0.6f, "lord_bot", false)
+    // MLBB monster pits: the pit (the monster), where to stand, and the way to the monster from there.
+    // Measured on the owner's 20 jungle screenshots (2026-11-11; game.JungleSpots): the stand spot is where the
+    // hero stood fighting it, the pit is the monster beside it on the screen. Your jungle, then the enemy's
+    // (the same map turned half a turn: 1 - x, 1 - y; the way to the monster turned too).
+    // (There is no "Rockursa" camp in the owner's jungle: the old pit list had one, and its Lithowanderer,
+    // Horned Lizard and Fire Beetle were in the wrong places.)
+    private val ownPits = listOf(
+        PitSpot(0.27f, 0.52f, 0.29f, 0.52f, -1.0f, 0.0f, "purple_buff", true),
+        PitSpot(0.49f, 0.77f, 0.46f, 0.78f, 1.0f, -0.2f, "orange_buff", true),
+        PitSpot(0.51f, 0.70f, 0.48f, 0.70f, 1.0f, 0.0f, "lava_golem", false),
+        PitSpot(0.61f, 0.82f, 0.58f, 0.82f, 1.0f, 0.0f, "fire_beetle", false),
+        PitSpot(0.18f, 0.41f, 0.20f, 0.41f, -1.0f, 0.0f, "horned_lizard", false),
+        PitSpot(0.41f, 0.38f, 0.38f, 0.37f, 1.0f, 0.4f, "lithowanderer", false)
     )
+    private val defaultPits = ownPits + ownPits.map {
+        PitSpot(1f - it.x, 1f - it.y, 1f - it.standX, 1f - it.standY, -it.dirX, -it.dirY, "enemy_" + it.label, it.buff)
+    }
+    // the old built-in pits: a saved copy of one of them is dropped on load (it would override the measured
+    // ones); pits the calibration learned from real monsters are kept
+    private val OLD_DEFAULT_PITS = listOf(0.27f to 0.56f, 0.52f to 0.77f, 0.20f to 0.66f, 0.39f to 0.62f, 0.44f to 0.84f,
+        0.62f to 0.72f, 0.31f to 0.26f, 0.67f to 0.68f)
+    fun isOldDefaultPit(x: Float, y: Float): Boolean = OLD_DEFAULT_PITS.any { hypot(it.first - x, it.second - y) < 0.012f }
 
     // timeoutMs: how long the stop may take before the tour moves on (the enemy-base stops are farther apart)
     class Waypoint(val x: Float, val y: Float, val name: String, val timeoutMs: Long = 9500L)
     val tourWaypoints: List<Waypoint> = listOf(
         Waypoint(0.18f, 0.82f, "Ally Base Gate"),
-        Waypoint(0.22f, 0.65f, "Ally Rockursa Pit"),
-        Waypoint(0.29f, 0.58f, "Ally Purple Buff Pit"),
-        Waypoint(0.38f, 0.64f, "Ally Lithowanderer & Mid Bush"),
+        Waypoint(0.20f, 0.41f, "Ally Horned Lizard Pit"),
+        Waypoint(0.29f, 0.52f, "Ally Purple Buff Pit"),
+        Waypoint(0.38f, 0.37f, "River Lithowanderer (top)"),
         Waypoint(0.50f, 0.50f, "Mid Lane River Crossing"),
-        Waypoint(0.33f, 0.29f, "Top-Left Turtle / Lord Pit"),
-        Waypoint(0.22f, 0.20f, "Top River Crab & Bush"),
+        Waypoint(0.30f, 0.29f, "Top-Left Lord Pit"),
+        Waypoint(0.21f, 0.27f, "Top River Crab & Bush"),
         Waypoint(0.10f, 0.55f, "EXP Lane Inner Tower"),
         Waypoint(0.09f, 0.30f, "EXP Lane Mid Tower & Bush"),
         Waypoint(0.10f, 0.12f, "EXP Lane Corner & Top Bush"),
         Waypoint(0.30f, 0.10f, "Enemy Top Lane Outer Tower"),
-        Waypoint(0.46f, 0.24f, "Enemy Orange Buff Pit"),
-        Waypoint(0.38f, 0.30f, "Enemy Upper Jungle Pit"),
-        Waypoint(0.58f, 0.36f, "Enemy Mid Bush & Litho"),
-        Waypoint(0.70f, 0.42f, "Enemy Purple Buff Pit"),
-        Waypoint(0.78f, 0.34f, "Enemy Golem Pit"),
-        Waypoint(0.64f, 0.65f, "Bottom-Right Lord / Turtle Pit"),
-        Waypoint(0.76f, 0.78f, "Bottom River Crab & Gold Bush"),
+        Waypoint(0.42f, 0.18f, "Enemy Fire Beetle Pit"),
+        Waypoint(0.54f, 0.22f, "Enemy Orange Buff Pit"),
+        Waypoint(0.52f, 0.30f, "Enemy Lava Golem Pit"),
+        Waypoint(0.58f, 0.36f, "Enemy Mid Bush"),
+        Waypoint(0.71f, 0.48f, "Enemy Purple Buff Pit"),
+        Waypoint(0.79f, 0.59f, "Enemy Horned Lizard Pit"),
+        Waypoint(0.68f, 0.70f, "Bottom-Right Turtle Pit"),
+        Waypoint(0.79f, 0.72f, "Bottom River Crab & Gold Bush"),
         Waypoint(0.88f, 0.88f, "Gold Lane Corner & Bush"),
         Waypoint(0.88f, 0.62f, "Gold Lane Enemy Tower"),
         Waypoint(0.68f, 0.90f, "Gold Lane Mid Tower & Bush"),
         Waypoint(0.45f, 0.90f, "Gold Lane Inner Tower"),
-        Waypoint(0.44f, 0.81f, "Ally Lizard Pit"),
-        Waypoint(0.50f, 0.75f, "Ally Orange Buff Pit"),
-        Waypoint(0.60f, 0.73f, "Ally Fire Beetle Pit"),
+        Waypoint(0.58f, 0.82f, "Ally Fire Beetle Pit"),
+        Waypoint(0.46f, 0.78f, "Ally Orange Buff Pit"),
+        Waypoint(0.48f, 0.70f, "Ally Lava Golem Pit"),
+        Waypoint(0.62f, 0.63f, "River Lithowanderer (bottom)"),
         Waypoint(0.36f, 0.64f, "Mid Lane Ally Tower"),
         Waypoint(0.62f, 0.38f, "Mid Lane Enemy Tower"),
         // THE ENEMY BASE (owner, 2026-11-11: solo practice vs Computer with god mode on, so the Research player
@@ -358,6 +371,7 @@ object SceneryMap {
                     val px = p.optDouble("x", -1.0).toFloat()
                     val py = p.optDouble("y", -1.0).toFloat()
                     if (px !in 0f..1f || py !in 0f..1f) continue
+                    if (isOldDefaultPit(px, py)) continue          // a stale copy of an old built-in pit
                     val sx = p.optDouble("sx", px.toDouble()).toFloat()
                     val sy = p.optDouble("sy", py.toDouble()).toFloat()
                     val dx = p.optDouble("dx", 0.0).toFloat()
