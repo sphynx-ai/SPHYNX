@@ -23,6 +23,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-11", Kind.IMPROVED, "Performance page redesigned",
+            "Laid out like a phone performance screen: the phone's name, then one card per topic with a big headline number " +
+                "and label / value rows - memory (ring of RAM in use, available and total, 5-minute line), storage, CPU (one tile " +
+                "per core with its clock and maximum), graphics processor, NPU drivers, temperature and battery, local models. " +
+                "The repeated phone figures are gone; the AI's speed and the speed recorder follow in the same style.",
+            pr = 44, needsDeviceCheck = true),
         Entry("2026-11-11", Kind.IMPROVED, "Research player; shorter floating panel; calibration without fighting; Performance page",
             "The Player switch is now \"Research player\" and the floating panel says so (no more \"Player + Research + Learning " +
                 "from you\"; learning is named only while coach mode is on). The panel shows less: what runs, the practice check and " +

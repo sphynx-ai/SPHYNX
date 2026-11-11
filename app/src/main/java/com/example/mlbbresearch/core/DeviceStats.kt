@@ -28,6 +28,7 @@ object DeviceStats {
 
     @Volatile var last: Snapshot? = null; private set
     val cpuHistory = FloatArray(HIST); val ramHistory = FloatArray(HIST); val gpuHistory = FloatArray(HIST)
+    val availHistory = FloatArray(HIST)          // the phone's available RAM, GB (Performance page)
     // 5 minutes of samples, one every 2 s (v36.86: was 2 minutes)
     const val HIST = 150
     private var histN = 0
@@ -53,7 +54,8 @@ object DeviceStats {
         // ---- CPU: every core's clock against its maximum ----
         val ghz = ArrayList<Float>(); var sumPct = 0f; var nPct = 0
         for (i in 0 until cores) {
-            val cur = readLong("/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq") ?: continue
+            // (one entry per core, in order: -1 when the core is offline / not readable - Performance page tiles)
+            val cur = readLong("/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq") ?: run { ghz.add(-1f); null } ?: continue
             ghz.add(cur / 1_000_000f)
             readLong("/sys/devices/system/cpu/cpu$i/cpufreq/cpuinfo_max_freq")?.takeIf { it > 0 }?.let { sumPct += cur * 100f / it; nPct++ }
         }
@@ -78,6 +80,7 @@ object DeviceStats {
         // history (5 min)
         val i = histN % HIST
         cpuHistory[i] = appCpu; ramHistory[i] = snap.appRamMb.toFloat(); gpuHistory[i] = gpuLoad ?: 0f
+        availHistory[i] = snap.ramAvailMb / 1024f
         histN++
         last = snap
         return snap
