@@ -621,13 +621,14 @@ object SceneryMap {
     //  - the practice gate has unlocked the Player;
     //  - SOLO PRACTICE only (owner, 2026-11-11: god mode, which keeps the hero alive on the tour, can only be
     //    turned on in Solo mode vs computer) - not in a 5v5, and not while the kind of match is not read yet;
-    //  - the minimap's lane mark has been read (Solo matches can have either lane on top - owner, 2026-11-11):
-    //    what is learned on a mirrored map is stored mirrored back, so the side must be known.
+    //  - which lane is on top is known (Solo matches can have either - owner, 2026-11-11; Solo shows no lane
+    //    marks, so it is read from the Lord / Turtle icons - MapSide.fromPits): what is learned on a mirrored
+    //    map is stored mirrored back, so the side must be known.
     fun calibrationBlock(unlocked: Boolean, kind: MatchKind.Kind, markRead: Boolean): String? = when {
         !unlocked -> "waiting: starts when the practice gate unlocks the Player (open the scoreboard once)"
         kind == MatchKind.Kind.FIVE_V_FIVE -> "waiting: scenery calibration runs only in Solo mode vs computer (god mode) - this is a 5v5"
         kind != MatchKind.Kind.SOLO -> "waiting: is this Solo mode? (read from the loading screen or the scoreboard - open the scoreboard once)"
-        !markRead -> "waiting: the minimap's lane mark (\"$\" or \"E\") is not read yet - it is read in the first 90 s; if it was missed, start a new Solo match"
+        !markRead -> "waiting: which lane is on top - read from the Lord and Turtle icons on the minimap (both must show in their pits)"
         else -> null
     }
 

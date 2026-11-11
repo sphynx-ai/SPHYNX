@@ -17,7 +17,12 @@ package com.example.mlbbresearch.game
 //  - the PIT / JUNGLE tables (SceneryMap, JungleSpots, JungleNav: Lord top-left, Turtle bottom-right) were
 //    measured in the owner's matches, which are GOLD-on-top maps; view() mirrors them when the EXP lane is
 //    on top.
-// Until the mark is read, both stay as they are. Pure logic, unit tested.
+// SOLO PRACTICE HAS NO LANE MARKS (owner, 2026-11-11 - they show only in 5v5), but its minimap shows the
+// Lord's and the Turtle's icons in their pits: the Lord is by the Gold lane, so the Lord's icon in the
+// top-left pit = Gold on top, in the bottom-right pit = EXP on top (fromPits). Only decided when BOTH icons
+// are seen, in opposite pits (the first seconds show pit countdowns, not icons), and - in a 5v5 - only before
+// 8:00 (later the Lord can stand in the Turtle's pit).
+// Until it is known, both stay as they are. Pure logic, unit tested.
 object MapSide {
 
     // the top-left mark's box (screen fractions)
@@ -45,6 +50,17 @@ object MapSide {
         if (n == 0 || bright < n * 0.12f) return Mark.NONE
         val d = sumBR.toFloat() / bright
         return when { d <= -15f -> Mark.GOLD; d >= 5f -> Mark.EXP; else -> Mark.NONE }
+    }
+
+    // the side from the boss icons' pits (minimap fractions of each icon's centre; null = not seen)
+    fun fromPits(lord: Pair<Float, Float>?, turtle: Pair<Float, Float>?): Mark {
+        if (lord == null || turtle == null) return Mark.NONE
+        fun near(p: Pair<Float, Float>, q: Pair<Float, Float>) = kotlin.math.hypot(p.first - q.first, p.second - q.second) < 0.15f
+        return when {
+            near(lord, TOP_LEFT_PIT) && near(turtle, BOTTOM_RIGHT_PIT) -> Mark.GOLD
+            near(lord, BOTTOM_RIGHT_PIT) && near(turtle, TOP_LEFT_PIT) -> Mark.EXP
+            else -> Mark.NONE
+        }
     }
 
     @Synchronized fun observe(m: Mark) {
@@ -82,5 +98,5 @@ object MapSide {
     fun lordPit(goldOnTop: Boolean? = goldTop) = if (mirrored(goldOnTop)) BOTTOM_RIGHT_PIT else TOP_LEFT_PIT
     fun turtlePit(goldOnTop: Boolean? = goldTop) = if (mirrored(goldOnTop)) TOP_LEFT_PIT else BOTTOM_RIGHT_PIT
 
-    fun text(): String = when (goldTop) { true -> "Gold lane on top"; false -> "EXP lane on top"; null -> "not read yet" }
+    fun text(): String = when (goldTop) { true -> "Gold lane on top"; false -> "EXP lane on top"; null -> "not read yet (5v5: the lane mark; Solo: the Lord / Turtle icons)" }
 }
