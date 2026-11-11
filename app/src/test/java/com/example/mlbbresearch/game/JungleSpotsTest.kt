@@ -106,4 +106,12 @@ class JungleSpotsTest {
             assertEquals(JungleDb.LITHOWANDERER, JungleSpots.at(0.62f to 0.63f, MonsterKind.CAMP, 100))   // no memory given
         } finally { Lithowanderer.reset() }
     }
+
+    // Solo practice: every monster is up from 0:00 (owner, 2026-11-11)
+    @Test fun soloJungleIsUpFromTheStart() {
+        assertEquals(MatchKind.ALL_UP_SEC, MatchKind.jungleSec(5, MatchKind.Kind.SOLO))
+        assertEquals(5, MatchKind.jungleSec(5, MatchKind.Kind.FIVE_V_FIVE))
+        assertEquals(JungleDb.LITHOWANDERER, at(0.38f, 0.37f, MonsterKind.CAMP, MatchKind.jungleSec(3, MatchKind.Kind.SOLO)))
+        assertNull(at(0.38f, 0.37f, MonsterKind.CAMP, MatchKind.jungleSec(3, MatchKind.Kind.FIVE_V_FIVE)))
+    }
 }

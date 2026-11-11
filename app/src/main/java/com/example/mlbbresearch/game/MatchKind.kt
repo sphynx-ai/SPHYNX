@@ -31,5 +31,10 @@ object MatchKind {
     fun of(matchId: Long): Kind = if (matchId != 0L && matchId == id) kind else Kind.UNKNOWN
     fun current(): Kind = of(GameStateTracker.matchId)
 
+    // THE JUNGLE'S CLOCK: in Solo practice every jungle monster is up from 0:00 (owner, 2026-11-11), so no
+    // spawn time is waited for - the jungle code sees "long after every first spawn". 5v5 / unknown: the match time.
+    const val ALL_UP_SEC = 9999
+    fun jungleSec(matchSec: Int, kind: Kind = current()): Int = if (kind == Kind.SOLO) ALL_UP_SEC else matchSec
+
     @Synchronized fun reset() { id = 0L; kind = Kind.UNKNOWN }
 }

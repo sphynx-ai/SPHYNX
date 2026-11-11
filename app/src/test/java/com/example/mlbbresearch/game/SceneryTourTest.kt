@@ -49,13 +49,13 @@ class SceneryTourTest {
         assertTrue(SceneryMap.pits.none { it.label.contains("rockursa") })
     }
 
-    // calibration only in Solo mode vs computer (god mode - owner, 2026-11-11), on the saved scenery's map
+    // calibration only in Solo mode vs computer (god mode - owner, 2026-11-11), once the lane mark is read
     @Test fun calibrationOnlyInSoloPractice() {
         val solo = MatchKind.Kind.SOLO
-        org.junit.Assert.assertNull(SceneryMap.calibrationBlock(true, solo, false))
-        org.junit.Assert.assertNotNull(SceneryMap.calibrationBlock(true, MatchKind.Kind.FIVE_V_FIVE, false))
-        org.junit.Assert.assertNotNull(SceneryMap.calibrationBlock(true, MatchKind.Kind.UNKNOWN, false))
-        org.junit.Assert.assertNotNull(SceneryMap.calibrationBlock(false, solo, false))
-        org.junit.Assert.assertNotNull(SceneryMap.calibrationBlock(true, solo, true))
+        org.junit.Assert.assertNull(SceneryMap.calibrationBlock(true, solo, true))      // either lane on top, once read
+        org.junit.Assert.assertNotNull(SceneryMap.calibrationBlock(true, MatchKind.Kind.FIVE_V_FIVE, true))
+        org.junit.Assert.assertNotNull(SceneryMap.calibrationBlock(true, MatchKind.Kind.UNKNOWN, true))
+        org.junit.Assert.assertNotNull(SceneryMap.calibrationBlock(false, solo, true))
+        org.junit.Assert.assertNotNull(SceneryMap.calibrationBlock(true, solo, false))  // the lane mark not read
     }
 }
