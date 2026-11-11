@@ -26,8 +26,20 @@ object HeroLanes {
     }
 
     // lanes you confirmed (owner): kept here so they hold even before any guide is learned
+    // (owner, 2026-11-11: "only" = no second lane)
+    private fun you(p: Lane, s: Lane? = null) = Rec(p, s, false, "confirmed by you")
     val CONFIRMED: Map<String, Rec> = mapOf(
-        "Alice" to Rec(Lane.EXP, Lane.JUNGLE, false, "confirmed by you")
+        "Alice" to you(Lane.EXP, Lane.JUNGLE),
+        "Alpha" to you(Lane.JUNGLE, Lane.EXP),
+        "Chou" to you(Lane.EXP, Lane.ROAM),
+        "Lapu-Lapu" to you(Lane.EXP),
+        "Lunox" to you(Lane.MID, Lane.GOLD),
+        "Masha" to you(Lane.EXP, Lane.ROAM),
+        "Minsitthar" to you(Lane.EXP, Lane.ROAM),
+        "Paquito" to you(Lane.EXP, Lane.JUNGLE),
+        "Phoveus" to you(Lane.EXP),
+        "Valentina" to you(Lane.MID, Lane.EXP),
+        "Yi Sun-shin" to you(Lane.JUNGLE, Lane.GOLD)
     )
 
     // "exp, jungle" / "gold" / "exp, jungle, flex" -> a recommendation; null = nothing usable

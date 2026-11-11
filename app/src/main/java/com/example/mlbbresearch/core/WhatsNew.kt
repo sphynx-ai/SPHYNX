@@ -23,6 +23,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-11", Kind.FIXED, "Your lane corrections for 10 heroes",
+            "Alpha: Jungle, then EXP · Chou: EXP, then Roam · Lapu-Lapu: EXP only · Lunox: Mid, then Gold · Masha: EXP, then Roam · Minsitthar: EXP, " +
+                "then Roam · Paquito: EXP, then Jungle · Phoveus: EXP only · Valentina: Mid, then EXP · Yi Sun-shin: Jungle, then " +
+                "Gold. These come before the online guide and the wiki (your own per-hero setting still comes first).",
+            pr = 50, needsDeviceCheck = true),
         Entry("2026-11-11", Kind.NEW, "Recommended lanes per hero: primary, secondary and flex pick",
             "Every hero now has a recommended primary lane, a secondary lane, and whether it is a flex pick (playable in almost " +
                 "any lane) - from its online guide (now asked for both lanes and flex) and every wiki laning list it is in. Shown " +
