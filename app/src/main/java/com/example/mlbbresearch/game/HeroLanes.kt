@@ -33,6 +33,7 @@ object HeroLanes {
         "Alpha" to you(Lane.JUNGLE, Lane.EXP),
         "Chou" to you(Lane.EXP, Lane.ROAM),
         "Lapu-Lapu" to you(Lane.EXP),
+        "Lunox" to you(Lane.MID, Lane.GOLD),
         "Masha" to you(Lane.EXP, Lane.ROAM),
         "Minsitthar" to you(Lane.EXP, Lane.ROAM),
         "Paquito" to you(Lane.EXP, Lane.JUNGLE),

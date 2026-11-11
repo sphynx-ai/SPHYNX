@@ -66,6 +66,7 @@ class HeroLanesTest {
         check("Alpha", Lane.JUNGLE, Lane.EXP)
         check("Chou", Lane.EXP, Lane.ROAM)
         check("Lapu-Lapu", Lane.EXP, null)
+        check("Lunox", Lane.MID, Lane.GOLD)
         check("Masha", Lane.EXP, Lane.ROAM)
         check("Minsitthar", Lane.EXP, Lane.ROAM)
         check("Paquito", Lane.EXP, Lane.JUNGLE)

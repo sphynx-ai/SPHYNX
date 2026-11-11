@@ -23,8 +23,8 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
-        Entry("2026-11-11", Kind.FIXED, "Your lane corrections for 9 heroes",
-            "Alpha: Jungle, then EXP · Chou: EXP, then Roam · Lapu-Lapu: EXP only · Masha: EXP, then Roam · Minsitthar: EXP, " +
+        Entry("2026-11-11", Kind.FIXED, "Your lane corrections for 10 heroes",
+            "Alpha: Jungle, then EXP · Chou: EXP, then Roam · Lapu-Lapu: EXP only · Lunox: Mid, then Gold · Masha: EXP, then Roam · Minsitthar: EXP, " +
                 "then Roam · Paquito: EXP, then Jungle · Phoveus: EXP only · Valentina: Mid, then EXP · Yi Sun-shin: Jungle, then " +
                 "Gold. These come before the online guide and the wiki (your own per-hero setting still comes first).",
             pr = 50, needsDeviceCheck = true),
