@@ -24,11 +24,13 @@ object WhatsNew {
 
     val ENTRIES: List<Entry> = listOf(
         Entry("2026-11-11", Kind.NEW, "Gold and EXP lanes swapped between matches: read from the minimap's lane marks",
-            "Some matches put the Gold lane on top and the EXP lane at the bottom, with the Lord and Turtle pits swapped too. " +
-                "At the start of each match the minimap's top-left lane mark (gold \"$\" or lavender \"E\") is read; with the Gold " +
-                "lane on top (a mirrored map), lane walking, tower targets, the Lord / Turtle pits and the jungle camps follow the mirror; " +
-                "scenery is not learned in such a match and the calibration tour waits for one with the EXP lane on top. Until the mark " +
-                "is read, EXP on top is assumed.",
+            "Some matches put the Gold lane on top, others the EXP lane, with the Lord and Turtle pits swapped too: the Turtle is " +
+                "always by the EXP lane, the Lord by the Gold lane. At the start of each match the minimap's top-left lane mark (gold " +
+                "\"$\" or lavender \"E\") is read and shown on the panel. Lane walking and tower targets follow the lanes; the Lord / " +
+                "Turtle pits and the jungle camps (measured in your Gold-on-top matches, Lord top-left) are mirrored when the EXP lane " +
+                "is on top, where scenery is not learned and the calibration tour waits for a Gold-on-top match. Also: only one " +
+                "Lithowanderer is up at a time (either side of the river, back 120 s after its kill), the enemy buffs' spots are " +
+                "measured from your screenshots, and the Turtle / Lord respawn times are listed (wiki).",
             pr = 48, needsDeviceCheck = true),
         Entry("2026-11-11", Kind.IMPROVED, "Every jungle monster named; the Stone Roamer is not counted as an ally",
             "From your 20 jungle screenshots: each monster is named from where you stand on the minimap and its bar's size - " +

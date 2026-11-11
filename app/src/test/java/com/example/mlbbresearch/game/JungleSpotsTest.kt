@@ -45,9 +45,38 @@ class JungleSpotsTest {
     // the two bosses (owner, 2026-11-11): the Lord in the top-left pit (screenshot at 5:40 - before its usual
     // 8:00, so the pit decides, not the clock) and the Turtle in the bottom-right pit
     @Test fun lordAndTurtleByTheirPits() {
-        MapSide.reset()                                    // the usual layout: EXP lane on top
+        MapSide.reset()                                    // not read yet: the tables' own map (Lord top-left)
+        val icon = floatArrayOf(0f, 0f, 0.01f, 0.01f)
+        // solo practice: both are up (both icons on the minimap) - the pit decides, at any time
+        fun both(x: Float, y: Float) = com.example.mlbbresearch.vision.MinimapInfo(0, 0, emptyList(), self = x to y, lordIcon = icon, turtleIcon = icon)
+        assertEquals(JungleDb.LORD, JungleDb.boss(both(0.29f, 0.30f), 340))
+        assertEquals(JungleDb.TURTLE, JungleDb.boss(both(0.70f, 0.70f), 600))
+        // icons not read: the pit before 9:00
         fun mini(x: Float, y: Float) = com.example.mlbbresearch.vision.MinimapInfo(0, 0, emptyList(), self = x to y)
-        assertEquals(JungleDb.LORD, JungleDb.boss(mini(0.29f, 0.30f), 340))
-        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.70f, 0.70f), 600))
+        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.70f, 0.70f), 300))
+        // a real match (wiki): from 9:00 there is no Turtle - the Lord can stand in its pit
+        assertEquals(JungleDb.LORD, JungleDb.boss(mini(0.70f, 0.70f), 600))
+        // only the Lord's icon shows (it replaced the Turtle at 8:00): the Lord, even in the Turtle's pit
+        assertEquals(JungleDb.LORD, JungleDb.boss(com.example.mlbbresearch.vision.MinimapInfo(0, 0, emptyList(), self = 0.70f to 0.70f, lordIcon = icon), 500))
+    }
+
+    // the owner's 5 enemy-jungle screenshots (2026-11-11), measured where the hero stood
+    @Test fun theEnemyBuffsMeasured() {
+        assertEquals(JungleDb.THUNDER_FENRIR, at(0.75f, 0.52f, MonsterKind.BUFF, 34))
+        assertEquals(JungleDb.THUNDER_FENRIR, at(0.73f, 0.46f, MonsterKind.BUFF, 42))
+        assertEquals(JungleDb.MOLTEN_FIEND, at(0.51f, 0.16f, MonsterKind.BUFF, 55))
+        assertEquals(JungleDb.MOLTEN_FIEND, at(0.47f, 0.22f, MonsterKind.BUFF, 60))
+        assertEquals(JungleDb.FIRE_BEETLE, at(0.40f, 0.16f, MonsterKind.CAMP, 68))
+    }
+
+    // only ONE Lithowanderer is up at a time (owner, 2026-11-11)
+    @Test fun oneLithowandererAtATime() {
+        Lithowanderer.reset()
+        try {
+            Lithowanderer.observe(10_000, 0.38f to 0.37f, 0.9f)                    // seen alive on the top side
+            assertEquals(JungleDb.LITHOWANDERER, JungleSpots.at(0.38f to 0.37f, MonsterKind.CAMP, 100, 20_000))
+            assertNull(JungleSpots.at(0.62f to 0.63f, MonsterKind.CAMP, 100, 20_000))   // so not on the other side
+            assertEquals(JungleDb.LITHOWANDERER, JungleSpots.at(0.62f to 0.63f, MonsterKind.CAMP, 100))   // no memory given
+        } finally { Lithowanderer.reset() }
     }
 }

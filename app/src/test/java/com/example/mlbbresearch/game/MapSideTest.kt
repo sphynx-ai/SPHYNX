@@ -34,38 +34,50 @@ class MapSideTest {
         assertEquals(true, MapSide.goldTop)
     }
 
-    @Test fun lanesAndPitsSwapWithTheGoldLaneOnTop() {
-        assertEquals(Lane.EXP, MapSide.geo(Lane.EXP, null))        // unknown: the usual layout
+    @Test fun lanesAndPitsSwapWithTheMarks() {
+        // lanes: the code's lane geometry is drawn for EXP on top
+        assertEquals(Lane.EXP, MapSide.geo(Lane.EXP, null))        // unknown: as before
+        assertEquals(Lane.EXP, MapSide.geo(Lane.EXP, false))
         assertEquals(Lane.GOLD, MapSide.geo(Lane.EXP, true))
         assertEquals(Lane.EXP, MapSide.geo(Lane.GOLD, true))
         assertEquals(Lane.MID, MapSide.geo(Lane.MID, true))
-        assertEquals(MapSide.TOP_LEFT_PIT, MapSide.lordPit(false))
-        assertEquals(MapSide.BOTTOM_RIGHT_PIT, MapSide.lordPit(true))
-        assertEquals(MapSide.TOP_LEFT_PIT, MapSide.turtlePit(true))
+        // pits: the Lord by the Gold lane, the Turtle by the EXP lane (the "$"-top-left screenshot: Turtle bottom-right)
+        assertEquals(MapSide.TOP_LEFT_PIT, MapSide.lordPit(true))
+        assertEquals(MapSide.BOTTOM_RIGHT_PIT, MapSide.turtlePit(true))
+        assertEquals(MapSide.TOP_LEFT_PIT, MapSide.lordPit(null))   // unknown: the owner's usual map
+        assertEquals(MapSide.BOTTOM_RIGHT_PIT, MapSide.lordPit(false))
+        assertEquals(MapSide.TOP_LEFT_PIT, MapSide.turtlePit(false))
     }
 
     @Test fun theBossFollowsTheMap() {
         fun mini(x: Float, y: Float) = com.example.mlbbresearch.vision.MinimapInfo(0, 0, emptyList(), self = x to y)
-        repeat(3) { MapSide.observe(MapSide.Mark.GOLD) }
-        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.29f, 0.30f), 300))  // Gold on top: the Turtle is top-left
+        repeat(3) { MapSide.observe(MapSide.Mark.EXP) }
+        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.29f, 0.30f), 300))  // EXP on top: the Turtle is top-left
         assertEquals(JungleDb.LORD, JungleDb.boss(mini(0.70f, 0.70f), 600))
+        MapSide.reset(); repeat(3) { MapSide.observe(MapSide.Mark.GOLD) }
+        assertEquals(JungleDb.LORD, JungleDb.boss(mini(0.29f, 0.30f), 600))    // Gold on top: the Lord is top-left
+        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.70f, 0.70f), 300))
     }
 
-    // the mirrored map: the base stays, the top-left and bottom-right corners trade places
+    // the mirrored map (EXP on top): the base stays, the top-left and bottom-right corners trade places
     @Test fun theMirror() {
         fun near(a: Pair<Float, Float>, b: Pair<Float, Float>) = kotlin.math.hypot(a.first - b.first, a.second - b.second) < 1e-4f
-        assertEquals(true, near(0.07f to 0.93f, MapSide.view(0.07f to 0.93f, true)))
-        val pit = MapSide.view(MapSide.TOP_LEFT_PIT, true)
+        assertEquals(true, near(0.3f to 0.2f, MapSide.view(0.3f to 0.2f, true)))     // Gold on top: the tables' own map
+        assertEquals(true, near(0.3f to 0.2f, MapSide.view(0.3f to 0.2f, null)))
+        assertEquals(true, near(0.07f to 0.93f, MapSide.view(0.07f to 0.93f, false)))
+        val pit = MapSide.view(MapSide.TOP_LEFT_PIT, false)
         // (the two pit positions are rounded estimates: the mirror of one lands 0.071 from the other; the boss rule
         // itself looks 0.25 around each pit)
         assertEquals(true, kotlin.math.hypot(pit.first - MapSide.BOTTOM_RIGHT_PIT.first, pit.second - MapSide.BOTTOM_RIGHT_PIT.second) < 0.08f)
-        assertEquals(true, near(0.3f to 0.2f, MapSide.view(MapSide.view(0.3f to 0.2f, true), true)))   // its own inverse
+        assertEquals(true, near(0.3f to 0.2f, MapSide.view(MapSide.view(0.3f to 0.2f, false), false)))   // its own inverse
     }
 
     @Test fun jungleMonstersAreNamedOnTheMirroredMap() {
-        repeat(3) { MapSide.observe(MapSide.Mark.GOLD) }
+        repeat(3) { MapSide.observe(MapSide.Mark.EXP) }
         // the owner's Horned Lizard spot (0.21, 0.40 on the usual map) is at 0.60, 0.79 on a mirrored one
         assertEquals(JungleDb.HORNED_LIZARD, JungleSpots.at(0.60f to 0.79f, MonsterKind.CAMP))
         assertEquals(JungleDb.THUNDER_FENRIR, JungleSpots.at(0.48f to 0.71f, MonsterKind.BUFF))
+        MapSide.reset(); repeat(3) { MapSide.observe(MapSide.Mark.GOLD) }
+        assertEquals(JungleDb.HORNED_LIZARD, JungleSpots.at(0.21f to 0.40f, MonsterKind.CAMP))   // not mirrored
     }
 }

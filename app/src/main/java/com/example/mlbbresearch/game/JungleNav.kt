@@ -41,6 +41,18 @@ object JungleNav {
         Camp(0.41f, 0.38f, buff = false, enemy = false)   // 6. Lithowanderer (river)
     )
 
+    // the rotation now: the Lithowanderer stop goes where it is up (only ONE is up at a time, on either side of
+    // the river - owner, 2026-11-11) and is left out while none is up (killed less than 120 s ago)
+    private fun rotation(nowMs: Long, matchSec: Int): List<Camp> {
+        val litho = Lithowanderer.expectedSpot(nowMs, matchSec)
+        val base = ALLY_ROTATION.dropLast(1)
+        return when {
+            litho == null -> base
+            litho == Lithowanderer.SPOTS[0] -> ALLY_ROTATION
+            else -> base + Camp(litho.first, litho.second, buff = false, enemy = false)
+        }
+    }
+
     // Gank / river patrol points when all 6 ally camps are on respawn cooldown
     private val GANK_PATROL = listOf(
         0.46f to 0.54f,   // Mid river bush
@@ -102,7 +114,7 @@ object JungleNav {
 
         // If Jungler sees no minimap camp dots (e.g. occluded by hero icons), check canonical 6 ally pits not on skip cooldown
         if (camps.isEmpty() && isJungler && s.matchSec >= 20) {
-            camps = ALLY_ROTATION.map { c -> MapSide.view(c.x to c.y).let { (x, y) -> Camp(x, y, c.buff, c.enemy) } }.filter { (skipped[cell(it)] ?: 0L) < now && hypot(it.x - me.first, it.y - me.second) <= maxDist }
+            camps = rotation(now, s.matchSec).map { c -> MapSide.view(c.x to c.y).let { (x, y) -> Camp(x, y, c.buff, c.enemy) } }.filter { (skipped[cell(it)] ?: 0L) < now && hypot(it.x - me.first, it.y - me.second) <= maxDist }
         }
 
         // the target camp's icon is hidden under YOUR icon when you stand on it: it is not gone

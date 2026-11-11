@@ -1,15 +1,23 @@
 package com.example.mlbbresearch.game
 
 // WHICH LANE IS ON TOP (owner, 2026-11-11): the Gold lane and the EXP lane can be swapped from one match to
-// the next, and the Lord and Turtle pits with them (the Lord is on the EXP lane's side, the Turtle on the Gold
-// lane's). The minimap shows it at the start of a match: a lane mark at its top-left corner - a gold "$"
-// (Gold lane on top) or a lavender "E" (EXP lane on top) - and the other at the bottom-right corner.
+// the next, and the Lord and Turtle pits with them: the TURTLE is always by the EXP lane, the LORD by the Gold
+// lane (wiki: "the first Turtle always spawns next to the EXP lane"; and the owner's screenshot with the "$"
+// mark top-left shows the Turtle's countdown in the bottom-right pit). The minimap shows it at the start of a
+// match: a lane mark at its top-left corner - a gold "$" (Gold lane on top) or a lavender "E" (EXP lane on
+// top) - and the other at the bottom-right corner.
 // Measured on the owner's screenshots (2712x1220; same result at the app's 800x359): the "$" at x 0.048-0.057,
 // y 0.006-0.031, almost white with a warm tint (blue - red about -45); the "E" (bottom-right, x 0.173-0.182,
 // y 0.285-0.309) cool (blue - red about +13). They fade after the first seconds, so they are read only while
 // the match is young, on the normal game view, and only the TOP-LEFT mark decides (the bottom-right corner
-// also catches gold text on other screens). Until it is known, the usual layout is used: EXP lane on top.
-// All the lane / pit geometry goes through geo() and the pits below. Pure logic, unit tested.
+// also catches gold text on other screens).
+// TWO CONVENTIONS IN THE CODE, kept as they were:
+//  - the LANE geometry (corridors, towers, lane checks) is drawn for "EXP lane on top"; geo() swaps it when
+//    the Gold lane is on top;
+//  - the PIT / JUNGLE tables (SceneryMap, JungleSpots, JungleNav: Lord top-left, Turtle bottom-right) were
+//    measured in the owner's matches, which are GOLD-on-top maps; view() mirrors them when the EXP lane is
+//    on top.
+// Until the mark is read, both stay as they are. Pure logic, unit tested.
 object MapSide {
 
     // the top-left mark's box (screen fractions)
@@ -45,7 +53,7 @@ object MapSide {
         if (v == runValue) run++ else { runValue = v; run = 1 }
         if (run >= NEED) {
             goldTop = v
-            com.example.mlbbresearch.core.Diag.info("Map: " + (if (v) "Gold lane on top (the Turtle's pit top-left)" else "EXP lane on top (the Lord's pit top-left)"))
+            com.example.mlbbresearch.core.Diag.info("Map: " + (if (v) "Gold lane on top (the Lord's pit top-left)" else "EXP lane on top (the Turtle's pit top-left)"))
         }
     }
 
@@ -57,20 +65,22 @@ object MapSide {
         else -> lane
     }
 
-    // THE MIRRORED MAP: with the Gold lane on top the whole map is mirrored across the line through both bases
-    // (your base stays bottom-left; the top-left corner and the bottom-right corner trade places) - that is
-    // what swaps the lanes and the two boss pits. view() turns a position of the usual map (EXP on top) into
-    // this match's map, and back (it is its own inverse); viewDir() does the same for a direction.
-    fun mirrored(goldOnTop: Boolean? = goldTop): Boolean = goldOnTop == true
+    // THE MIRRORED MAP: with the EXP lane on top this match's map is the mirror of the pit / jungle tables' map
+    // across the line through both bases (your base stays bottom-left; the top-left corner and the bottom-right
+    // corner trade places) - that is what swaps the lanes and the two boss pits. view() turns a position of the
+    // tables' map (Gold on top, Lord top-left) into this match's map, and back (it is its own inverse);
+    // viewDir() does the same for a direction.
+    fun mirrored(goldOnTop: Boolean? = goldTop): Boolean = goldOnTop == false
     fun view(p: Pair<Float, Float>, goldOnTop: Boolean? = goldTop): Pair<Float, Float> =
-        if (goldOnTop == true) (1f - p.second) to (1f - p.first) else p
+        if (mirrored(goldOnTop)) (1f - p.second) to (1f - p.first) else p
     fun viewDir(d: Pair<Float, Float>, goldOnTop: Boolean? = goldTop): Pair<Float, Float> =
-        if (goldOnTop == true) (-d.second) to (-d.first) else d
+        if (mirrored(goldOnTop)) (-d.second) to (-d.first) else d
 
+    // the Lord by the Gold lane, the Turtle by the EXP lane
     val TOP_LEFT_PIT = 0.31f to 0.26f
     val BOTTOM_RIGHT_PIT = 0.67f to 0.68f
-    fun lordPit(goldOnTop: Boolean? = goldTop) = if (goldOnTop == true) BOTTOM_RIGHT_PIT else TOP_LEFT_PIT
-    fun turtlePit(goldOnTop: Boolean? = goldTop) = if (goldOnTop == true) TOP_LEFT_PIT else BOTTOM_RIGHT_PIT
+    fun lordPit(goldOnTop: Boolean? = goldTop) = if (mirrored(goldOnTop)) BOTTOM_RIGHT_PIT else TOP_LEFT_PIT
+    fun turtlePit(goldOnTop: Boolean? = goldTop) = if (mirrored(goldOnTop)) TOP_LEFT_PIT else BOTTOM_RIGHT_PIT
 
-    fun text(): String = when (goldTop) { true -> "Gold lane on top"; false -> "EXP lane on top"; null -> "not read yet (EXP on top assumed)" }
+    fun text(): String = when (goldTop) { true -> "Gold lane on top"; false -> "EXP lane on top"; null -> "not read yet" }
 }

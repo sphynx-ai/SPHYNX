@@ -474,7 +474,8 @@ object FrameProcessor {
                     com.example.mlbbresearch.game.MonsterKind.BOSS -> com.example.mlbbresearch.game.JungleDb.boss(mini, sec).id
                     com.example.mlbbresearch.game.MonsterKind.BUFF -> (com.example.mlbbresearch.game.JungleSpots.at(mini.self, kind, sec)
                         ?: com.example.mlbbresearch.game.JungleDb.buff(col[0], col[1]) ?: com.example.mlbbresearch.game.JungleDb.CREEP).id
-                    else -> (com.example.mlbbresearch.game.JungleSpots.at(mini.self, kind, sec)
+                    // (only one Lithowanderer is up at a time - nowMs lets it rule out the other spot)
+                    else -> (com.example.mlbbresearch.game.JungleSpots.at(mini.self, kind, sec, System.currentTimeMillis())
                         ?: com.example.mlbbresearch.game.JungleDb.camp(col[0], col[1], col[2])).id
                 }
                 val m = Seen(Team.NEUTRAL, boss, s.x, s.y, hp, s.barLeft, s.barTop, s.barLeft + fullW, s.barBottom, species)

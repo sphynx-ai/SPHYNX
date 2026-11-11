@@ -51,4 +51,20 @@ class LithowandererTest {
         assertEquals(1, L.roamerCount(screenAllyHeroes = 3, minimapAlliesNear = 2))
         assertEquals(0, L.roamerCount(screenAllyHeroes = 0, minimapAlliesNear = 2))
     }
+
+    @Test fun onlyOneUpAtATimeAndBack120sAfterItsKill() {
+        assertEquals(L.SPOTS[0], L.expectedSpot(1_000, 40))           // nothing seen yet: the first spot
+        assertEquals(null, L.expectedSpot(1_000, 20))                 // before 0:35
+        L.observe(5_000, 0.62f to 0.63f, 0.9f)                        // up on the bottom side
+        assertEquals(L.SPOTS[1], L.expectedSpot(6_000, 60))
+        assertTrue(L.isIt(0.62f to 0.63f, 60, 6_000))
+        assertFalse(L.isIt(0.38f to 0.37f, 60, 6_000))                // the top side has none now
+        assertTrue(L.isIt(0.38f to 0.37f, 300, 200_000))              // not seen for over 120 s: either side again
+        // killed: none anywhere for 120 s
+        L.observe(7_000, 0.62f to 0.63f, 0.1f); L.observe(7_500, 0.62f to 0.63f, null)
+        assertEquals(7_500L, L.killedAt)
+        assertEquals(null, L.expectedSpot(60_000, 90))
+        assertFalse(L.isIt(0.38f to 0.37f, 90, 60_000))
+        assertTrue(L.isIt(0.38f to 0.37f, 200, 128_000))              // back, on either side
+    }
 }

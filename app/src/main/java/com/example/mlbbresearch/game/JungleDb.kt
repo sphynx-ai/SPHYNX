@@ -35,15 +35,17 @@ class Monster(
 object JungleDb {
 
     val LORD = Monster("lord", "Lord", listOf("Elemental Lord"), MonsterKind.BOSS,
-        "a human-like giant holding a trident, in the Lord pit",
+        "a human-like giant holding a trident, in the Lord pit (by the Gold lane; from 8:00 - 9:00 it can take the Turtle's pit)",
         "the Lord comes back to life on your side and charges down the lane with the fewest / weakest turrets, " +
             "strengthens your minion waves in all three lanes, and charges the first turret it meets (true damage, " +
-            "disables it for a few seconds). Gold and EXP for the team",
-        firstSec = 480)
+            "disables it for a few seconds). Gold and EXP for the team. Real match (wiki): first 2 min after the last Turtle " +
+            "(or at 8:00 - 9:00 in the Turtle's place), back 180 s after its kill (120 s from 18:00)",
+        firstSec = 480, respawnSec = 180)
     val TURTLE = Monster("turtle", "Turtle", listOf("Dragon Turtle"), MonsterKind.BOSS,
         "a giant turtle, in the Turtle pit (next to the EXP lane)",
         "the killer gets the Turtle Buff (a regenerating shield that adds Physical Attack and Magic Power); " +
-            "allies get bonus gold and a one-time shield", firstSec = 120)
+            "allies get bonus gold and a one-time shield. Real match (wiki): 2:00, back 120 s after its kill, none after one " +
+            "slain after 6:00, turns into the Lord at 8:00 - 9:00", firstSec = 120, respawnSec = 120)
     val MOLTEN_FIEND = Monster("molten_fiend", "Molten Fiend", listOf("orange buff", "red buff", "Fiery Hound"), MonsterKind.BUFF,
         "a big fire monster with orange flames, by a red cave",
         "the Orange Buff: attacks on enemy heroes deal extra true damage and slow them (every 3 s); " +
@@ -109,10 +111,22 @@ object JungleDb {
         else -> MonsterKind.CAMP
     }
 
-    // Lord or Turtle: the pit you stand next to on the minimap (else the pit icon, else the time)
-    // the Lord is on the EXP lane's side, the Turtle on the Gold lane's: which pit is which follows the map
-    // (MapSide - the minimap's lane marks; the Lord top-left while unknown)
+    // Lord or Turtle. REAL MATCHES follow the wiki (owner, 2026-11-11: the wiki is for the real match; in solo
+    // practice both are already up from the start):
+    //  - the Turtle spawns at 2:00 in the pit by the EXP lane, back 120 s after its kill; none after one slain
+    //    after 6:00; a Turtle not slain by 8:00 turns into the Lord (at the latest 9:00) - so from 9:00 there is
+    //    no Turtle, and the Lord can stand in the Turtle's pit;
+    //  - the Lord comes 2 min after the last Turtle (or replaces it at 8:00 - 9:00), in the pit by the Gold lane;
+    //    back 180 s after its kill (120 s from 18:00).
+    // Order: the minimap's pit icons when only ONE boss shows (a real match); else the pit you stand next to
+    // (both up: solo practice; which pit is which follows MapSide); from 9:00 a boss with no icon to go by is
+    // the Lord; else the time.
+    const val NO_TURTLE_SEC = 540
     fun boss(mini: MinimapInfo?, matchSec: Int): Monster {
+        if (mini?.lordIcon != null && mini.turtleIcon == null) return LORD
+        if (mini?.turtleIcon != null && mini.lordIcon == null) return TURTLE
+        val bothShown = mini?.lordIcon != null && mini.turtleIcon != null
+        if (!bothShown && matchSec >= NO_TURTLE_SEC) return LORD
         val me = mini?.self
         val LORD_PIT = MapSide.lordPit(); val TURTLE_PIT = MapSide.turtlePit()
         if (me != null) {
@@ -120,8 +134,6 @@ object JungleDb {
             val dt = kotlin.math.hypot(me.first - TURTLE_PIT.first, me.second - TURTLE_PIT.second)
             if (kotlin.math.min(dl, dt) < 0.25f) return if (dl < dt) LORD else TURTLE
         }
-        if (mini?.lordIcon != null && mini.turtleIcon == null) return LORD
-        if (mini?.turtleIcon != null && mini.lordIcon == null) return TURTLE
         return if (matchSec >= 480) LORD else TURTLE
     }
 

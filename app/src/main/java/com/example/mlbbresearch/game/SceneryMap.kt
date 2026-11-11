@@ -478,7 +478,7 @@ object SceneryMap {
     // Observe the actual 3D screen scenery every frame, synchronize landmarks with the minimap, and map into world coordinates
     fun observe(s: GameState) {
         ensureLoaded()
-        // a mirrored match (Gold lane on top): what is seen is NOT learned - the saved scenery is the usual map's,
+        // a mirrored match (EXP lane on top): what is seen is NOT learned - the saved scenery is the usual map's,
         // and mixing the two would put walls and bushes in the wrong places (owner, 2026-11-11)
         if (MapSide.mirrored()) return
         val me = s.minimapSelf ?: return
@@ -576,7 +576,7 @@ object SceneryMap {
     }
 
     // Best walkable entrance / stand-spot for a camp at (campX, campY)
-    // (the pits are kept on the usual map, EXP lane on top; with the Gold lane on top they are mirrored - MapSide)
+    // (the pits are kept on the owner's usual map, Gold lane on top / Lord top-left; with the EXP lane on top they are mirrored - MapSide)
     fun pitStandSpot(campX: Float, campY: Float): Pair<Float, Float> {
         ensureLoaded()
         val (cx, cy) = MapSide.view(campX to campY)
@@ -616,7 +616,7 @@ object SceneryMap {
     fun roamDecision(s: GameState, p: HeroProfile): TacticalDecision? {
         if (!roamActive) return null
         if (MapSide.mirrored()) {
-            status = "waiting: this match has the Gold lane on top (a mirrored map) - calibrate in a match with the EXP lane on top"
+            status = "waiting: this match has the EXP lane on top (a mirrored map) - calibrate in a match with the Gold lane on top (Lord pit top-left)"
             waypointStartedAt = 0L; waypointArrivedAt = 0L
             return null
         }
