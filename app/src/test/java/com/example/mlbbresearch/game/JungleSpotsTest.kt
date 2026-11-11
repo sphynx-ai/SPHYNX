@@ -41,4 +41,12 @@ class JungleSpotsTest {
         assertNull(at(0.29f, 0.52f, MonsterKind.BOSS))
         assertNull(JungleSpots.at(null, MonsterKind.CAMP))
     }
+
+    // the two bosses (owner, 2026-11-11): the Lord in the top-left pit (screenshot at 5:40 - before its usual
+    // 8:00, so the pit decides, not the clock) and the Turtle in the bottom-right pit
+    @Test fun lordAndTurtleByTheirPits() {
+        fun mini(x: Float, y: Float) = com.example.mlbbresearch.vision.MinimapInfo(0, 0, emptyList(), self = x to y)
+        assertEquals(JungleDb.LORD, JungleDb.boss(mini(0.29f, 0.30f), 340))
+        assertEquals(JungleDb.TURTLE, JungleDb.boss(mini(0.70f, 0.70f), 600))
+    }
 }
