@@ -23,6 +23,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-11", Kind.NEW, "Scenery calibration ends with a walk back to base",
+            "After the last stop of the calibration tour the Research player walks back to its base (base gate, then the " +
+                "fountain), still without fighting. The scenery keeps being read on the way and is re-synced and saved at both " +
+                "stops, so the walk back revalidates what the tour learned. The panel shows \"returning to base 1/2\".",
+            pr = 45, needsDeviceCheck = true),
         Entry("2026-11-11", Kind.IMPROVED, "Performance page redesigned",
             "Laid out like a phone performance screen: the phone's name, then one card per topic with a big headline number " +
                 "and label / value rows - memory (ring of RAM in use, available and total, 5-minute line), storage, CPU (one tile " +
