@@ -11,15 +11,15 @@ import org.junit.Test
 class LithowandererTest {
 
     private val L = Lithowanderer
-    private val spot = 0.39f to 0.62f
+    private val spot = 0.38f to 0.37f
 
     @Before fun clean() = L.reset()
 
     @Test fun namedOnlyAtItsSpotsAfterItSpawns() {
-        assertTrue(L.isIt(0.40f to 0.61f, 40))
-        assertTrue(L.isIt(0.60f to 0.39f, 200))       // the enemy side's spot
-        assertFalse(L.isIt(0.40f to 0.61f, 20))       // before 0:35
-        assertFalse(L.isIt(0.27f to 0.56f, 60))       // the purple buff pit
+        assertTrue(L.isIt(0.38f to 0.37f, 40))        // measured on the owner's screenshot (the river)
+        assertTrue(L.isIt(0.62f to 0.63f, 200))       // the other side of the mid crossing
+        assertFalse(L.isIt(0.38f to 0.37f, 20))       // before 0:35
+        assertFalse(L.isIt(0.29f to 0.52f, 60))       // the purple buff pit
         assertFalse(L.isIt(null, 60))
     }
 
@@ -29,7 +29,7 @@ class LithowandererTest {
         L.observe(1_800, spot, null)
         assertEquals(1_800L, L.killedAt)
         assertTrue(L.roamerActive(10_000, spot))
-        assertTrue(L.roamerActive(46_000, 0.45f to 0.60f))
+        assertTrue(L.roamerActive(46_000, 0.39f to 0.39f))   // the Stone Roamer screenshot
         assertFalse(L.roamerActive(47_000, spot))         // 45 s are over
         assertFalse(L.roamerActive(10_000, 0.8f to 0.2f)) // far from the spot
     }

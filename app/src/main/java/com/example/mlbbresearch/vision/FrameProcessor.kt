@@ -411,8 +411,11 @@ object FrameProcessor {
         }
         val screenAllies = seen.filter { it.team == Team.ALLY && it.hero }
         val drop = litho.roamerCount(screenAllies.size, alliesNear)
-        if (drop == 0) return seen
-        val roamers = screenAllies.sortedBy { it.barRight - it.barLeft }.take(drop).toSet()
+        val roamers = screenAllies.sortedBy { it.barRight - it.barLeft }.take(drop).toMutableSet()
+        // its bar is narrower than a hero's (0.067 of the screen, no level badge): it can also be read as an ally
+        // MINION. The spot is in the river, away from the lanes: right at it, a blue bar of that size is the Roamer.
+        if (litho.atSpot(me)) roamers += seen.filter { it.team == Team.ALLY && !it.hero && (it.barRight - it.barLeft) in 0.055f..0.08f }
+        if (roamers.isEmpty()) return seen
         return seen.filter { it !in roamers }
     }
 
@@ -461,15 +464,14 @@ object FrameProcessor {
                 val fullW = if (kind == com.example.mlbbresearch.game.MonsterKind.BUFF) minOf(full, 0.095f) else full
                 // HP = the red part over the FULL bar (the hero-width cap cut long bars short)
                 val hp = (s.hp * (s.barRight - s.barLeft) / fullW).coerceIn(0f, 1f)
+                // which monster: its spot first (owner's 20 jungle screenshots - game.JungleSpots), then its colour
+                val sec = com.example.mlbbresearch.game.GameStateTracker.state.matchSec
                 val species = when (kind) {
-                    com.example.mlbbresearch.game.MonsterKind.BOSS -> com.example.mlbbresearch.game.JungleDb.boss(mini, com.example.mlbbresearch.game.GameStateTracker.state.matchSec).id
-                    com.example.mlbbresearch.game.MonsterKind.BUFF -> (com.example.mlbbresearch.game.JungleDb.buff(col[0], col[1]) ?: com.example.mlbbresearch.game.JungleDb.CREEP).id
-                    else -> com.example.mlbbresearch.game.JungleDb.camp(col[0], col[1], col[2]).let { c ->
-                        // an unnamed jungle monster at a Lithowanderer spot after 0:35 is the Lithowanderer (owner, 2026-11-11)
-                        if (c == com.example.mlbbresearch.game.JungleDb.CREEP &&
-                            com.example.mlbbresearch.game.Lithowanderer.isIt(mini.self, com.example.mlbbresearch.game.GameStateTracker.state.matchSec))
-                            com.example.mlbbresearch.game.JungleDb.LITHOWANDERER else c
-                    }.id
+                    com.example.mlbbresearch.game.MonsterKind.BOSS -> com.example.mlbbresearch.game.JungleDb.boss(mini, sec).id
+                    com.example.mlbbresearch.game.MonsterKind.BUFF -> (com.example.mlbbresearch.game.JungleSpots.at(mini.self, kind, sec)
+                        ?: com.example.mlbbresearch.game.JungleDb.buff(col[0], col[1]) ?: com.example.mlbbresearch.game.JungleDb.CREEP).id
+                    else -> (com.example.mlbbresearch.game.JungleSpots.at(mini.self, kind, sec)
+                        ?: com.example.mlbbresearch.game.JungleDb.camp(col[0], col[1], col[2])).id
                 }
                 val m = Seen(Team.NEUTRAL, boss, s.x, s.y, hp, s.barLeft, s.barTop, s.barLeft + fullW, s.barBottom, species)
                 monsters.add(m); out.add(m)
