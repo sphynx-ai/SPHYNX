@@ -453,8 +453,8 @@ object SceneryMap {
         if (!com.example.mlbbresearch.ai.AiRuntime.playerOn) {
             com.example.mlbbresearch.ai.AiRuntime.start("player")
         }
-        status = if (playerUnlocked()) "roaming map (1/${tourWaypoints.size}: ${tourWaypoints[0].name})"
-            else "waiting: starts when the practice gate unlocks the Player (open the scoreboard once)"
+        status = calibrationBlock(playerUnlocked(), MatchKind.current(), MapSide.mirrored())
+            ?: "roaming map (1/${tourWaypoints.size}: ${tourWaypoints[0].name})"
         Diag.info("Scenery calibration roam started (${tourWaypoints.size} waypoints)")
         return status
     }
@@ -613,15 +613,24 @@ object SceneryMap {
     private fun stepLabel(i: Int): String = if (i < tourWaypoints.size) "${i + 1}/${tourWaypoints.size}"
         else "returning to base ${i - tourWaypoints.size + 1}/${returnWaypoints.size}"
 
+    // WHEN THE CALIBRATION TOUR MAY RUN (null = it may; else why it waits):
+    //  - the practice gate has unlocked the Player;
+    //  - SOLO PRACTICE only (owner, 2026-11-11: god mode, which keeps the hero alive on the tour, can only be
+    //    turned on in Solo mode vs computer) - not in a 5v5, and not while the kind of match is not read yet;
+    //  - the map is the saved scenery's own (Gold lane on top, the Lord's pit top-left - MapSide).
+    fun calibrationBlock(unlocked: Boolean, kind: MatchKind.Kind, mirrored: Boolean): String? = when {
+        !unlocked -> "waiting: starts when the practice gate unlocks the Player (open the scoreboard once)"
+        kind == MatchKind.Kind.FIVE_V_FIVE -> "waiting: scenery calibration runs only in Solo mode vs computer (god mode) - this is a 5v5"
+        kind != MatchKind.Kind.SOLO -> "waiting: is this Solo mode? (read from the loading screen or the scoreboard - open the scoreboard once)"
+        mirrored -> "waiting: this match has the EXP lane on top (a mirrored map) - calibrate in a match with the Gold lane on top (Lord pit top-left)"
+        else -> null
+    }
+
     fun roamDecision(s: GameState, p: HeroProfile): TacticalDecision? {
         if (!roamActive) return null
-        if (MapSide.mirrored()) {
-            status = "waiting: this match has the EXP lane on top (a mirrored map) - calibrate in a match with the Gold lane on top (Lord pit top-left)"
-            waypointStartedAt = 0L; waypointArrivedAt = 0L
-            return null
-        }
-        if (!playerUnlocked()) {
-            status = "waiting: starts when the practice gate unlocks the Player (open the scoreboard once)"
+        val block = calibrationBlock(playerUnlocked(), MatchKind.current(), MapSide.mirrored())
+        if (block != null) {
+            status = block
             waypointStartedAt = 0L; waypointArrivedAt = 0L
             return null
         }

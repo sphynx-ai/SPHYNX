@@ -48,4 +48,14 @@ class SceneryTourTest {
         assertTrue(!SceneryMap.isOldDefaultPit(0.18f, 0.41f))
         assertTrue(SceneryMap.pits.none { it.label.contains("rockursa") })
     }
+
+    // calibration only in Solo mode vs computer (god mode - owner, 2026-11-11), on the saved scenery's map
+    @Test fun calibrationOnlyInSoloPractice() {
+        val solo = MatchKind.Kind.SOLO
+        org.junit.Assert.assertNull(SceneryMap.calibrationBlock(true, solo, false))
+        org.junit.Assert.assertNotNull(SceneryMap.calibrationBlock(true, MatchKind.Kind.FIVE_V_FIVE, false))
+        org.junit.Assert.assertNotNull(SceneryMap.calibrationBlock(true, MatchKind.Kind.UNKNOWN, false))
+        org.junit.Assert.assertNotNull(SceneryMap.calibrationBlock(false, solo, false))
+        org.junit.Assert.assertNotNull(SceneryMap.calibrationBlock(true, solo, true))
+    }
 }
