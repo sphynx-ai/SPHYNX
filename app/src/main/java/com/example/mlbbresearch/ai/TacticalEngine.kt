@@ -67,6 +67,17 @@ object TacticalEngine {
         com.example.mlbbresearch.game.MapIntel.reset()
     }
 
+    // SCENERY CALIBRATION ONLY (owner, 2026-11-11): the tour's next step, steered around walls, with no
+    // attack and no skill - the Player does not fight while it calibrates. Without a step (minimap not
+    // read yet, between waypoints) it stands still.
+    fun calibrationStep(s: GameState, p: HeroProfile): TacticalDecision {
+        if (s.self != null && s.phase == Phase.IN_GAME) com.example.mlbbresearch.game.SceneryMap.observe(s)
+        val d = com.example.mlbbresearch.game.SceneryMap.roamDecision(s, p)?.let { steerAroundWalls(s, it) }
+            ?: return TacticalDecision(Intent.PUSH, 0f, 0f, emptyList(), -1f, -1f, "-", -1f, -1, "scenery calibration: " +
+                com.example.mlbbresearch.game.SceneryMap.status)
+        return if (d.casts.isEmpty()) d else TacticalDecision(d.intent, d.moveX, d.moveY, emptyList(), -1f, -1f, d.targetLabel, -1f, -1, d.reason)
+    }
+
     // option: what the learning brain chose for this fight (null / RULES = the normal rules)
     fun decide(s: GameState, p: HeroProfile, plan: StrategyPlan, learnedBias: Float, option: FightOption? = null): TacticalDecision {
         pendingHop = false

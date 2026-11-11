@@ -23,6 +23,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-11", Kind.IMPROVED, "Research player; shorter floating panel; calibration without fighting; Performance page",
+            "The Player switch is now \"Research player\" and the floating panel says so (no more \"Player + Research + Learning " +
+                "from you\"; learning is named only while coach mode is on). The panel shows less: what runs, the practice check and " +
+                "its last reading, what the Player does, the match in one line. Scenery calibration starts and stops from the panel " +
+                "(CALIBRATE / STOP CALIB) and the Player does not fight while it runs. The Speed page is now the Performance page: " +
+                "the phone's memory, storage, CPU and cores, graphics processor, NPU drivers, temperature and battery, and the local models.",
+            pr = 43, needsDeviceCheck = true),
         Entry("2026-11-10", Kind.FIXED, "Practice check reads \"Computer\" at the app's capture size",
             "The app reads the screen at 800x359, where \"Computer\" is only about 49x9 pixels: the practice check read it as " +
                 "unclear (0.66) and never unlocked the Player. It now matches the word at that size (0.92 on the scoreboard, " +

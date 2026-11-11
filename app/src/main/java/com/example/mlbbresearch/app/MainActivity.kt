@@ -91,7 +91,7 @@ class MainActivity : Activity() {
     private val pages = listOf("home", "news", "player", "draft", "build", "meta", "library", "model", "learn", "practice", "speed", "logs", "setup")
     private val labels = mapOf(
         "home" to "Home", "news" to "What's new", "player" to "Player", "draft" to "Draft", "build" to "Build", "meta" to "Meta", "library" to "Library",
-        "model" to "Model", "learn" to "Learn", "practice" to "Practice", "speed" to "Speed", "logs" to "Logs", "setup" to "Setup"
+        "model" to "Model", "learn" to "Learn", "practice" to "Practice", "speed" to "Performance", "logs" to "Logs", "setup" to "Setup"
     )
 
     private val reqCapture = 42
@@ -744,7 +744,7 @@ class MainActivity : Activity() {
 
         title("RUN")
         // ONE SWITCH (owner, 2026-11-10): the Player and research mode are one button
-        stageSwitch("Player + research (plays in practice vs Computer; advises in other matches)", "player") { AiRuntime.playerOn }
+        stageSwitch("Research player (plays in practice vs Computer; advises in other matches)", "player") { AiRuntime.playerOn }
         stageSwitch("Drafter (ban & pick)", "draft") { AiRuntime.drafterOn }
         stageSwitch("Builder (items)", "build") { AiRuntime.builderOn }
         val resInfo = text("", 12f, color = T.MUTED)
@@ -856,7 +856,7 @@ class MainActivity : Activity() {
     // =====================================================================
 
     private fun playerPage() {
-        stageSwitch("Player running", "player") { AiRuntime.playerOn }
+        stageSwitch("Research player running", "player") { AiRuntime.playerOn }
         val info = text("", 13f)
         upd {
             info.text = if (GemmaEngine.ready) "Fast rules play; Gemma adjusts the plan every ${Cfg.strategyEverySec}s or when a fight starts."
@@ -1967,7 +1967,63 @@ class MainActivity : Activity() {
             else -> "%.0f %s".format(v, unit)
         }
         fun gradeColor(g: Int) = c(when (g) { 0 -> T.GREEN; 1 -> T.GOLD; else -> T.RED })
-        text("Live speed of every part of the AI. Dashed line = target.", 13f, color = T.MUTED)
+        text("Performance: this phone (live), then the speed of every part of the AI. Dashed line = target.", 13f, color = T.MUTED)
+
+        // ---- THIS PHONE (owner, 2026-11-11): memory, storage, CPU & cores, graphics, NPU, temperature & battery, models ----
+        val di = com.example.mlbbresearch.core.DeviceInfo
+        Thread { di.readGpu(); di.readAccelerators() }.start()
+        title("THIS PHONE")
+        val phoneName = text(di.phoneName(), 18f)
+        fun section(name: String): TextView { val cd = card(); cardHeader(cd, name); return cardText(cd, 13f) }
+        val memT = section("Memory")
+        val romT = section("Internal storage")
+        val cpuT = section("CPU & cores")
+        val gpuT = section("Graphics processor")
+        val npuT = section("NPU & accelerator drivers")
+        val powT = section("Temperature & battery")
+        val llmT = section("Local model activity")
+        upd {
+            phoneName.text = di.phoneName() + "  ·  live, every 2 s"
+            com.example.mlbbresearch.core.DeviceStats.sampleAsync(this)
+            val p = com.example.mlbbresearch.core.DeviceStats.last
+            fun gb(mb: Long) = "%.1f GB".format(mb / 1024f)
+            memT.text = if (p == null) "measuring..." else {
+                val used = p.ramTotalMb - p.ramAvailMb
+                "${(used * 100 / p.ramTotalMb.coerceAtLeast(1))}% in use · ${gb(p.ramAvailMb)} available of ${gb(p.ramTotalMb)}" +
+                    (if (p.lowMemory) "  LOW MEMORY" else "") +
+                    "\nUnused RAM: " + (di.unusedRamMb()?.let { gb(it) } ?: "not reported") +
+                    "\nThis app: " + gb(p.appRamMb) + " (Java ${p.appJavaMb} MB, native ${p.appNativeMb} MB)" +
+                    "\nAvailable RAM includes memory Android can reclaim."
+            }
+            romT.text = if (p == null) "measuring..." else
+                "%.1f GB available of %.1f GB".format(p.romFreeGb, p.romTotalGb) + "\nThis app's files (models): ${p.appFilesMb} MB"
+            cpuT.text = buildString {
+                append(di.chip()).append("\nCores: ").append(Runtime.getRuntime().availableProcessors())
+                di.onlineCores()?.let { append(" · online ").append(it) }
+                if (p != null) {
+                    append(" · this app's CPU share ").append("%.1f%%".format(p.appCpuPct))
+                    p.coreGhz.forEachIndexed { i, g ->
+                        append(if (i % 2 == 0) "\n" else "     ")
+                        append("Core $i: ").append("%.2f GHz".format(g))
+                        di.coreMaxGhz(i)?.let { append(" (max ").append("%.2f".format(it)).append(")") }
+                    }
+                }
+                append("\nCore numbers are clock speeds, not use. Android does not let apps read the whole phone's CPU load.")
+            }
+            gpuT.text = (di.gpu?.let { (r, v, ver) -> "$r\nManufacturer: $v\n$ver" } ?: "reading...") +
+                (p?.let { q -> "\nLoad: " + (q.gpuLoadPct?.let { "%.0f%%".format(it) } ?: "not readable") +
+                    (q.gpuMhz?.let { " · %.0f MHz".format(it) } ?: "") + " (${q.gpuSource})" } ?: "")
+            npuT.text = di.accelerators?.let { l -> if (l.isEmpty()) "none visible to apps on this phone" else l.joinToString("\n") +
+                "\nThese show an NPU / DSP is there - not that a model can run on it. Its use is not readable." } ?: "reading..."
+            val pw = di.power(this)
+            powT.text = "Thermal status: ${pw.thermal}" +
+                (pw.headroom?.let { "\nThermal headroom: ${(it * 100).toInt()}% of the throttling point" } ?: "") +
+                "\nBattery temperature: " + (pw.batteryC?.let { "%.1f °C".format(it) } ?: "not reported") +
+                "\nBattery level: " + (pw.batteryPct?.let { "$it%" } ?: "not reported") + (if (pw.charging == true) " (charging)" else "")
+            llmT.text = "Strategist (${ModelManager.strategicName()}): ${GemmaEngine.state}" +
+                (if (GemmaEngine.calls > 0) " · last answer ${GemmaEngine.lastLatencyMs / 100 / 10.0} s" else "") +
+                "\nTactical model (${ModelManager.tacticalName()}): " + (if (Cfg.tacticalLlmOn) TacticalLlmEngine.state else "off")
+        }
 
         // ---- SPEED RECORDER: both language models + screen to touch, kept and exported for review ----
         title("SPEED RECORDER (to send)")

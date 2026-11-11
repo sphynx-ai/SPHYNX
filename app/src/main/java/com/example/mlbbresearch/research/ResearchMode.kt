@@ -272,6 +272,10 @@ object ResearchMode {
         }
     }
 
+    // the last reading for the floating panel, short: what was read and how long ago
+    fun lastReadingShort(nowMs: Long = System.currentTimeMillis()): String =
+        (if (lastReadingAt > 0) "${(nowMs - lastReadingAt) / 1000} s ago - " else "") + lastReading
+
     fun status(): String {
         val now = System.currentTimeMillis()
         if (on) session.sync(GameStateTracker.matchId, now)
