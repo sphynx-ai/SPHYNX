@@ -23,6 +23,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.FIXED, "Commits to the Turtle / Lord instead of flip-flopping",
+            "In your recording \"turtle is up: rotating there\" ran from 2:07 to 7:18 and the Player never reached the pit. Now, once " +
+                "it starts rotating to the Turtle or Lord, that goes first (before the jungle route, ganks, waves) until it " +
+                "arrives - unless enemies are near or its HP is under 40%. Not there after 45 s: it gives up on the objective " +
+                "for 60 s. The panel shows \"(committed: N s)\". The Lord still needs 3 or more allies.",
+            pr = 57, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.FIXED, "Research experiment (R3) is safety-first",
             "In your recording the research experiment changed the fight choice 82 times, always to \"keep farming\" because the " +
                 "strategy's generic plan said farm - 19 times over a retreat and 30 times over an all-in. Now it never overrides a " +
