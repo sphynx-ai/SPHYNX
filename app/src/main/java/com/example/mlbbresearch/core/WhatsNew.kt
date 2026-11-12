@@ -23,6 +23,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.IMPROVED, "Gemma freed: no practice check by Gemma, line-up read once",
+            "Your recording: the Gemma line-up read took 50 s on the loading screen and 70 s on the scoreboard (Gemma could do " +
+                "nothing else meanwhile), and its practice check misread the Computer cards. Now the practice gate uses only its " +
+                "pixel check, and Gemma reads the line-up once per match on the loading screen - never on the scoreboard (the " +
+                "enemy spells are read there from the icons) and never in Solo practice.",
+            pr = 61, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.IMPROVED, "Faster touches: joystick slices 120 ms instead of 320 ms",
             "Your recording measured about 280 ms from screen to touch, ~240 ms of it waiting in the touch queue: every joystick " +
                 "slice was held 320 ms and the next decision waited for it to end. A joystick that is already held now continues in " +
