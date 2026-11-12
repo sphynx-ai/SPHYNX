@@ -23,6 +23,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.NEW, "Recordings continue in a new file at the size limit",
+            "Your last recording stopped by itself every ~68 s (the 25 MB video limit) and about 2 minutes of the match were " +
+                "lost between files. With the automatic GitHub upload on (and a token), a full recording is now saved and " +
+                "uploaded while the next part starts by itself, so the whole match is covered. Without the upload it stops and " +
+                "saves at the limit, as before.",
+            pr = 65, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.NEW, "Debug data page: every export in one place, uploaded to GitHub by a button",
             "A new Debug data page holds everything needed for debugging: the session recorder (moved from Logs), the speed / " +
                 "scorecard exports (moved from Performance and Practice), a full-log export, and \"Upload the debug data to GitHub " +

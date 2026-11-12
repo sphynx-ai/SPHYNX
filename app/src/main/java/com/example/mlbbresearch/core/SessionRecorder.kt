@@ -55,7 +55,7 @@ object SessionRecorder {
         "RECORDING: $rows rows, ${bytes / 1024} KB, ${(System.currentTimeMillis() - startedAt) / 1000} s; video: " +
             (if (VideoRecorder.on || VideoRecorder.frames > 0) "${VideoRecorder.bytesWritten / (1024 * 1024)} of ${VideoRecorder.limitMb} MB, " +
                 "${VideoRecorder.frames} frames (${VideoRecorder.note})" else "off (start screen capture first)") +
-            " - stops and saves by itself at the limit"
+            (if (parts > 0) "; part ${parts + 1}" else "") + " - at the limit: continues in a new file when the GitHub upload is on, else stops and saves"
     else "Off. Last file: $lastExport"
 
     // AUTOMATIC RECORDING (owner, 2026-11-12): started at the start of every match (the loading screen, or your hero
@@ -65,6 +65,9 @@ object SessionRecorder {
     @Volatile var autoStarted = false; private set
     fun init(c: Context) { ctxRef = c.applicationContext }
     fun currentName(): String = name
+    // does a full recording continue in a new file? (pure, unit tested)
+    fun rollsOver(autoUpload: Boolean, hasToken: Boolean): Boolean = autoUpload && hasToken
+    @Volatile var parts = 0; private set          // files this recording was continued into
     fun matchStarted() {
         val c = ctxRef ?: return
         if (!Cfg.autoRecord || on) return
@@ -79,7 +82,7 @@ object SessionRecorder {
 
     @Synchronized fun start(ctx: Context) {
         if (on) return
-        autoStarted = false
+        autoStarted = false; parts = 0
         appCtx = ctx.applicationContext
         name = "sphynx-session-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date()) + ".jsonl"
         val f = File(ctx.applicationContext.cacheDir, name)
@@ -91,8 +94,22 @@ object SessionRecorder {
             .put("aimSkills", Cfg.aimSkills)
             .put("note", "t = wall-clock ms; ms = match seconds (the in-game timer). Screen positions are 0..1."))
         val app = ctx.applicationContext
-        // auto-stop: when the video reaches its size limit (or 20 minutes) everything is stopped and saved
-        VideoRecorder.onLimit = { if (on) stop(app) { msg -> lastExport = "auto-stopped: $msg" } }
+        // AT THE VIDEO'S SIZE LIMIT (owner, 2026-11-12): with the automatic GitHub upload on (and a token), the
+        // recording CONTINUES in a new file - the full one is saved and uploaded meanwhile - so a whole match is
+        // covered without gaps. Without it, everything is stopped and saved, as before.
+        VideoRecorder.onLimit = {
+            if (on) {
+                val wasAuto = autoStarted
+                val roll = rollsOver(Cfg.autoUpload, try { GitHubUpload.token(app) != null } catch (e: Exception) { false })
+                stop(app) { msg ->
+                    lastExport = (if (roll) "continued in a new file; saved: " else "auto-stopped: ") + msg
+                    // (a recording started by the match is not continued once that match is over)
+                    if (roll && (!wasAuto || com.example.mlbbresearch.game.GameStateTracker.matchId != 0L)) {
+                        val part = parts; start(app); autoStarted = wasAuto; parts = part + 1
+                    }
+                }
+            }
+        }
         if (com.example.mlbbresearch.capture.ScreenCaptureService.running) {
             VideoRecorder.start(File(ctx.applicationContext.cacheDir, name.removeSuffix(".jsonl") + ".mp4"))
         }
