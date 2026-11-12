@@ -125,7 +125,7 @@ object SessionRecorder {
         return if (n > 0) "$n research file(s) (R5 comparison, practice moments, readiness report, model speed, screen to touch)" else ""
     }
 
-    // one file into the recordings folder (used by the Speed page's export)
+    // one file into the recordings folder (used by the Practice and Speed pages' exports)
     fun exportFile(c: Context, f: File, mime: String): String = export(c, f, mime)
 
     private fun export(c: Context, f: File, mime: String = "application/json"): String {
