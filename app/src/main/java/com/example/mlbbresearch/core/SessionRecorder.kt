@@ -83,6 +83,7 @@ object SessionRecorder {
         name = "sphynx-session-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date()) + ".jsonl"
         val f = File(ctx.applicationContext.cacheDir, name)
         tmp = f; out = f.bufferedWriter(); rows = 0; bytes = 0L; startedAt = System.currentTimeMillis(); lastFrameAt = 0L; autoFull = false
+        snaps.clear(); snapAt.clear()
         on = true
         write(JSONObject().put("k", "start").put("t", startedAt)
             .put("app", AppVersion.VERSION).put("commit", com.example.mlbbresearch.BuildConfig.GIT_COMMIT).put("auto", autoStarted).put("phone", Build.MANUFACTURER + " " + Build.MODEL).put("android", Build.VERSION.SDK_INT)
@@ -117,7 +118,8 @@ object SessionRecorder {
                 val m2 = video?.let { v -> try { export(app, v, "video/mp4").also { v.delete() } } catch (e: Exception) { "video not saved: ${e.message}" } }
                     ?: "no video (screen capture was off, or no frame arrived)"
                 val m3 = exportResearch(app, f.name.removeSuffix(".jsonl"))
-                "$m1; $m2" + (if (m3.isNotEmpty()) "; $m3" else "")
+                val m4 = exportDebug(app, f.name.removeSuffix(".jsonl"))
+                "$m1; $m2" + (if (m3.isNotEmpty()) "; $m3" else "") + (if (m4.isNotEmpty()) "; $m4" else "")
             } catch (e: Exception) { "Saving the recording failed: ${e.message}" }
             lastExport = msg
             Diag.info(msg)
@@ -142,6 +144,82 @@ object SessionRecorder {
             copy.delete(); n++
         } catch (e: Exception) { }
         return if (n > 0) "$n research file(s) (R5 comparison, practice moments, readiness report, model speed, screen to touch)" else ""
+    }
+
+    // ---- DEBUG DATA WITH EVERY RECORDING (owner, 2026-11-12) ----
+    // Clean screenshots (the frame as the app saw it, nothing drawn on it) at key moments: <session>-snap-<time>-<tag>.jpg
+    private val snaps = java.util.Collections.synchronizedList(ArrayList<File>())
+    private val snapAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    const val MAX_SNAPS = 80
+    private fun snapFile(tag: String, now: Long): File? {
+        val c = appCtx ?: return null
+        val clean = tag.lowercase().filter { it.isLetterOrDigit() || it == '-' }.take(30)
+        return File(c.cacheDir, name.removeSuffix(".jsonl") + "-snap-" + SimpleDateFormat("HHmmss", Locale.US).format(Date(now)) + "-" + clean + ".jpg")
+    }
+    private fun snapDue(tag: String, now: Long, minGapMs: Long): Boolean {
+        if (!accept() || snaps.size >= MAX_SNAPS) return false
+        val last = snapAt[tag] ?: 0L
+        if (now - last < minGapMs) return false
+        snapAt[tag] = now
+        return true
+    }
+    // a frame's pixels (copied now: the buffer is reused)
+    fun snap(tag: String, px: IntArray, w: Int, h: Int, minGapMs: Long = 4000L) {
+        val now = System.currentTimeMillis()
+        if (w <= 0 || h <= 0 || px.size < w * h || !snapDue(tag, now, minGapMs)) return
+        val copy = px.copyOf(w * h)
+        val f = snapFile(tag, now) ?: return
+        io.execute {
+            try {
+                for (i in copy.indices) copy[i] = copy[i] or (0xff shl 24)
+                val bmp = android.graphics.Bitmap.createBitmap(copy, w, h, android.graphics.Bitmap.Config.ARGB_8888)
+                f.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 88, it) }
+                bmp.recycle()
+                snaps.add(f)
+                event(JSONObject().put("k", "snap").put("tag", tag).put("file", f.name))
+            } catch (e: Exception) { }
+        }
+    }
+    // a picture already made (what Gemma was given)
+    fun snapBitmap(tag: String, bmp: android.graphics.Bitmap?, minGapMs: Long = 30_000L) {
+        val now = System.currentTimeMillis()
+        if (bmp == null || bmp.isRecycled || !snapDue(tag, now, minGapMs)) return
+        val f = snapFile(tag, now) ?: return
+        try {
+            f.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, it) }
+            snaps.add(f)
+            event(JSONObject().put("k", "snap").put("tag", tag).put("file", f.name))
+        } catch (e: Exception) { }
+    }
+
+    // the settings as they were (no keys / tokens / folder links, no big saved blobs)
+    fun settingsJson(all: Map<String, *>): JSONObject {
+        val o = JSONObject()
+        for ((k, v) in all.toSortedMap()) {
+            val lk = k.lowercase()
+            if (v == null || listOf("key", "token", "secret", "pass", "uri").any { it in lk }) continue
+            val sv = v.toString()
+            if (sv.length > 300) continue
+            o.put(k, v)
+        }
+        return o
+    }
+
+    // the files saved next to the recording at its end: screenshots, settings, the log (with crashes), the scenery picture
+    private fun exportDebug(c: Context, base: String): String {
+        var n = 0
+        val tmpDir = File(c.cacheDir, "debug-export").apply { mkdirs() }
+        fun put(name: String, mime: String, write: (File) -> Unit) = try {
+            val f = File(tmpDir, name); write(f); if (f.length() > 0) { export(c, f, mime); n++ }; f.delete()
+        } catch (e: Exception) { }
+        val shots = synchronized(snaps) { ArrayList(snaps).also { snaps.clear() } }
+        for (f in shots) try { if (f.length() > 0) { export(c, f, "image/jpeg"); n++ }; f.delete() } catch (e: Exception) { }
+        put("$base-settings.json", "application/json") { it.writeText(settingsJson(Cfg.all()).toString(1)) }
+        put("$base-diagnostics.log", "text/plain") { f -> Diag.logFile()?.takeIf { it.exists() }?.copyTo(f, overwrite = true) }
+        put("$base-scenery.png", "image/png") { f ->
+            f.outputStream().use { com.example.mlbbresearch.game.SceneryMap.renderPicture().compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        }
+        return if (n > 0) "$n debug file(s) (${shots.size} screenshots, settings, log, scenery picture)" else ""
     }
 
     // one file into the recordings folder (used by the Practice and Speed pages' exports)
@@ -203,6 +281,19 @@ object SessionRecorder {
                 JSONArray(listOf(it.id, r3(it.x), r3(it.y), if (it.occluded) 1 else 0, it.sources.joinToString("+") { s2 -> s2.name.take(3) }))
             }))
             o.put("jg", com.example.mlbbresearch.game.JungleNav.status.take(80))
+            // EVERYTHING THE APP SAW (owner, 2026-11-12): allies, minions, towers, the minimap reading, the gate,
+            // which lane is on top, the kind of match
+            fun pts(l: List<Pair<Float, Float>>) = JSONArray(l.take(12).map { JSONArray(listOf(r3(it.first), r3(it.second))) })
+            o.put("al", JSONArray(s.allies.take(6).map { JSONArray(listOf(r3(it.x), r3(it.y), r3(it.hp))) }))
+            o.put("emn", JSONArray(s.enemyMinions.take(8).map { JSONArray(listOf(r3(it.x), r3(it.y), r3(it.hp))) }))
+            o.put("amn", s.allyMinions.size)
+            o.put("tw", JSONArray(s.towers.take(12).map { JSONArray(listOf(r3(it.x), r3(it.y))) }))
+            if (s.towerRing.zone != com.example.mlbbresearch.vision.TowerRing.Zone.NONE) o.put("ring", s.towerRing.zone.name)
+            o.put("mmE", pts(s.map.enemies)).put("mmA", pts(s.map.allies)).put("ew", pts(s.enemyWaves))
+            s.map.objective?.let { o.put("obj", JSONArray(listOf(r3(it.first), r3(it.second)))) }
+            o.put("gate", com.example.mlbbresearch.ai.AiRuntime.playerGate?.name ?: "?")
+            o.put("side", when (com.example.mlbbresearch.game.MapSide.goldTop) { true -> "GOLD_TOP"; false -> "EXP_TOP"; null -> "?" })
+            o.put("kind", com.example.mlbbresearch.game.MatchKind.current().name)
             o.put("lat", Speed.total().toInt())
             // research mode: rs = [verified practice?, arm (ARBITER / NORMAL)] - R3 / R5
             if (com.example.mlbbresearch.research.ResearchMode.on) o.put("rs", JSONArray(listOf(

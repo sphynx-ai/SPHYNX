@@ -440,8 +440,14 @@ object StrategicAdvisor {
 
     private suspend fun ask(what: String, prompt: String, img: android.graphics.Bitmap?, temp: Double = 0.2): String? {
         busyWith = what
+        val askedAt = System.currentTimeMillis()
         return try {
-            GemmaEngine.ask(prompt, img, temp, purpose = what)
+            com.example.mlbbresearch.core.SessionRecorder.snapBitmap("gemma-" + what.substringBefore(' '), img)
+            GemmaEngine.ask(prompt, img, temp, purpose = what).also { reply ->
+                // the recording keeps what was asked and answered (owner, 2026-11-12)
+                com.example.mlbbresearch.core.SessionRecorder.event(org.json.JSONObject().put("k", "gemma").put("what", what)
+                    .put("ms", System.currentTimeMillis() - askedAt).put("prompt", prompt.take(1500)).put("reply", (reply ?: "").take(1500)))
+            }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (t: Throwable) {

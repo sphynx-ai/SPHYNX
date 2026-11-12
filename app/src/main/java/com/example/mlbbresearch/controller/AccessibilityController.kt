@@ -147,6 +147,7 @@ class AccessibilityController : AccessibilityService() {
                     q = listOf(Act.Joy(wj.cx, wj.cy, wj.x, wj.y, CastTiming.JOY_HOLD_MS))
                     show = false
                     inFlightAt = now
+                    sliceOnly = true
                 } else {
                     joyStroke = null
                     inFlight = false
@@ -170,16 +171,34 @@ class AccessibilityController : AccessibilityService() {
                     pendingActs = null; pendingShow = false
                 }
                 inFlightAt = now
-                if (pendingSince > 0L) com.example.mlbbresearch.core.Speed.touch(inFlightAt - pendingSince)
+                if (pendingSince > 0L) { com.example.mlbbresearch.core.Speed.touch(inFlightAt - pendingSince); lastQueueMs = inFlightAt - pendingSince }
                 pendingSince = 0L
             }
         }
         if (!send(q, show)) next()
     }
 
+    @Volatile private var lastQueueMs = 0L       // how long the gesture being sent waited (for the recording)
+    @Volatile private var sliceOnly = false      // a joystick slice repeated by itself: not recorded
+
     @Synchronized
     private fun send(acts: List<Act>, showTouches: Boolean): Boolean {
         val now = System.currentTimeMillis()
+        // the recording's touch rows (owner, 2026-11-12): what goes to the screen, and its wait in the queue
+        if (!sliceOnly) try {
+            com.example.mlbbresearch.core.SessionRecorder.event(org.json.JSONObject().put("k", "touch").put("q", lastQueueMs)
+                .put("acts", org.json.JSONArray(acts.map { a ->
+                    when (a) {
+                        is Act.Joy -> "joy:%.2f,%.2f".format(java.util.Locale.US, a.x - a.cx, a.y - a.cy)
+                        is Act.JoyRelease -> "joyRelease"
+                        is Act.SkillAim -> "aim:${a.pressHoldMs}+${a.aimHoldMs}"
+                        is Act.Tap -> "tap:%.2f,%.2f:${a.holdMs}".format(java.util.Locale.US, a.x, a.y)
+                        is Act.Drag -> "drag:${a.ms}"
+                        else -> "other"
+                    }
+                })))
+        } catch (e: Exception) { }
+        sliceOnly = false; lastQueueMs = 0L
         val (rw, rh) = com.example.mlbbresearch.core.ScreenGeom.size(this)
         val w = rw.toFloat()
         val h = rh.toFloat()

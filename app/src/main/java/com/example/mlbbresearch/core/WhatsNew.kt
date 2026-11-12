@@ -23,6 +23,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.NEW, "Recordings now carry the debug data",
+            "Every recording also saves: clean screenshots at key moments (the gate's readings, the lane side decided, an enemy " +
+                "hero or monster first seen, your HP read as 0%, the pictures Gemma was given), everything the app saw each frame " +
+                "(allies, minions, towers, the minimap reading, the gate, the lane side, Solo / 5v5), every touch sent and how long " +
+                "it waited, Gemma's prompts and replies, the calibration tour's log, your settings (no keys or tokens), the full " +
+                "log with crashes, and a picture of the saved scenery map.",
+            pr = 63, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.NEW, "Recording starts by itself at the start of every match",
             "The session recorder now starts on its own when a match starts (the loading screen, or your hero first seen) and " +
                 "stops and saves at the match end - switch it off on the Logs page if you don't need it (a recording you start " +
