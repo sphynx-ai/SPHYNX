@@ -23,6 +23,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.NEW, "First-run setup",
+            "A new install opens a setup screen with six steps that turn green when done: permissions (accessibility, " +
+                "display over apps, notifications, all files access), the app's folder, loading the models, choosing what " +
+                "runs (every switch starts off; Dry run stays on), scenery calibration and skill button calibration. " +
+                "Finish setup goes to Home; Setup > Open the first-run setup opens it again. Every calibration is now on the " +
+                "Setup page: the scenery calibration and minimap synchronization moved there from the Player page.",
+            pr = 75, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.NEW, "Training progress circles, and training data in the GitHub upload",
             "The Learn page shows a circle for each training (minimap detector, screen detector, tactical networks, small " +
                 "tactical model, tactical engine): how much better (green) or worse (red) the last training is than the one " +
