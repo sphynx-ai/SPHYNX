@@ -230,6 +230,34 @@ Use consistent tags across compositions and rotations, including patch/version a
 
 **Implementation gate:** Start with read-only investigation of current architecture, data sources, UI, and source/API feasibility. Do not assume referenced pages expose stable public APIs. This package remains MLBB-specific within the game integration layer and must not introduce MLBB assumptions into the universal core.
 
+### 13.11 Emblem icon assets and in-app Library integration
+
+**User-provided reference file:** Emblems _ Mobile Legends_ Bang Bang Wiki _ Fandom.mht  
+**Canonical source page:** https://mobile-legends.fandom.com/wiki/Emblems
+
+- Treat the supplied MHTML capture as the reference asset package for emblem icons and page content. Inspect and extract relevant icon assets rather than displaying the saved webpage as the app interface.
+- Identify and extract relevant emblem icons and associated visual assets. Preserve the original icon-to-emblem mapping and Wiki terminology.
+- Store assets in an organized MLBB integration asset location with consistent filenames and a documented mapping/manifest.
+- Exclude unrelated webpage chrome, advertisements, tracking pixels, and unrelated images.
+- Preserve suitable image quality and transparency where present. Visually verify each asset and its mapping.
+- Include Wiki attribution and source/capture date where available.
+- If the MHTML file is unavailable to the implementation environment, request the asset or an extracted bundle; do not substitute guessed icons.
+- Display the icons in the in-app Library alongside correct names and Wiki-backed details. Make entries discoverable and connected to the relevant emblem information/configuration.
+- Keep presentation consistent with the app's navigation/design system and ensure offline availability through bundled/cached assets where practical.
+- Recommended emblem sets/configurations must be derived exclusively from the specified Mobile Legends Wiki page. Do not use other websites, community guides, pro builds, statistics, or model-generated assumptions.
+- If the Wiki lacks enough information for a recommendation, state that no Wiki-supported recommendation is available. Do not invent or externally supplement it.
+- Keep Wiki facts distinct from app-generated presentation/explanation. This Wiki-only restriction applies to emblem data and recommendations, not the separately defined sources for meta, team composition, rotations, or esports analysis.
+
+Additional acceptance criteria:
+- [ ] Supplied MHTML capture is used as the reference package for emblem icon extraction.
+- [ ] Only relevant emblem assets are extracted; unrelated webpage/ad/tracking assets are excluded.
+- [ ] Each icon is verified against its Wiki name and mapped correctly.
+- [ ] Icons and corresponding entries are displayed in the in-app Library.
+- [ ] Library entries expose relevant Wiki-backed details and source attribution.
+- [ ] Emblem assets remain available offline when the associated Library content is available offline.
+- [ ] Every recommended emblem configuration is supported exclusively by the specified Wiki page.
+- [ ] Missing Wiki-supported recommendations are explicitly marked unavailable rather than fabricated.
+
 ## 6. Five approved gaming-AI technology work packages
 
 These were approved for integration as **proposed submilestones** within existing phases. They do not create new phases or change phase order. Each needs a scoped implementation proposal and acceptance criteria before implementation.
