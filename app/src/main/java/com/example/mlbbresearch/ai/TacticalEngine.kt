@@ -603,11 +603,20 @@ object TacticalEngine {
                 }), force = true)
         }
 
+        // ---- 1. THE LORD NEEDS 3+ ALLIES (owner, 2026-11-12 - BossRule): with fewer near, walk away from it ----
+        val lordNear = s.boss?.takeIf { it.species == com.example.mlbbresearch.game.JungleDb.LORD.id }
+        if (lordNear != null && !lordOk(s, lordNear) && s.distToSelf(lordNear.x, lordNear.y) < 0.6f) {
+            val (tx, ty) = toward(s, lordNear.x, lordNear.y)
+            return hold(now, TacticalDecision(Intent.RETREAT, -tx, -ty, emptyList(), -1f, -1f, "away", -1f, -1,
+                "the Lord with only ${lordAllies(s, lordNear)} allies near (needs ${BossRule.LORD_ALLIES}): walking away"), force = true)
+        }
+        val lordLeft = lastMonSpecies == com.example.mlbbresearch.game.JungleDb.LORD.id && !lordOk(s, null)
+
         // ---- 1a. Monster Leash Lock (v37.09): if a monster we were just fighting flickers out of sight
         // (e.g. damage numbers / skill effects cover its HP bar), stand completely still (0f, 0f) and keep
         // attacking for up to 1.8 s so we NEVER walk out of its aggro zone and reset the monster! ----
         val monStillAlive = !(lastMonHp <= 0.18f && now - lastMonAt > 1100)
-        if (s.creeps.isEmpty() && s.boss == null && threat.isEmpty() && lastMonAt > 0 && now - lastMonAt in 0..1800 &&
+        if (s.creeps.isEmpty() && s.boss == null && threat.isEmpty() && lastMonAt > 0 && now - lastMonAt in 0..1800 && !lordLeft &&
             monStillAlive && s.distToSelf(lastMonX, lastMonY) <= maxOf(p.attackRange * 2.4f, 0.46f)
         ) {
             val casts = arrayListOf("attack")
@@ -625,7 +634,7 @@ object TacticalEngine {
         // ---- 1b. never walk away from a monster that is almost dead or that you are fighting:
         // finish it first (its gold / EXP / buff), whatever the lane - then recall / move on.
         val fighting = now - lastMonAt in 0..2500
-        val lowMon = (s.creeps + listOfNotNull(s.boss)).filter {
+        val lowMon = (s.creeps + listOfNotNull(s.boss?.takeIf { lordOk(s, it) })).filter {
             s.distToSelf(it.x, it.y) <= maxOf(p.attackRange * 2.2f, 0.44f) && (it.hp <= (if (it.hero) 0.18f else 0.45f) ||
                 fighting && !it.hero && s.dist(it.x, it.y, lastMonX, lastMonY) < 0.20f && (hp >= 0.25f || it.hp <= 0.55f))
         }.minByOrNull { it.hp }
@@ -768,7 +777,7 @@ object TacticalEngine {
         // ---- 2f. LAST HITS first, in every lane: the turtle / lord, a monster or a minion that the
         // next hit kills (gold, EXP, the buff, and no steal). Not in a fight that is going well. ----
         if (fstate != Utility.State.ENGAGING && !ComboRunner.running && surv >= 45f) {
-            s.boss?.takeIf { it.hp <= 0.15f && s.distToSelf(it.x, it.y) <= p.engageRange }?.let { b ->
+            s.boss?.takeIf { it.hp <= 0.15f && s.distToSelf(it.x, it.y) <= p.engageRange && lordOk(s, it) }?.let { b ->
                 return hold(now, hitMonster(s, p, b, Cfg.retriBossPct, Intent.OBJECTIVE,
                     "last hit: ${LaneLogic.objectiveName(s.matchSec)} at ${(b.hp * 100).toInt()}%"), force = true)
             }
@@ -829,7 +838,7 @@ object TacticalEngine {
         // ---- turtle / lord on screen: take it with the team ----
         fun bossOnScreen(): TacticalDecision? {
             val boss = s.boss ?: return null
-            if (!Cfg.takeObjectives || threat.isNotEmpty()) return null
+            if (!Cfg.takeObjectives || threat.isNotEmpty() || !lordOk(s, boss)) return null
             val alliesThere = s.allies.count { s.dist(it.x, it.y, boss.x, boss.y) < 0.5f }
             if (!(alliesThere >= 1 || s.lane == Lane.JUNGLE || s.lane == Lane.ROAM || boss.hp < 0.5f)) return null
             val name = LaneLogic.objectiveName(s.matchSec)
@@ -845,6 +854,8 @@ object TacticalEngine {
             val alliesThere = s.map.allies.count { kotlin.math.hypot(it.first - obj.first, it.second - obj.second) < 0.2f }
             val enemiesThere = s.map.enemies.count { kotlin.math.hypot(it.first - obj.first, it.second - obj.second) < 0.2f }
             if (dObj > maxDist || needAlly && alliesThere == 0 || enemiesThere > alliesThere) return null
+            // the Lord: only with 3+ allies already there (BossRule - owner, 2026-11-12)
+            if (LaneLogic.objectiveName(s.matchSec) == "lord" && !BossRule.mayHitLord(alliesThere)) return null
             if (dObj < 0.05f) {
                 // at the pit and no boss bar on screen. Only the Lord shows its HP bar before it is hit:
                 // no Lord bar = it is not in view yet, keep walking into the pit. The Turtle's bar shows
@@ -1253,6 +1264,17 @@ object TacticalEngine {
     // the monster last fought: its bar at the last 1-3% can flicker out of sight
     private var lastMonX = -1f; private var lastMonY = -1f; private var lastMonHp = 1f; private var lastMonAt = 0L
     private var lastMonSpecies = ""; private var lastMonBoss = false
+
+    // allies near the Lord (on the screen near it, or on the minimap around you) and whether that is enough
+    // (BossRule); boss = null: the Lord is out of view, allies anywhere on the screen count
+    private fun lordAllies(s: GameState, boss: Seen?): Int {
+        val onScreen = if (boss == null) s.allies.size else s.allies.count { s.dist(it.x, it.y, boss.x, boss.y) < 0.5f }
+        val me = s.minimapSelf
+        val onMap = if (me == null) 0 else s.map.allies.count { kotlin.math.hypot(it.first - me.first, it.second - me.second) < 0.12f }
+        return BossRule.alliesNear(onScreen, onMap)
+    }
+    private fun lordOk(s: GameState, boss: Seen?): Boolean =
+        boss != null && boss.species != com.example.mlbbresearch.game.JungleDb.LORD.id || BossRule.mayHitLord(lordAllies(s, boss))
     private var monComboStartedAt = 0L
     // Retribution is kept for the Purple / Orange Buffs, the Turtle and the Lord (and hero fights)
     private fun retriWorthy(species: String, boss: Boolean) = boss || com.example.mlbbresearch.game.JungleDb.isBuff(species) ||
