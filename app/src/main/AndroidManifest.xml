@@ -23,8 +23,8 @@
     <application
         android:name=".app.MainApplication"
         android:label="@string/app_name"
-        android:icon="@mipmap/ic_mlbb"
-        android:roundIcon="@mipmap/ic_mlbb"
+        android:icon="@mipmap/ic_sphynx"
+        android:roundIcon="@mipmap/ic_sphynx"
         android:allowBackup="true"
         android:hasFragileUserData="true"
         android:largeHeap="true">
