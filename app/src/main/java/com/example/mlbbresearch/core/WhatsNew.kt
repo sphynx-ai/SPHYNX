@@ -23,6 +23,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.FIXED, "Paths keep out of enemy tower range; no regen while being hit",
+            "Your recording had 198 frames of \"inside the enemy tower range with no minions: getting out\" - the jungle and gank " +
+                "paths cut through enemy towers' range - and at 2:29 the Player stood still to regenerate while taking hits. Now the " +
+                "paths go around enemy towers' range when there is a way (a goal inside it can still be reached), and Regen is " +
+                "neither started nor continued while your HP is dropping (being hit).",
+            pr = 59, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.FIXED, "A sudden 0% HP reading is ignored",
             "Your recording had 94 frames where your HP read 0% while the bar was full (effects and the buff's bars covered it), " +
                 "which made the Player stand \"waiting\". Now a 0% reading right after a healthy one is ignored (the last good reading " +
