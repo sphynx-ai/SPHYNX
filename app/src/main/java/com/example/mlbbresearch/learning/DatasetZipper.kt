@@ -75,7 +75,7 @@ object DatasetZipper {
 
     // the time in a picture's name (mm_1730450000000.png -> 1730450000000)
     private fun stamp(name: String, kind: Kind): Long =
-        if (name.startsWith(kind.prefix)) name.removePrefix(kind.prefix).substringBefore('.').toLongOrNull() ?: 0L else 0L
+        if (name.startsWith(kind.prefix)) name.removePrefix(kind.prefix).substringBefore('.').substringBefore('_').toLongOrNull() ?: 0L else 0L   // (mm_<time>_gs.png: the tag is not part of the time)
 
     // zip the pictures newer than the last zip, in the background; done(message)
     fun zipNew(ctx: Context, kind: Kind, why: String, done: ((String) -> Unit)? = null) {
