@@ -23,6 +23,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.NEW, "Recording starts by itself at the start of every match",
+            "The session recorder now starts on its own when a match starts (the loading screen, or your hero first seen) and " +
+                "stops and saves at the match end - switch it off on the Logs page if you don't need it (a recording you start " +
+                "yourself is never stopped by the match end). The video's time / decision banner moved to the BOTTOM (at the top " +
+                "it covered the minimap's lane mark), and every recording's start row names the build's git commit.",
+            pr = 62, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.IMPROVED, "Gemma freed: no practice check by Gemma, line-up read once",
             "Your recording: the Gemma line-up read took 50 s on the loading screen and 70 s on the scoreboard (Gemma could do " +
                 "nothing else meanwhile), and its practice check misread the Computer cards. Now the practice gate uses only its " +

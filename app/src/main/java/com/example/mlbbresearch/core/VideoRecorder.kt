@@ -207,7 +207,8 @@ object VideoRecorder {
         val ms = s.matchSec
         val head = fmt.format(Date()) + "  match " + (if (ms >= 0) "%d:%02d".format(ms / 60, ms % 60) else "?") +
             "  " + (d?.let { it.intent.name + ": " + it.reason.take(70) } ?: "")
-        cv.drawRect(0f, 0f, vw.toFloat(), 30f, pBar)
-        cv.drawText(head, 6f, 23f, pText)
+        // the banner at the BOTTOM (owner, 2026-11-12: at the top it covered the minimap's lane mark corner)
+        cv.drawRect(0f, vh - 30f, vw.toFloat(), vh.toFloat(), pBar)
+        cv.drawText(head, 6f, vh - 7f, pText)
     }
 }

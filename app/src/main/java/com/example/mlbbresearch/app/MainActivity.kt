@@ -2629,6 +2629,9 @@ class MainActivity : Activity() {
             if (r.on) { toast("Saving…"); r.stop(this) { msg -> runOnUiThread { toast(msg.take(200)) } } }
             else { r.start(this); toast(if (com.example.mlbbresearch.core.VideoRecorder.on) "Recording data + video" else "Recording data (start screen capture for video)") }
         }
+        switch("Start recording by itself at the start of every match (stops and saves at the match end)", Cfg.autoRecord) {
+            Cfg.autoRecord = it
+        }
         val limBtn = btn("") {
             val v = com.example.mlbbresearch.core.VideoRecorder
             val ch = v.SIZE_CHOICES_MB

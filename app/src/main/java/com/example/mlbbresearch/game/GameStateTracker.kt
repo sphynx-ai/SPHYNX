@@ -443,7 +443,7 @@ object GameStateTracker {
             matchStartAt = now
             MapSide.reset()                 // a new match: its lane marks are read again
             // (the loading screen was missed: the match is recorded from here)
-            if (matchId == 0L) { matchId = now; Diag.info("Match recording started (hero seen; no loading screen)") }
+            if (matchId == 0L) { matchId = now; Diag.info("Match recording started (hero seen; no loading screen)"); com.example.mlbbresearch.core.SessionRecorder.matchStarted() }
             com.example.mlbbresearch.vision.ScreenReader.clearResult()
             spawnAt = now
             com.example.mlbbresearch.vision.LevelReader.reset()
@@ -494,7 +494,7 @@ object GameStateTracker {
             val result = com.example.mlbbresearch.vision.ScreenReader.lastResultWin
             lastResultWin = result
             // recording ends at the match end screens; the end scoreboard may still lock the hero
-            if (matchId != 0L) { lastMatchId = matchId; matchId = 0L; Diag.info("Match recording ended (match end)") }
+            if (matchId != 0L) { lastMatchId = matchId; matchId = 0L; Diag.info("Match recording ended (match end)"); com.example.mlbbresearch.core.SessionRecorder.matchEnded() }
             lastMatchEndAt = now
             logMatch()                       // (it clears lastResultWin: the message uses the copy)
             matchStartAt = 0L
@@ -511,6 +511,7 @@ object GameStateTracker {
             // (also right after a match: a loading screen once the last one ended / was played is a new match)
             if (now - loadingSeenAt > 120_000 || lastMatchEndAt > loadingSeenAt || lastInGame > loadingSeenAt) {
                 matchId = now; Diag.info("Match recording started (loading screen)")
+                com.example.mlbbresearch.core.SessionRecorder.matchStarted()
             }
             loadingSeenAt = now
         }
