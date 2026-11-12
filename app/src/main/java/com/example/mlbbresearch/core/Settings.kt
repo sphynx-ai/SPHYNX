@@ -126,6 +126,8 @@ object Cfg {
 
     // start a session recording by itself at the start of every match (owner, 2026-11-12; can be switched off)
     var autoRecord: Boolean get() = b("auto_record", true); set(v) = put("auto_record", v)
+    // upload the debug data to GitHub by itself after each recording (needs github_token.txt; can be switched off)
+    var autoUpload: Boolean get() = b("auto_upload", true); set(v) = put("auto_upload", v)
 
     fun heroCombo(hero: String): String? = manualCombo(hero)
     fun setHeroCombo(hero: String, v: String?) = setManualCombo(hero, v)

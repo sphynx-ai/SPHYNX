@@ -88,10 +88,10 @@ class MainActivity : Activity() {
     private var headerStatus: TextView? = null
     private var navScroll: HorizontalScrollView? = null
 
-    private val pages = listOf("home", "news", "player", "draft", "build", "meta", "library", "model", "learn", "practice", "speed", "logs", "setup")
+    private val pages = listOf("home", "news", "player", "draft", "build", "meta", "library", "model", "learn", "practice", "speed", "logs", "debug", "setup")
     private val labels = mapOf(
         "home" to "Home", "news" to "What's new", "player" to "Player", "draft" to "Draft", "build" to "Build", "meta" to "Meta", "library" to "Library",
-        "model" to "Model", "learn" to "Learn", "practice" to "Practice", "speed" to "Performance", "logs" to "Logs", "setup" to "Setup"
+        "model" to "Model", "learn" to "Learn", "practice" to "Practice", "speed" to "Performance", "logs" to "Logs", "debug" to "Debug data", "setup" to "Setup"
     )
 
     private val reqCapture = 42
@@ -516,6 +516,7 @@ class MainActivity : Activity() {
             "practice" -> practicePage()
             "speed" -> speedPage()
             "logs" -> logsPage()
+            "debug" -> debugPage()
             "setup" -> setupPage()
         }
         for ((k, b) in navButtons) {
@@ -671,17 +672,7 @@ class MainActivity : Activity() {
         text("Idle: the AI had nothing to do. Stuck: walking but the camera did not move. Death cause: what the AI was " +
             "doing in the 5 s before (fighting, farming, escaping, ...), and \"outnumbered\" when more enemy heroes than " +
             "allies were close.", 12f, color = T.MUTED)
-        btn("Export the scorecards (CSV)") {
-            Thread {
-                val msg = try {
-                    val f = java.io.File(cacheDir, "practice_benchmark-" +
-                        java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date()) + ".csv")
-                    f.writeText(rm.benchCsv())
-                    com.example.mlbbresearch.core.SessionRecorder.exportFile(this, f, "text/csv").also { f.delete() }
-                } catch (e: Exception) { "Export failed: ${e.message}" }
-                runOnUiThread { toast(msg.take(150)) }
-            }.start()
-        }
+        text("Export: on the Debug data page (all exports for debugging are there).", 12f, color = T.MUTED)
         btn("Clear the scorecards") {
             AlertDialog.Builder(this).setTitle("Delete all practice scorecards?")
                 .setPositiveButton("Delete") { _, _ -> rm.clearBench(); toast("Deleted") }
@@ -2187,24 +2178,7 @@ class MainActivity : Activity() {
         btn("Run the speed test (both models, same questions every time)") {
             com.example.mlbbresearch.ai.ModelSpeed.runTest { msg -> runOnUiThread { toast(msg.take(150)) } }
         }
-        btn("Export the speed data (CSV)") {
-            Thread {
-                val msg = try {
-                    val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
-                    com.example.mlbbresearch.ai.ModelSpeed.save(sync = true); com.example.mlbbresearch.core.TouchSpeed.save(sync = true)
-                    val out = ArrayList<String>()
-                    for ((name, body) in listOf("model_speed" to com.example.mlbbresearch.ai.ModelSpeed.csv(),
-                                                "screen_to_touch" to com.example.mlbbresearch.core.TouchSpeed.csv())) {
-                        val f = java.io.File(cacheDir, "$name-$stamp.csv")
-                        f.writeText(body)
-                        out.add(com.example.mlbbresearch.core.SessionRecorder.exportFile(this, f, "text/csv"))
-                        f.delete()
-                    }
-                    out.joinToString("; ")
-                } catch (e: Exception) { "Export failed: ${e.message}" }
-                runOnUiThread { toast(msg.take(200)) }
-            }.start()
-        }
+        text("Export: on the Debug data page (all exports for debugging are there).", 12f, color = T.MUTED)
         btn("Clear the speed data") {
             AlertDialog.Builder(this).setTitle("Delete the recorded model speed and screen-to-touch data?")
                 .setPositiveButton("Delete") { _, _ ->
@@ -2617,12 +2591,15 @@ class MainActivity : Activity() {
     //  LOGS
     // =====================================================================
 
-    private fun logsPage() {
+    // THE DEBUG DATA PAGE (owner, 2026-11-12): everything needed for debugging on ONE page - the session recorder,
+    // the exports, and the upload to GitHub (branch recordings-for-debugging). The training data for the notebooks
+    // (Learn page: CSV exports, picture zips) is not here and is never uploaded.
+    private fun debugPage() {
         // SESSION RECORDER (data file + video, for bug reports)
         title("SESSION RECORDER - for bug reports")
         text("Records what the AI saw and decided (about 10 times a second, every aimed skill, the log) into a data file, " +
             "and a video of the AI's view with its targets and aim drawn on top. Start it before a match, stop it after; " +
-            "send both files (in Sphynx-Auto-Pilot-Storage/recordings). Screen capture must be on for the video.", 12f, color = T.MUTED)
+            "everything is saved in Sphynx-Auto-Pilot-Storage/recordings and uploaded from this page. Screen capture must be on for the video.", 12f, color = T.MUTED)
         val recInfo = text("", 12f)
         val recBtn = btn("") {
             val r = com.example.mlbbresearch.core.SessionRecorder
@@ -2648,6 +2625,68 @@ class MainActivity : Activity() {
             recInfo.setTextColor(c(if (r.on) T.RED else T.MUTED))
             recBtn.text = if (r.on) "■ Stop and save the recording" else "● Start recording (data + video)"
         }
+
+
+        title("EXPORTS FOR DEBUGGING")
+        text("Every recording already saves the speed data, the scorecards, the settings, the full log and the scenery picture " +
+            "next to it. These buttons save them now, without a recording.", 12f, color = T.MUTED)
+        btn("Export the speed data and the scorecards (CSV)") {
+            Thread {
+                val msg = try {
+                    val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
+                    com.example.mlbbresearch.ai.ModelSpeed.save(sync = true); com.example.mlbbresearch.core.TouchSpeed.save(sync = true)
+                    val out = ArrayList<String>()
+                    for ((name, body) in listOf("model_speed" to com.example.mlbbresearch.ai.ModelSpeed.csv(),
+                                                "screen_to_touch" to com.example.mlbbresearch.core.TouchSpeed.csv(),
+                                                "practice_benchmark" to com.example.mlbbresearch.research.ResearchMode.benchCsv())) {
+                        val f = java.io.File(cacheDir, "$name-$stamp.csv")
+                        f.writeText(body)
+                        out.add(com.example.mlbbresearch.core.SessionRecorder.exportFile(this, f, "text/csv"))
+                        f.delete()
+                    }
+                    out.joinToString("; ")
+                } catch (e: Exception) { "Export failed: ${e.message}" }
+                runOnUiThread { toast(msg.take(200)) }
+            }.start()
+        }
+        btn("Save the full log now (with crashes)") {
+            Thread {
+                val msg = try {
+                    val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
+                    val f = java.io.File(cacheDir, "diagnostics-$stamp.log")
+                    f.writeText(Diag.read())
+                    com.example.mlbbresearch.core.SessionRecorder.exportFile(this, f, "text/plain").also { f.delete() }
+                } catch (e: Exception) { "Export failed: ${e.message}" }
+                runOnUiThread { toast(msg.take(200)) }
+            }.start()
+        }
+
+        title("UPLOAD TO GITHUB")
+        val gh = com.example.mlbbresearch.core.GitHubUpload
+        text("Uploads everything in the recordings folder that is not on GitHub yet to the branch " + gh.BRANCH + ": all files " +
+            "that are not videos in one commit, each video in a commit of its own. Needs a fine-grained GitHub token (this " +
+            "repository only, Contents: read and write) in the file " + gh.TOKEN_FILE + " in the app's folder.", 12f, color = T.MUTED)
+        val ghInfo = text("", 12f)
+        var ghState = "checking…"
+        fun refreshGh() {
+            Thread {
+                val line = try {
+                    (if (gh.token(this) != null) "✓ token found" else "✗ no token (" + gh.TOKEN_FILE + ")") + " · " + gh.pending(this) + " file(s) waiting"
+                } catch (e: Exception) { "could not check: ${e.message}" }
+                ghState = line
+            }.start()
+        }
+        refreshGh()
+        btn("Upload the debug data to GitHub now") {
+            toast("Uploading…")
+            gh.uploadAll(this) { msg -> refreshGh(); runOnUiThread { toast(msg.take(200)) } }
+        }
+        switch("Upload by itself after each recording", Cfg.autoUpload) { Cfg.autoUpload = it }
+        upd { ghInfo.text = ghState + "\n" + (if (gh.busy) "Uploading: " else "Last upload: ") + gh.status }
+    }
+
+    private fun logsPage() {
+        text("The session recorder, every export for debugging and the GitHub upload are on the Debug data page.", 12f, color = T.MUTED)
 
         title("DIAGNOSTICS - bugs and errors")
         val cur = text("")
