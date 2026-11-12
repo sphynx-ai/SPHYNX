@@ -531,6 +531,8 @@ object GameStateTracker {
         return s
     }
 
+    private val hpGuard = HpGuard()
+
     private fun makeState(v: VisionResult, now: Long, phase: Phase, onMap: Boolean, hero: String?, spell: String?, lane: Lane,
                           matchSec: Int, sinceSpawnMs: Long): GameState {
         fun field(x: Float, y: Float) = !onMap || !(x < 0.45f && y < 0.85f)
@@ -543,14 +545,16 @@ object GameStateTracker {
         val seenEnemies = v.enemyHeroes.filter { field(it.x, it.y) }
         val mapInfo = if (onMap) MapIntel.Info.NONE else MapIntel.read(v.minimap, now, seenEnemies, v.self)
         val enemies = if (onMap) seenEnemies else MapIntel.screenEnemiesConfirmed(seenEnemies, v.minimap.self, v.self, v.aspect, now)
+        // a sudden 0% reading right after a healthy one is not believed (HpGuard - owner, 2026-11-12)
+        val hpRead = hpGuard.filter(v.self?.hp ?: -1f, now, v.hint == ScreenHint.DEAD)
         return GameState(
             ts = now,
             phase = phase,
             self = v.self,
             // the HP decisions use: HP + shield / armour (+ half the stored energy) by the hero's bar model
-            selfHp = v.self?.let { HeroKit.effectiveHp(hero, it.hp, it.extra) } ?: -1f,
+            selfHp = v.self?.let { HeroKit.effectiveHp(hero, hpRead, it.extra) } ?: -1f,
             selfExtra = v.self?.extra ?: 0f,
-            selfHpRaw = v.self?.hp ?: -1f,
+            selfHpRaw = hpRead,
             allies = v.allies.filter { field(it.x, it.y) },
             enemies = enemies,
             enemyMinions = v.enemyMinions.filter { field(it.x, it.y) },
