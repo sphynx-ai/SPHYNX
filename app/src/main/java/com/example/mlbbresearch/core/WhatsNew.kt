@@ -23,6 +23,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.IMPROVED, "Minimap and screen picture collectors tuned",
+            "Both collectors skip near-duplicate pictures (nothing moved since the last one). The screen collector also takes " +
+                "a clean picture at every calibration tour stop (walls, bushes, pits and towers all over the map), keeps one " +
+                "monster from filling the set, and skips moments when your HP bar is covered; its labels follow the new rules " +
+                "(real enemy heroes only, monsters named by their spots on both lane layouts). Minimap picture names now tell " +
+                "the lane layout and Solo / 5v5 (mm_<time>_gs.png).",
+            pr = 66, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.NEW, "Recordings continue in a new file at the size limit",
             "Your last recording stopped by itself every ~68 s (the 25 MB video limit) and about 2 minutes of the match were " +
                 "lost between files. With the automatic GitHub upload on (and a token), a full recording is now saved and " +

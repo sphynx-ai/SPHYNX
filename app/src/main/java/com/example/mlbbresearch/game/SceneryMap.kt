@@ -660,6 +660,8 @@ object SceneryMap {
         return bmp
     }
 
+    @Volatile var lastStopAt = 0L; private set      // when the tour last arrived at a stop (the picture collector)
+
     fun roamDecision(s: GameState, p: HeroProfile): TacticalDecision? {
         if (!roamActive) return null
         val block = calibrationBlock(playerUnlocked(), MatchKind.current(), MapSide.goldTop != null)
@@ -688,6 +690,7 @@ object SceneryMap {
         if (dist < 0.045f || now - waypointStartedAt > stopTimeout) {
             if (waypointArrivedAt == 0L) {
                 waypointArrivedAt = now
+                lastStopAt = now
                 // the recording's tour log (owner, 2026-11-12): each stop, reached or timed out, and how long it took
                 com.example.mlbbresearch.core.SessionRecorder.event(org.json.JSONObject().put("k", "tour").put("i", roamIdx)
                     .put("name", wp.name).put("reached", dist < 0.045f).put("sec", (now - waypointStartedAt) / 1000.0)
@@ -695,7 +698,8 @@ object SceneryMap {
                 syncWithMinimap(s, forceManual = true)
                 saveNow()
             }
-            if (now - waypointArrivedAt < 350L) {
+            // (a longer stop while the screen picture collector is on: it takes a clean picture here)
+            if (now - waypointArrivedAt < (if (Cfg.collectScreenDataset) 1100L else 350L)) {
                 status = "scanning ${wp.name} (${stepLabel(roamIdx)}) · ${summary()}"
                 return TacticalDecision(
                     Intent.PUSH, 0f, 0f, emptyList(), -1f, -1f, wp.name, -1f, -1,

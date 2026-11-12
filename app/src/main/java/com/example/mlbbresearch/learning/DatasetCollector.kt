@@ -32,6 +32,7 @@ object DatasetCollector {
     private val io = Executors.newSingleThreadExecutor { r -> Thread(r, "dataset") }
     private var ctx: Context? = null
     private var lastAt = 0L
+    private var lastSig: List<Triple<Int, Float, Float>>? = null
     @Volatile var savedToday = 0
         private set
     @Volatile var status = "-"
@@ -177,6 +178,12 @@ object DatasetCollector {
         val labels = classes()
         val boxes = boxes(w, h, mini, labels, px)
         if (boxes.isEmpty()) return
+        // no near-duplicates (CollectorRules - owner, 2026-11-12): nothing moved on the minimap since the last picture
+        val sig = boxes.map { Triple(it.cls, it.x, it.y) }
+        if (CollectorRules.sameScene(lastSig, sig, 0.03f)) { status = "skipped: the minimap has not changed since the last picture"; return }
+        lastSig = sig
+        // (the name tells which lane is on top and Solo / 5v5)
+        val tag = CollectorRules.tag(com.example.mlbbresearch.game.MapSide.goldTop, com.example.mlbbresearch.game.MatchKind.current().name)
         // copy the minimap pixels now (the frame buffer is reused)
         val r = MinimapAnalyzer.rect
         val x0 = (r[0] * w).toInt(); val y0 = (r[1] * h).toInt()
@@ -185,7 +192,7 @@ object DatasetCollector {
         for (y in 0 until ch) for (x in 0 until cw) crop[y * cw + x] = px[(y0 + y) * w + x0 + x] or (0xff shl 24)
         io.execute {
             try {
-                val name = "mm_$now"
+                val name = "mm_$now$tag"
                 val bmp = Bitmap.createBitmap(crop, cw, ch, Bitmap.Config.ARGB_8888)
                 write(c, "images", "$name.png", "image/png") { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
                 val txt = boxes.joinToString("\n") { b -> "%d %.5f %.5f %.5f %.5f".format(java.util.Locale.US, b.cls, b.x, b.y, b.w, b.h) }

@@ -38,6 +38,10 @@ object ScreenDatasetCollector {
     private val io = Executors.newSingleThreadExecutor { r -> Thread(r, "screen-dataset") }
     private var ctx: Context? = null
     private var lastAt = 0L
+    private var lastTourStop = 0L
+    private var tourShot = false
+    private var lastSig: List<Triple<Int, Float, Float>>? = null
+    private val balance = CollectorRules.Balance()
     private var shotAt = 0L
     private var lastSkillAt = 0L
     private var lastHitAt = 0L
@@ -159,25 +163,45 @@ object ScreenDatasetCollector {
             shotAt = now + 1000L
             com.example.mlbbresearch.controller.OverlayManager.requestClean(shotAt - 400, shotAt + 600)
         }
+        // THE CALIBRATION TOUR (owner, 2026-11-12): a picture at every tour stop - god mode keeps the screen clean and
+        // the tour passes walls, bushes, pits and towers all over the map (before, the tour gave almost no pictures)
+        val tourStop = com.example.mlbbresearch.game.SceneryMap.lastStopAt
+        if (tourStop != lastTourStop && tourStop > 0L) {
+            lastTourStop = tourStop
+            if (shotAt == 0L && now - lastAt >= 2_500L) {
+                shotAt = now + 500L; tourShot = true
+                com.example.mlbbresearch.controller.OverlayManager.requestClean(shotAt - 400, shotAt + 600)
+            }
+        }
         val attacking = hit || aiAttacking
         if (attacking) lastHitAt = now
         if (shotAt == 0L || now < shotAt) return
-        if (now - shotAt > 700) { shotAt = 0L; return }                   // the moment passed
+        if (now - shotAt > 700) { shotAt = 0L; tourShot = false; return } // the moment passed
         // clean: the app's drawings hidden, no new skill since, no kill banner, the camera not panning
         if (!com.example.mlbbresearch.controller.OverlayManager.cleanNow() || now - lastSkillAt < 900) return
         if (kotlin.math.abs(v.hud.motionX) + kotlin.math.abs(v.hud.motionY) > 0.35f) return
         if (com.example.mlbbresearch.vision.ScreenReader.announcement(px, w, h)) return
+        // (your HP read as 0% = your bar is covered: the picture's labels would be wrong)
+        if ((v.self?.hp ?: 1f) <= 0.02f) return
         shotAt = 0L
+        val tour = tourShot; tourShot = false
         val kinds = colourMonsters.map { it.species.ifEmpty { if (it.hero) "boss" else "creep" } }.toSet()
         val newKind = kinds.any { now - (speciesAt[it] ?: 0L) > 8_000 }
-        if (now - lastAt < (if (newKind) 2_500L else 5_000L)) return
+        if (now - lastAt < (if (newKind || tour) 2_500L else 5_000L)) return
         val day = (now / 86_400_000L).toString()
         if (Cfg.raw("sds_day") != day) { Cfg.setRaw("sds_day", day); Cfg.setRaw("sds_count", "0") }
         var saved = Cfg.raw("sds_count")?.toIntOrNull() ?: 0
         lastAt = now
         val boxes = boxes(v, mini, atBuff, matchSec, colourMonsters, colourRing)
         // only pictures with units / monsters / towers in them
-        if (boxes.none { ScreenDetector.CLASSES[it.cls] !in setOf("bush", "wall", "hero_self") }) return
+        if (!tour && boxes.none { ScreenDetector.CLASSES[it.cls] !in setOf("bush", "wall", "hero_self") }) return
+        // no near-duplicates, and no kind of monster filling the set (CollectorRules); a tour stop or an enemy hero always counts
+        val sig = boxes.filter { ScreenDetector.CLASSES[it.cls] !in setOf("bush", "wall") }.map { Triple(it.cls, (it.x0 + it.x1) / 2, (it.y0 + it.y1) / 2) }
+        if (!tour && CollectorRules.sameScene(lastSig, sig, 0.04f)) { status = "skipped: the same scene as the last picture"; return }
+        val heroIn = boxes.any { ScreenDetector.CLASSES[it.cls] == "hero_enemy" }
+        if (!tour && !heroIn && !balance.allow(kinds)) { status = "skipped: enough pictures of ${kinds.joinToString()} for now"; return }
+        lastSig = sig
+        balance.saved(kinds)
         val recentHit = now - lastHitAt < 2500
         if (recentHit) { attackShots++; for (k in kinds) speciesAt[k] = now }
         val copy = IntArray(w * h) { px[it] or (0xff shl 24) }
