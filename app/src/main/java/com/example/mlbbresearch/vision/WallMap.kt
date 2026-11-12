@@ -219,9 +219,32 @@ object WallMap {
         return if (l < 1e-4f) null else (ax / l) to (ay / l)
     }
 
+    // ENEMY TOWER RANGE IS EXPENSIVE (owner, 2026-11-12 - the 2026-11-11 recording: 198 frames "inside the enemy
+    // tower range with no minions: getting out", the jungle / gank paths cut through it): cells within the enemy
+    // towers' range cost much more, so paths go around them when there is a way (a goal inside stays reachable)
+    @Volatile private var danger: List<Pair<Float, Float>> = emptyList()
+    @Volatile private var dangerR = 0f
+    @Volatile private var dangerCells = BooleanArray(G * G)
+    const val DANGER_COST = 8f
+
+    fun setDanger(towers: List<Pair<Float, Float>>, range: Float) {
+        if (towers == danger && range == dangerR) return
+        val cells = BooleanArray(G * G)
+        for (i in 0 until G * G) {
+            val x = (i % G + 0.5f) / G; val y = (i / G + 0.5f) / G
+            cells[i] = towers.any { hypot(it.first - x, it.second - y) <= range }
+        }
+        danger = towers; dangerR = range; dangerCells = cells
+    }
+
+    fun inDanger(p: Pair<Float, Float>): Boolean {
+        val i = (p.second * G).toInt().coerceIn(0, G - 1) * G + (p.first * G).toInt().coerceIn(0, G - 1)
+        return dangerCells[i]
+    }
+
     // the same walk is asked many times a second (each decision, each camp): answers are kept
-    // for 0.4 s per start / goal cell, until the wall map changes
-    private class Cached(val at: Long, val map: BooleanArray, val r: Pair<List<Int>, Float>?)
+    // for 0.4 s per start / goal cell, until the wall map (or the tower danger) changes
+    private class Cached(val at: Long, val map: BooleanArray, val danger: BooleanArray, val r: Pair<List<Int>, Float>?)
     private val cache = java.util.concurrent.ConcurrentHashMap<Long, Cached>()
 
     private fun search(from: Pair<Float, Float>, to: Pair<Float, Float>): Pair<List<Int>, Float>? {
@@ -230,10 +253,11 @@ object WallMap {
         val key = ((sy * G + sx).toLong() shl 16) or (ty * G + tx).toLong()
         val now = System.currentTimeMillis()
         val w = wall
-        cache[key]?.let { if (it.map === w && now - it.at < 400) return it.r }
+        val dz = dangerCells
+        cache[key]?.let { if (it.map === w && it.danger === dz && now - it.at < 400) return it.r }
         val r = searchRaw(from, to)
         if (cache.size > 400) cache.clear()
-        cache[key] = Cached(now, w, r)
+        cache[key] = Cached(now, w, dz, r)
         return r
     }
 
@@ -241,6 +265,7 @@ object WallMap {
     private fun searchRaw(from: Pair<Float, Float>, to: Pair<Float, Float>): Pair<List<Int>, Float>? {
         val w = wall
         val ter = terrain
+        val dz = dangerCells
         fun cell(p: Pair<Float, Float>) = (p.first * G).toInt().coerceIn(0, G - 1) to (p.second * G).toInt().coerceIn(0, G - 1)
         val (sx, sy) = cell(from)
         val (tx, ty) = free(w, cell(to)) ?: return null
@@ -271,7 +296,7 @@ object WallMap {
                     val qx = nx + kx; val qy = ny + ky
                     if (qx in 0 until G && qy in 0 until G && w[qy * G + qx]) near = 0.6f
                 }
-                val nc = cost[c] + step + near
+                val nc = cost[c] + step + near + (if (dz[n] && !dz[goal]) DANGER_COST else 0f)
                 if (nc < cost[n]) {
                     cost[n] = nc
                     prev[n] = c

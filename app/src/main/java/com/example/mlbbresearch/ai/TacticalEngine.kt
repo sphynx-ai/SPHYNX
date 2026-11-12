@@ -85,6 +85,10 @@ object TacticalEngine {
             com.example.mlbbresearch.game.SceneryMap.observe(s)
             com.example.mlbbresearch.game.SceneryMap.roamDecision(s, p)?.let { return steerAroundWalls(s, it) }
         }
+        // paths keep out of the enemy towers' range (WallMap danger zones - owner, 2026-11-12) and the HP is
+        // watched for hits (no regenerating while being hit)
+        com.example.mlbbresearch.vision.WallMap.setDanger(TowerLogic.effectiveTowers(s).map { it.x to it.y }, TowerLogic.range() * 1.15f)
+        hitWatch.add(s.ts, s.selfHp)
         var d = decideRaw(s, p, plan, learnedBias, option)
         d = leashGuard(s, d)
         // game sense: remember enemies that left the map; weigh the options (the "why")
@@ -693,12 +697,12 @@ object TacticalEngine {
 
         // ---- 2b. Regen: heal over a few seconds when hurt but not low enough to go home ----
         if (now < regenUntil) {
-            if (safe && hp < 0.98f) {
+            if (safe && hp < 0.98f && !hitWatch.beingHit()) {
                 return TacticalDecision(Intent.REGEN, 0f, 0f, emptyList(), -1f, -1f, "-", -1f, -1, "regenerating")
             }
             regenUntil = 0L
         }
-        if (Cfg.useRegen && hp in 0f..Cfg.regenHpPct / 100f && safe && s.minionsWithin(0.5f).isEmpty() &&
+        if (Cfg.useRegen && hp in 0f..Cfg.regenHpPct / 100f && safe && s.minionsWithin(0.5f).isEmpty() && !hitWatch.beingHit() &&
             CooldownTracker.ready("regen", p)
         ) {
             regenUntil = now + 5000
@@ -1276,6 +1280,7 @@ object TacticalEngine {
     private var lastMonX = -1f; private var lastMonY = -1f; private var lastMonHp = 1f; private var lastMonAt = 0L
     private var lastMonSpecies = ""; private var lastMonBoss = false
     private val objCommit = ObjectiveCommit()
+    private val hitWatch = HitWatch()
 
     // allies near the Lord (on the screen near it, or on the minimap around you) and whether that is enough
     // (BossRule); boss = null: the Lord is out of view, allies anywhere on the screen count
