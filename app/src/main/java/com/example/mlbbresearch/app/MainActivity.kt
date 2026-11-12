@@ -2406,6 +2406,41 @@ class MainActivity : Activity() {
     private fun learnPage() {
         DemoRecorder.refreshTotal()
         com.example.mlbbresearch.learning.LiveRecorder.refreshTotal()
+        // ---- how much better than the last training (owner, 2026-11-12) ----
+        title("Training progress")
+        val tr = com.example.mlbbresearch.learning.TrainingResults
+        Thread { try { tr.refresh(this) } catch (e: Exception) { } }.start()
+        val trc = card()
+        cardNote(trc, "Each circle: how much better (green) or worse (red) the last training is than the one before it.")
+        for (k in com.example.mlbbresearch.learning.TrainingResults.Kind.values()) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(4)) }
+            val ring = ProgressRing(this)
+            row.addView(ring, LinearLayout.LayoutParams(dp(68), dp(68)).apply { marginEnd = dp(12) })
+            val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            val name = TextView(this).apply { text = k.label; textSize = 14f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD) }
+            val detail = TextView(this).apply { textSize = 12f; setTextColor(c(T.MUTED)); setLineSpacing(0f, 1.1f) }
+            texts.addView(name); texts.addView(detail)
+            row.addView(texts, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            trc.addView(row)
+            var shownSig = "?"
+            upd {
+                val h = tr.history(k)
+                val now = h.lastOrNull(); val prev = if (h.size >= 2) h[h.size - 2] else null
+                val sig = (now?.sig ?: "") + "|" + (prev?.sig ?: "")
+                if (sig == shownSig) return@upd
+                shownSig = sig
+                ring.set(tr.improvementPct(prev?.score, now?.score), tr.circleText(prev, now).replace("no result yet", "-").replace("first result", "new"))
+                val when0 = now?.let { java.text.SimpleDateFormat("MMM d, HH:mm", java.util.Locale.US).format(java.util.Date(it.at)) }
+                detail.text = when {
+                    now == null -> if (k == com.example.mlbbresearch.learning.TrainingResults.Kind.ENGINE) "No result yet: a match with ${com.example.mlbbresearch.learning.TrainingResults.MIN_FIGHTS}+ smart fights records one."
+                        else "No result yet: train it (below) to get one."
+                    prev == null -> "%.1f%% %s (%s). The next training is compared with this one.".format(now.score * 100, k.measure, when0)
+                    else -> "%.1f%% %s now, %.1f%% last time (%s)%s".format(now.score * 100, k.measure, prev.score * 100, when0,
+                        if (now.n > 0) " · ${now.n} checked" else "")
+                }
+            }
+        }
+
         // ---- one-tap training in the cloud (Kaggle) ----
         title("Train in the cloud")
         val ctc = card()
@@ -2664,7 +2699,11 @@ class MainActivity : Activity() {
         title("UPLOAD TO GITHUB")
         val gh = com.example.mlbbresearch.core.GitHubUpload
         text("Uploads everything in the recordings folder that is not on GitHub yet to the branch " + gh.BRANCH + ": all files " +
-            "that are not videos in one commit, each video in a commit of its own. Needs a fine-grained GitHub token (this " +
+            "that are not videos in one commit, each video in a commit of its own. It also sends the training results " +
+            "(every training's score and how much it improved) and the minimap and screen pictures taken since the last upload, " +
+            "zipped in parts of up to 95 MB (each part in a commit of its own). Every file is deleted from the phone once it is " +
+            "on GitHub. The picture zips used for training stay until a training with them finishes successfully. " +
+            "Needs a fine-grained GitHub token (this " +
             "repository only, Contents: read and write) in the file " + gh.TOKEN_FILE + " in the app's folder.", 12f, color = T.MUTED)
         val ghInfo = text("", 12f)
         var ghState = "checking…"

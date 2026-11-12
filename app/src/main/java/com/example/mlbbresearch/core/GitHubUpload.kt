@@ -19,6 +19,7 @@ import java.net.URL
 //    logged, never recorded.
 //  - one commit for all the files that are not videos; each video in a commit of its own (owner's rule).
 //  - a file is uploaded once (its name is remembered); files of a recording still running are left for later.
+//  - once a commit is on GitHub its files are deleted from the phone (owner, 2026-11-12).
 // Uses GitHub's Git Data API: blobs -> tree -> commit -> move the branch.
 object GitHubUpload {
 
@@ -34,19 +35,23 @@ object GitHubUpload {
     class Item(val name: String, val size: Long, val open: () -> InputStream?)
 
     fun isVideo(name: String) = name.endsWith(".mp4", ignoreCase = true)
+    fun isZip(name: String) = name.endsWith(".zip", ignoreCase = true)
+    // a video or a picture zip goes in a commit of its own
+    fun isBig(name: String) = isVideo(name) || isZip(name)
+    const val MAX_FILE = 100L * 1024 * 1024    // GitHub refuses a file over 100 MB
 
     // the commits to make, in order: the non-videos together (in batches), then one per video (pure, unit tested)
     fun plan(names: List<String>, uploaded: Set<String>, recordingNow: String?): List<List<String>> {
         val base = recordingNow?.removeSuffix(".jsonl")
         val todo = names.filter { it !in uploaded && (base == null || !it.startsWith(base)) }.distinct().sorted()
         val out = ArrayList<List<String>>()
-        todo.filter { !isVideo(it) }.chunked(BATCH).forEach { out.add(it) }
-        todo.filter { isVideo(it) }.forEach { out.add(listOf(it)) }
+        todo.filter { !isBig(it) }.chunked(BATCH).forEach { out.add(it) }
+        todo.filter { isBig(it) }.forEach { out.add(listOf(it)) }
         return out
     }
 
     fun message(files: List<String>): String =
-        if (files.size == 1) (if (isVideo(files[0])) "Recording video: " else "Debug data: ") + files[0]
+        if (files.size == 1) (when { isVideo(files[0]) -> "Recording video: "; isZip(files[0]) -> "Training pictures: "; else -> "Debug data: " }) + files[0]
         else "Debug data: ${files.size} files (${files.first()} ...)"
 
     private fun uploaded(): MutableSet<String> = (Cfg.raw("gh_uploaded") ?: "").split('\n').filter { it.isNotBlank() }.toMutableSet()
@@ -105,9 +110,17 @@ object GitHubUpload {
     private fun run(ctx: Context): String {
         val token = token(ctx) ?: return "No token: put a fine-grained GitHub token (this repository, Contents: read and write) " +
             "in $TOKEN_FILE in the app's folder"
+        // the training results and the new training pictures go up with the debug data (owner, 2026-11-12)
+        status = "preparing the training results and pictures…"
+        val prepared = listOf(
+            try { com.example.mlbbresearch.learning.TrainingResults.refresh(ctx); com.example.mlbbresearch.learning.TrainingResults.export(ctx) }
+                catch (e: Exception) { "training results failed: ${e.message?.take(80)}" },
+            try { com.example.mlbbresearch.learning.PictureExport.export(ctx) } catch (e: Exception) { "pictures failed: ${e.message?.take(80)}" })
         val all = files(ctx)
-        val commits = plan(all.map { it.name }, uploaded(), if (SessionRecorder.on) SessionRecorder.currentName() else null)
-        if (commits.isEmpty()) return "Nothing new to upload (${all.size} file(s) in the folder are already on GitHub)"
+        val tooBig = all.filter { it.size > MAX_FILE }.map { it.name }.toSet()
+        val commits = plan(all.map { it.name }.filter { it !in tooBig }, uploaded(), if (SessionRecorder.on) SessionRecorder.currentName() else null)
+        val skipped = if (tooBig.isEmpty()) "" else "; ${tooBig.size} file(s) over 100 MB skipped (GitHub refuses them)"
+        if (commits.isEmpty()) return "Nothing new to upload (${all.size} file(s) in the folder are already on GitHub)$skipped"
         var filesDone = 0; var n = 0
         for (group in commits) {
             n++
@@ -115,9 +128,12 @@ object GitHubUpload {
             val items = group.mapNotNull { name -> all.firstOrNull { it.name == name } }
             commit(token, items, message(group))
             remember(group)
+            // on GitHub now: the phone's copy is deleted (owner, 2026-11-12: "delete all exported data if uploaded
+            // successfully"); a failed commit throws before this, so its files stay for the next try
+            for (name in group) try { SessionRecorder.deleteFile(ctx, name) } catch (e: Exception) { }
             filesDone += group.size
         }
-        return "Uploaded $filesDone file(s) in ${commits.size} commit(s) to $BRANCH"
+        return "Uploaded $filesDone file(s) in ${commits.size} commit(s) to $BRANCH (${prepared.joinToString("; ")})$skipped"
     }
 
     // one commit: a blob per file, a tree on top of the branch's tree, the commit, then the branch moves to it

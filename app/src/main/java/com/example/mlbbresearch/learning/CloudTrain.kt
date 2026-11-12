@@ -35,9 +35,9 @@ object CloudTrain {
     enum class Job(val key: String, val label: String, val notebook: String, val gpu: Boolean,
                    val results: List<String>, val needs: String) {
         MINIMAP("minimap", "Minimap detector", "train_mlbb_detector.ipynb", true,
-            listOf("mlbb_detector.tflite", "labels.txt", "minimap_detector_best.pt"), "minimap picture zips (Learn page collector)"),
+            listOf("mlbb_detector.tflite", "labels.txt", "minimap_detector_best.pt", "minimap_detector_report.json"), "minimap picture zips (Learn page collector)"),
         SCREEN("screen", "Screen detector", "train_screen_detector.ipynb", true,
-            listOf("mlbb_screen_detector.tflite", "screen_labels.txt", "screen_detector_best.pt"), "screen picture zips (Learn page collector)"),
+            listOf("mlbb_screen_detector.tflite", "screen_labels.txt", "screen_detector_best.pt", "screen_detector_report.json"), "screen picture zips (Learn page collector)"),
         POLICY("policy", "Tactical networks", "train_tactical_policy.ipynb", false,
             listOf("mlbb_policies.zip"), "your recorded play (exported automatically)"),
         LLM("llm", "Small tactical model", "train_tactical_llm.ipynb", true,
@@ -250,6 +250,7 @@ object CloudTrain {
                     sources.add("${Cfg.kaggleUser}/$ds")
                 }
                 Cfg.setRaw("ct_zips_${j.key}", zips.joinToString("|") { dsSlug(it.name) })
+                Cfg.setRaw("ct_zipnames_${j.key}", zips.joinToString("|") { it.name })
                 // the job's own files (exports, the last detector / networks, keys): a NEW dataset each run.
                 // (A new version of one dataset was the problem: Kaggle said "ready" for the old version
                 // and the run started without the new files.)
@@ -400,6 +401,23 @@ object CloudTrain {
         }
         setStatus(j, "done: ${got.joinToString()} saved in ${com.example.mlbbresearch.core.Storage.writeLabel} and loaded")
         AutoFolder.scan(c)
+        try { TrainingResults.refresh(c) } catch (e: Exception) { }   // the Learn page's "better than last time" circles
+        removeTrainedZips(c, j)
+    }
+
+    // the training worked: the picture zips it used are deleted (owner, 2026-11-12). Kaggle keeps them as its
+    // datasets, and the next training continues from the detector it made. A zip not packed for the GitHub
+    // upload yet waits for that upload first.
+    private fun removeTrainedZips(c: Context, j: Job) {
+        if (j != Job.MINIMAP && j != Job.SCREEN) return
+        val used = Cfg.raw("ct_zipnames_${j.key}")?.split("|")?.filter { it.isNotBlank() } ?: return
+        val (now, later) = PictureExport.afterTraining(used, used.filter { PictureExport.isSent(it) }.toSet())
+        var gone = 0
+        for (n in now) if (DatasetZipper.deleteZip(c, n)) gone++
+        if (later.isNotEmpty()) PictureExport.setTrainedWaiting(PictureExport.trainedWaiting() + later)
+        Cfg.setRaw("ct_zipnames_${j.key}", null)
+        if (gone > 0 || later.isNotEmpty()) Diag.info("${j.label}: $gone used picture zip(s) deleted" +
+            if (later.isNotEmpty()) ", ${later.size} after the next GitHub upload" else "")
     }
 
     // ---------------- Kaggle API (the same calls as Kaggle's own command-line tool) ----------------

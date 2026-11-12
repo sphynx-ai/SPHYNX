@@ -92,6 +92,23 @@ object DatasetZipper {
         }.start()
     }
 
+    // delete a dataset zip (after a successful training): the app's folder, or its Download folder
+    fun deleteZip(c: Context, name: String): Boolean {
+        var gone = com.example.mlbbresearch.core.Storage.dir()?.let { java.io.File(it, name).delete() } ?: false
+        try {
+            gone = c.contentResolver.delete(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                MediaStore.Downloads.DISPLAY_NAME + " = ? AND " + MediaStore.Downloads.RELATIVE_PATH + " = ?",
+                arrayOf(name, com.example.mlbbresearch.core.Storage.downloadsRel() + "/")) > 0 || gone
+        } catch (e: Exception) { }
+        return gone
+    }
+
+    // zip now on the caller's thread (the GitHub upload zips the new pictures first)
+    fun zipBlocking(ctx: Context, kind: Kind, why: String): String {
+        synchronized(this) { if (busy) return "${kind.zipName}: already zipping"; busy = true }
+        return try { zip(ctx.applicationContext, kind, why).also { status = it } } finally { busy = false }
+    }
+
     private fun zip(c: Context, kind: Kind, why: String): String {
         val since = Cfg.raw(kind.key)?.toLongOrNull() ?: 0L
         val all = list(c, kind)
