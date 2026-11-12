@@ -2365,7 +2365,7 @@ class MainActivity : Activity() {
         btn("Get Gemma 4 E2B (2.6 GB)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.MODEL_PAGE))) }
         btn("Get Gemma 3 270M") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.SMALL_MODEL_PAGE))) }
         btn("Training notebooks (GitHub)") {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/georgenaval1-blip/Ai-App/tree/main/notebooks")))
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/georgenaval1-blip/Sphynx-Auto-Pilot/tree/main/notebooks")))
         }
         btn("Groq API key (free)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) }
 

@@ -45,8 +45,9 @@ object CloudTrain {
     }
 
     @Volatile internal var API = "https://api.kaggle.com/v1"        // (overridable for tests)
-    private val REPO_REFS = listOf("main", "ccr-1c7a9f9f-sdupui")    // where the notebooks are read from (GitHub)
-    @Volatile internal var REPO = "https://raw.githubusercontent.com/georgenaval1-blip/Ai-App"
+    // where the notebooks are read from on GitHub when the app's own copy cannot be read (the phone's test branch first)
+    private val REPO_REFS = listOf("test/owner-2026-11-10", "main")
+    @Volatile internal var REPO = "https://raw.githubusercontent.com/georgenaval1-blip/Sphynx-Auto-Pilot"
     private const val MIN_PLAY = 300      // recorded moments before the tactical networks are worth training
     private const val MIN_FIGHTS = 150    // fight moments before the small model is worth training
     // one worker per training for preparing / uploading / downloading (all four at once) ...
