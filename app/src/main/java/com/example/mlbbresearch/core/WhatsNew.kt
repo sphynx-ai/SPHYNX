@@ -29,7 +29,8 @@ object WhatsNew {
                 "before. The detector notebooks now report their score. The Debug data page's upload also sends the training " +
                 "results and the minimap / screen pictures taken since the last upload (zips of up to 95 MB). Every file is " +
                 "deleted from the phone once it is on GitHub; the picture zips used for training are deleted after a " +
-                "successful training (the detector keeps what it learned in its best.pt).",
+                "successful training (the detector keeps what it learned in its best.pt). New buttons: Delete all minimap " +
+                "pictures and Delete all screen pictures (Learn page).",
             pr = 74, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.NEW, "New app icon and logo",
             "A sphynx cat head (big ears, amber eyes) with an autopilot arrow for a nose and an AI spark, on the dark " +

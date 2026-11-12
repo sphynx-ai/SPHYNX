@@ -2615,6 +2615,16 @@ class MainActivity : Activity() {
                 "\nScreen: " + line(com.example.mlbbresearch.learning.DatasetZipper.Kind.SCREEN) +
                 "\nLast zip: " + zk.status
         }
+        // delete every picture of one kind (owner, 2026-11-12): the pictures, their zips, the parts waiting for upload
+        for (k in com.example.mlbbresearch.learning.DatasetZipper.Kind.values()) {
+            btn("Delete all ${k.label} pictures") {
+                AlertDialog.Builder(this).setTitle("Delete all ${k.label} pictures?")
+                    .setMessage("Deletes every ${k.label} training picture on the phone, its zips and the parts waiting for the " +
+                        "GitHub upload. Pictures already on Kaggle or GitHub stay there. This cannot be undone.")
+                    .setPositiveButton("Delete") { _, _ -> zk.deleteAll(this, k) { m -> runOnUiThread { toast(m.take(200)) } } }
+                    .setNegativeButton("Cancel", null).show()
+            }
+        }
         btn("Delete saved decisions") {
             AlertDialog.Builder(this).setTitle("Delete saved decisions?")
                 .setPositiveButton("Delete") { _, _ -> DatasetManager.clear { runOnUiThread { toast("Deleted") } } }
