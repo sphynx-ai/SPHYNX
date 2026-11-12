@@ -634,6 +634,8 @@ object GameStateTracker {
         com.example.mlbbresearch.learning.ABCompare.matchEnd(com.example.mlbbresearch.ai.AiRuntime.playerOn, kills, deaths, assists,
             ((lastInGame - matchStartAt) / 1000).toInt(), lastResultWin)
         com.example.mlbbresearch.research.ResearchMode.onMatchEnd(kills, deaths, assists, ((lastInGame - matchStartAt) / 1000).toInt(), lastResultWin)
+        com.example.mlbbresearch.research.ResearchMode.onBenchmarkEnd(ownHero(), lane().first.name, kills, deaths, assists,
+            com.example.mlbbresearch.vision.LevelReader.level, ((lastInGame - matchStartAt) / 1000).toInt(), lastResultWin)
         lastResultWin = null
     }
 
