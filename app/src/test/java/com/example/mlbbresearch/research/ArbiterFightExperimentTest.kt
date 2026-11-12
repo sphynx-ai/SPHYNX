@@ -93,4 +93,23 @@ class ArbiterFightExperimentTest {
             d(DecisionKind.RETREAT, EngineSource.RULES), d(DecisionKind.ENGAGE, EngineSource.STRATEGIC, 1f)), low, 1200L, pass)
         assertEquals(FightOption.RETREAT, r.option)
     }
+
+    // owner, 2026-11-12: safety first - the recording showed the strategic plan's generic "farm" overriding retreats
+    @Test fun aRetreatIsNeverOverridden() {
+        val e = ArbiterFightExperiment()
+        val r = e.choose(true, FightOption.RETREAT, listOf(
+            d(DecisionKind.RETREAT, EngineSource.RULES), d(DecisionKind.FARM, EngineSource.STRATEGIC, 1f)), st, 1200L, pass)
+        assertEquals(FightOption.RETREAT, r.option)
+        assertFalse(r.changed)
+    }
+
+    @Test fun aGenericFarmPlanDoesNotOverrideAnAllIn() {
+        val e = ArbiterFightExperiment()
+        assertEquals("a generic farm plan does not override an all-in",
+            e.safetyKeeps(FightOption.ALL_IN, FightOption.FARM, EngineSource.STRATEGIC))
+        // a learned engine's farm advice is a stronger reason; retreating from an all-in is always allowed
+        assertNull(e.safetyKeeps(FightOption.ALL_IN, FightOption.FARM, EngineSource.LEARNED))
+        assertNull(e.safetyKeeps(FightOption.ALL_IN, FightOption.RETREAT, EngineSource.STRATEGIC))
+        assertEquals("a retreat is never overridden", e.safetyKeeps(FightOption.RETREAT, FightOption.ALL_IN, EngineSource.LEARNED))
+    }
 }

@@ -17,6 +17,9 @@ import com.example.mlbbresearch.universal.UniversalMatchState
 // Engines whose capability is Experimental stay advisory (the validator never lets them win). Since the owner's
 // decision of 2026-11-09 the small tactical model is not Experimental for MLBB, so it competes like the others.
 // This decides WHICH fight option is played; it adds no new kind of action.
+// SAFETY FIRST (owner, 2026-11-12 - the 2026-11-11 recording: 82 changes, all to FARM from the strategic plan's
+// generic "farm", 19 of them over a RETREAT and 30 over an ALL_IN): it never turns a retreat into anything else,
+// and an all-in is not turned into farming by the strategic plan alone (safetyKeeps).
 class ArbiterFightExperiment(private val maxLog: Int = 30) {
 
     data class Outcome(val option: FightOption?, val changed: Boolean, val note: String)
@@ -24,6 +27,7 @@ class ArbiterFightExperiment(private val maxLog: Int = 30) {
     var choices = 0; private set               // moments the arbiter decided
     var changed = 0; private set               // ... where it played something other than the normal choice
     var keptByCheck = 0; private set           // ... where its pick failed the Kotlin checks
+    var keptBySafety = 0; private set          // ... where safety first kept the normal choice
     private val log = ArrayDeque<String>()
 
     fun toOption(k: DecisionKind): FightOption? = when (k) {
@@ -45,6 +49,11 @@ class ArbiterFightExperiment(private val maxLog: Int = 30) {
         val pick = r.chosen?.let { toOption(it.kind) } ?: return Outcome(normal, false, "arbiter: ${r.note}")
         choices++
         if (pick == normal) return Outcome(normal, false, "arbiter agrees (${r.note})")
+        safetyKeeps(normal, pick, r.chosen?.source)?.let { why ->
+            keptBySafety++
+            add("$nowMs kept ${normal.name}: ${pick.name} refused ($why)")
+            return Outcome(normal, false, "safety first: $why")
+        }
         kotlinCheck(pick)?.let { why ->
             keptByCheck++
             add("$nowMs kept ${normal.name}: arbiter's ${pick.name} failed the checks ($why)")
@@ -55,9 +64,17 @@ class ArbiterFightExperiment(private val maxLog: Int = 30) {
         return Outcome(pick, true, r.note)
     }
 
-    @Synchronized fun summary(): String = "$choices arbiter choices, $changed changed, $keptByCheck kept by checks"
+    // why the normal choice must stand (null = the arbiter's pick may be played)
+    fun safetyKeeps(normal: FightOption, pick: FightOption, source: com.example.mlbbresearch.universal.EngineSource?): String? = when {
+        normal == FightOption.RETREAT && pick != FightOption.RETREAT -> "a retreat is never overridden"
+        normal == FightOption.ALL_IN && pick == FightOption.FARM && source == com.example.mlbbresearch.universal.EngineSource.STRATEGIC ->
+            "a generic farm plan does not override an all-in"
+        else -> null
+    }
+
+    @Synchronized fun summary(): String = "$choices arbiter choices, $changed changed, $keptByCheck kept by checks, $keptBySafety kept by safety"
     @Synchronized fun recent(): List<String> = log.toList()
-    @Synchronized fun reset() { choices = 0; changed = 0; keptByCheck = 0; log.clear() }
+    @Synchronized fun reset() { choices = 0; changed = 0; keptByCheck = 0; keptBySafety = 0; log.clear() }
 
     private fun add(s: String) { if (log.size >= maxLog) log.removeFirst(); log.addLast(s) }
 }
