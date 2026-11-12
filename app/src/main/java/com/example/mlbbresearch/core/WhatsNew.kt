@@ -23,6 +23,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.FIXED, "Research experiment (R3) is safety-first",
+            "In your recording the research experiment changed the fight choice 82 times, always to \"keep farming\" because the " +
+                "strategy's generic plan said farm - 19 times over a retreat and 30 times over an all-in. Now it never overrides a " +
+                "retreat, and the strategic plan's generic \"farm\" alone cannot turn an all-in into farming.",
+            pr = 56, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.FIXED, "Buffs and camps are finished, not left alive",
             "In your recording (0:36-0:46) the Molten Fiend's bar was read as enemy minions (\"clearing the wave\", \"last hit: minion\") " +
                 "in a pit with no minions, so the Player walked off to \"a jungle camp\" while the buff was still alive. Now, while " +
