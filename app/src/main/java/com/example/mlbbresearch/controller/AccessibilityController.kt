@@ -198,14 +198,15 @@ class AccessibilityController : AccessibilityService() {
             joyAct = lastWantedJoy
         }
         val skillAim = acts.filterIsInstance<Act.SkillAim>().firstOrNull()
-        val maxOtherDur = acts.maxOfOrNull {
+        // (the joystick's own hold is not counted here: CastTiming.joyDuration decides it)
+        val maxOtherDur = acts.filter { it !is Act.Joy && it !is Act.JoyRelease }.maxOfOrNull {
             when (it) {
                 is Act.SkillAim -> it.pressHoldMs
                 is Act.Tap -> it.startMs + it.holdMs
                 is Act.Drag -> it.startMs + it.ms
-                else -> CastTiming.JOY_HOLD_MS
+                else -> CastTiming.JOY_SLICE_MS
             }
-        } ?: CastTiming.JOY_HOLD_MS
+        } ?: 0L
 
         val held = joyStroke?.takeIf { joyStrokeEndedAt == 0L || now - joyStrokeEndedAt <= 280L }
         var newJoy: GestureDescription.StrokeDescription? = null
@@ -213,14 +214,14 @@ class AccessibilityController : AccessibilityService() {
             if (joyAct != null && !release) {
                 val ty = joyAct.y * h
                 val tx = if (held != null && kotlin.math.abs(joyAct.x * w - joyX) < 1f && kotlin.math.abs(ty - joyY) < 1f) nudge(joyX) else joyAct.x * w
-                val joyDur = maxOf(joyAct.ms, maxOtherDur, CastTiming.JOY_HOLD_MS)
+                val joyDur = CastTiming.joyDuration(held != null, joyAct.ms, maxOtherDur)
                 if (held != null) {
                     try {
                         val p = Path()
                         p.moveTo(joyX, joyY)
                         for ((vx, vy) in joyAct.via) p.lineTo(vx * w, vy * h)
                         p.lineTo(tx, ty)
-                        newJoy = held.continueStroke(p, 0L, joyDur.coerceAtLeast(180L), true)
+                        newJoy = held.continueStroke(p, 0L, joyDur.coerceAtLeast(CastTiming.JOY_SLICE_MS), true)
                     } catch (_: Exception) {
                         newJoy = null
                     }

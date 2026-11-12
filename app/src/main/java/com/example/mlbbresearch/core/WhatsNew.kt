@@ -23,6 +23,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.IMPROVED, "Faster touches: joystick slices 120 ms instead of 320 ms",
+            "Your recording measured about 280 ms from screen to touch, ~240 ms of it waiting in the touch queue: every joystick " +
+                "slice was held 320 ms and the next decision waited for it to end. A joystick that is already held now continues in " +
+                "120 ms slices (the first press still holds 320 ms so the game registers it), and skills / taps are no longer " +
+                "stretched to the joystick's 320 ms. Check the Performance page: the touch queue should drop.",
+            pr = 60, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.FIXED, "Paths keep out of enemy tower range; no regen while being hit",
             "Your recording had 198 frames of \"inside the enemy tower range with no minions: getting out\" - the jungle and gank " +
                 "paths cut through enemy towers' range - and at 2:29 the Player stood still to regenerate while taking hits. Now the " +
