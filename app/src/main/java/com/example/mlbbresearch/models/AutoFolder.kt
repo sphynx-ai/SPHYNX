@@ -372,7 +372,7 @@ object AutoFolder {
                                     val o = org.json.JSONObject(text(e))
                                     val u = o.optString("username").trim(); val k = o.optString("key").trim()
                                     if (u.isNotEmpty() && k.isNotEmpty() && (u != Cfg.kaggleUser || k != Cfg.kaggleKey)) {
-                                        Cfg.kaggleUser = u; Cfg.kaggleKey = k; found.add("Kaggle key ($u)")
+                                        Cfg.kaggleUser = u; Cfg.kaggleKey = k; found.add("Kaggle key")
                                     }
                                 }
                                 n == "groq_model.txt" -> {

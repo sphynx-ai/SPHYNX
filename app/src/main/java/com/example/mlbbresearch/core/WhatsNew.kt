@@ -23,6 +23,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.IMPROVED, "Every switch starts off on a new install",
+            "On a fresh install every feature switch starts OFF, so nothing runs until you turn it on (the first-run setup " +
+                "helps). Safety guards keep their safe position: Dry run ON and the Quick buy guards ON. A phone that already " +
+                "had the app keeps how it worked: switches you never changed stay on.",
+            pr = 72, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.IMPROVED, "Minimap and screen picture collectors tuned",
             "Both collectors skip near-duplicate pictures (nothing moved since the last one). The screen collector also takes " +
                 "a clean picture at every calibration tour stop (walls, bushes, pits and towers all over the map), keeps one " +
