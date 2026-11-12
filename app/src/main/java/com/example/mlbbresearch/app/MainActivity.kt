@@ -1052,37 +1052,8 @@ class MainActivity : Activity() {
                 (if (vars.isNotEmpty()) "\n\nAll Built-In Variants (${vars.size}):\n" + vars.joinToString("\n") { "• ${it.first}: ${it.second}" } else "")
         }
 
-        title("IN-GAME SCENERY & MINIMAP SYNCHRONIZATION")
-        text("Synchronizes 3D screen scenery (towers, monster pits, bushes, walls) with the 2D minimap on every frame. Saved persistently on your phone (mlbb-scenery-sync.json in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage, or Download/Sphynx-Auto-Pilot-Storage without all files access) across app uninstall/reinstall — only deleted when you press Clear saved map scenery or Reset minimap sync offsets.", 12f, color = "#9AA0A6")
-        switch("Auto-sync 3D screen scenery with minimap landmarks", Cfg.sceneryAutoSync) { Cfg.sceneryAutoSync = it }
-        val sceneryInfo = text("", 13f)
-        val camPresetBtn = btn("") {
-            val lbl = com.example.mlbbresearch.game.SceneryMap.cycleCameraPreset()
-            toast("Camera preset: $lbl")
-        }
-        btn("Sync 3D Scenery & Minimap Now") {
-            val msg = com.example.mlbbresearch.game.SceneryMap.syncNow(GameStateTracker.state)
-            toast(msg)
-        }
-        val roamBtn = btn("") {
-            val msg = com.example.mlbbresearch.game.SceneryMap.toggleRoam()
-            toast(msg)
-        }
-        btn("Reset scenery-minimap sync offsets") {
-            toast(com.example.mlbbresearch.game.SceneryMap.resetSyncCalibration())
-        }
-        btn("Clear saved map scenery") {
-            com.example.mlbbresearch.game.SceneryMap.clear()
-            toast("Scenery map cleared")
-        }
-        upd {
-            val active = com.example.mlbbresearch.game.SceneryMap.roamActive
-            camPresetBtn.text = "Camera Height: ${com.example.mlbbresearch.game.SceneryMap.cameraPresetLabel()}  (tap to change)"
-            roamBtn.text = if (active) "Stop scenery calibration roam" else "Start scenery calibration roam (Practice Mode)"
-            sceneryInfo.text = "Memorized: ${com.example.mlbbresearch.game.SceneryMap.summary()}\n" +
-                "Roam status: ${com.example.mlbbresearch.game.SceneryMap.status}\n" +
-                com.example.mlbbresearch.game.SceneryMap.syncStatus()
-        }
+        // (owner, 2026-11-12: every calibration is on the Setup page, the scenery & minimap synchronization too)
+        text("Scenery calibration and minimap synchronization: Setup page.", 12f, color = T.MUTED)
 
         title("JUNGLE, TURTLE & LORD")
         val monInfo = text("", 13f)
@@ -3001,17 +2972,38 @@ class MainActivity : Activity() {
         }
         btn("Clear the samples of this icon type") { com.example.mlbbresearch.vision.MinimapColors.clear(kinds[kindIdx]); toast("Cleared") }
 
-        title("SCENERY & MINIMAP SYNCHRONIZATION")
-        text("Aligns the 3D camera ground view with the minimap using visible towers, jungle pits, and bushes.", 12f, color = "#9AA0A6")
-        switch("Auto-sync 3D scenery with minimap", Cfg.sceneryAutoSync) { Cfg.sceneryAutoSync = it }
-        val setupSyncInfo = text("", 12.5f)
-        val setupCamBtn = btn("") { toast(com.example.mlbbresearch.game.SceneryMap.cycleCameraPreset()) }
-        btn("Sync Scenery & Minimap Now") { toast(com.example.mlbbresearch.game.SceneryMap.syncNow(GameStateTracker.state)) }
-        btn("Start / Stop Practice Mode Scenery Roam") { toast(com.example.mlbbresearch.game.SceneryMap.toggleRoam()) }
-        upd {
-            setupCamBtn.text = "Camera Height: ${com.example.mlbbresearch.game.SceneryMap.cameraPresetLabel()}  (tap to change)"
-            setupSyncInfo.text = com.example.mlbbresearch.game.SceneryMap.syncStatus() + "\nMemorized: " + com.example.mlbbresearch.game.SceneryMap.summary()
+        title("SCENERY CALIBRATION & MINIMAP SYNCHRONIZATION")
+        text("Synchronizes 3D screen scenery (towers, monster pits, bushes, walls) with the 2D minimap on every frame. Saved persistently on your phone (mlbb-scenery-sync.json in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage, or Download/Sphynx-Auto-Pilot-Storage without all files access) across app uninstall/reinstall — only deleted when you press Clear saved map scenery or Reset minimap sync offsets.", 12f, color = "#9AA0A6")
+        switch("Auto-sync 3D screen scenery with minimap landmarks", Cfg.sceneryAutoSync) { Cfg.sceneryAutoSync = it }
+        val sceneryInfo = text("", 13f)
+        val camPresetBtn = btn("") {
+            val lbl = com.example.mlbbresearch.game.SceneryMap.cycleCameraPreset()
+            toast("Camera preset: $lbl")
         }
+        btn("Sync 3D Scenery & Minimap Now") {
+            val msg = com.example.mlbbresearch.game.SceneryMap.syncNow(GameStateTracker.state)
+            toast(msg)
+        }
+        val roamBtn = btn("") {
+            val msg = com.example.mlbbresearch.game.SceneryMap.toggleRoam()
+            toast(msg)
+        }
+        btn("Reset scenery-minimap sync offsets") {
+            toast(com.example.mlbbresearch.game.SceneryMap.resetSyncCalibration())
+        }
+        btn("Clear saved map scenery") {
+            com.example.mlbbresearch.game.SceneryMap.clear()
+            toast("Scenery map cleared")
+        }
+        upd {
+            val active = com.example.mlbbresearch.game.SceneryMap.roamActive
+            camPresetBtn.text = "Camera Height: ${com.example.mlbbresearch.game.SceneryMap.cameraPresetLabel()}  (tap to change)"
+            roamBtn.text = if (active) "Stop scenery calibration roam" else "Start scenery calibration roam (Practice Mode)"
+            sceneryInfo.text = "Memorized: ${com.example.mlbbresearch.game.SceneryMap.summary()}\n" +
+                "Roam status: ${com.example.mlbbresearch.game.SceneryMap.status}\n" +
+                com.example.mlbbresearch.game.SceneryMap.syncStatus()
+        }
+
 
         title("Presets")
         val active = text("", 13f)
