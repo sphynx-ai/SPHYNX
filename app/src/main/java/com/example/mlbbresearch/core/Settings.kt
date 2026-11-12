@@ -124,6 +124,9 @@ object Cfg {
         if (clean.isEmpty()) prefs.edit().remove(k).apply() else put(k, clean)
     }
 
+    // start a session recording by itself at the start of every match (owner, 2026-11-12; can be switched off)
+    var autoRecord: Boolean get() = b("auto_record", true); set(v) = put("auto_record", v)
+
     fun heroCombo(hero: String): String? = manualCombo(hero)
     fun setHeroCombo(hero: String, v: String?) = setManualCombo(hero, v)
 

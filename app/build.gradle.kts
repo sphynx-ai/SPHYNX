@@ -45,7 +45,25 @@ android {
         }
     }
 
+    // THE BUILD'S GIT COMMIT (owner, 2026-11-12): written into every recording's start row, so a recording tells
+    // which build made it. Read straight from .git (no git program needed); "unknown" when there is none.
+    val gitCommit: String = run {
+        try {
+            val gitDir = rootProject.file(".git")
+            val head = java.io.File(gitDir, "HEAD").readText().trim()
+            val sha = if (head.startsWith("ref: ")) {
+                val ref = head.removePrefix("ref: ").trim()
+                val loose = java.io.File(gitDir, ref)
+                if (loose.isFile) loose.readText().trim()
+                else java.io.File(gitDir, "packed-refs").takeIf { it.isFile }?.readLines()
+                    ?.firstOrNull { it.endsWith(" " + ref) }?.substringBefore(' ') ?: "unknown"
+            } else head
+            sha.take(7)
+        } catch (e: Exception) { "unknown" }
+    }
+
     defaultConfig {
+        buildConfigField("String", "GIT_COMMIT", "\"$gitCommit\"")
         // v37.19: a new app id (the code package stays com.example.mlbbresearch). Android and Google Play treat
         // it as a NEW app: it installs next to the old "MLBB Research" one, which can be uninstalled afterwards.
         applicationId = "com.sphynx.autopilot"
@@ -82,6 +100,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
 
     }
     packaging {

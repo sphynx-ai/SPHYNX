@@ -11,6 +11,7 @@ class MainApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         Cfg.init(this)
+        com.example.mlbbresearch.core.SessionRecorder.init(this)
         com.example.mlbbresearch.vision.HeroVerifier.init(this)
         // your rule change: Retribution on buffs at 20% (was 35%) - an old saved 35 moves too
         if (Cfg.raw("mig_retri20") == null) { if (Cfg.retriCreepPct == 35) Cfg.retriCreepPct = 20; Cfg.setRaw("mig_retri20", "1") }

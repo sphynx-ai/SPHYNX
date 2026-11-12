@@ -58,15 +58,34 @@ object SessionRecorder {
             " - stops and saves by itself at the limit"
     else "Off. Last file: $lastExport"
 
+    // AUTOMATIC RECORDING (owner, 2026-11-12): started at the start of every match (the loading screen, or your hero
+    // first seen) when the switch on the Logs page is on, and stopped / saved at the match end. A recording you
+    // started yourself is never stopped by the match end.
+    @Volatile private var ctxRef: Context? = null
+    @Volatile var autoStarted = false; private set
+    fun init(c: Context) { ctxRef = c.applicationContext }
+    fun matchStarted() {
+        val c = ctxRef ?: return
+        if (!Cfg.autoRecord || on) return
+        start(c); autoStarted = true
+        Diag.info("Session recorder: started by itself at the start of the match")
+    }
+    fun matchEnded() {
+        val c = ctxRef ?: return
+        if (!on || !autoStarted) return
+        stop(c) { msg -> lastExport = "match end: $msg" }
+    }
+
     @Synchronized fun start(ctx: Context) {
         if (on) return
+        autoStarted = false
         appCtx = ctx.applicationContext
         name = "sphynx-session-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date()) + ".jsonl"
         val f = File(ctx.applicationContext.cacheDir, name)
         tmp = f; out = f.bufferedWriter(); rows = 0; bytes = 0L; startedAt = System.currentTimeMillis(); lastFrameAt = 0L; autoFull = false
         on = true
         write(JSONObject().put("k", "start").put("t", startedAt)
-            .put("app", AppVersion.VERSION).put("phone", Build.MANUFACTURER + " " + Build.MODEL).put("android", Build.VERSION.SDK_INT)
+            .put("app", AppVersion.VERSION).put("commit", com.example.mlbbresearch.BuildConfig.GIT_COMMIT).put("auto", autoStarted).put("phone", Build.MANUFACTURER + " " + Build.MODEL).put("android", Build.VERSION.SDK_INT)
             .put("aimSkills", Cfg.aimSkills)
             .put("note", "t = wall-clock ms; ms = match seconds (the in-game timer). Screen positions are 0..1."))
         val app = ctx.applicationContext
