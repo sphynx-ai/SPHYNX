@@ -1,5 +1,6 @@
 
 import java.util.Properties
+import java.io.File
 import java.io.FileInputStream
 
 plugins {
@@ -50,12 +51,12 @@ android {
     val gitCommit: String = run {
         try {
             val gitDir = rootProject.file(".git")
-            val head = java.io.File(gitDir, "HEAD").readText().trim()
+            val head = File(gitDir, "HEAD").readText().trim()
             val sha = if (head.startsWith("ref: ")) {
                 val ref = head.removePrefix("ref: ").trim()
-                val loose = java.io.File(gitDir, ref)
+                val loose = File(gitDir, ref)
                 if (loose.isFile) loose.readText().trim()
-                else java.io.File(gitDir, "packed-refs").takeIf { it.isFile }?.readLines()
+                else File(gitDir, "packed-refs").takeIf { it.isFile }?.readLines()
                     ?.firstOrNull { it.endsWith(" " + ref) }?.substringBefore(' ') ?: "unknown"
             } else head
             sha.take(7)
