@@ -23,6 +23,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.FIXED, "Jungle monsters no longer taken for low-HP enemy heroes",
+            "Your recording (0:36) showed the Molten Fiend's bar read as two enemy heroes at 3% and 25% - the Player left the buff to " +
+                "\"chase a kill\" and spent Retribution on ghosts. A red bar now counts as an enemy hero only with its own level badge " +
+                "(your own badge next to it no longer counts) AND an enemy hero icon near you on the minimap; while a camp is being " +
+                "fought, a bar where the monster was just seen stays the monster unless its level number can be read.",
+            pr = 53, needsDeviceCheck = true),
         Entry("2026-11-11", Kind.IMPROVED, "Without All files access, files go to Download/Sphynx-Auto-Pilot-Storage",
             "Recordings (\u25cf REC), CSV exports, training pictures and zips, cloud-training results and backups are saved in " +
                 "Download/Sphynx-Auto-Pilot-Storage when the app has no All files access. The old Download/MLBB-Research folder is " +
