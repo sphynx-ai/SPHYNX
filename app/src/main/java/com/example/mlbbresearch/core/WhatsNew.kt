@@ -23,6 +23,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.FIXED, "A sudden 0% HP reading is ignored",
+            "Your recording had 94 frames where your HP read 0% while the bar was full (effects and the buff's bars covered it), " +
+                "which made the Player stand \"waiting\". Now a 0% reading right after a healthy one is ignored (the last good reading " +
+                "is kept) unless the death screen shows or the 0% lasts 1.5 s.",
+            pr = 58, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.FIXED, "Commits to the Turtle / Lord instead of flip-flopping",
             "In your recording \"turtle is up: rotating there\" ran from 2:07 to 7:18 and the Player never reached the pit. Now, once " +
                 "it starts rotating to the Turtle or Lord, that goes first (before the jungle route, ganks, waves) until it " +
