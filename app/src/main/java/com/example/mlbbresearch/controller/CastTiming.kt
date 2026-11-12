@@ -13,6 +13,15 @@ object CastTiming {
     const val ATTACK_HOLD_MS = 140L
     const val CONTINUOUS_ATTACK_HOLD_MS = 220L
     const val JOY_HOLD_MS = 320L
+    // A HELD joystick continues in short slices (owner, 2026-11-12 - the 2026-11-11 recording: screen to touch ~280 ms,
+    // of which ~240 ms was the touch queue: every joystick slice was held 320 ms and a new decision waited for it
+    // to end). The first press keeps JOY_HOLD_MS so the game registers the drag; after that 120 ms slices.
+    const val JOY_SLICE_MS = 120L
+
+    // how long the joystick stroke of one gesture lasts: held = continuing a stroke already down;
+    // otherMs = the longest other action in the same gesture (a skill hold, a tap)
+    fun joyDuration(held: Boolean, joyMs: Long, otherMs: Long): Long =
+        if (held) maxOf(otherMs, JOY_SLICE_MS) else maxOf(joyMs, otherMs, JOY_HOLD_MS)
     const val TAP_HOLD_MS = 150L
     const val AIM_PRESS_HOLD_MS = 115L
     const val AIM_SHORT_DIR_HOLD_MS = 135L
