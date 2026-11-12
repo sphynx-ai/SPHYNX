@@ -1,0 +1,59 @@
+11-12 21:39:13 [INFO] Folder: nothing to read yet: allow all files access, or choose the /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage folder (Model page)
+11-12 21:46:09 [INFO] Folder: last scan: Gemma 4 E2B copied, Gemma loading, Gemini API key, Cerebras API key, Groq API key, online data restored (2 from mlbb-online-meta.json), Kaggle key (georgenaval), online data restored (1 from mlbb-online-skills.json), small tactical model copied (Gemma 3 270M)
+11-12 21:46:55 [INFO] Accessibility service connected
+11-12 21:47:07 [INFO] gemma model loaded on GPU
+11-12 21:47:07 [INFO] Gemma loaded from the folder
+11-12 21:48:59 [INFO] Screen capture started (800x1778)
+11-12 21:48:59 [INFO] learn started
+11-12 21:49:01 [INFO] Match recording started (loading screen)
+11-12 21:49:01 [INFO] Session recorder started (sphynx-session-20261112-214901.jsonl) with video
+11-12 21:49:01 [INFO] Session recorder: started by itself at the start of the match
+11-12 21:49:04 [INFO] Auto calibration (game): Screen: in game. Found 30: attack, s1, s2, ult, s1of4, s3, s2of4, ultOf4, s1of2, s2of2, s1Up, s2Up, ultUp, s1Up4, s2Up4, s3Up4, ultUp4, s1Up2, s2Up2, spell, regen, recall, quickBuy, activeItem, joystick, kdaK, kdaD, kdaA, mapTL, mapBR | attack button not seen: used MLBB's default layout
+11-12 21:49:05 [INFO] Spell pictures: fetching 15 battle spell icons from the wiki for spell matching
+11-12 21:49:06 [INFO] Minimap portrait vs the wiki pictures: Alucard (0.84)
+11-12 21:49:07 [INFO] Map: Gold lane on top (the Lord's pit top-left)
+11-12 21:49:08 [INFO] Research mode on (practice-only gate; R3 arbiter experiment in verified practice only)
+11-12 21:49:08 [INFO] player started
+11-12 21:49:08 [INFO] Scenery calibration roam started (38 waypoints)
+11-12 21:49:08 [INFO] Player advises only (you play): waiting: open the scoreboard once to confirm a practice match vs Computer
+11-12 21:49:08 [INFO] Remembered the level 1 badge
+11-12 21:49:13 [INFO] Match kind: Solo practice
+11-12 21:49:13 [INFO] Research: verified practice (all 9 others are Computer) - no experiment until Player mode plays
+11-12 21:49:15 [INFO] Player plays: verified practice vs Computer
+11-12 21:49:15 [INFO] Speed: frame to touch about 56 ms (vision 40, waiting 2, deciding 14, touch queue 0)
+11-12 21:49:30 [INFO] Speed: frame to touch about 140 ms (vision 28, waiting 14, deciding 2, touch queue 96)
+11-12 21:49:36 [INFO] Level 1 -> 2 (badge changed)
+11-12 21:49:45 [INFO] Speed: frame to touch about 149 ms (vision 29, waiting 24, deciding 2, touch queue 95)
+11-12 21:49:55 [INFO] Line-up (loading): your green name / player name was not found on it
+11-12 21:49:57 [INFO] Level 2 -> 3 (skill point)
+11-12 21:49:58 [INFO] Level 3 -> 5 (remembered badge)
+11-12 21:50:00 [INFO] Enemy tower range learned: 7% of the minimap
+11-12 21:50:00 [INFO] Speed: frame to touch about 235 ms (vision 30, waiting 101, deciding 3, touch queue 101)
+11-12 21:50:04 [INFO] Level 5 -> 6 (remembered badge)
+11-12 21:50:04 [INFO] Gemma read your battle spell: Retribution
+11-12 21:50:15 [INFO] Speed: frame to touch about 196 ms (vision 30, waiting 13, deciding 3, touch queue 151)
+11-12 21:50:18 [INFO] Saved sphynx-session-20261112-214901.jsonl (379 KB) in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/recordings; Saved sphynx-session-20261112-214901.mp4 (24864 KB) in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/recordings; 2 research file(s) (R5 comparison, practice moments, readiness report, model speed, screen to touch); 9 debug file(s) (6 screenshots, settings, log, scenery picture)
+11-12 21:50:18 [INFO] Session recorder started (sphynx-session-20261112-215018.jsonl) with video
+11-12 21:50:30 [INFO] Speed: frame to touch about 380 ms (vision 45, waiting 150, deciding 6, touch queue 178)
+11-12 21:50:45 [INFO] Speed: frame to touch about 160 ms (vision 30, waiting 17, deciding 3, touch queue 109)
+11-12 21:50:55 [INFO] Level 6 -> 7 (badge changed)
+11-12 21:51:00 [INFO] Speed: frame to touch about 124 ms (vision 33, waiting 17, deciding 3, touch queue 71)
+11-12 21:51:08 [INFO] Scoreboard: enemy spells from icons = Atlas: Purify, Gord: Sprint
+11-12 21:51:15 [INFO] Speed: frame to touch about 157 ms (vision 34, waiting 19, deciding 2, touch queue 103)
+11-12 21:51:21 [INFO] Level 7 -> 8 (skill point)
+11-12 21:51:21 [INFO] Enemy tower range learned: 9% of the minimap
+11-12 21:51:27 [INFO] Saved sphynx-session-20261112-215018.jsonl (453 KB) in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/recordings; Saved sphynx-session-20261112-215018.mp4 (24855 KB) in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/recordings; 2 research file(s) (R5 comparison, practice moments, readiness report, model speed, screen to touch); 13 debug file(s) (10 screenshots, settings, log, scenery picture)
+11-12 21:51:27 [INFO] Session recorder started (sphynx-session-20261112-215127.jsonl) with video
+11-12 21:51:30 [INFO] Speed: frame to touch about 362 ms (vision 42, waiting 14, deciding 5, touch queue 301)
+11-12 21:51:37 [INFO] Enemy tower range learned: 10% of the minimap
+11-12 21:51:37 [INFO] Enemy tower range learned: 11% of the minimap
+11-12 21:51:43 [INFO] Enemy tower range learned: 10% of the minimap
+11-12 21:51:45 [INFO] Enemy tower range learned: 9% of the minimap
+11-12 21:51:46 [INFO] Speed: frame to touch about 302 ms (vision 34, waiting 60, deciding 6, touch queue 202)
+11-12 21:51:48 [INFO] Enemy tower range learned: 8% of the minimap
+11-12 21:52:01 [INFO] Speed: frame to touch about 208 ms (vision 39, waiting 22, deciding 6, touch queue 140)
+11-12 21:52:04 [INFO] Level 8 -> 9 (two-digit badge)
+11-12 21:52:16 [INFO] Speed: frame to touch about 169 ms (vision 38, waiting 16, deciding 4, touch queue 111)
+11-12 21:52:19 [INFO] Enemy tower range learned: 9% of the minimap
+11-12 21:52:30 [INFO] Enemy tower range learned: 12% of the minimap
+11-12 21:52:31 [INFO] Speed: frame to touch about 278 ms (vision 41, waiting 17, deciding 4, touch queue 216)
