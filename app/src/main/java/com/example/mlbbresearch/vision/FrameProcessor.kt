@@ -499,6 +499,18 @@ object FrameProcessor {
                 monsters.add(m); out.add(m)
             } else out.add(s)
         }
+        // at a jungle camp with no enemy wave near on the minimap, minion-sized enemy bars are the camp (CampRule)
+        mini.self?.let { me ->
+            val sec = com.example.mlbbresearch.game.MatchKind.jungleSec(com.example.mlbbresearch.game.GameStateTracker.state.matchSec)
+            val camp = com.example.mlbbresearch.game.JungleSpots.campAt(me, sec, nowMs)
+            if (CampRule.minionIsTheCamp(camp != null, CampRule.waveNear(me, mini.enemyWaves))) for (i in out.indices) {
+                val u = out[i]
+                if (u.team == Team.ENEMY && !u.hero) {
+                    val m = u.copy(team = Team.NEUTRAL, species = camp!!.id)
+                    out[i] = m; monsters.add(m)
+                }
+            }
+        }
         for (m in monsters) recentMonsters.add(Triple(m.x, m.y, nowMs))
         recentMonsters.removeAll { nowMs - it.third > HeroBarRule.MONSTER_MEMORY_MS }
         if (monsters.isEmpty()) return out
