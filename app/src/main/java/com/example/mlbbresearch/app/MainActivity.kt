@@ -140,7 +140,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), dp(10), dp(16), dp(6))
         }
-        header.addView(ImageView(this).apply { setImageResource(R.mipmap.ic_mlbb) }, LinearLayout.LayoutParams(dp(40), dp(40)))
+        header.addView(ImageView(this).apply { setImageResource(R.mipmap.ic_sphynx) }, LinearLayout.LayoutParams(dp(40), dp(40)))
         val names = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
         names.addView(TextView(this).apply {
             text = getString(R.string.app_name)

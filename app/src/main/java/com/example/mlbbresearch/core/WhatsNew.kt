@@ -23,6 +23,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.NEW, "New app icon and logo",
+            "A sphynx cat head (big ears, amber eyes) with an autopilot arrow for a nose and an AI spark, on the dark " +
+                "background - Sphynx Auto Pilot. It is the launcher icon (also the one-colour themed icon on Android 13+) and " +
+                "the logo at the top of the app.",
+            pr = 73, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.IMPROVED, "Every switch starts off on a new install",
             "On a fresh install every feature switch starts OFF, so nothing runs until you turn it on (the first-run setup " +
                 "helps). Safety guards keep their safe position: Dry run ON and the Quick buy guards ON. A phone that already " +
