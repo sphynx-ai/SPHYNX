@@ -31,6 +31,10 @@ object JungleSpots {
         listOf(Spot(JungleDb.FIRE_BEETLE, 0.40f, 0.16f)) +
         Lithowanderer.SPOTS.map { Spot(JungleDb.LITHOWANDERER, it.first, it.second) }
 
+    // the camp (buff or small camp) you stand at, whatever its bar looks like; null = not at a camp
+    fun campAt(me: Pair<Float, Float>?, matchSec: Int = 9999, nowMs: Long = 0L): Monster? =
+        at(me, MonsterKind.BUFF, matchSec, nowMs) ?: at(me, MonsterKind.CAMP, matchSec, nowMs)
+
     // the monster at your minimap position for a bar of this kind; null = no spot near
     fun at(me: Pair<Float, Float>?, kind: MonsterKind, matchSec: Int = 9999, nowMs: Long = 0L): Monster? {
         // (the table is the owner's usual map, Gold lane on top: with the EXP lane on top this match's map is its mirror - MapSide)

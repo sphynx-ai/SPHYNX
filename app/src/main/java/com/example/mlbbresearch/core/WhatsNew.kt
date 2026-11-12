@@ -23,6 +23,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.FIXED, "Buffs and camps are finished, not left alive",
+            "In your recording (0:36-0:46) the Molten Fiend's bar was read as enemy minions (\"clearing the wave\", \"last hit: minion\") " +
+                "in a pit with no minions, so the Player walked off to \"a jungle camp\" while the buff was still alive. Now, while " +
+                "you stand at a known jungle camp and no enemy minion wave is near you on the minimap, those bars are the camp's " +
+                "monster: the Player keeps hitting it until it dies (and uses Retribution on the buff). Low-HP enemy heroes are now " +
+                "real ones only (the ghost \"enemies at 3%\" were fixed in the previous update), so real kills are taken.",
+            pr = 55, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.FIXED, "The Lord only with 3 or more allies",
             "The Research player kept hitting the Lord with no ally near and was killed by it. Now it starts, finishes or rotates " +
                 "to the Lord only with 3 or more allied heroes near it (on the screen, or on the minimap around you); with fewer it " +
