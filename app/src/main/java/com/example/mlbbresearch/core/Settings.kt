@@ -23,6 +23,9 @@ object Cfg {
         "auto_upload", "scenery_auto_sync", "std_hero", "online_meta", "online_auto", "online_draft", "collect_ds",
         "collect_sds", "live_learn", "policy_on", "smart_fights", "brain_you", "det_on", "builder_actives")
 
+    // the first-run setup (owner, 2026-11-12): shown on a new install until "Finish setup"
+    var firstRunPending: Boolean get() = s("first_run", "") == "pending"; set(v) = put("first_run", if (v) "pending" else "done")
+
     // what to save once (pure, unit tested): nothing on a new install or when already done
     fun oldDefaultsToKeep(saved: Set<String>): List<String> =
         if (saved.isEmpty() || "defaults_gen" in saved) emptyList() else OLD_ON_DEFAULTS.filter { it !in saved }
@@ -30,6 +33,7 @@ object Cfg {
     private fun keepOldDefaults() {
         if (prefs.contains("defaults_gen")) return
         val e = prefs.edit()
+        if (prefs.all.isEmpty()) e.putString("first_run", "pending")      // a new install: the first-run setup opens
         oldDefaultsToKeep(prefs.all.keys).forEach { e.putBoolean(it, true) }
         e.putInt("defaults_gen", DEFAULTS_GEN).apply()
     }
