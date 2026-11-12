@@ -23,6 +23,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.FIXED, "The small tactical model keeps learning between trainings",
+            "On Kaggle each training of the small tactical model started again from plain Gemma 3 270M. Now the notebook " +
+                "also saves a trainable copy (tactical_llm_trainable.zip, ~500 MB) that the app downloads and sends with the " +
+                "next training, which continues from it (use Wi-Fi). The app's own copy of that notebook was also out of date: " +
+                "it never wrote the quality report, so the Model page could not tell a weak model and the Learn page had no " +
+                "score for it. Fixed.",
+            pr = 76, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.NEW, "First-run setup",
             "A new install opens a setup screen with six steps that turn green when done: permissions (accessibility, " +
                 "display over apps, notifications, all files access), the app's folder, loading the models, choosing what " +

@@ -261,7 +261,7 @@ object AutoFolder {
                                     }
                                 }
                                 // the notebook's bundle: every hero's network + the all-heroes one
-                                n.endsWith(".zip") && (n.contains("polic") || n.contains("tactical")) -> {
+                                n.endsWith(".zip") && (n.contains("polic") || n.contains("tactical")) && !n.startsWith("tactical_llm_trainable") -> {
                                     val sig = "${e.name}:${e.size}:${e.modified}"
                                     if (Cfg.raw("auto_sig_policyzip") != sig) {
                                         val names = unpackPolicies(app, e)
