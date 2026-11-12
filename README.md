@@ -1,4 +1,6 @@
-# Recordings (Sphynx Auto Pilot session recorder)
+# Recordings for debugging (Sphynx Auto Pilot session recorder)
+
+Branch: `recordings-for-debugging` (renamed from `recordings` on 2026-11-12).
 
 Upload the files from the app's `recordings` folder here
 (`/CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/recordings/` on the phone):
@@ -8,6 +10,6 @@ Upload the files from the app's `recordings` folder here
 - `sphynx-session-<date>-ab_log.json`, `-practice_moments.jsonl`, `-readiness_report.txt` - research files
 
 How to upload from the phone browser: open this branch on github.com > Add file > Upload files >
-pick the files > Commit changes (directly to `recordings`).
+pick the files > Commit changes (directly to `recordings-for-debugging`).
 
 This branch has no app code and is never merged into `main`.
