@@ -1052,9 +1052,6 @@ class MainActivity : Activity() {
                 (if (vars.isNotEmpty()) "\n\nAll Built-In Variants (${vars.size}):\n" + vars.joinToString("\n") { "• ${it.first}: ${it.second}" } else "")
         }
 
-        // (owner, 2026-11-12: every calibration is on the Setup page, the scenery & minimap synchronization too)
-        text("Scenery calibration and minimap synchronization: Setup page.", 12f, color = T.MUTED)
-
         title("JUNGLE, TURTLE & LORD")
         val monInfo = text("", 13f)
         upd { monInfo.text = "Only the Lord shows its red HP bar before it is attacked. Every other monster (Turtle, buffs, " +
