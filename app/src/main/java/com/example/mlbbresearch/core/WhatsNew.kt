@@ -23,6 +23,108 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-11", Kind.IMPROVED, "Without All files access, files go to Download/Sphynx-Auto-Pilot-Storage",
+            "Recordings (\u25cf REC), CSV exports, training pictures and zips, cloud-training results and backups are saved in " +
+                "Download/Sphynx-Auto-Pilot-Storage when the app has no All files access. The old Download/MLBB-Research folder is " +
+                "ignored completely - not written and not read (backups there no longer restore); delete it yourself once you " +
+                "have moved anything you want to keep. With All files access nothing changes: " +
+                "/CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage.",
+            pr = 52, needsDeviceCheck = true),
+        Entry("2026-11-11", Kind.FIXED, "Solo calibration no longer waits for lane marks",
+            "Solo practice never shows the \"$\" / \"E\" lane marks (only 5v5 does), so the calibration tour waited forever. In " +
+                "Solo, which lane is on top is now read from the Lord and Turtle icons on the minimap: the Lord's pit is on the Gold " +
+                "lane's side (Lord top-left = Gold on top). Both icons must show in their pits. Also: the floating panel's title is " +
+                "now SPHYNX AI.",
+            pr = 51, needsDeviceCheck = true),
+        Entry("2026-11-11", Kind.FIXED, "Your lane corrections for 10 heroes",
+            "Alpha: Jungle, then EXP · Chou: EXP, then Roam · Lapu-Lapu: EXP only · Lunox: Mid, then Gold · Masha: EXP, then Roam · Minsitthar: EXP, " +
+                "then Roam · Paquito: EXP, then Jungle · Phoveus: EXP only · Valentina: Mid, then EXP · Yi Sun-shin: Jungle, then " +
+                "Gold. These come before the online guide and the wiki (your own per-hero setting still comes first).",
+            pr = 50, needsDeviceCheck = true),
+        Entry("2026-11-11", Kind.NEW, "Recommended lanes per hero: primary, secondary and flex pick",
+            "Every hero now has a recommended primary lane, a secondary lane, and whether it is a flex pick (playable in almost " +
+                "any lane) - from its online guide (now asked for both lanes and flex) and every wiki laning list it is in. Shown " +
+                "on the Library's hero list and hero page. The automatic lane uses it: the primary lane; without Retribution never " +
+                "the Jungle (the secondary instead); a flex pick takes its secondary when an ally's primary is the same lane. Your own " +
+                "setting per hero comes first (Player page, under the selected hero: e.g. \"exp, jungle\" or \"exp, jungle, flex\"), " +
+                "then lanes you confirmed (Alice: EXP, then Jungle - not Roam or Mid), then the online guide, then the wiki.",
+            pr = 49, needsDeviceCheck = true),
+        Entry("2026-11-11", Kind.NEW, "Gold and EXP lanes swapped between matches: read from the minimap's lane marks",
+            "Some matches put the Gold lane on top, others the EXP lane, with the Lord and Turtle pits swapped too: the Turtle is " +
+                "always by the EXP lane, the Lord by the Gold lane. At the start of each match the minimap's top-left lane mark (gold " +
+                "\"$\" or lavender \"E\") is read and shown on the panel. Lane walking and tower targets follow the lanes; the Lord / " +
+                "Turtle pits and the jungle camps (measured in your Gold-on-top matches, Lord top-left) are mirrored when the EXP lane " +
+                "is on top, where scenery is not learned and the calibration tour waits for a Gold-on-top match. Also: only one " +
+                "Lithowanderer is up at a time (either side of the river, back 120 s after its kill), the enemy buffs' spots are " +
+                "measured from your screenshots. Solo practice or 5v5 is told from the loading screen / scoreboard (shown on the " +
+                "panel): in solo practice (calibration) both the Lord and the Turtle are up and named by their pit; in 5v5 the " +
+                "wiki's timers apply (Turtle at 2:00, no Turtle from 9:00, the Lord then in its pit). The scenery calibration tour " +
+                "runs only in Solo mode vs computer (god mode is only there), on either lane layout once the lane mark is read: " +
+                "what it sees on a mirrored map is saved mirrored back. In Solo every jungle monster is up from 0:00.",
+            pr = 48, needsDeviceCheck = true),
+        Entry("2026-11-11", Kind.IMPROVED, "Every jungle monster named; the Stone Roamer is not counted as an ally",
+            "From your 20 jungle screenshots: each monster is named from where you stand on the minimap and its bar's size - " +
+                "Thunder Fenrir, Molten Fiend, Lava Golem, Fire Beetle, Horned Lizard, Scavenger Crab (both river ends) and the " +
+                "Lithowanderer (in the river by the mid crossing), on both sides of the map. After a Lithowanderer kill, the Stone " +
+                "Roamer (blue bar, no level badge) is a friendly patrol for 45 s: not counted as an ally hero or minion. The Walkie " +
+                "Grass is never a target. The jungle route uses these camp positions too (the Rockursa is replaced by the Lava Golem; the Lizard, " +
+                "Fire Beetle and Lithowanderer were in the wrong places), and the scenery calibration tour visits the real pits.",
+            pr = 47, needsDeviceCheck = true),
+        Entry("2026-11-11", Kind.IMPROVED, "Scenery calibration tour reaches the enemy base; never into the enemy fountain",
+            "The calibration tour now also visits the enemy inner and base towers of all three lanes and the enemy base itself " +
+                "(placed from the towers on your minimap), then walks back to your base. Meant for 1v1 vs Computer with god mode on. " +
+                "In every mode the Research player never enters the enemy fountain: inside it walks out, at its edge no step or skill leads in.",
+            pr = 46, needsDeviceCheck = true),
+        Entry("2026-11-11", Kind.NEW, "Scenery calibration ends with a walk back to base",
+            "After the last stop of the calibration tour the Research player walks back to its base (base gate, then the " +
+                "fountain), still without fighting. The scenery keeps being read on the way and is re-synced and saved at both " +
+                "stops, so the walk back revalidates what the tour learned. The panel shows \"returning to base 1/2\".",
+            pr = 45, needsDeviceCheck = true),
+        Entry("2026-11-11", Kind.IMPROVED, "Performance page redesigned",
+            "Laid out like a phone performance screen: the phone's name, then one card per topic with a big headline number " +
+                "and label / value rows - memory (ring of RAM in use, available and total, 5-minute line), storage, CPU (one tile " +
+                "per core with its clock and maximum), graphics processor, NPU drivers, temperature and battery, local models. " +
+                "The repeated phone figures are gone; the AI's speed and the speed recorder follow in the same style.",
+            pr = 44, needsDeviceCheck = true),
+        Entry("2026-11-11", Kind.IMPROVED, "Research player; shorter floating panel; calibration without fighting; Performance page",
+            "The Player switch is now \"Research player\" and the floating panel says so (no more \"Player + Research + Learning " +
+                "from you\"; learning is named only while coach mode is on). The panel shows less: what runs, the practice check and " +
+                "its last reading, what the Player does, the match in one line. Scenery calibration starts and stops from the panel " +
+                "(CALIBRATE / STOP CALIB) and the Player does not fight while it runs. The Speed page is now the Performance page: " +
+                "the phone's memory, storage, CPU and cores, graphics processor, NPU drivers, temperature and battery, and the local models.",
+            pr = 43, needsDeviceCheck = true),
+        Entry("2026-11-10", Kind.FIXED, "Practice check reads \"Computer\" at the app's capture size",
+            "The app reads the screen at 800x359, where \"Computer\" is only about 49x9 pixels: the practice check read it as " +
+                "unclear (0.66) and never unlocked the Player. It now matches the word at that size (0.92 on the scoreboard, " +
+                "0.81-0.89 on loading cards; real players' names 0.50 at most), and finds the scoreboard rows with a player there too.",
+            pr = 42, needsDeviceCheck = true),
+        Entry("2026-11-10", Kind.NEW, "Practice check: 5v5 loading screen read without Gemma",
+            "A 5v5 practice match vs Computer is verified on its loading screen from the picture alone, like solo practice: " +
+                "the 9 other cards must read \"Computer\" (measured 0.90-0.94 on your screenshot; real players' names 0.30 at most).",
+            pr = 41, needsDeviceCheck = true),
+        Entry("2026-11-10", Kind.FIXED, "Practice check: solo loading card read without Gemma; last reading on the panel; vibration",
+            "Solo practice is verified from the enemy card's \"Computer\" on the loading screen, from the picture alone (Gemma " +
+                "not needed). The floating panel shows the practice check's last reading (what it saw and its scores), and the " +
+                "phone vibrates once when the Player is unlocked and three times when a real player locks the match.",
+            pr = 40, needsDeviceCheck = true),
+        Entry("2026-11-10", Kind.FIXED, "Solo practice is identified; scenery calibration waits for the unlocked Player",
+            "Solo practice (you vs one Computer) was never identified as a match - its loading screen was not recognised and a " +
+                "quick restart was not seen as a new match - so the practice check never unlocked the Player. Both are fixed. " +
+                "The scenery calibration tour now starts only once the practice check has unlocked the Player.",
+            pr = 39, needsDeviceCheck = true),
+        Entry("2026-11-10", Kind.FIXED, "Practice check from the loading screen; overlay hidden on loading and scoreboard; one Player switch",
+            "The floating window and the boxes are hidden on the loading screen and the scoreboard (they covered the names, so a " +
+                "practice match was locked). A practice match is now verified on the loading screen when the 9 others are " +
+                "\"Computer\", and a real player must be seen twice in a row to lock it. The Player and research mode are one switch. " +
+                "Solo practice (you and one Computer enemy) is verified too: empty scoreboard rows are skipped. " +
+                "A Blessed Retribution icon now counts as Retribution, so the hero goes to the jungle.",
+            pr = 38, needsDeviceCheck = true),
+        Entry("2026-11-10", Kind.NEW, "Speed recorder: both language models and screen to touch",
+            "Speed page: every answer of the strategist and the tactical model is recorded (time, engine, GPU or CPU, with or " +
+                "without a picture, the phone's temperature and free memory), and while the Player plays, the screen-to-touch " +
+                "time every 5 s. Optional detailed figures (tokens per second, time to the first token), a speed test with the " +
+                "same questions every time, and a CSV export to send. It only measures.",
+            pr = 35, needsDeviceCheck = true),
         Entry("2026-11-10", Kind.NEW, "Practice benchmark: a scorecard for every practice match",
             "New Practice page. Every practice match vs Computer that the Player plays gets a scorecard: result, K/D/A, level at " +
                 "5 and 10 minutes, how long the AI stood idle or got stuck, and every death with what the AI was doing just before " +

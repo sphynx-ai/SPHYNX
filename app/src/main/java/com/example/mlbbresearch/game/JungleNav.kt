@@ -5,9 +5,10 @@ import com.example.mlbbresearch.vision.WallMap
 import kotlin.math.hypot
 
 // Optimized Jungle route for heroes with Retribution equipped (v37.13):
-//  - Pre-spawn (0:00..0:22): walks directly to the Purple Buff pit entrance (0.29, 0.58) so the Jungler
+//  - Pre-spawn (0:00..0:22): walks directly to the Purple Buff pit entrance (0.29, 0.52) so the Jungler
 //    starts hitting the buff on frame 1 of spawn instead of wandering to the river.
-//  - Full 6-camp quadrant rotation: Purple Buff -> Lithowanderer / Rockursa -> Orange Buff -> Lizard / Fire Beetle,
+//  - 6-camp rotation (owner's screenshots, 2026-11-11): Purple Buff -> Orange Buff -> Lava Golem -> Fire Beetle ->
+//    Horned Lizard -> Lithowanderer (river),
 //    using both live minimap camp dots and memorized SceneryMap pit entrances so occluded dots are never missed.
 //  - Post-clear rotation: once all 6 ally camps are on cooldown, rotates to Turtle/Lord or gankable sidelanes.
 object JungleNav {
@@ -28,15 +29,29 @@ object JungleNav {
     @Volatile var status = "-"
         private set
 
-    // Canonical 6 ally jungle camps in optimal quadrant clear order
+    // Your jungle camps (the pits, measured on the owner's 20 jungle screenshots, 2026-11-11 - SceneryMap /
+    // JungleSpots), in the owner's own clear order from those screenshots: purple buff, orange buff, Lava Golem,
+    // Fire Beetle, Horned Lizard, then the Lithowanderer in the river (from 0:35)
     private val ALLY_ROTATION = listOf(
-        Camp(0.27f, 0.56f, buff = true, enemy = false),   // 1. Purple Buff (Thunder Fenrir)
-        Camp(0.39f, 0.62f, buff = false, enemy = false),  // 2. Lithowanderer / River creep
-        Camp(0.20f, 0.66f, buff = false, enemy = false),  // 3. Rockursa
-        Camp(0.52f, 0.77f, buff = true, enemy = false),   // 4. Orange Buff (Molten Fiend)
-        Camp(0.44f, 0.84f, buff = false, enemy = false),  // 5. Horned Lizard
-        Camp(0.62f, 0.72f, buff = false, enemy = false)   // 6. Fire Beetle
+        Camp(0.27f, 0.52f, buff = true, enemy = false),   // 1. Purple Buff (Thunder Fenrir)
+        Camp(0.49f, 0.77f, buff = true, enemy = false),   // 2. Orange Buff (Molten Fiend)
+        Camp(0.51f, 0.70f, buff = false, enemy = false),  // 3. Lava Golem
+        Camp(0.61f, 0.82f, buff = false, enemy = false),  // 4. Fire Beetle
+        Camp(0.18f, 0.41f, buff = false, enemy = false),  // 5. Horned Lizard
+        Camp(0.41f, 0.38f, buff = false, enemy = false)   // 6. Lithowanderer (river)
     )
+
+    // the rotation now: the Lithowanderer stop goes where it is up (only ONE is up at a time, on either side of
+    // the river - owner, 2026-11-11) and is left out while none is up (killed less than 120 s ago)
+    private fun rotation(nowMs: Long, matchSec: Int): List<Camp> {
+        val litho = Lithowanderer.expectedSpot(nowMs, matchSec)
+        val base = ALLY_ROTATION.dropLast(1)
+        return when {
+            litho == null -> base
+            litho == Lithowanderer.SPOTS[0] -> ALLY_ROTATION
+            else -> base + Camp(litho.first, litho.second, buff = false, enemy = false)
+        }
+    }
 
     // Gank / river patrol points when all 6 ally camps are on respawn cooldown
     private val GANK_PATROL = listOf(
@@ -77,10 +92,12 @@ object JungleNav {
 
         // 0) Pre-spawn opening (0:00..0:21): walk straight to starting Buff entrance (Purple Buff by default,
         // or Orange Buff if online/built-in meta for this hero prefers Red/Orange start!) so we hit frame 1 at 0:20! (v37.16)
-        if (isJungler && s.matchSec in 0..21 && s.creeps.isEmpty()) {
+        if (isJungler && MatchKind.jungleSec(s.matchSec) in 0..21 && s.creeps.isEmpty()) {   // (Solo: all up already)
             val orangeStart = RoleProfile.preferOrangeBuffStart(s.ownHero)
             val buffName = if (orangeStart) "Orange Buff" else "Purple Buff"
-            val startStand = if (orangeStart) SceneryMap.pitStandSpot(0.52f, 0.77f) else SceneryMap.pitStandSpot(0.27f, 0.56f)
+            // (pitStandSpot works on this match's map; the buff pits are given on the usual map - MapSide)
+            val startStand = if (orangeStart) SceneryMap.pitStandSpot(MapSide.view(0.49f to 0.77f).first, MapSide.view(0.49f to 0.77f).second)
+                else SceneryMap.pitStandSpot(MapSide.view(0.27f to 0.52f).first, MapSide.view(0.27f to 0.52f).second)
             val dStart = hypot(startStand.first - me.first, startStand.second - me.second)
             if (dStart < 0.042f) {
                 status = "waiting at $buffName pit for 0:20 spawn"
@@ -96,8 +113,8 @@ object JungleNav {
         }
 
         // If Jungler sees no minimap camp dots (e.g. occluded by hero icons), check canonical 6 ally pits not on skip cooldown
-        if (camps.isEmpty() && isJungler && s.matchSec >= 20) {
-            camps = ALLY_ROTATION.filter { (skipped[cell(it)] ?: 0L) < now && hypot(it.x - me.first, it.y - me.second) <= maxDist }
+        if (camps.isEmpty() && isJungler && MatchKind.jungleSec(s.matchSec) >= 20) {
+            camps = rotation(now, MatchKind.jungleSec(s.matchSec)).map { c -> MapSide.view(c.x to c.y).let { (x, y) -> Camp(x, y, c.buff, c.enemy) } }.filter { (skipped[cell(it)] ?: 0L) < now && hypot(it.x - me.first, it.y - me.second) <= maxDist }
         }
 
         // the target camp's icon is hidden under YOUR icon when you stand on it: it is not gone

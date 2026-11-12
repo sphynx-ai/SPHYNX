@@ -102,6 +102,8 @@ object FrameProcessor {
         // the end-of-match scoreboard: your highlighted row's hero verifies and locks the detection (v36.87)
         if (hint == ScreenHint.RESULT_BOARD && frameNo % 5 == 0L) try { EndBoard.observe(px, w, h) } catch (e: Exception) { }
         // the loading screen: your card = the one with the GREEN name (v36.92), and its spell icon vs the 12 wiki pictures (v37.00)
+        // the practice gate: solo practice is verified from its loading card (no Gemma needed)
+        if (hint == ScreenHint.LOADING) try { com.example.mlbbresearch.research.ResearchMode.observeLoadingFrame(px, w, h) } catch (e: Exception) { }
         if (hint == ScreenHint.LOADING && frameNo % 5 == 1L) try {
             val green = com.example.mlbbresearch.game.PlayerName.greenCard(px, w, h)
                 ?.also { com.example.mlbbresearch.game.GameStateTracker.loadingGreen = it }
@@ -119,10 +121,12 @@ object FrameProcessor {
             ?: MinimapAnalyzer.analyze(px, w, h, live)
         lastMini = mini; lastMiniLive = live
         val masks = if (live) ScreenReader.LIVE_MASKS else hud
-        val seen = if (live) liveUnits(px, w, h, mini, banner, hint == ScreenHint.LIVE) else monstersFromRedBars(withoutAttachedBars(ownBars(hint, HeroDetector.scan(
+        val seen0 = if (live) liveUnits(px, w, h, mini, banner, hint == ScreenHint.LIVE) else monstersFromRedBars(withoutAttachedBars(ownBars(hint, HeroDetector.scan(
             px, w, h, hud + ScreenMasks.overlay + (if (banner) listOf(ScreenReader.bannerRect) else emptyList()),
             Cfg.heroBarMinWidthPct / 100f, Cfg.bodyBelowBarPct / 100f
         ), px, w, h)), px, w, h, mini)
+        // the Lithowanderer: is it on screen (and how low)? After its kill the Stone Roamer is not an ally hero
+        val seen = if (live) seen0 else lithoAndRoamer(seen0, mini, t0)
         // optional trained detector: runs on its own thread a few times a second
         ObjectDetector.maybeRun(px, w, h)
         if (Cfg.detectorOn) ScreenDetector.maybeRun(px, w, h)
@@ -144,6 +148,18 @@ object FrameProcessor {
 
         // the active item / Conceal buttons: showing and lit? (ActiveItems presses them)
         if (hint == ScreenHint.NONE && self != null && frameNo % 3 == 1L) com.example.mlbbresearch.controller.ActiveItems.observe(px, w, h)
+        // which lane is on top (the minimap's lane marks, shown only at the start of the match - game.MapSide)
+        if (hint == ScreenHint.NONE && self != null && frameNo % 5 == 2L && com.example.mlbbresearch.game.MapSide.goldTop == null &&
+            com.example.mlbbresearch.game.GameStateTracker.state.matchSec in 0..com.example.mlbbresearch.game.MapSide.READ_UNTIL_SEC)
+            com.example.mlbbresearch.game.MapSide.observe(com.example.mlbbresearch.game.MapSide.mark(px, w, h))
+        // ... and in Solo practice (no lane marks there - owner, 2026-11-11) from the Lord / Turtle icons' pits
+        if (hint == ScreenHint.NONE && self != null && frameNo % 5 == 3L && com.example.mlbbresearch.game.MapSide.goldTop == null &&
+            (com.example.mlbbresearch.game.MatchKind.current() == com.example.mlbbresearch.game.MatchKind.Kind.SOLO ||
+                com.example.mlbbresearch.game.GameStateTracker.state.matchSec in 0 until 480)) {
+            val (l, t) = Layout.get("mapTL"); val (r, b) = Layout.get("mapBR")
+            fun mm(box: FloatArray?) = box?.let { (((it[0] + it[2]) / 2f - l) / (r - l).coerceAtLeast(0.01f)) to (((it[1] + it[3]) / 2f - t) / (b - t).coerceAtLeast(0.01f)) }
+            com.example.mlbbresearch.game.MapSide.observe(com.example.mlbbresearch.game.MapSide.fromPits(mm(mini.lordIcon), mm(mini.turtleIcon)))
+        }
         // which skill buttons the screen shows (normal / large HUD, 2-3-4 skills)
         if (hint == ScreenHint.NONE && self != null && frameNo % 10 == 5L) ScreenKit.observe(px, w, h)
         // which hero you play: its skill icons against learned looks and the wiki pictures (HeroVerifier)
@@ -388,6 +404,33 @@ object FrameProcessor {
     // near you (red-ringed portrait); a monster's bar has no badge (0.0-0.17). Wide red bars
     // without a badge, or with no enemy near you on the minimap, are monsters. Small red pieces
     // right next to a monster bar (its tick segments) are dropped.
+    // THE LITHOWANDERER'S KILL AND THE STONE ROAMER (owner, 2026-11-11; game.Lithowanderer): the kill is noted
+    // from the Lithowanderer vanishing at low HP; for 45 s after it, near its spot, blue "ally heroes" on the
+    // screen beyond the ally icons around you on the minimap are the Stone Roamer - a friendly patrol, not
+    // backup and not a minion: it is left out of the units altogether. (Its bar is not measured yet, so the
+    // narrowest blue bars are taken as the Roamer.)
+    private fun lithoAndRoamer(seen: List<Seen>, mini: MinimapInfo, nowMs: Long): List<Seen> {
+        val litho = com.example.mlbbresearch.game.Lithowanderer
+        litho.observe(nowMs, mini.self, seen.firstOrNull { it.team == Team.NEUTRAL && it.species == com.example.mlbbresearch.game.JungleDb.LITHOWANDERER.id }?.hp)
+        val me = mini.self ?: return seen
+        if (!litho.roamerActive(nowMs, me)) return seen
+        val r = MinimapAnalyzer.rect
+        val (l, t) = Layout.get("mapTL"); val (rr, b) = Layout.get("mapBR")
+        val alliesNear = mini.allyDots.count { (dx, dy) ->
+            val mx = ((r[0] + dx * (r[2] - r[0])) - l) / (rr - l).coerceAtLeast(0.01f)
+            val my = ((r[1] + dy * (r[3] - r[1])) - t) / (b - t).coerceAtLeast(0.01f)
+            kotlin.math.hypot(mx - me.first, my - me.second) <= 0.15f
+        }
+        val screenAllies = seen.filter { it.team == Team.ALLY && it.hero }
+        val drop = litho.roamerCount(screenAllies.size, alliesNear)
+        val roamers = screenAllies.sortedBy { it.barRight - it.barLeft }.take(drop).toMutableSet()
+        // its bar is narrower than a hero's (0.067 of the screen, no level badge): it can also be read as an ally
+        // MINION. The spot is in the river, away from the lanes: right at it, a blue bar of that size is the Roamer.
+        if (litho.atSpot(me)) roamers += seen.filter { it.team == Team.ALLY && !it.hero && (it.barRight - it.barLeft) in 0.055f..0.08f }
+        if (roamers.isEmpty()) return seen
+        return seen.filter { it !in roamers }
+    }
+
     private fun monstersFromRedBars(all: List<Seen>, px: IntArray, w: Int, h: Int, mini: MinimapInfo): List<Seen> {
         val enemyNearOnMap = enemyNearOnMinimap(mini, w, h)
         val nearEnemyTower = mini.self?.let { me ->
@@ -433,10 +476,16 @@ object FrameProcessor {
                 val fullW = if (kind == com.example.mlbbresearch.game.MonsterKind.BUFF) minOf(full, 0.095f) else full
                 // HP = the red part over the FULL bar (the hero-width cap cut long bars short)
                 val hp = (s.hp * (s.barRight - s.barLeft) / fullW).coerceIn(0f, 1f)
+                // which monster: its spot first (owner's 20 jungle screenshots - game.JungleSpots), then its colour
+                // (Solo practice: every monster is up from 0:00 - MatchKind.jungleSec)
+                val sec = com.example.mlbbresearch.game.MatchKind.jungleSec(com.example.mlbbresearch.game.GameStateTracker.state.matchSec)
                 val species = when (kind) {
-                    com.example.mlbbresearch.game.MonsterKind.BOSS -> com.example.mlbbresearch.game.JungleDb.boss(mini, com.example.mlbbresearch.game.GameStateTracker.state.matchSec).id
-                    com.example.mlbbresearch.game.MonsterKind.BUFF -> (com.example.mlbbresearch.game.JungleDb.buff(col[0], col[1]) ?: com.example.mlbbresearch.game.JungleDb.CREEP).id
-                    else -> com.example.mlbbresearch.game.JungleDb.camp(col[0], col[1], col[2]).id
+                    com.example.mlbbresearch.game.MonsterKind.BOSS -> com.example.mlbbresearch.game.JungleDb.boss(mini, sec).id
+                    com.example.mlbbresearch.game.MonsterKind.BUFF -> (com.example.mlbbresearch.game.JungleSpots.at(mini.self, kind, sec)
+                        ?: com.example.mlbbresearch.game.JungleDb.buff(col[0], col[1]) ?: com.example.mlbbresearch.game.JungleDb.CREEP).id
+                    // (only one Lithowanderer is up at a time - nowMs lets it rule out the other spot)
+                    else -> (com.example.mlbbresearch.game.JungleSpots.at(mini.self, kind, sec, System.currentTimeMillis())
+                        ?: com.example.mlbbresearch.game.JungleDb.camp(col[0], col[1], col[2])).id
                 }
                 val m = Seen(Team.NEUTRAL, boss, s.x, s.y, hp, s.barLeft, s.barTop, s.barLeft + fullW, s.barBottom, species)
                 monsters.add(m); out.add(m)

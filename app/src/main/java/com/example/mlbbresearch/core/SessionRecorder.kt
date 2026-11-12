@@ -16,7 +16,7 @@ import java.util.concurrent.Executors
 // SESSION RECORDER (for bug reports, owner request): while it is on, it writes what the AI saw and
 // decided, about 10 times a second, plus every aimed skill and every log line, to one file:
 //   sphynx-session-<date>.jsonl   (one JSON object per line)
-// in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/recordings (or Download/MLBB-Research/recordings
+// in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/recordings (or Download/Sphynx-Auto-Pilot-Storage/recordings
 // without all files access). Record the screen at the same time: every row has the wall-clock time
 // ("t", ms) and the in-game match timer ("ms" = match seconds), so file and video line up.
 // Row types ("k"):
@@ -110,6 +110,7 @@ object SessionRecorder {
     // the app's private storage; copies go next to the recording: <session>-ab_log.json etc.
     private fun exportResearch(c: Context, base: String): String {
         try { com.example.mlbbresearch.research.ResearchMode.saveMoments() } catch (e: Exception) { }
+        try { com.example.mlbbresearch.ai.ModelSpeed.save(sync = true); TouchSpeed.save(sync = true) } catch (e: Exception) { }
         val dir = File(c.filesDir, "research")
         val files = dir.listFiles()?.filter { it.isFile && it.length() > 0 } ?: return ""
         if (files.isEmpty()) return ""
@@ -121,10 +122,10 @@ object SessionRecorder {
             export(c, copy, if (src.name.endsWith(".txt")) "text/plain" else "application/json")
             copy.delete(); n++
         } catch (e: Exception) { }
-        return if (n > 0) "$n research file(s) (R5 comparison, practice moments, readiness report)" else ""
+        return if (n > 0) "$n research file(s) (R5 comparison, practice moments, readiness report, model speed, screen to touch)" else ""
     }
 
-    // one file into the recordings folder (used by the Practice page's export)
+    // one file into the recordings folder (used by the Practice and Speed pages' exports)
     fun exportFile(c: Context, f: File, mime: String): String = export(c, f, mime)
 
     private fun export(c: Context, f: File, mime: String = "application/json"): String {
@@ -135,11 +136,11 @@ object SessionRecorder {
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, f.name)
             put(MediaStore.Downloads.MIME_TYPE, mime)
-            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/" + Storage.LEGACY_NAME + "/" + FOLDER)
+            put(MediaStore.Downloads.RELATIVE_PATH, Storage.downloadsRel(FOLDER))
         }
         val uri = c.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: throw IllegalStateException("cannot create ${f.name}")
         c.contentResolver.openOutputStream(uri)?.use { o -> f.inputStream().use { it.copyTo(o) } }
-        return "Saved ${f.name} (${f.length() / 1024} KB) in ${Storage.LEGACY_REL}/$FOLDER"
+        return "Saved ${f.name} (${f.length() / 1024} KB) in ${Storage.FALLBACK_REL}/$FOLDER"
     }
 
     private fun write(o: JSONObject) {

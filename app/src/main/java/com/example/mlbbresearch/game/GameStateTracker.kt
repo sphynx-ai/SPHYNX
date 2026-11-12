@@ -222,7 +222,10 @@ object GameStateTracker {
     fun onButtonSpellVerified(rawSpell: String, score: Float) {
         val blessed = PortraitMatch.blessedKind(rawSpell)
         if (blessed != null) {
-            if (!isRetributionDetected()) return
+            // a Blessed icon exists only for Retribution: with NO spell known yet (the loading card and the
+            // first button readings were missed) it proves Retribution, so the hero goes to the jungle
+            // (bug 5, device test 2026-11-10: Retribution equipped, no jungling). Another spell known -> ignored.
+            if (!isRetributionDetected() && spell() != null) return
             buttonSpell = "Retribution"
             iconSpell = "Retribution"
             if (blessedRetribution != blessed) {
@@ -431,11 +434,14 @@ object GameStateTracker {
             return liveState(v, now, v.hint == ScreenHint.LIVE)
         val wasInMatch = now - lastInGame < 120_000
         val before = state.phase
-        if (v.self != null && !wasInMatch) {
+        // (or the match clock is not running: a new match started less than 2 minutes after the last one
+        // ended - quick solo practice restarts, owner 2026-11-10 - used to stay unidentified for good)
+        if (v.self != null && (!wasInMatch || matchStartAt == 0L)) {
             // first look at your hero after hero select / loading: the match clock starts
             logMatch()                      // a match without a hero-select screen in between
             kills = 0; deaths = 0; assists = 0
             matchStartAt = now
+            MapSide.reset()                 // a new match: its lane marks are read again
             // (the loading screen was missed: the match is recorded from here)
             if (matchId == 0L) { matchId = now; Diag.info("Match recording started (hero seen; no loading screen)") }
             com.example.mlbbresearch.vision.ScreenReader.clearResult()
@@ -502,7 +508,10 @@ object GameStateTracker {
         }
         if (phase == Phase.LOADING) {
             // a loading screen after 2 minutes without one = a new match: recording starts here
-            if (now - loadingSeenAt > 120_000) { matchId = now; Diag.info("Match recording started (loading screen)") }
+            // (also right after a match: a loading screen once the last one ended / was played is a new match)
+            if (now - loadingSeenAt > 120_000 || lastMatchEndAt > loadingSeenAt || lastInGame > loadingSeenAt) {
+                matchId = now; Diag.info("Match recording started (loading screen)")
+            }
             loadingSeenAt = now
         }
         if (phase != state.phase) phaseSince = now
@@ -640,6 +649,8 @@ object GameStateTracker {
     }
 
     fun newMatch() {
+        Lithowanderer.reset()          // its kill / Stone Roamer belong to one match
+        MapSide.reset()                // which lane is on top is read again in every match
         logMatch()
         enemySpells = emptyMap(); allySpells = emptyMap(); lineupReadAt = 0L
         onNewMatch?.invoke()

@@ -462,6 +462,7 @@ object ScreenReader {
         val redLow = rowMax(px, w, h, 0.95f, 0.985f, 0.34f, 0.95f) { isRedBar(it) }
         val redHigh = rowMax(px, w, h, 0.42f, 0.47f, 0.06f, 0.66f) { isRedBar(it) }
         if (redLow >= 0.6f || redHigh >= 0.6f) return ScreenHint.LOADING
+        if (soloLoading(px, w, h)) return ScreenHint.LOADING
         // match found: the gold Enter button (bottom middle)
         if (homeBtn < 0.2f && f(0.40f, 0.85f, 0.60f, 0.91f) { isGold(it) } > 0.45f) return ScreenHint.QUEUE
 
@@ -541,6 +542,30 @@ object ScreenReader {
     // the panel's top strip in 9 pieces: 6+ must look like the panel (a unit or effect passing
     // behind can spoil a few), and the HP line must be green / empty grey all along.
     // Measured: 8-9 pieces on 7 live screens; any other screen with 5+ pieces has a line of 0.28 at most.
+    // SOLO PRACTICE LOADING SCREEN (owner, 2026-11-10: you and one Computer enemy, one card per row).
+    // No team bands: the night-sky picture fills both top corners (measured 100% sky blue; scoreboards
+    // 7-22%, Victory / hero select 6-53%) and the enemy card has one red loading bar along its bottom
+    // edge (a run of 11.5% of the width at y 0.97; 0 on the other screens). The card can be in either row.
+    fun soloLoading(px: IntArray, w: Int, h: Int): Boolean {
+        fun sky(p: Int) = b(p) - r(p) >= 50 && b(p) >= g(p) + 20 && b(p) >= 90
+        if (fraction(px, w, h, 0f, 0f, 0.25f, 0.30f, 4) { sky(it) } < 0.85f) return false
+        if (fraction(px, w, h, 0.75f, 0f, 1f, 0.30f, 4) { sky(it) } < 0.85f) return false
+        val run = maxOf(longestRun(px, w, h, 0.93f, 0.99f) { isRedBar(it) }, longestRun(px, w, h, 0.40f, 0.47f) { isRedBar(it) })
+        return run in 0.06f..0.25f
+    }
+
+    // the longest horizontal run of matching pixels (fraction of the width) in the rows y0..y1
+    private fun longestRun(px: IntArray, w: Int, h: Int, y0: Float, y1: Float, test: (Int) -> Boolean): Float {
+        var best = 0
+        var y = (y0 * h).toInt()
+        while (y < (y1 * h).toInt().coerceAtMost(h)) {
+            var run = 0
+            for (x in 0 until w) { if (test(px[y * w + x])) { run++; if (run > best) best = run } else run = 0 }
+            y += 2
+        }
+        return best.toFloat() / w
+    }
+
     fun livePanel(px: IntArray, w: Int, h: Int): Boolean {
         if (fraction(px, w, h, 0.43f, 0.869f, 0.61f, 0.876f, 2) { isHpGreen(it) || isHpEmpty(it) } <= 0.85f) return false
         var good = 0

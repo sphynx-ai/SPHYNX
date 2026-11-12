@@ -91,7 +91,7 @@ class MainActivity : Activity() {
     private val pages = listOf("home", "news", "player", "draft", "build", "meta", "library", "model", "learn", "practice", "speed", "logs", "setup")
     private val labels = mapOf(
         "home" to "Home", "news" to "What's new", "player" to "Player", "draft" to "Draft", "build" to "Build", "meta" to "Meta", "library" to "Library",
-        "model" to "Model", "learn" to "Learn", "practice" to "Practice", "speed" to "Speed", "logs" to "Logs", "setup" to "Setup"
+        "model" to "Model", "learn" to "Learn", "practice" to "Practice", "speed" to "Performance", "logs" to "Logs", "setup" to "Setup"
     )
 
     private val reqCapture = 42
@@ -743,10 +743,10 @@ class MainActivity : Activity() {
         switch("Show where the AI touches", Cfg.showTouches) { Cfg.showTouches = it }
 
         title("RUN")
-        stageSwitch("Player (plays in practice vs Computer; advises in other matches)", "player") { AiRuntime.playerOn }
+        // ONE SWITCH (owner, 2026-11-10): the Player and research mode are one button
+        stageSwitch("Research player (plays in practice vs Computer; advises in other matches)", "player") { AiRuntime.playerOn }
         stageSwitch("Drafter (ban & pick)", "draft") { AiRuntime.drafterOn }
         stageSwitch("Builder (items)", "build") { AiRuntime.builderOn }
-        stageSwitch("Research mode (practice vs Computer only; arbiter picks fight option, records moments)", "research") { com.example.mlbbresearch.research.ResearchMode.on }
         val resInfo = text("", 12f, color = T.MUTED)
         upd { resInfo.text = com.example.mlbbresearch.research.ResearchMode.momentsText() + "\n" + com.example.mlbbresearch.research.ReadinessRun.status() +
             "\n" + com.example.mlbbresearch.research.ResearchMode.abText() }
@@ -856,7 +856,7 @@ class MainActivity : Activity() {
     // =====================================================================
 
     private fun playerPage() {
-        stageSwitch("Player running", "player") { AiRuntime.playerOn }
+        stageSwitch("Research player running", "player") { AiRuntime.playerOn }
         val info = text("", 13f)
         upd {
             info.text = if (GemmaEngine.ready) "Fast rules play; Gemma adjusts the plan every ${Cfg.strategyEverySec}s or when a fight starts."
@@ -950,6 +950,31 @@ class MainActivity : Activity() {
                 ?: GameStateTracker.ownHero()
                 ?: HeroDb.match(Cfg.myHero)
 
+        // RECOMMENDED LANES for the selected hero (owner, 2026-11-11): your setting comes first (game.HeroLanes)
+        val lanesBox = field("Recommended lanes for selected hero: primary, secondary, \"flex\" if it fits any lane " +
+            "(e.g. exp, jungle   or   exp, jungle, flex; empty = automatic: online guide + wiki)", Cfg.manualLanes(selectedComboHero()).orEmpty(), false) { }
+        val lanesInfo = text("", 12f, color = "#9AA0A6")
+        fun showLanes() {
+            val h = selectedComboHero()
+            lanesInfo.text = if (h == null) "Select a hero under YOUR HERO first" else
+                "$h: " + com.example.mlbbresearch.game.HeroLanes.of(h).let { "${it.text()}  [${it.source}]" }
+        }
+        showLanes()
+        btn("Save recommended lanes for this hero") {
+            val h = selectedComboHero()
+            val raw = lanesBox.text.toString()
+            when {
+                h == null -> toast("Select or enter a hero under YOUR HERO first")
+                raw.isNotBlank() && com.example.mlbbresearch.game.HeroLanes.parse(raw) == null ->
+                    toast("Use exp, gold, mid, roam, jungle (primary first), and flex if it fits any lane")
+                else -> {
+                    Cfg.setManualLanes(h, raw.ifBlank { null })
+                    toast(if (raw.isBlank()) "$h: lanes back to automatic (online guide + wiki)" else "$h: lanes saved")
+                    showLanes()
+                }
+            }
+        }
+
         val comboCard = card()
         val comboInfo = cardText(comboCard, 13f, true)
         val comboBuiltInList = cardNote(comboCard)
@@ -1036,7 +1061,7 @@ class MainActivity : Activity() {
         }
 
         title("IN-GAME SCENERY & MINIMAP SYNCHRONIZATION")
-        text("Synchronizes 3D screen scenery (towers, monster pits, bushes, walls) with the 2D minimap on every frame. Saved persistently on your phone (mlbb-scenery-sync.json in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage, or Download/MLBB-Research without all files access) across app uninstall/reinstall — only deleted when you press Clear saved map scenery or Reset minimap sync offsets.", 12f, color = "#9AA0A6")
+        text("Synchronizes 3D screen scenery (towers, monster pits, bushes, walls) with the 2D minimap on every frame. Saved persistently on your phone (mlbb-scenery-sync.json in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage, or Download/Sphynx-Auto-Pilot-Storage without all files access) across app uninstall/reinstall — only deleted when you press Clear saved map scenery or Reset minimap sync offsets.", 12f, color = "#9AA0A6")
         switch("Auto-sync 3D screen scenery with minimap landmarks", Cfg.sceneryAutoSync) { Cfg.sceneryAutoSync = it }
         val sceneryInfo = text("", 13f)
         val camPresetBtn = btn("") {
@@ -1612,6 +1637,15 @@ class MainActivity : Activity() {
             val pb = com.example.mlbbresearch.game.HeroPlaybook.of(h)
             append(HeroDb.role(h).name.lowercase()).append(if (HeroDb.isRanged(h)) ", ranged" else ", melee")
             append(" · dash ").append(HeroDb.dashSlot(h) ?: "none")
+            // recommended lanes (online guide + wiki): what the automatic lane uses
+            com.example.mlbbresearch.game.HeroLanes.of(h).let { r ->
+                append("\nRecommended lanes: ").append(r.primary.label)
+                r.secondary?.let { append(" (primary) · ").append(it.label).append(" (secondary)") }
+                append(if (r.flex) " · FLEX PICK: can be played in almost any lane" else "")
+                append("  [").append(r.source).append("]")
+                val wiki = com.example.mlbbresearch.game.WikiLanes.lanes(h)
+                if (wiki.isNotEmpty()) append("\nWiki lists it for: ").append(wiki.joinToString { it.label })
+            }
             com.example.mlbbresearch.game.CooldownTracker.ultCooldown(h)?.let { append(" · ultimate cooldown ").append(it.toInt()).append(" s") }
             val dmgT = HeroDb.damageText(h)
             append("\nDamage type: ").append(dmgT).append(" · its equipment: ")
@@ -1664,7 +1698,8 @@ class MainActivity : Activity() {
                 }
                 val errS = if (!skills) ll.lastError(h, "skills") else null
                 val errG = if (!guide) ll.lastError(h, "guide") else null
-                val st = (if (errS != null || errG != null) "⚠ last try failed · " else "") + HeroDb.role(h).name.lowercase() + " · skills " + skillsSt +
+                val st = (if (errS != null || errG != null) "⚠ last try failed · " else "") + HeroDb.role(h).name.lowercase() +
+                    " · " + com.example.mlbbresearch.game.HeroLanes.of(h).text() + " · skills " + skillsSt +
                     " · guide " + (if (guide) "learned" else "not yet")
                 row(h, true, st, skills && guide, onLong = {
                     toast("Learning $h now (wiki skills + guide)…")
@@ -1956,124 +1991,290 @@ class MainActivity : Activity() {
     }
 
     // =====================================================================
-    //  SPEED: every engine and model, live, with the last 5 minutes
+    //  PERFORMANCE (owner, 2026-11-11: was "Speed"; laid out after the owner's phone-performance screenshots)
+    //  1. this phone: one card per topic, a big headline number, label / value rows, a few clear charts
+    //  2. the AI's speed: frame to touch and every engine
+    //  3. the speed recorder (export)
     // =====================================================================
-
     private fun speedPage() {
         val log = com.example.mlbbresearch.core.SpeedLog
+        val ds = com.example.mlbbresearch.core.DeviceStats
+        val di = com.example.mlbbresearch.core.DeviceInfo
+        Thread { di.readGpu(); di.readAccelerators() }.start()
         fun fmt(v: Float, unit: String) = when (unit) {
             "ms" -> if (v < 10f) "%.1f ms".format(v) else "%.0f ms".format(v)
             "s" -> "%.1f s".format(v)
             else -> "%.0f %s".format(v, unit)
         }
         fun gradeColor(g: Int) = c(when (g) { 0 -> T.GREEN; 1 -> T.GOLD; else -> T.RED })
-        text("Live speed of every part of the AI. Dashed line = target.", 13f, color = T.MUTED)
-
-        // ---- the phone: CPU, GPU, RAM, ROM (DeviceStats) ----
-        val ds = com.example.mlbbresearch.core.DeviceStats
-        val pc = card()
-        cardHeader(pc, "Phone", "every 2 s", T.ACCENT)
-        fun metric(label: String): Triple<TextView, com.example.mlbbresearch.app.BudgetBar, TextView> {
-            val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, 0) }
-            top.addView(TextView(this).apply { text = label; textSize = 14f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD) },
-                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            val v = TextView(this).apply { textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(c(T.TEXT)) }
-            top.addView(v); pc.addView(top)
-            val bar = com.example.mlbbresearch.app.BudgetBar(this)
-            pc.addView(bar, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(6)).apply { topMargin = dp(5) })
-            val note = TextView(this).apply { textSize = 12f; setTextColor(c(T.MUTED)); setPadding(0, dp(3), 0, 0) }
-            pc.addView(note)
-            return Triple(v, bar, note)
-        }
-        val (cpuV, cpuBar, cpuNote) = metric("CPU (this app)")
-        val cpuSpark = com.example.mlbbresearch.app.Sparkline(this)
-        pc.addView(cpuSpark, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(40)).apply { topMargin = dp(4) })
-        val (gpuV, gpuBar, gpuNote) = metric("GPU")
-        val (ramV, ramBar, ramNote) = metric("RAM (phone in use)")
-        val ramSpark = com.example.mlbbresearch.app.Sparkline(this)
-        pc.addView(ramSpark, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(40)).apply { topMargin = dp(4) })
-        val (romV, romBar, romNote) = metric("ROM (storage in use)")
         fun level(f: Float) = c(when { f < 0.6f -> T.GREEN; f < 0.85f -> T.GOLD; else -> T.RED })
+        fun gb(mb: Long) = if (mb >= 1024) "%.1f GB".format(mb / 1024f) else "$mb MB"
+        val MATCH = LinearLayout.LayoutParams.MATCH_PARENT; val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
 
-        // ---- the headline: frame to touch, and what it is made of ----
+        // ---- building blocks: a card, a big headline, label / value rows ----
+        fun pcard(name: String, fill: String = T.SURF): LinearLayout {
+            val cd = card(); cd.background = shape(fill, 24, if (fill == T.SURF) T.STROKE else null)
+            cd.setPadding(dp(18), dp(16), dp(18), dp(16))
+            cd.addView(TextView(this).apply { text = name; textSize = 17f; setTextColor(c(T.TEXT)) })
+            return cd
+        }
+        fun headline(cd: LinearLayout, size: Float = 26f): TextView = TextView(this).apply {
+            textSize = size; setTextColor(Color.WHITE); setPadding(0, dp(6), 0, dp(4)); cd.addView(this)
+        }
+        fun kv(cd: LinearLayout, label: String): TextView {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(7), 0, dp(7)) }
+            row.addView(TextView(this).apply { text = label; textSize = 14f; setTextColor(c("#B8C0D4")) }, LinearLayout.LayoutParams(0, WRAP, 1f))
+            val v = TextView(this).apply { textSize = 14f; setTextColor(c(T.TEXT)) }
+            row.addView(v, LinearLayout.LayoutParams(0, WRAP, 1f))
+            cd.addView(row)
+            return v
+        }
+        fun note(cd: LinearLayout, t: String = ""): TextView = cardNote(cd, t)
+        fun bar(cd: LinearLayout, hDp: Int = 6, top: Int = 8): com.example.mlbbresearch.app.BudgetBar =
+            com.example.mlbbresearch.app.BudgetBar(this).also { cd.addView(it, LinearLayout.LayoutParams(MATCH, dp(hDp)).apply { topMargin = dp(top) }) }
+
+        // ---- header ----
+        content.addView(TextView(this).apply { text = di.phoneName(); textSize = 26f; setTextColor(Color.WHITE); setPadding(0, dp(8), 0, 0) })
+        content.addView(TextView(this).apply { text = "Live · updates every 2 seconds"; textSize = 14f; setTextColor(c(T.ACCENT)) })
+
+        // ---- MEMORY: ring (in use), available / total, available over 5 min, unused, this app ----
+        val mem = pcard("Memory", "#2E4374")
+        val memRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(10), 0, dp(4)) }
+        val ring = com.example.mlbbresearch.app.RingGauge(this)
+        memRow.addView(ring, LinearLayout.LayoutParams(dp(112), dp(112)))
+        val memCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), 0, 0, 0) }
+        val memBig = TextView(this).apply { textSize = 36f; setTextColor(Color.WHITE) }
+        val memSub = TextView(this).apply { text = "RAM available"; textSize = 16f; setTextColor(c("#DDE4F7")) }
+        val memTot = TextView(this).apply { textSize = 13f; setTextColor(c("#C8D2F0")) }
+        memCol.addView(memBig); memCol.addView(memSub); memCol.addView(memTot)
+        memRow.addView(memCol)
+        mem.addView(memRow)
+        mem.addView(TextView(this).apply { text = "Available RAM · last 5 minutes"; textSize = 12f; setTextColor(c("#C8D2F0")); setPadding(0, dp(8), 0, 0) })
+        val memSpark = com.example.mlbbresearch.app.Sparkline(this)
+        mem.addView(memSpark, LinearLayout.LayoutParams(MATCH, dp(44)).apply { topMargin = dp(4) })
+        note(mem, "Available RAM includes memory Android can reclaim.").setTextColor(c("#C8D2F0"))
+        val memUnused = kv(mem, "Unused RAM")
+        val memApp = kv(mem, "App process RAM")
+
+        // ---- STORAGE ----
+        val rom = pcard("Internal storage")
+        val romBig = headline(rom, 28f)
+        val romBar = bar(rom, 6, 6)
+        val romTotal = kv(rom, "Total")
+        val romApp = kv(rom, "This app's files (models)")
+        note(rom, "Storage figures describe the internal data partition available to apps.")
+
+        // ---- CPU & CORES: chip, cores, this app's share (with its line), one tile per core ----
+        val cpu = pcard("CPU & cores")
+        headline(cpu, 26f).text = di.chip()
+        val cpuCores = kv(cpu, "Reported CPU cores")
+        val cpuOnline = kv(cpu, "Online cores")
+        kv(cpu, "System CPU load").text = "Not reported"
+        val cpuApp = kv(cpu, "App CPU share")
+        val cpuSpark = com.example.mlbbresearch.app.Sparkline(this)
+        cpu.addView(cpuSpark, LinearLayout.LayoutParams(MATCH, dp(36)).apply { topMargin = dp(2) })
+        note(cpu, "Core tiles show clock speed, not use. App CPU share is spread over all cores. Android closes the whole phone's CPU load to apps.")
+        val nCores = Runtime.getRuntime().availableProcessors()
+        class Tile(val ghz: TextView, val max: TextView, val bar: com.example.mlbbresearch.app.BudgetBar)
+        val tiles = ArrayList<Tile>()
+        var tileRow: LinearLayout? = null
+        for (i in 0 until nCores) {
+            if (i % 2 == 0) { tileRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }; cpu.addView(tileRow) }
+            val t = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = shape(T.SURF2, 18); setPadding(dp(14), dp(12), dp(14), dp(12)) }
+            t.addView(TextView(this).apply { text = "Core $i"; textSize = 14f; setTextColor(c(T.TEXT)) })
+            val g = TextView(this).apply { textSize = 20f; setTextColor(Color.WHITE); setPadding(0, dp(4), 0, dp(2)) }
+            val mx = TextView(this).apply { textSize = 12f; setTextColor(c(T.MUTED)) }
+            t.addView(g); t.addView(mx)
+            val b = com.example.mlbbresearch.app.BudgetBar(this)
+            t.addView(b, LinearLayout.LayoutParams(MATCH, dp(5)).apply { topMargin = dp(8) })
+            tileRow!!.addView(t, LinearLayout.LayoutParams(0, WRAP, 1f).apply { setMargins(if (i % 2 == 0) 0 else dp(5), dp(10), if (i % 2 == 0) dp(5) else 0, 0) })
+            tiles.add(Tile(g, mx, b))
+        }
+        if (nCores % 2 == 1) tileRow?.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f).apply { leftMargin = dp(5) })
+
+        // ---- GRAPHICS PROCESSOR ----
+        val gpu = pcard("Graphics processor")
+        val gpuName = headline(gpu, 26f)
+        val gpuMaker = kv(gpu, "Manufacturer")
+        val gpuGl = note(gpu)
+        val gpuLoad = kv(gpu, "GPU load")
+        val gpuUse = kv(gpu, "Runs on the GPU")
+
+        // ---- NPU & ACCELERATOR DRIVERS ----
+        val npu = pcard("NPU & accelerator drivers")
+        val npuList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        npu.addView(npuList)
+        note(npu, "Names found in the phone's vendor folders. They show an NPU / DSP is there - not that a model can run on it. Its use is not readable.")
+        var npuShown: List<String>? = null
+
+        // ---- TEMPERATURE & BATTERY ----
+        val pow = pcard("Temperature & battery")
+        val powThermal = kv(pow, "Thermal status")
+        val powHead = kv(pow, "Thermal headroom")
+        val powHeadBar = bar(pow, 5, 2)
+        val powTemp = kv(pow, "Battery temperature")
+        val powLevel = kv(pow, "Battery level")
+        val powLevelBar = bar(pow, 5, 2)
+
+        // ---- LOCAL MODEL ACTIVITY ----
+        val llm = pcard("Local model activity")
+        val llmBig = headline(llm, 24f)
+        val llmSub = note(llm)
+        val llmTac = kv(llm, "Small tactical model")
+        val llmLast = kv(llm, "Last answer")
+
+        // ---- THE AI'S SPEED: frame to touch, and what it is made of ----
+        title("AI SPEED")
         val total = log.series[0]
         val parts = log.series.subList(1, 5)
-        val hc = card()
+        val hc = pcard("Frame → touch")
         val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.BOTTOM }
-        val big = TextView(this).apply { textSize = 40f; setTypeface(null, Typeface.BOLD); setTextColor(Color.WHITE) }
+        val big = TextView(this).apply { textSize = 36f; setTextColor(Color.WHITE) }
         head.addView(big)
         val gradeChip = chip("")
         head.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         head.addView(gradeChip)
-        hc.addView(TextView(this).apply { text = "FRAME → TOUCH"; textSize = 11f; letterSpacing = 0.08f; setTextColor(c(T.MUTED)); setTypeface(null, Typeface.BOLD) })
         hc.addView(head)
         val stack = com.example.mlbbresearch.app.StackBar(this)
-        hc.addView(stack, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(14)).apply { topMargin = dp(10); bottomMargin = dp(8) })
-        val legend = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        hc.addView(legend)
+        hc.addView(stack, LinearLayout.LayoutParams(MATCH, dp(12)).apply { topMargin = dp(10); bottomMargin = dp(6) })
         val legendRows = parts.map { sr ->
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(3), 0, dp(3)) }
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
             row.addView(View(this).apply { background = shape(sr.color, 5) }, LinearLayout.LayoutParams(dp(10), dp(10)))
-            row.addView(TextView(this).apply { text = sr.name; textSize = 13f; setTextColor(c(T.TEXT)); setPadding(dp(8), 0, 0, 0) },
-                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            val v = TextView(this).apply { textSize = 13f; setTextColor(c(T.MUTED)) }
+            row.addView(TextView(this).apply { text = sr.name; textSize = 13f; setTextColor(c("#B8C0D4")); setPadding(dp(10), 0, 0, 0) },
+                LinearLayout.LayoutParams(0, WRAP, 1f))
+            val v = TextView(this).apply { textSize = 13f; setTextColor(c(T.TEXT)) }
             row.addView(v)
-            legend.addView(row)
+            hc.addView(row)
             v
         }
         val totalSpark = com.example.mlbbresearch.app.Sparkline(this)
-        hc.addView(totalSpark, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(70)).apply { topMargin = dp(8) })
-        val totalNote = cardNote(hc)
+        hc.addView(totalSpark, LinearLayout.LayoutParams(MATCH, dp(64)).apply { topMargin = dp(8) })
+        val totalNote = note(hc)
 
-        // ---- every other measure, grouped ----
+        // every other engine: one compact row each (name, value, budget bar, 5-minute line), grouped in one card per group
         class Row(val sr: com.example.mlbbresearch.core.SpeedLog.Series, val value: TextView, val bar: com.example.mlbbresearch.app.BudgetBar,
                   val spark: com.example.mlbbresearch.app.Sparkline, val note: TextView)
         val rows = ArrayList<Row>()
+        var groupCard: LinearLayout? = null
         var group = ""
         for (sr in log.series.drop(5)) {
-            if (sr.group != group) { group = sr.group; title(group) }
-            val cd = card()
-            val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            if (sr.group != group || groupCard == null) { group = sr.group; groupCard = pcard(group) }
+            val cd = groupCard!!
+            val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(12), 0, 0) }
             top.addView(View(this).apply { background = shape(sr.color, 5) }, LinearLayout.LayoutParams(dp(10), dp(10)))
-            top.addView(TextView(this).apply { text = sr.name; textSize = 14f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD); setPadding(dp(8), 0, 0, 0) },
-                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            val value = TextView(this).apply { textSize = 18f; setTypeface(null, Typeface.BOLD) }
+            top.addView(TextView(this).apply { text = sr.name; textSize = 14f; setTextColor(c(T.TEXT)); setPadding(dp(10), 0, 0, 0) },
+                LinearLayout.LayoutParams(0, WRAP, 1f))
+            val value = TextView(this).apply { textSize = 16f; setTypeface(null, Typeface.BOLD) }
             top.addView(value)
             cd.addView(top)
-            val bar = com.example.mlbbresearch.app.BudgetBar(this)
-            cd.addView(bar, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(6)).apply { topMargin = dp(8) })
+            val b = bar(cd, 5, 6)
             val spark = com.example.mlbbresearch.app.Sparkline(this)
-            cd.addView(spark, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(46)).apply { topMargin = dp(6) })
-            rows.add(Row(sr, value, bar, spark, cardNote(cd)))
+            cd.addView(spark, LinearLayout.LayoutParams(MATCH, dp(32)).apply { topMargin = dp(4) })
+            rows.add(Row(sr, value, b, spark, note(cd)))
+        }
+
+        // ---- SPEED RECORDER (to send) ----
+        title("SPEED RECORDER (to send)")
+        val rc = pcard("Language models")
+        val mText = cardText(rc, 12f)
+        val rc2 = pcard("Screen to touch")
+        val tText = cardText(rc2, 12f)
+        val testInfo = text("", 12f, color = T.MUTED)
+        switch("Detailed model figures (tokens per second, time to first token); applies when the models next load", Cfg.modelSpeedDetailed) {
+            Cfg.modelSpeedDetailed = it
+            toast(if (it) "On: restart the app (or reload the models) to apply" else "Off: applies when the models next load")
+        }
+        btn("Run the speed test (both models, same questions every time)") {
+            com.example.mlbbresearch.ai.ModelSpeed.runTest { msg -> runOnUiThread { toast(msg.take(150)) } }
+        }
+        btn("Export the speed data (CSV)") {
+            Thread {
+                val msg = try {
+                    val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
+                    com.example.mlbbresearch.ai.ModelSpeed.save(sync = true); com.example.mlbbresearch.core.TouchSpeed.save(sync = true)
+                    val out = ArrayList<String>()
+                    for ((name, body) in listOf("model_speed" to com.example.mlbbresearch.ai.ModelSpeed.csv(),
+                                                "screen_to_touch" to com.example.mlbbresearch.core.TouchSpeed.csv())) {
+                        val f = java.io.File(cacheDir, "$name-$stamp.csv")
+                        f.writeText(body)
+                        out.add(com.example.mlbbresearch.core.SessionRecorder.exportFile(this, f, "text/csv"))
+                        f.delete()
+                    }
+                    out.joinToString("; ")
+                } catch (e: Exception) { "Export failed: ${e.message}" }
+                runOnUiThread { toast(msg.take(200)) }
+            }.start()
+        }
+        btn("Clear the speed data") {
+            AlertDialog.Builder(this).setTitle("Delete the recorded model speed and screen-to-touch data?")
+                .setPositiveButton("Delete") { _, _ ->
+                    com.example.mlbbresearch.ai.ModelSpeed.clear(); com.example.mlbbresearch.core.TouchSpeed.clear(); toast("Deleted")
+                }
+                .setNegativeButton("Cancel", null).show()
         }
 
         upd {
+            // ---- this phone ----
             ds.sampleAsync(this)
-            ds.last?.let { p ->
-                cpuV.text = "%.0f%%".format(p.appCpuPct); cpuV.setTextColor(level(p.appCpuPct / 100f))
-                cpuBar.set(p.appCpuPct / 100f, level(p.appCpuPct / 100f))
-                cpuNote.text = "of all ${p.cores} cores" + (if (p.coreLoadPct >= 0f) " · cores at %.0f%% of their top speed".format(p.coreLoadPct) else "") +
-                    (if (p.coreGhz.isNotEmpty()) " · " + p.coreGhz.joinToString(" ") { "%.1f".format(it) } + " GHz" else "") +
-                    "\n(the whole phone's CPU use is closed to apps since Android 8)"
-                cpuSpark.set(ds.history(ds.cpuHistory), 50f, c(T.ACCENT))
-                val gl = p.gpuLoadPct
-                gpuV.text = when { gl != null -> "%.0f%%".format(gl); p.gpuMhz != null -> "%.0f MHz".format(p.gpuMhz); else -> "not readable" }
-                gpuV.setTextColor(if (gl != null) level(gl / 100f) else c(T.MUTED))
-                gpuBar.set((gl ?: 0f) / 100f, if (gl != null) level(gl / 100f) else c(T.STROKE))
-                gpuNote.text = (if (gl != null || p.gpuMhz != null) "whole phone (${p.gpuSource})" + (p.gpuMhz?.takeIf { gl != null }?.let { " · %.0f MHz".format(it) } ?: "") else p.gpuSource) +
-                    "\nRuns on: strategic model " + com.example.mlbbresearch.ai.GemmaEngine.backendName.let { if (it == "-") "not loaded" else it } +
-                    ", small model " + com.example.mlbbresearch.ai.TacticalLlmEngine.backendName.let { if (it == "-") "not loaded" else it } + " · detectors and networks: CPU"
-                val usedRam = (p.ramTotalMb - p.ramAvailMb).toFloat() / p.ramTotalMb.coerceAtLeast(1)
-                ramV.text = "%.1f / %.1f GB".format((p.ramTotalMb - p.ramAvailMb) / 1024f, p.ramTotalMb / 1024f); ramV.setTextColor(level(usedRam))
-                ramBar.set(usedRam, level(usedRam))
-                ramNote.text = "this app: ${p.appRamMb} MB (Java ${p.appJavaMb} MB, native ${p.appNativeMb} MB + models / screen buffers) · free %.1f GB".format(p.ramAvailMb / 1024f) +
-                    (if (p.lowMemory) " · LOW MEMORY: Android may close apps" else "")
-                ramSpark.set(ds.history(ds.ramHistory), (p.ramTotalMb / 4f), c(T.GOLD))
-                val usedRom = (p.romTotalGb - p.romFreeGb) / p.romTotalGb.coerceAtLeast(0.1f)
-                romV.text = "%.0f / %.0f GB".format(p.romTotalGb - p.romFreeGb, p.romTotalGb); romV.setTextColor(level(usedRom))
-                romBar.set(usedRom, level(usedRom))
-                romNote.text = "free %.1f GB · this app's files (models, icons, cache): ${p.appFilesMb} MB".format(p.romFreeGb)
-            } ?: run { cpuV.text = "…"; gpuV.text = "…"; ramV.text = "…"; romV.text = "…" }
+            val p = ds.last
+            if (p != null) {
+                val usedF = (p.ramTotalMb - p.ramAvailMb).toFloat() / p.ramTotalMb.coerceAtLeast(1)
+                ring.set(usedF, "${(usedF * 100).toInt()}%", "In use", c(if (usedF < 0.85f) "#AFC4FF" else T.RED))
+                memBig.text = gb(p.ramAvailMb)
+                memTot.text = gb(p.ramTotalMb) + " total" + if (p.lowMemory) " · LOW MEMORY" else ""
+                memSpark.set(ds.history(ds.availHistory), 0f, c("#AFC4FF"))
+                memUnused.text = di.unusedRamMb()?.let { gb(it) } ?: "Not reported"
+                memApp.text = gb(p.appRamMb)
+                val romUsed = (p.romTotalGb - p.romFreeGb) / p.romTotalGb.coerceAtLeast(0.1f)
+                romBig.text = "%.1f GB available".format(p.romFreeGb)
+                romBar.set(romUsed, level(romUsed))
+                romTotal.text = "%.1f GB".format(p.romTotalGb)
+                romApp.text = gb(p.appFilesMb)
+                cpuCores.text = "${p.cores}"
+                cpuOnline.text = di.onlineCores()?.let { "$it / ${p.cores}" } ?: "Not reported"
+                cpuApp.text = "%.1f%%".format(p.appCpuPct)
+                cpuSpark.set(ds.history(ds.cpuHistory), 0f, c(T.ACCENT))
+                tiles.forEachIndexed { i, t ->
+                    val g = p.coreGhz.getOrNull(i) ?: -1f
+                    val mx = di.coreMaxGhz(i)
+                    t.ghz.text = if (g < 0f) "offline" else "%.2f GHz".format(g)
+                    t.max.text = mx?.let { "Max %.2f GHz".format(it) } ?: "Max not reported"
+                    t.bar.set(if (g > 0f && mx != null && mx > 0f) g / mx else 0f, c("#AFC4FF"))
+                }
+                gpuLoad.text = p.gpuLoadPct?.let { "%.0f%%".format(it) + (p.gpuMhz?.let { m -> " · %.0f MHz".format(m) } ?: "") } ?: "Not readable"
+            }
+            di.gpu.let { g ->
+                gpuName.text = g?.first ?: "reading..."
+                gpuMaker.text = g?.second ?: "-"
+                gpuGl.text = g?.third ?: ""
+            }
+            gpuUse.text = "Strategist " + com.example.mlbbresearch.ai.GemmaEngine.backendName.let { if (it == "-") "not loaded" else it } +
+                " · small model " + com.example.mlbbresearch.ai.TacticalLlmEngine.backendName.let { if (it == "-") "not loaded" else it }
+            val acc = di.accelerators
+            if (acc != null && acc != npuShown) {
+                npuShown = acc
+                npuList.removeAllViews()
+                if (acc.isEmpty()) npuList.addView(TextView(this).apply { text = "None visible to apps on this phone"; textSize = 15f; setTextColor(c(T.TEXT)); setPadding(0, dp(8), 0, dp(4)) })
+                for (a in acc) {
+                    val service = a.startsWith("service: ")
+                    npuList.addView(TextView(this).apply { text = a.removePrefix("service: "); textSize = if (service) 14f else 18f; setTextColor(Color.WHITE); setPadding(0, dp(10), 0, 0) })
+                    npuList.addView(TextView(this).apply { text = if (service) "Neural-network service" else "Accelerator driver"; textSize = 13f; setTextColor(c(T.MUTED)) })
+                }
+            }
+            val pw = di.power(this)
+            powThermal.text = pw.thermal
+            powHead.text = pw.headroom?.let { "${(it * 100).toInt()}% of the throttling point" } ?: "Not reported"
+            powHeadBar.set(pw.headroom ?: 0f, level(pw.headroom ?: 0f))
+            powTemp.text = pw.batteryC?.let { "%.1f °C".format(it) } ?: "Not reported"
+            powLevel.text = (pw.batteryPct?.let { "$it%" } ?: "Not reported") + if (pw.charging == true) " · charging" else ""
+            powLevelBar.set((pw.batteryPct ?: 0) / 100f, c(when { (pw.batteryPct ?: 100) > 30 -> T.GREEN; (pw.batteryPct ?: 0) > 15 -> T.GOLD; else -> T.RED }))
+            val gs = GemmaEngine.state
+            llmBig.text = if (gs.startsWith("ready", true)) "Loaded" else gs.replaceFirstChar { it.uppercase() }
+            llmSub.text = "Strategist: ${ModelManager.strategicName()} · $gs"
+            llmTac.text = if (Cfg.tacticalLlmOn) "${ModelManager.tacticalName()} · ${TacticalLlmEngine.state}" else "Off"
+            llmLast.text = if (GemmaEngine.calls > 0) "%.1f s (${GemmaEngine.calls} answers)".format(GemmaEngine.lastLatencyMs / 1000f) else "-"
+
+            // ---- the AI's speed ----
             log.tick()
             val t = total.last()
             big.text = if (total.count == 0 || t <= 0f) "–" else fmt(t, "ms")
@@ -2084,17 +2285,23 @@ class MainActivity : Activity() {
             parts.forEachIndexed { i, sr -> legendRows[i].text = fmt(sr.last(), sr.unit) }
             totalSpark.set(total.history(), total.budget, c(total.color))
             totalNote.text = if (total.count == 0) "No samples yet: start the AI in a match." else
-                "5 min: average ${fmt(total.avg(), "ms")}, worst ${fmt(total.max(), "ms")}, target under ${fmt(total.budget, "ms")}"
+                "5 min: average ${fmt(total.avg(), "ms")}, worst ${fmt(total.max(), "ms")}, target under ${fmt(total.budget, "ms")} (dashed line)"
             for (r in rows) {
                 val v = r.sr.last()
                 val used = r.sr.history().any { it > 0f }
                 r.value.text = if (!used) "not used" else fmt(v, r.sr.unit)
                 r.value.setTextColor(if (!used) c(T.MUTED) else gradeColor(r.sr.grade()))
-                r.bar.set(if (r.sr.higherIsBetter) v / r.sr.budget else v / r.sr.budget, if (!used) c(T.STROKE) else gradeColor(r.sr.grade()))
-                r.spark.set(r.sr.history(), r.sr.budget, c(r.sr.color))
+                r.bar.set(v / r.sr.budget, if (!used) c(T.STROKE) else gradeColor(r.sr.grade()))
+                r.spark.set(if (used) r.sr.history() else FloatArray(0), r.sr.budget, c(r.sr.color))
                 r.note.text = if (!used) "No runs yet (loaded and used only when on)." else
                     "average ${fmt(r.sr.avg(), r.sr.unit)} · " + (if (r.sr.higherIsBetter) "target ${fmt(r.sr.budget, r.sr.unit)}+" else "target under ${fmt(r.sr.budget, r.sr.unit)}")
             }
+
+            // ---- recorder ----
+            mText.text = com.example.mlbbresearch.ai.ModelSpeed.text()
+            tText.text = com.example.mlbbresearch.core.TouchSpeed.text()
+            val ms = com.example.mlbbresearch.ai.ModelSpeed
+            testInfo.text = "Speed test: " + ms.testStatus + (if (ms.testRunning) " (running)" else "")
         }
     }
 
@@ -2235,7 +2442,7 @@ class MainActivity : Activity() {
         upd {
             ctChip.text = if (ct.ready()) "key set" else "no key"
             ctChip.setTextColor(c(if (ct.ready()) T.GREEN else T.RED))
-            ctNote.text = if (ct.ready()) "Tap a training: inputs upload from Download/MLBB-Research, it trains on Kaggle, results download back and load by themselves."
+            ctNote.text = if (ct.ready()) "Tap a training: inputs upload from Download/Sphynx-Auto-Pilot-Storage, it trains on Kaggle, results download back and load by themselves."
                 else "Put kaggle.json in the Sphynx-Auto-Pilot-Storage folder (kaggle.com > Settings > API > Create New Token), then Scan the folder on the Model page."
         }
         for (j in com.example.mlbbresearch.learning.CloudTrain.Job.values()) {

@@ -14,12 +14,13 @@ import java.io.InputStream
 //
 // Folder: /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage (core.Storage). With "All files access" the app
 // reads it directly, nothing to choose. Without it you choose the folder once on the Model page
-// (Android then lets the app read it for good). Also read: the app's own files in Download/MLBB-Research
-// (exports and Kaggle results saved without the permission), and the app's own folder
-// Android/data/com.sphynx.autopilot/files/Sphynx-Auto-Pilot-Storage (no choosing needed, e.g. when
-// copying from a computer) plus the older .../files/MLBB-Research.
-// Before v37.19 the chosen folder was Download/MLBB-Research: a phone that still has it chosen keeps
-// working, and the Model page asks to switch.
+// (Android then lets the app read it for good). Also read: the app's own files in
+// Download/Sphynx-Auto-Pilot-Storage (exports and Kaggle results saved without the permission), and the
+// app's own folder Android/data/com.sphynx.autopilot/files/Sphynx-Auto-Pilot-Storage (no choosing needed,
+// e.g. when copying from a computer).
+// THE OLD MLBB-Research FOLDERS ARE IGNORED (owner, 2026-11-11), even for reading: Download/MLBB-Research,
+// .../files/MLBB-Research, and Download/MLBB-Research chosen as the folder by an older version (the Model
+// page then asks to choose the new folder).
 //
 // What it looks for (names are not case sensitive):
 //   *.litertlm (big: Gemma 4 E2B / 3n E2B)  strategic model   -> copied in, loaded (Gemma 4 preferred)
@@ -43,23 +44,21 @@ object AutoFolder {
 
     const val FOLDER = "Sphynx-Auto-Pilot-Storage"
     const val FOLDER_PATH = com.example.mlbbresearch.core.Storage.REL
-    const val LEGACY_FOLDER = "MLBB-Research"         // the import folder before v37.19
+    const val LEGACY_FOLDER = "MLBB-Research"         // the import folder before v37.19: ignored now
     @Volatile var status = "folder not chosen yet"
         private set
     @Volatile var busy = false
         private set
 
-    val treeUri: Uri? get() = Cfg.raw("auto_folder_uri")?.let { Uri.parse(it) }
+    // the chosen folder as stored; treeUri is it unless it is the old MLBB-Research folder (ignored)
+    private val storedTree: Uri? get() = Cfg.raw("auto_folder_uri")?.let { Uri.parse(it) }
+    val treeUri: Uri? get() = storedTree?.takeIf { !legacyChosen() }
 
     fun localDir(ctx: Context): File? =
         ctx.applicationContext.getExternalFilesDir(null)?.let { File(it, FOLDER).apply { mkdirs() } }
 
-    // the app's own folder under its pre-v37.19 name (read only, never created)
-    private fun legacyLocalDir(ctx: Context): File? =
-        ctx.applicationContext.getExternalFilesDir(null)?.let { File(it, LEGACY_FOLDER) }?.takeIf { it.isDirectory }
-
     // the chosen folder as a path, e.g. "CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage" or "Download/MLBB-Research" (null = none)
-    fun chosenPath(): String? = treeUri?.let { u ->
+    fun chosenPath(): String? = storedTree?.let { u ->
         try { DocumentsContract.getTreeDocumentId(u).substringAfter(':') } catch (e: Exception) { null }
     }
 
@@ -69,8 +68,8 @@ object AutoFolder {
 
     val folderHint: String get() = when {
         com.example.mlbbresearch.core.Storage.allFilesAccess -> "Reading /$FOLDER_PATH directly (all files access is on)"
+        legacyChosen() -> "The old Download/$LEGACY_FOLDER folder is no longer read: allow all files access, or Change the folder > pick /$FOLDER_PATH"
         treeUri == null -> "Allow all files access, or choose the /$FOLDER_PATH folder (Choose the folder)"
-        legacyChosen() -> "Still reading the old Download/$LEGACY_FOLDER folder: allow all files access, or Change the folder > pick /$FOLDER_PATH"
         else -> "Reading /${chosenPath() ?: FOLDER_PATH}"
     }
 
@@ -86,8 +85,8 @@ object AutoFolder {
             ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         } catch (e: Exception) { Diag.error("Folder permission", e) }
         Cfg.setRaw("auto_folder_uri", uri.toString())
-        if (legacyChosen()) Diag.info("Import folder: the old Download/$LEGACY_FOLDER was chosen; /$FOLDER_PATH is the new folder")
-        scan(ctx) { msg -> done(if (legacyChosen()) "$msg - note: this is the old folder, /$FOLDER_PATH is the new one" else msg) }
+        if (legacyChosen()) Diag.info("Import folder: the old Download/$LEGACY_FOLDER was chosen - it is not read; choose /$FOLDER_PATH")
+        scan(ctx) { msg -> done(if (legacyChosen()) "The old $LEGACY_FOLDER folder is not read any more: choose /$FOLDER_PATH" else msg) }
     }
 
     class Entry(val name: String, val size: Long, val modified: Long, val open: () -> InputStream?)
@@ -115,17 +114,14 @@ object AutoFolder {
                 status = "cannot read the chosen folder: choose it again"
             }
         }
-        // the storage folder itself when all files access is on, then the app's own folders; with all files
-        // access also Download/MLBB-Research read as plain files, so files left there by the old app id
-        // (com.example.mlbbresearch: exports, Kaggle results, backups) are found by this one too
-        val oldDownloads = if (com.example.mlbbresearch.core.Storage.allFilesAccess) try {
-            java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), LEGACY_FOLDER).takeIf { it.isDirectory }
-        } catch (e: Exception) { null } else null
-        for (dir in listOfNotNull(com.example.mlbbresearch.core.Storage.dir(), localDir(ctx), legacyLocalDir(ctx), oldDownloads))
+        // the storage folder itself when all files access is on, then the app's own folder (the old
+        // MLBB-Research folders are not read - owner, 2026-11-11)
+        for (dir in listOfNotNull(com.example.mlbbresearch.core.Storage.dir(), localDir(ctx)))
             dir.listFiles()?.forEach { f -> if (f.isFile && out.none { it.name == f.name }) out.add(Entry(f.name, f.length(), f.lastModified()) { f.inputStream() }) }
-        // the app's own files saved in Download/MLBB-Research without the permission (exports, Kaggle results)
+        // the app's own files saved in Download without the permission (exports, Kaggle results): the app's
+        // Download/Sphynx-Auto-Pilot-Storage
         try {
-            val rel = android.os.Environment.DIRECTORY_DOWNLOADS + "/" + LEGACY_FOLDER + "/"
+            val rel = com.example.mlbbresearch.core.Storage.downloadsRel() + "/"
             cr.query(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                 arrayOf(android.provider.MediaStore.Downloads._ID, android.provider.MediaStore.Downloads.DISPLAY_NAME,
                     android.provider.MediaStore.Downloads.SIZE, android.provider.MediaStore.Downloads.DATE_MODIFIED),

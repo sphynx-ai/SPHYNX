@@ -35,15 +35,17 @@ class Monster(
 object JungleDb {
 
     val LORD = Monster("lord", "Lord", listOf("Elemental Lord"), MonsterKind.BOSS,
-        "a human-like giant holding a trident, in the Lord pit",
+        "a human-like giant holding a trident, in the Lord pit (by the Gold lane; from 8:00 - 9:00 it can take the Turtle's pit)",
         "the Lord comes back to life on your side and charges down the lane with the fewest / weakest turrets, " +
             "strengthens your minion waves in all three lanes, and charges the first turret it meets (true damage, " +
-            "disables it for a few seconds). Gold and EXP for the team",
-        firstSec = 480)
+            "disables it for a few seconds). Gold and EXP for the team. 5v5 (wiki; in solo practice both are up from the start): first 2 min after the last Turtle " +
+            "(or at 8:00 - 9:00 in the Turtle's place), back 180 s after its kill (120 s from 18:00)",
+        firstSec = 480, respawnSec = 180)
     val TURTLE = Monster("turtle", "Turtle", listOf("Dragon Turtle"), MonsterKind.BOSS,
         "a giant turtle, in the Turtle pit (next to the EXP lane)",
         "the killer gets the Turtle Buff (a regenerating shield that adds Physical Attack and Magic Power); " +
-            "allies get bonus gold and a one-time shield", firstSec = 120)
+            "allies get bonus gold and a one-time shield. 5v5 (wiki; in solo practice both are up from the start): 2:00, back 120 s after its kill, none after one " +
+            "slain after 6:00, turns into the Lord at 8:00 - 9:00", firstSec = 120, respawnSec = 120)
     val MOLTEN_FIEND = Monster("molten_fiend", "Molten Fiend", listOf("orange buff", "red buff", "Fiery Hound"), MonsterKind.BUFF,
         "a big fire monster with orange flames, by a red cave",
         "the Orange Buff: attacks on enemy heroes deal extra true damage and slow them (every 3 s); " +
@@ -109,18 +111,32 @@ object JungleDb {
         else -> MonsterKind.CAMP
     }
 
-    // Lord or Turtle: the pit you stand next to on the minimap (else the pit icon, else the time)
-    private val LORD_PIT = 0.31f to 0.26f
-    private val TURTLE_PIT = 0.67f to 0.68f
-    fun boss(mini: MinimapInfo?, matchSec: Int): Monster {
+    // Lord or Turtle - by the KIND OF MATCH (owner, 2026-11-11; MatchKind):
+    //  - SOLO PRACTICE (the owner's calibration mode): both are up from the start and the timers do not apply -
+    //    the pit you stand next to decides (which pit is which follows MapSide);
+    //  - 5v5 (the real data; the wiki's timers are right there): the Turtle spawns at 2:00 in the pit by the
+    //    EXP lane, back 120 s after its kill, none after one slain after 6:00; a Turtle not slain by 8:00 turns
+    //    into the Lord (at the latest 9:00) - so from 9:00 there is no Turtle and the Lord can stand in its pit.
+    //    The Lord comes 2 min after the last Turtle (or replaces it at 8:00 - 9:00), in the pit by the Gold lane;
+    //    back 180 s after its kill (120 s from 18:00);
+    //  - not known yet: as 5v5, except that both pit icons on the minimap mean both are up (practice).
+    // The minimap's pit icons decide first when only ONE boss shows.
+    const val NO_TURTLE_SEC = 540
+    fun boss(mini: MinimapInfo?, matchSec: Int, kind: MatchKind.Kind = MatchKind.current()): Monster {
+        val solo = kind == MatchKind.Kind.SOLO
+        if (!solo) {
+            if (mini?.lordIcon != null && mini.turtleIcon == null) return LORD
+            if (mini?.turtleIcon != null && mini.lordIcon == null) return TURTLE
+            val bothShown = mini?.lordIcon != null && mini.turtleIcon != null
+            if (matchSec >= NO_TURTLE_SEC && (kind == MatchKind.Kind.FIVE_V_FIVE || !bothShown)) return LORD
+        }
         val me = mini?.self
+        val LORD_PIT = MapSide.lordPit(); val TURTLE_PIT = MapSide.turtlePit()
         if (me != null) {
             val dl = kotlin.math.hypot(me.first - LORD_PIT.first, me.second - LORD_PIT.second)
             val dt = kotlin.math.hypot(me.first - TURTLE_PIT.first, me.second - TURTLE_PIT.second)
-            if (kotlin.math.min(dl, dt) < 0.25f) return if (dl < dt) LORD else TURTLE
+            if (kotlin.math.min(dl, dt) < 0.25f || solo) return if (dl < dt) LORD else TURTLE
         }
-        if (mini?.lordIcon != null && mini.turtleIcon == null) return LORD
-        if (mini?.turtleIcon != null && mini.lordIcon == null) return TURTLE
         return if (matchSec >= 480) LORD else TURTLE
     }
 

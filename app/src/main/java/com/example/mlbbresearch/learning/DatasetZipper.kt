@@ -19,8 +19,8 @@ import java.util.zip.ZipOutputStream
 // zip holds them, the phone keeps its space), and that collector's switch turns OFF. Turn it on
 // again (Learn page) and it collects the next batch. "Zip now" on the Learn page zips early.
 // A zip holds the folders the notebooks read: images/, labels/, classes.txt.
-//   Download/MLBB-Research/mlbb-minimap-dataset-<date>.zip   (train_mlbb_detector.ipynb)
-//   Download/MLBB-Research/mlbb-screen-dataset-<date>.zip    (train_screen_detector.ipynb)
+//   Download/Sphynx-Auto-Pilot-Storage/mlbb-minimap-dataset-<date>.zip   (train_mlbb_detector.ipynb)
+//   Download/Sphynx-Auto-Pilot-Storage/mlbb-screen-dataset-<date>.zip    (train_screen_detector.ipynb)
 object DatasetZipper {
 
     enum class Kind(val folder: String, val prefix: String, val zipName: String, val key: String, val capacity: Int, val label: String) {
@@ -51,7 +51,7 @@ object DatasetZipper {
     private class Item(val name: String, val rel: String, val open: () -> java.io.InputStream?, val delete: () -> Boolean)
 
     // the app's own files: in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/<folder>/... (all files access)
-    // and in Download/MLBB-Research/<folder>/... (saved without it, or by earlier versions)
+    // and in Download/Sphynx-Auto-Pilot-Storage/<folder>/... (saved without it)
     private fun list(c: Context, kind: Kind): List<Item> {
         val out = ArrayList<Item>()
         com.example.mlbbresearch.core.Storage.dir(kind.folder)?.let { top ->
@@ -60,7 +60,7 @@ object DatasetZipper {
                 out.add(Item(f.name, rel, { f.inputStream() }, { f.delete() }))
             }
         }
-        val base = Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research/" + kind.folder + "/"
+        val base = com.example.mlbbresearch.core.Storage.downloadsRel(kind.folder) + "/"
         c.contentResolver.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
             arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME, MediaStore.Downloads.RELATIVE_PATH),
             MediaStore.Downloads.RELATIVE_PATH + " LIKE ?", arrayOf("$base%"), null)?.use { cur ->
@@ -108,7 +108,7 @@ object DatasetZipper {
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, name)
                 put(MediaStore.Downloads.MIME_TYPE, "application/zip")
-                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research")
+                put(MediaStore.Downloads.RELATIVE_PATH, com.example.mlbbresearch.core.Storage.downloadsRel())
             }
             val uri = c.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
                 ?: throw IllegalStateException("could not create $name")

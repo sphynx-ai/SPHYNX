@@ -89,7 +89,8 @@ object StrategicAdvisor {
         // 1a. THE LINE-UP: the loading screen (top row = my team, me first on the left; bottom row =
         // the enemies) and the scoreboard (my team left, me on top; enemies right) show all 10 heroes
         // and their battle spells. Read once on the loading screen, checked again on the scoreboard.
-        val lineupDue = (s.phase == Phase.LOADING && GameStateTracker.lineupReadAt == 0L) ||
+        val lineupDue = (s.phase == Phase.LOADING && (GameStateTracker.lineupReadAt == 0L ||
+                com.example.mlbbresearch.research.ResearchMode.loadingCheckWanted())) ||
             (s.phase == Phase.SCOREBOARD && (GameStateTracker.enemySpells.size < 5 || GameStateTracker.enemyTeam.size < 5 || GameStateTracker.scoreboardHero == null) &&
                 now - GameStateTracker.lineupReadAt > 60_000)
         // (the loading screen: tried again 2 s after a read that did not find your name - your word)
@@ -274,6 +275,9 @@ object StrategicAdvisor {
         val prompt = com.example.mlbbresearch.game.PlayerName.lineupPrompt(phase == Phase.LOADING)
         val reply = ask("line-up (${phase.label})", prompt, img, 0.0) ?: return
         val lu = com.example.mlbbresearch.game.PlayerName.parseLineup(reply, phase == Phase.LOADING, green = GameStateTracker.loadingGreen)
+        // the practice gate: are the 9 others "Computer"? (verifies the match before it starts)
+        if (phase == Phase.LOADING) com.example.mlbbresearch.research.ResearchMode.observeLoading(reply,
+            GameStateTracker.loadingGreen, com.example.mlbbresearch.game.PlayerName.get())
         if (lu == null) {
             // (the cards' places are random: without your name on the screen nothing is decided)
             Diag.info("Line-up (${phase.label}): " + (if (com.example.mlbbresearch.game.PlayerName.get().isBlank())
@@ -437,7 +441,7 @@ object StrategicAdvisor {
     private suspend fun ask(what: String, prompt: String, img: android.graphics.Bitmap?, temp: Double = 0.2): String? {
         busyWith = what
         return try {
-            GemmaEngine.ask(prompt, img, temp)
+            GemmaEngine.ask(prompt, img, temp, purpose = what)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (t: Throwable) {
