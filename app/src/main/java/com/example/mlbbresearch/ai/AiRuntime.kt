@@ -310,6 +310,7 @@ object AiRuntime {
                     // no freezing: your HP bar can vanish for a moment (effects, animations); keep the
                     // last movement going for up to 0.6 s instead of stopping
                     val tNow = System.currentTimeMillis()
+                    benchIntent = d.intent; benchIdle = d.intent == Intent.IDLE
                     // NO IDLE in a match: when the engine has nothing (your bar hidden for a moment),
                     // the hero keeps walking the last way for up to 3 s, then heads for the enemy base
                     if (d.intent == Intent.IDLE) {
@@ -323,6 +324,7 @@ object AiRuntime {
                     // think ahead: the next task is worked out while this one runs
                     TacticalEngine.planAhead(s, d, profile)
                     com.example.mlbbresearch.core.SessionRecorder.frame(s, d)
+                    benchMoving = d.moveX != 0f || d.moveY != 0f
                     ActionExecutor.execute(d)
                     com.example.mlbbresearch.core.Speed.decided((tDecide - s.ts - com.example.mlbbresearch.core.Speed.vision.toLong()).coerceAtLeast(0L), System.currentTimeMillis() - tDecide)
                     ExperienceRecorder.record(s, d, plan.plan, plan.aggression + bias)
@@ -357,6 +359,19 @@ object AiRuntime {
                     if (Cfg.autonomous && drafterOn && !playerBuys) ActionExecutor.maybeQuickBuy(s, blind = true)
                 }
                 if (drafterOn && !Cfg.ranked && Cfg.autonomous && !stale) standardSelect(s)
+                // PRACTICE BENCHMARK: measures the Player in verified practice (reads only, never acts)
+                if (playerOn && !stale && s.phase.inMatch) {
+                    val playing = inGame && gate == com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY
+                    val nowB = System.currentTimeMillis()
+                    val enemiesNear = s.enemiesWithin(0.9f).size
+                    val alliesNear = 1 + s.allies.count { it.hero && s.distToSelf(it.x, it.y) <= 0.9f }
+                    com.example.mlbbresearch.research.ResearchMode.benchTick(com.example.mlbbresearch.game.GameStateTracker.matchId, nowB,
+                        gate ?: com.example.mlbbresearch.research.ResearchMode.playerVerdict(nowB), inGame, playing,
+                        if (playing) benchIntent?.name else null, playing && benchIdle,
+                        playing && benchMoving && nowB - com.example.mlbbresearch.game.GameStateTracker.lastMotionAt > 1000,
+                        s.matchSec, s.level, com.example.mlbbresearch.game.GameStateTracker.lastDeathAt, enemiesNear > alliesNear)
+                    if (!playing) { benchIntent = null; benchIdle = false; benchMoving = false }
+                }
                 PerformanceEvaluator.evaluateDue()
                 if (!stale) Brain.evaluateDue(s)
             } catch (t: Throwable) {
@@ -450,6 +465,10 @@ object AiRuntime {
         }
     }
     @Volatile private var playerHeld = false
+    // what the play loop decided this tick, for the practice benchmark
+    @Volatile private var benchIntent: Intent? = null
+    @Volatile private var benchIdle = false
+    @Volatile private var benchMoving = false
     @Volatile private var adviceDecision: TacticalDecision? = null
     @Volatile private var adviceDecisionAt = 0L
 

@@ -112,6 +112,44 @@ object ResearchMode {
 
     fun abText(): String { loadAb(); return ab.text() }
 
+    // PRACTICE BENCHMARK: one scorecard per verified practice match the Player played (PracticeBenchmark).
+    // Runs whenever Player mode is on, research mode or not. Any error stops it for the run; it never affects play.
+    val benchmark = PracticeBenchmark()
+    @Volatile private var benchLoaded = false
+    @Volatile private var benchFailed = false
+
+    private fun benchFile(): java.io.File? = com.example.mlbbresearch.vision.HeroVerifier.appContext()?.let {
+        java.io.File(java.io.File(it.filesDir, "research").apply { mkdirs() }, "practice_benchmark.json") }
+
+    private fun loadBench() {
+        if (benchLoaded) return
+        benchLoaded = true
+        try { benchFile()?.takeIf { it.exists() }?.let { benchmark.load(it.readText()) } } catch (e: Exception) { Diag.error("Benchmark not loaded", e) }
+    }
+
+    fun benchTick(matchId: Long, nowMs: Long, verdict: PlayerGate.Verdict?, inGame: Boolean, playing: Boolean, intent: String?,
+                  idle: Boolean, stuck: Boolean, matchSec: Int, level: Int, deathAt: Long, outnumbered: Boolean) {
+        if (benchFailed) return
+        try { benchmark.tick(matchId, nowMs, verdict, inGame, playing, intent, idle, stuck, matchSec, level, deathAt, outnumbered) }
+        catch (t: Throwable) { benchFailed = true; Diag.error("Benchmark stopped", t) }
+    }
+
+    // a match ended (GameStateTracker.logMatch)
+    fun onBenchmarkEnd(hero: String?, lane: String, k: Int, d: Int, a: Int, level: Int, seconds: Int, win: Boolean?) {
+        if (benchFailed) return
+        try {
+            loadBench()
+            val row = benchmark.matchEnd(hero, lane, k, d, a, level, seconds, win, System.currentTimeMillis()) ?: return
+            benchFile()?.writeText(benchmark.toJson())
+            Diag.info("Practice scorecard saved: ${row.hero}, ${if (row.win == true) "win" else if (row.win == false) "loss" else "result unknown"}, " +
+                "${row.k}/${row.d}/${row.a}, level ${row.level}")
+        } catch (t: Throwable) { Diag.error("Benchmark", t) }
+    }
+
+    fun benchText(): String { loadBench(); return "Now: " + benchmark.live() + "\n" + benchmark.text() }
+    fun benchCsv(): String { loadBench(); return benchmark.csv() }
+    fun clearBench() { loadBench(); benchmark.clear(); try { benchFile()?.writeText(benchmark.toJson()) } catch (e: Exception) {} }
+
     fun start() { on = true; experiment.reset(); experimentFailed = false; recordFailed = false; loadMoments(); Diag.info("Research mode on (practice-only gate; R3 arbiter experiment in verified practice only)") }
     fun stop() { on = false; saveMoments() }
 
