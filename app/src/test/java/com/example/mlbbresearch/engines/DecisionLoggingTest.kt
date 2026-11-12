@@ -17,6 +17,7 @@ class DecisionLoggingTest {
     @Before fun clean() { TestSupport.freshCfg(); DecisionLogging.log.clear() }
 
     @Test fun recordsAtMostTwiceASecondAndOnlyWhenSomethingIsPlayed() {
+        Cfg.decisionLogOn = true                                                      // (off by default on a new install since #72)
         DecisionLogging.observe(state(), FightOption.FARM, null, 10_000L)            // nothing played: no record
         DecisionLogging.observe(state(), FightOption.FARM, FightOption.FARM, 10_000L)
         DecisionLogging.observe(state(), FightOption.FARM, FightOption.FARM, 10_200L) // too soon
