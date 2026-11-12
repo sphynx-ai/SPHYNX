@@ -15,6 +15,7 @@ local.properties
 
 # Code on the Go temporary editor files
 .cg/editor/
+.cg/gradle-sync/
 
 # OS-generated files
 .DS_Store
