@@ -2329,7 +2329,7 @@ class MainActivity : Activity() {
             line(when { !com.example.mlbbresearch.ai.GroqClient.anyKey -> 0; com.example.mlbbresearch.ai.GroqClient.limited -> 1; else -> 2 },
                 "Online AI: " + (if (!com.example.mlbbresearch.ai.GroqClient.anyKey) "no key (groq_key.txt, gemini_key.txt, cerebras_key.txt)" else groqIndicator().second))
             line(if (com.example.mlbbresearch.learning.CloudTrain.ready()) 2 else 0, "Kaggle key: " +
-                (if (com.example.mlbbresearch.learning.CloudTrain.ready()) "set (${Cfg.kaggleUser})" else "not found (kaggle.json)"))
+                (if (com.example.mlbbresearch.learning.CloudTrain.ready()) "set" else "not found (kaggle.json)"))
             sb.append("\n\nMinimap: " + com.example.mlbbresearch.game.MapIntel.status)
             st.text = sb
         }

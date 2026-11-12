@@ -217,7 +217,7 @@ object SessionRecorder {
         val o = JSONObject()
         for ((k, v) in all.toSortedMap()) {
             val lk = k.lowercase()
-            if (v == null || listOf("key", "token", "secret", "pass", "uri").any { it in lk }) continue
+            if (v == null || listOf("key", "token", "secret", "pass", "uri", "kaggle").any { it in lk }) continue
             val sv = v.toString()
             if (sv.length > 300) continue
             o.put(k, v)
