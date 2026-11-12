@@ -64,6 +64,7 @@ object SessionRecorder {
     @Volatile private var ctxRef: Context? = null
     @Volatile var autoStarted = false; private set
     fun init(c: Context) { ctxRef = c.applicationContext }
+    fun currentName(): String = name
     fun matchStarted() {
         val c = ctxRef ?: return
         if (!Cfg.autoRecord || on) return
@@ -124,6 +125,8 @@ object SessionRecorder {
             lastExport = msg
             Diag.info(msg)
             done(msg)
+            // the debug data goes to GitHub by itself (Debug data page switch; only with a token)
+            try { if (Cfg.autoUpload && GitHubUpload.token(app) != null) GitHubUpload.uploadAll(app) } catch (e: Exception) { }
         }
     }
 

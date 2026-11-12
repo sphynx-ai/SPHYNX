@@ -23,6 +23,14 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.NEW, "Debug data page: every export in one place, uploaded to GitHub by a button",
+            "A new Debug data page holds everything needed for debugging: the session recorder (moved from Logs), the speed / " +
+                "scorecard exports (moved from Performance and Practice), a full-log export, and \"Upload the debug data to GitHub " +
+                "now\" - it commits what is in the recordings folder to the branch recordings-for-debugging (all non-video files " +
+                "in one commit, each video in its own), and by itself after each recording if you leave that switch on. Put a " +
+                "fine-grained GitHub token (this repository only, Contents: read and write) in github_token.txt in the app's " +
+                "folder. The training data for the notebooks is not part of it.",
+            pr = 64, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.NEW, "Recordings now carry the debug data",
             "Every recording also saves: clean screenshots at key moments (the gate's readings, the lane side decided, an enemy " +
                 "hero or monster first seen, your HP read as 0%, the pictures Gemma was given), everything the app saw each frame " +
