@@ -848,7 +848,8 @@ object TacticalEngine {
 
         // ---- turtle / lord up on the minimap: rotate there (who goes, and how far, depends on the role) ----
         fun objectiveOnMap(maxDist: Float, needAlly: Boolean): TacticalDecision? {
-            val obj = s.map.objective ?: return null
+            val obj = s.map.objective ?: run { objCommit.done(); return null }
+            if (objCommit.gaveUp(now)) return null
             if (!Cfg.takeObjectives || me == null || threat.isNotEmpty() || hp <= 0.55f || s.level < 4 || s.boss != null) return null
             val dObj = kotlin.math.hypot(obj.first - me.first, obj.second - me.second)
             val alliesThere = s.map.allies.count { kotlin.math.hypot(it.first - obj.first, it.second - obj.second) < 0.2f }
@@ -857,6 +858,7 @@ object TacticalEngine {
             // the Lord: only with 3+ allies already there (BossRule - owner, 2026-11-12)
             if (LaneLogic.objectiveName(s.matchSec) == "lord" && !BossRule.mayHitLord(alliesThere)) return null
             if (dObj < 0.05f) {
+                objCommit.done()                          // arrived: the commitment is over (ObjectiveCommit)
                 // at the pit and no boss bar on screen. Only the Lord shows its HP bar before it is hit:
                 // no Lord bar = it is not in view yet, keep walking into the pit. The Turtle's bar shows
                 // only once someone hits it: start it with a basic attack (the skills follow on its bar).
@@ -869,6 +871,7 @@ object TacticalEngine {
                     "at the Turtle pit: first hit to show its HP bar (it shows only after it is hit)")
             }
             val (mx, my) = com.example.mlbbresearch.vision.WallMap.direction(me, obj) ?: mapDir(me, obj)
+            objCommit.rotating(now)
             return TacticalDecision(Intent.OBJECTIVE, mx, my, emptyList(), -1f, -1f, "-", -1f, -1,
                 "${LaneLogic.objectiveName(s.matchSec)} is up (minimap): rotating there" + if (alliesThere > 0) ", $alliesThere allies there" else "")
         }
@@ -1133,6 +1136,14 @@ object TacticalEngine {
                 com.example.mlbbresearch.game.Job.BASE -> { -> attackBase(s, threat.isEmpty(), hp) }
             }
         }
+        // COMMITTED TO THE OBJECTIVE (ObjectiveCommit - owner, 2026-11-12): the rotation goes first until arrival,
+        // unless in danger; after 45 s without arriving it gives up for 60 s
+        if (objCommit.first(now, threat.isNotEmpty(), hp)) {
+            (bossOnScreen() ?: objectiveOnMap(9f, false))?.let { d ->
+                return hold(now, TacticalDecision(d.intent, d.moveX, d.moveY, d.casts, d.targetX, d.targetY, d.targetLabel, d.targetHp, d.targetId,
+                    d.reason + " (committed: ${(now - objCommit.since) / 1000} s)"))
+            }
+        }
         for (step in order) step()?.let { return hold(now, it) }
 
         // ---- 8. follow Gemma's plan, else walk your lane ----
@@ -1264,6 +1275,7 @@ object TacticalEngine {
     // the monster last fought: its bar at the last 1-3% can flicker out of sight
     private var lastMonX = -1f; private var lastMonY = -1f; private var lastMonHp = 1f; private var lastMonAt = 0L
     private var lastMonSpecies = ""; private var lastMonBoss = false
+    private val objCommit = ObjectiveCommit()
 
     // allies near the Lord (on the screen near it, or on the minimap around you) and whether that is enough
     // (BossRule); boss = null: the Lord is out of view, allies anywhere on the screen count
