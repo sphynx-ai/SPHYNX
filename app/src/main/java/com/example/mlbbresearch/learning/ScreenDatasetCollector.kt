@@ -27,7 +27,7 @@ import java.util.concurrent.Executors
 //     horned_lizard by colour; other small ones as jungle_creep (rename them in Roboflow)
 //   enemy towers (tower_enemy_plated before 5:00)             - the range circle around them
 //   bushes and walls                                           - the bush / wall finder's cells
-// in Download/MLBB-Research/screen_dataset (images/*.jpg, labels/*.txt, classes.txt), YOLO format.
+// in Download/Sphynx-Auto-Pilot-Storage/screen_dataset (images/*.jpg, labels/*.txt, classes.txt), YOLO format.
 // These boxes are the app's guesses: checking / fixing them in Roboflow is what makes the trained
 // detector better than the colour vision (it then also learns units WITHOUT HP bars, e.g. a
 // monster nobody has hit yet, or a hero standing in a bush).
@@ -212,7 +212,7 @@ object ScreenDatasetCollector {
         com.example.mlbbresearch.core.Storage.dir("screen_dataset" + if (sub.isEmpty()) "" else "/$sub")?.let { d ->
             java.io.File(d, name).outputStream().use(body); return
         }
-        val rel = Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research/screen_dataset" + if (sub.isEmpty()) "" else "/$sub"
+        val rel = com.example.mlbbresearch.core.Storage.downloadsRel("screen_dataset") + if (sub.isEmpty()) "" else "/$sub"
         // a file of that name may already be there (classes.txt from an earlier run, a re-install):
         // overwrite it instead of failing on the duplicate name
         val existing = try {

@@ -171,6 +171,22 @@ object WikiLanes {
         has(mid, hero) -> Lane.MID
         else -> null
     }
+    // EVERY lane the wiki lists the hero for, best first (the official lists in lane()'s order, then the
+    // "also played there" lists) - used for the hero's primary / secondary lane and flex pick (HeroLanes)
+    fun lanes(hero: String?): List<Lane> {
+        if (hero == null) return emptyList()
+        val out = ArrayList<Lane>()
+        lane(hero)?.let { out.add(it) }
+        if (has(gold, hero)) out.add(Lane.GOLD)
+        if (has(exp, hero)) out.add(Lane.EXP)
+        if (has(mid, hero)) out.add(Lane.MID)
+        if (has(roam, hero)) out.add(Lane.ROAM)
+        if (has(jungle, hero)) out.add(Lane.JUNGLE)
+        if (has(expUnofficial, hero)) out.add(Lane.EXP)
+        if (has(jungleUnofficial, hero)) out.add(Lane.JUNGLE)
+        return out.distinct()
+    }
+
     // a roamer who starts fights (tank setters and initiators) / one who protects (utility)
     fun engager(hero: String?) = has(roamSetter + roamInitiator + expUtility + jungleTank, hero)
     fun protector(hero: String?) = has(roamUtility, hero)

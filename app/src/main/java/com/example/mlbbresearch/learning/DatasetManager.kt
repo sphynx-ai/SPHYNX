@@ -9,7 +9,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// Export or delete the learning data. Exports go to Downloads/MLBB-Research as CSV,
+// Export or delete the learning data. Exports go to Download/Sphynx-Auto-Pilot-Storage as CSV,
 // ready for training a policy model later.
 object DatasetManager {
 
@@ -70,12 +70,12 @@ object DatasetManager {
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, name)
                 put(MediaStore.Downloads.MIME_TYPE, "text/csv")
-                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research")
+                put(MediaStore.Downloads.RELATIVE_PATH, com.example.mlbbresearch.core.Storage.downloadsRel())
             }
             val uri = ctx.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
                 ?: throw IllegalStateException("could not create the file")
             ctx.contentResolver.openOutputStream(uri)?.use { it.write(sb.toString().toByteArray()) }
-            "Exported $rows rows to Downloads/MLBB-Research/$name"
+            "Exported $rows rows to ${com.example.mlbbresearch.core.Storage.FALLBACK_REL}/$name"
         }) { msg ->
             if (msg != null) Diag.info(msg)
             done(msg ?: "Export failed (see Logs)")

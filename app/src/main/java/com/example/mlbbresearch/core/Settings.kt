@@ -30,6 +30,8 @@ object Cfg {
 
     // ---- model ----
     var useGpu: Boolean get() = b("gpu", true); set(v) = put("gpu", v)
+    // model speed recorder: LiteRT-LM's detailed figures (tokens per second); takes effect when the models load
+    var modelSpeedDetailed: Boolean get() = b("model_speed_detailed", false); set(v) = put("model_speed_detailed", v)
     // the small tactical language model (second slot): off until you turn it on (Model page)
     var tacticalLlmOn: Boolean get() = b("tactical_llm", false); set(v) = put("tactical_llm", v)
     // the fight-choice network (numeric, from the tactical-network notebook) advises in fights
@@ -110,6 +112,18 @@ object Cfg {
         }
     }
 
+    // the hero's recommended lanes as YOU set them (owner, 2026-11-11), e.g. "exp, jungle" or "exp, jungle, flex";
+    // they come before the online guide and the wiki (game.HeroLanes). null = not set
+    fun manualLanes(hero: String?): String? =
+        if (hero.isNullOrBlank()) null else prefs.getString("manual_lanes_" + normHeroKey(hero), null)?.trim()?.takeIf { it.isNotEmpty() }
+
+    fun setManualLanes(hero: String?, v: String?) {
+        if (hero.isNullOrBlank()) return
+        val k = "manual_lanes_" + normHeroKey(hero)
+        val clean = v?.trim().orEmpty()
+        if (clean.isEmpty()) prefs.edit().remove(k).apply() else put(k, clean)
+    }
+
     fun heroCombo(hero: String): String? = manualCombo(hero)
     fun setHeroCombo(hero: String, v: String?) = setManualCombo(hero, v)
 
@@ -171,7 +185,7 @@ object Cfg {
     fun heroDash(hero: String): String = s("dash_" + hero.lowercase(), "auto")
     fun setHeroDash(hero: String, v: String) = put("dash_" + hero.lowercase(), v)
 
-    // save minimap pictures with pre-drawn boxes to train the detector (Download/MLBB-Research/dataset)
+    // save minimap pictures with pre-drawn boxes to train the detector (Download/Sphynx-Auto-Pilot-Storage/dataset)
     var collectDataset: Boolean get() = b("collect_ds", true); set(v) = put("collect_ds", v)          // minimap pictures
     var collectScreenDataset: Boolean get() = b("collect_sds", true); set(v) = put("collect_sds", v)  // whole-screen pictures
 

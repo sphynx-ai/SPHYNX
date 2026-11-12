@@ -79,6 +79,8 @@ object AiRuntime {
             "player" -> {
                 playerOn = true
                 FrameProcessor.trackMotion = true
+                // ONE SWITCH (owner, 2026-11-10): the Player and research mode are started and stopped together
+                if (!com.example.mlbbresearch.research.ResearchMode.on) com.example.mlbbresearch.research.ResearchMode.start()
                 if (Cfg.playLikeMe) ImitationPolicy.ensureLoaded(GameStateTracker.ownHero())
             }
             "draft" -> drafterOn = true
@@ -116,7 +118,10 @@ object AiRuntime {
 
     fun stop(stage: String) {
         when (stage) {
-            "player" -> { playerOn = false; FrameProcessor.trackMotion = false; ActionExecutor.release() }
+            "player" -> {
+                playerOn = false; FrameProcessor.trackMotion = false; ActionExecutor.release()
+                com.example.mlbbresearch.research.ResearchMode.stop()      // one switch with the Player
+            }
             "draft" -> drafterOn = false
             "build" -> builderOn = false
             "learn" -> { learnOn = false; FrameProcessor.trackPlayer = false }
@@ -157,7 +162,7 @@ object AiRuntime {
             paused = listOfNotNull(
                 if (playerOn) "player" else null, if (drafterOn) "draft" else null,
                 if (builderOn) "build" else null, if (learnOn) "learn" else null,
-                if (com.example.mlbbresearch.research.ResearchMode.on) "research" else null
+                if (com.example.mlbbresearch.research.ResearchMode.on && !playerOn) "research" else null
             )
             for (st in paused) stop(st)
             ActionExecutor.cancelAll()
@@ -199,6 +204,7 @@ object AiRuntime {
                 }
                 val v = FrameProcessor.processNext()
                 com.example.mlbbresearch.core.SpeedLog.tick()
+                com.example.mlbbresearch.core.TouchSpeed.tick()
                 if (v != null) {
                     GameStateTracker.update(v)
                     if (learnOn && v.hint != com.example.mlbbresearch.vision.ScreenHint.LIVE && v.hint != com.example.mlbbresearch.vision.ScreenHint.LIVE_DEAD) DemoRecorder.observe(v, aiPlaying = playerOn, s = GameStateTracker.state)
@@ -263,8 +269,11 @@ object AiRuntime {
                     if (Cfg.coachMode) com.example.mlbbresearch.learning.Coach.tick(s)
                     val plan = StrategicAdvisor.plan
                     val bias = Cfg.learnedBias(hero ?: "unknown")
+                    // SCENERY CALIBRATION (owner, 2026-11-11): while the tour runs the Player does not fight -
+                    // no fight choice, no combos, no skills: it only walks the tour (TacticalEngine.calibrationStep)
+                    val calibrating = com.example.mlbbresearch.game.SceneryMap.roamActive
                     // the learning brain picks how to handle a nearby enemy; the engine plays it
-                    var option = Brain.choose(s)
+                    var option = if (calibrating) null else Brain.choose(s)
                     val brainOption = option
                     // the small tactical model (if on): its advice, once the Kotlin checks allow it
                     TacticalAdvisor.tick(s, profile)
@@ -287,15 +296,16 @@ object AiRuntime {
                     com.example.mlbbresearch.engines.DecisionLogging.observe(s, brainOption, option)
                     // research R4 (verified practice only): records this fight moment for the small-model test
                     com.example.mlbbresearch.research.ResearchMode.recordMoment(s, profile, option)
-                    var d = TacticalEngine.decide(s, profile, plan, bias, option)
+                    var d = if (calibrating) TacticalEngine.calibrationStep(s, profile)
+                        else TacticalEngine.decide(s, profile, plan, bias, option)
                     // fights: play the hero's combo in order instead of pressing everything at once
-                    d = ComboRunner.apply(d, s, profile)
+                    if (!calibrating) d = ComboRunner.apply(d, s, profile)
                     // "Play like me": your style mixed into the AI's decision (it keeps control of the
                     // joystick and skills); the survival rules still come first
                     // the trained tactical network (if loaded) learned your play; without it, the
                     // nearest recorded moments of yours are used
                     // (a network trained for another hero is not used: that hero's recorded moments are)
-                    if (!ComboRunner.running) {
+                    if (!calibrating && !ComboRunner.running) {
                         if (Cfg.policyOn && com.example.mlbbresearch.learning.PolicyNet.usableFor(s.ownHero)) {
                             d = com.example.mlbbresearch.learning.PolicyNet.blend(d, s, profile)
                         } else if (Cfg.playLikeMe) {
@@ -325,7 +335,11 @@ object AiRuntime {
                     TacticalEngine.planAhead(s, d, profile)
                     com.example.mlbbresearch.core.SessionRecorder.frame(s, d)
                     benchMoving = d.moveX != 0f || d.moveY != 0f
+                    // never into the enemy fountain, whatever the mode (owner, 2026-11-11) - applied last
+                    d = FountainGuard.apply(s, d)
                     ActionExecutor.execute(d)
+                    // screen-to-touch recorder: from the start of reading this frame to its touches being queued
+                    com.example.mlbbresearch.core.TouchSpeed.log.frameToDecision(System.currentTimeMillis() - s.ts)
                     com.example.mlbbresearch.core.Speed.decided((tDecide - s.ts - com.example.mlbbresearch.core.Speed.vision.toLong()).coerceAtLeast(0L), System.currentTimeMillis() - tDecide)
                     ExperienceRecorder.record(s, d, plan.plan, plan.aggression + bias)
                     ActionExecutor.maybeUpgrade(s)
@@ -472,85 +486,70 @@ object AiRuntime {
     @Volatile private var adviceDecision: TacticalDecision? = null
     @Volatile private var adviceDecisionAt = 0L
 
+    // what runs, in one line (owner, 2026-11-11): the Player and research mode are ONE switch, "Research
+    // player"; "Learning from you" is named only while coach mode is on
     fun statusLine(): String = when {
         !anyOn() -> "Stopped"
         else -> "Running: " + listOfNotNull(
-            if (playerOn) (if (Cfg.coachMode) "Player (coach)" else "Player") else null,
+            if (playerOn) "Research player" else null,
+            if (!playerOn && com.example.mlbbresearch.research.ResearchMode.on) "Research (practice check)" else null,
             if (drafterOn) (if (Cfg.ranked) "Drafter (ranked)" else "Drafter (standard)") else null,
             if (builderOn) "Builder" else null,
-            if (learnOn) "Learning from you" else null,
-            if (com.example.mlbbresearch.research.ResearchMode.on) "Research (practice gate)" else null
+            if (learnOn && Cfg.coachMode) "Learning from you" else null
         ).joinToString(" + ") + if (Cfg.autonomous && drafterOn && builderOn) " (autonomous${if (Cfg.dryRun) ", dry run" else ""})" else ""
     }
 
+    // THE FLOATING PANEL (owner, 2026-11-11: "optimize what information is shown"): what runs, the practice
+    // check, what the Player does now, the match in one line, then only the sections that are on.
+    // Every line is one row of the panel; long ones are cut at its edge.
     fun panelText(): String {
         val s = GameStateTracker.state
         val sb = StringBuilder()
         sb.append(statusLine()).append('\n')
-        if (com.example.mlbbresearch.research.ResearchMode.on) sb.append(com.example.mlbbresearch.research.ResearchMode.status()).append('\n')
-        if (playerOn) {
-            val g = playerGate
-            if (g == null || g == com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY) sb.append("Player: ").append(g?.label ?: "waiting for the match").append('\n')
-            else sb.append("Advice (you play - ").append(g.label).append("):\n  ").append(advice).append('\n')
+        val calib = com.example.mlbbresearch.game.SceneryMap
+        if (playerOn || com.example.mlbbresearch.research.ResearchMode.on) {
+            // (the play loop reads the verdict only in play: on the loading screen / scoreboard it is read here)
+            val g = playerGate ?: if (GameStateTracker.matchId != 0L) com.example.mlbbresearch.research.ResearchMode.playerVerdict() else null
+            sb.append("Practice check: ").append(when (g) {
+                null -> "waiting for the match"
+                com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY -> "✓ unlocked - the Player plays"
+                else -> g.label
+            }).append('\n')
+            sb.append("  last reading: ").append(com.example.mlbbresearch.research.ResearchMode.lastReadingShort()).append('\n')
+            if (calib.roamActive) sb.append("Scenery calibration: ").append(calib.status).append(" (no fighting)\n")
+            if (playerOn) {
+                if (g == com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY) {
+                    sb.append("Now: ").append(ActionExecutor.lastDecision).append('\n')
+                    sb.append("Target: ").append(ActionExecutor.lastTarget).append(" | next: ").append(TacticalEngine.nextPlan).append('\n')
+                } else if (g != null) sb.append("Advice (you play): ").append(advice.replace('\n', ' ')).append('\n')
+            }
         }
-        sb.append("Gemma: ").append(GemmaEngine.state)
-        if (StrategicAdvisor.busyWith.isNotEmpty()) sb.append(" (thinking: ").append(StrategicAdvisor.busyWith).append(")")
-        sb.append('\n')
-        sb.append("Capture: ").append(FrameHub.source).append(", ").append("%.0f".format(FrameProcessor.processedFps)).append(" fps\n")
-        sb.append("Match: ").append(if (Cfg.ranked) "ranked" else "standard")
-        sb.append(" | Phase: ").append(s.phase.label)
-        if (s.selfHp >= 0) sb.append(" | my HP ").append((s.selfHp * 100).toInt()).append('%')
-        if (s.self != null) sb.append(" | level ").append(s.level).append(if (s.xp >= 0f) " (EXP ${(s.xp * 100).toInt()}%)" else "")
-        // Exact sequence requested in v37.01, with ✓ when verified:
-        sb.append("\nName: ").append(GameStateTracker.verifiedNamePanel())
-        sb.append("\nHero: ").append(GameStateTracker.verifiedHeroPanel())
-        sb.append("\nSpell: ").append(GameStateTracker.verifiedSpellPanel())
-        val loadName = GameStateTracker.loadingCardName?.let { "✓ $it" }
-            ?: (if (GameStateTracker.loadingGreen != null) "✓ ${com.example.mlbbresearch.game.PlayerName.get().ifBlank { "green name" }}" else "-")
-        val loadHero = GameStateTracker.loadingHero?.let { "✓ $it" } ?: "-"
-        val loadSpell = GameStateTracker.loadingSpell?.let { "✓ $it" }
-            ?: GameStateTracker.gemmaLoadingSpell
-            ?: "-"
-        val loadHeader = if (GameStateTracker.loadingCardName != null || GameStateTracker.loadingHero != null || GameStateTracker.loadingSpell != null || GameStateTracker.gemmaLoadingSpell != null)
-            "✓ card read"
-        else if (com.example.mlbbresearch.game.PlayerName.get().isBlank() && GameStateTracker.loadingGreen == null)
-            "enter your player name to read it"
-        else "not read yet"
-        sb.append("\nLoading screen: ").append(loadHeader)
-        sb.append("\n     1. Name- ").append(loadName)
-        sb.append("\n     2. Hero- ").append(loadHero)
-        sb.append("\n     3. Spell- ").append(loadSpell)
-        sb.append("\nDead: ").append(com.example.mlbbresearch.vision.DeathTimers.text())
-        sb.append("\n").append(com.example.mlbbresearch.engines.DecisionLogging.log.summary())
-        sb.append("\nPortraits: scoreboard ").append(com.example.mlbbresearch.vision.PortraitMatch.scoreboardStatus)
-            .append(" · minimap ").append(com.example.mlbbresearch.vision.PortraitMatch.minimapStatus)
-        sb.append("\nMatch end: ").append(com.example.mlbbresearch.vision.EndBoard.status)
-        if (playerOn) {
-            sb.append("\n\nDecision: ").append(ActionExecutor.lastDecision)
-            sb.append("\nTarget: ").append(ActionExecutor.lastTarget)
-            sb.append("\nNext: ").append(TacticalEngine.nextPlan)
-            sb.append("\nGame: ").append(com.example.mlbbresearch.game.MatchSense.status).append(" | role: ")
-                .append(s.lane.label).append(" - ").append(com.example.mlbbresearch.game.RoleProfile.of(s.lane).focus)
-            sb.append("\nTimeline: ").append(com.example.mlbbresearch.game.MatchEvents.status(s.matchSec))
-            sb.append("\nMap: ").append(com.example.mlbbresearch.game.MapIntel.status)
-            sb.append("\nNetwork: ").append(if (!com.example.mlbbresearch.learning.PolicyNet.ready) "-" else com.example.mlbbresearch.learning.PolicyNet.last +
-                " | agrees with the rules " + (com.example.mlbbresearch.learning.PolicyNet.agreeRate * 100).toInt() + "%")
-            sb.append("\nState: ").append(Utility.state.name.lowercase()).append(" | survival ").append(Utility.lastSurvival.toInt())
-                .append(" | engage ").append(Utility.lastEngage.toInt()).append(" (").append(Utility.lastWhy).append(")")
+        // the match, in one line each
+        sb.append("Match: ").append(s.phase.label)
+        if (s.selfHp >= 0) sb.append(" | HP ").append((s.selfHp * 100).toInt()).append('%')
+        if (s.self != null) sb.append(" | level ").append(s.level)
+        sb.append(" | ").append(s.lane.label)
+        com.example.mlbbresearch.game.MapSide.goldTop?.let { sb.append(if (it) " (Gold lane on top)" else " (EXP lane on top)") }
+        com.example.mlbbresearch.game.MatchKind.current().takeIf { it != com.example.mlbbresearch.game.MatchKind.Kind.UNKNOWN }?.let { sb.append(" | ").append(it.label) }
+        sb.append("\nHero: ").append(GameStateTracker.verifiedHeroPanel()).append(" | spell: ").append(GameStateTracker.verifiedSpellPanel())
+        sb.append("\nGemma: ").append(GemmaEngine.state)
+        if (StrategicAdvisor.busyWith.isNotEmpty()) sb.append(" (").append(StrategicAdvisor.busyWith).append(")")
+        sb.append(" | capture ").append("%.0f".format(FrameProcessor.processedFps)).append(" fps")
+        com.example.mlbbresearch.core.PhoneState.read().let { ph ->
+            ph.batteryC?.let { sb.append(" | ").append("%.0f".format(it)).append("°C") }
+            ph.thermal?.takeIf { it >= 2 }?.let { sb.append(" HOT") }
+        }
+        if (playerOn && playerGate == com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY) {
             val p = StrategicAdvisor.plan
-            sb.append("\nPlan: ").append(p.plan).append(" (").append("%.1f".format(p.aggression)).append(")")
-            sb.append("\nLane: ").append(s.lane.label).append(" | spell: ").append(GameStateTracker.spellDisplay() ?: s.spell ?: "?")
-            sb.append("\nCombo: ").append(if (Cfg.useCombos) ComboRunner.status else "-")
-            sb.append("\nBrain: ").append(if (Cfg.smartFights) Brain.lastChoice else "-")
-            sb.append("\nObjective in sight: ").append(s.boss?.let { "HP ${(it.hp * 100).toInt()}%" } ?: "-")
-            sb.append("\nCan upgrade: ").append(s.hud.upgradeReady.joinToString().ifBlank { "-" })
-            sb.append("\nCoach: ").append(if (Cfg.coachMode) com.example.mlbbresearch.learning.Coach.summary(s.ownHero) + " | like you: " + ImitationPolicy.status else "-")
+            sb.append("\nPlan: ").append(p.plan).append(" | state: ").append(Utility.state.name.lowercase())
+                .append(" (survival ").append(Utility.lastSurvival.toInt()).append(")")
+            if (Cfg.useCombos) sb.append("\nCombo: ").append(ComboRunner.status)
         }
-        if (learnOn) {
-            sb.append("\n\nLEARNING FROM YOU").append(if (playerOn) " (paused: Player is on)" else "")
+        if (learnOn && Cfg.coachMode) {
+            sb.append("\n\nLEARNING FROM YOU").append(if (playerOn) " (while you take over)" else "")
             sb.append("\nYou: ").append(DemoRecorder.lastAction)
             sb.append("\nSaved: ").append(DemoRecorder.recorded).append(" this session, ").append(DemoRecorder.total).append(" total")
-            sb.append(" | from watched heroes: ").append(DemoRecorder.watched)
+            sb.append("\nCoach: ").append(com.example.mlbbresearch.learning.Coach.summary(s.ownHero))
         }
         if (drafterOn && StrategicAdvisor.draftText.isNotEmpty()) sb.append("\n\nDRAFT\n").append(StrategicAdvisor.draftText)
         if (builderOn) {

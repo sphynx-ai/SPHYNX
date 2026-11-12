@@ -25,7 +25,9 @@ class HeroMeta(
     val skillOrder: List<String> = emptyList(),   // upgrade priority from the guides (s1 / s2 / ult)
     val playstyle: String = "",                    // how to play it effectively, in a sentence or two
     val skillUse: Map<String, String> = emptyMap(),  // s1 / s2 / ult -> when and how to use it
-    val powerSpike: String = ""
+    val powerSpike: String = "",
+    val lane2: Lane? = null,                       // the second recommended lane (HeroLanes)
+    val flex: Boolean? = null                      // a flex pick (any lane); null = the guide did not say
 )
 
 class GeneralMeta(
@@ -76,7 +78,9 @@ object MetaStore {
                     .replace("ultimate", "ult")).map { it.value }.distinct().toList(),
                 playstyle = o.optString("playstyle", "").trim(),
                 skillUse = o.optJSONObject("skill_use")?.let { j -> listOf("s1", "s2", "ult").mapNotNull { k -> j.optString(k, "").trim().takeIf { it.isNotEmpty() }?.let { k to it } }.toMap() } ?: emptyMap(),
-                powerSpike = o.optString("power_spike", "").trim())
+                powerSpike = o.optString("power_spike", "").trim(),
+                lane2 = Lane.of(o.optString("lane2", "").lowercase().trim()),
+                flex = if (o.has("flex")) o.optBoolean("flex") else null)
         } catch (e: Exception) {
             null
         }

@@ -67,6 +67,17 @@ object TacticalEngine {
         com.example.mlbbresearch.game.MapIntel.reset()
     }
 
+    // SCENERY CALIBRATION ONLY (owner, 2026-11-11): the tour's next step, steered around walls, with no
+    // attack and no skill - the Player does not fight while it calibrates. Without a step (minimap not
+    // read yet, between waypoints) it stands still.
+    fun calibrationStep(s: GameState, p: HeroProfile): TacticalDecision {
+        if (s.self != null && s.phase == Phase.IN_GAME) com.example.mlbbresearch.game.SceneryMap.observe(s)
+        val d = com.example.mlbbresearch.game.SceneryMap.roamDecision(s, p)?.let { steerAroundWalls(s, it) }
+            ?: return TacticalDecision(Intent.PUSH, 0f, 0f, emptyList(), -1f, -1f, "-", -1f, -1, "scenery calibration: " +
+                com.example.mlbbresearch.game.SceneryMap.status)
+        return if (d.casts.isEmpty()) d else TacticalDecision(d.intent, d.moveX, d.moveY, emptyList(), -1f, -1f, d.targetLabel, -1f, -1, d.reason)
+    }
+
     // option: what the learning brain chose for this fight (null / RULES = the normal rules)
     fun decide(s: GameState, p: HeroProfile, plan: StrategyPlan, learnedBias: Float, option: FightOption? = null): TacticalDecision {
         pendingHop = false
@@ -1351,7 +1362,8 @@ object TacticalEngine {
         0.45f to 0.55f, 0.39f to 0.61f, 0.56f to 0.44f, 0.74f to 0.76f, 0.34f to 0.32f
     )
 
-    private fun corridorOf(lane: Lane): List<Pair<Float, Float>> = when (lane) {
+    // (the corridors are drawn for "EXP lane on top"; MapSide.geo swaps them when the Gold lane is on top)
+    private fun corridorOf(lane: Lane): List<Pair<Float, Float>> = when (com.example.mlbbresearch.game.MapSide.geo(lane)) {
         Lane.EXP -> EXP_CORRIDOR
         Lane.GOLD -> GOLD_CORRIDOR
         else -> MID_CORRIDOR
@@ -1362,9 +1374,10 @@ object TacticalEngine {
         val travelling = s.sinceSpawnMs < Cfg.laneTravelSec * 1000L
         fun t(v: Pair<Float, Float>, what: String) = Triple(v.first, v.second, what)
         return when (s.lane) {
-            Lane.EXP, Lane.GOLD, Lane.MID -> laneByMap(s) ?: when (s.lane) {
-                Lane.EXP -> if (travelling) t(0f to -1f, "walking up EXP lane corridor") else t(1f to 0f, "advancing along EXP lane")
-                Lane.GOLD -> if (travelling) t(1f to 0f, "walking right along Gold lane corridor") else t(0f to -1f, "advancing along Gold lane")
+            Lane.EXP, Lane.GOLD, Lane.MID -> laneByMap(s) ?: when (com.example.mlbbresearch.game.MapSide.geo(s.lane)) {
+                // the top lane / the bottom lane (which of EXP / Gold is on top: MapSide)
+                Lane.EXP -> if (travelling) t(0f to -1f, "walking up the ${s.lane.label} corridor (top lane)") else t(1f to 0f, "advancing along the ${s.lane.label} (top lane)")
+                Lane.GOLD -> if (travelling) t(1f to 0f, "walking right along the ${s.lane.label} corridor (bottom lane)") else t(0f to -1f, "advancing along the ${s.lane.label} (bottom lane)")
                 else -> t(pushVector(), "walking Mid lane (${Cfg.pushDir})")
             }
             Lane.JUNGLE -> {

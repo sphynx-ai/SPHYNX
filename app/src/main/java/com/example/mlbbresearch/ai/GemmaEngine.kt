@@ -2,6 +2,7 @@ package com.example.mlbbresearch.ai
 
 import android.content.Context
 import android.graphics.Bitmap
+import com.example.mlbbresearch.core.Cfg
 import com.example.mlbbresearch.core.Diag
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content
@@ -45,6 +46,12 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
     @Volatile var visionOk = false
         private set
 
+    // for the model speed recorder (ModelSpeed): which engine this is, whether the detailed
+    // LiteRT-LM figures were on at load, and whether the next call is the first after loading
+    val role: String get() = if (label == "gemma") "strategic" else "tactical"
+    @Volatile private var detailedActive = false
+    @Volatile private var coldNext = true
+
     // Loads the .litertlm model with Google's recommended fallback order:
     //   1. image + text on the GPU   2. image + text on the CPU   3. text only on the CPU
     suspend fun load(ctx: Context, modelPath: String, preferGpu: Boolean, textOnly: Boolean = false): String? = withContext(dispatcher) {
@@ -60,9 +67,16 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
         } else if (preferGpu) attempts.add(Attempt("GPU, text only", true, false))
         attempts.add(Attempt("CPU, text only", false, false))
         var lastErr: Throwable? = null
-        for (a in attempts) {
+        val tLoad = System.currentTimeMillis()
+        // detailed speed figures (owner's switch): LiteRT-LM reads this flag when an engine starts. If no
+        // attempt loads with it on, every attempt is tried once more with it off.
+        val passes = if (Cfg.modelSpeedDetailed) listOf(true, false) else listOf(false)
+        var tried = 0
+        for (detailed in passes) for (a in attempts) {
             try {
-                state = "loading on ${a.label}..."
+                tried++
+                setDetailed(detailed)
+                state = "loading on ${a.label}${if (detailed) " (detailed speed on)" else ""}..."
                 val cfg = if (a.vision) {
                     EngineConfig(
                         modelPath = modelPath,
@@ -82,7 +96,10 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
                 backendName = a.label
                 state = "ready on ${a.label}"
                 loading = false
-                Diag.info("$label model loaded on ${a.label}")
+                detailedActive = detailed
+                coldNext = true
+                Diag.info("$label model loaded on ${a.label}" + if (detailed) " (detailed speed on)" else "")
+                ModelSpeed.load(role, a.label, System.currentTimeMillis() - tLoad, true, "", detailed, tried)
                 return@withContext null
             } catch (t: Throwable) {
                 lastErr = t
@@ -91,18 +108,30 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
         }
         state = "load failed (see Logs)"
         loading = false
+        setDetailed(false)
+        ModelSpeed.load(role, "-", System.currentTimeMillis() - tLoad, false, lastErr?.message ?: "unknown error", false, tried)
         lastErr?.message ?: "unknown error"
+    }
+
+    @OptIn(com.google.ai.edge.litertlm.ExperimentalApi::class)
+    private fun setDetailed(on: Boolean) {
+        try { com.google.ai.edge.litertlm.ExperimentalFlags.enableBenchmark = on } catch (t: Throwable) { }
     }
 
     // Asks Gemma one question, optionally with a screenshot. Returns the text reply.
     // v37.01 workload reduction: fast sampler (topK=16, topP=0.85), no-thinking instruction, and 512px JPEG at quality 70.
-    suspend fun ask(prompt: String, image: Bitmap? = null, temperature: Double = 0.15): String = withContext(dispatcher) {
+    // purpose: what asked, only for the model speed recorder (draft, plan, combo, fight advice ...)
+    suspend fun ask(prompt: String, image: Bitmap? = null, temperature: Double = 0.15, purpose: String = "other"): String = withContext(dispatcher) {
         val e = engine ?: throw IllegalStateException("the $label model is not loaded")
         val t0 = System.currentTimeMillis()
         val conv = e.createConversation(
             ConversationConfig(samplerConfig = SamplerConfig(topK = 16, topP = 0.85, temperature = temperature))
         )
         active = conv
+        val cold = coldNext
+        coldNext = false
+        val withImage = image != null && visionOk
+        var promptChars = prompt.length
         try {
             val fastPrompt = if ("Do not think" in prompt) prompt else "$prompt Do not think; answer directly."
             // text first, then the image (the order LiteRT-LM's guide asks for)
@@ -111,14 +140,39 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
             } else {
                 Contents.of(Content.Text(fastPrompt))
             }
+            promptChars = fastPrompt.length
             val reply = clean(conv.sendMessage(contents).toString())
             lastLatencyMs = System.currentTimeMillis() - t0
             calls++
+            record(conv, purpose, withImage, promptChars, reply.length, lastLatencyMs, true, "", cold)
             reply
+        } catch (t: Throwable) {
+            record(null, purpose, withImage, promptChars, 0, System.currentTimeMillis() - t0, false, t.message ?: t.toString(), cold)
+            throw t
         } finally {
             active = null
             try { conv.close() } catch (t: Throwable) { }
         }
+    }
+
+    // the speed recorder never breaks a call: anything it cannot read is left empty
+    @OptIn(com.google.ai.edge.litertlm.ExperimentalApi::class)
+    private fun record(conv: Conversation?, purpose: String, image: Boolean, promptChars: Int, replyChars: Int, ms: Long,
+                       ok: Boolean, error: String, cold: Boolean) {
+        try {
+            val b: com.google.ai.edge.litertlm.BenchmarkInfo? =
+                if (detailedActive && conv != null) try { conv.getBenchmarkInfo() } catch (t: Throwable) { null } else null
+            var ttft: Long? = null; var pt: Int? = null; var ptps: Double? = null; var dt: Int? = null; var dtps: Double? = null
+            if (b != null) {
+                val f = (b.timeToFirstTokenInSecond * 1000).toLong()
+                if (f > 0L) ttft = f
+                if (b.lastPrefillTokenCount > 0) pt = b.lastPrefillTokenCount
+                if (b.lastPrefillTokensPerSecond > 0.0) ptps = b.lastPrefillTokensPerSecond
+                if (b.lastDecodeTokenCount > 0) dt = b.lastDecodeTokenCount
+                if (b.lastDecodeTokensPerSecond > 0.0) dtps = b.lastDecodeTokensPerSecond
+            }
+            ModelSpeed.call(role, purpose, backendName, image, promptChars, replyChars, ms, ok, error, cold, ttft, pt, ptps, dt, dtps)
+        } catch (t: Throwable) { }
     }
 
     // Emergency stop: interrupt a reply that is being generated

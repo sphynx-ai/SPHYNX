@@ -94,7 +94,7 @@ object TacticalAdvisor {
         AiRuntime.scope.launch {
             try {
                 val t0 = System.currentTimeMillis()
-                val r = TacticalLlmEngine.ask(q, null, 0.0)
+                val r = TacticalLlmEngine.ask(q, null, 0.0, purpose = "fight advice")
                 lastMs = System.currentTimeMillis() - t0
                 asked++
                 lastAnswer = r.take(40).replace('\n', ' ')

@@ -50,7 +50,7 @@ object ReadinessRun {
                     if (stopAsked) break
                     progress = "${i + 1} of ${scenarios.size}"
                     val t0 = System.currentTimeMillis()
-                    val reply = try { TacticalLlmEngine.ask(TacticalAdvisor.prompt(sc.prompt), null, 0.0) }
+                    val reply = try { TacticalLlmEngine.ask(TacticalAdvisor.prompt(sc.prompt), null, 0.0, purpose = "readiness test") }
                         catch (e: kotlinx.coroutines.CancellationException) { throw e }
                         catch (e: Exception) { null }
                     if (reply != null) replies[sc] = TacticalReadiness.Reply(reply, System.currentTimeMillis() - t0)
