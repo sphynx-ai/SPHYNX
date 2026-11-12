@@ -298,7 +298,7 @@ UI/UX is a core workstream and product-quality requirement throughout the roadma
 
 ## 9. Current execution checkpoint
 
-**Current phase: UNKNOWN / AWAITING VERIFICATION.** Do not infer the active phase from this roadmap alone.
+**Current phase: 1 — IN PROGRESS (2026-11-12).** Baseline and evidence: `docs/PHASE_1_BASELINE.md`. Open items: the owner's working-copy confirmation and the branch reconciliation decision. Do not infer the active phase from this roadmap alone.
 
 The latest GitHub main branch observed while preparing this document was commit 0652ebfb1a6916a3a478d0b488405f11517eca7a (2026-11-12; merge of PR #35). The repository's existing docs/DEVELOPMENT_STATUS.md contains historical reports and milestone records, including a separate earlier milestone sequence. Those historical records must not be mistaken for this 16-phase product roadmap or a current live status check.
 
