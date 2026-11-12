@@ -23,7 +23,7 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
-        Entry("2026-11-12", Kind.CHANGED, "Every switch starts off on a new install",
+        Entry("2026-11-12", Kind.IMPROVED, "Every switch starts off on a new install",
             "On a fresh install every feature switch starts OFF, so nothing runs until you turn it on (the first-run setup " +
                 "helps). Safety guards keep their safe position: Dry run ON and the Quick buy guards ON. A phone that already " +
                 "had the app keeps how it worked: switches you never changed stay on.",
