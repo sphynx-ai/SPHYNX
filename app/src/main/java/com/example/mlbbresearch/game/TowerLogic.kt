@@ -101,11 +101,12 @@ object TowerLogic {
     // Next enemy tower of your lane (EXP = top edge, gold = right edge, mid = the rest),
     // bonus (gold-plated) outer towers first, then the nearest; the base when the lane is open.
     fun laneTarget(s: GameState, lane: Lane): MapTower? {
-        fun laneOf(t: MapTower): Lane = when {
+        // top edge / right edge / the rest, then which role lane that is (MapSide: Gold or EXP on top)
+        fun laneOf(t: MapTower): Lane = MapSide.geo(when {
             t.y < 0.15f -> Lane.EXP
             t.x > 0.85f -> Lane.GOLD
             else -> Lane.MID
-        }
+        })
         val mine = effectiveTowers(s).filter { laneOf(it) == lane }
         val me = s.minimapSelf
         fun dist(t: MapTower) = if (me == null) 0f else hypot(t.x - me.first, t.y - me.second)

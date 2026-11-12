@@ -21,11 +21,11 @@ import java.util.concurrent.Executors
 
 // ONE-TAP TRAINING IN THE CLOUD (Kaggle Notebooks: free GPU, about 30 h a week).
 // Google Colab cannot be started by another app; Kaggle can, through its API. A Train button:
-//  1. gathers the inputs from Download/MLBB-Research (fresh CSV exports are made first)
+//  1. gathers the inputs from Download/Sphynx-Auto-Pilot-Storage (fresh CSV exports are made first)
 //  2. uploads them to private Kaggle datasets (picture zips once each; the rest as a new version)
 //  3. starts the training notebook from the app's GitHub repository on Kaggle (GPU where needed)
 //  4. checks it every minute (also after the app restarts)
-//  5. downloads the results straight into Download/MLBB-Research, and the folder scan loads them
+//  5. downloads the results straight into Download/Sphynx-Auto-Pilot-Storage, and the folder scan loads them
 // The notebooks run unattended there (their Kaggle mode) and keep what they learned: the last
 // detector / networks go back up with the next run.
 // Needs kaggle.json (kaggle.com > Settings > API > Create New Token) in the Sphynx-Auto-Pilot-Storage folder;
@@ -70,8 +70,8 @@ object CloudTrain {
     private fun inputs(ctx: Context): List<Input> {
         val byName = LinkedHashMap<String, Input>()
         try { for (e in AutoFolder.files(ctx)) byName[e.name] = Input(e.name, e.size, e.open) } catch (e: Exception) { }
-        // the app's own files in Download/MLBB-Research (exports, zips, earlier results)
-        val base = Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research/"
+        // the app's own files in Download/Sphynx-Auto-Pilot-Storage (exports, zips, results)
+        val base = com.example.mlbbresearch.core.Storage.downloadsRel() + "/"
         try {
             ctx.contentResolver.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                 arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME, MediaStore.Downloads.SIZE, MediaStore.Downloads.RELATIVE_PATH),
@@ -379,7 +379,7 @@ object CloudTrain {
         return err.removePrefix("SystemExit:").trim()
     }
 
-    // the results, straight into Download/MLBB-Research; then the folder scan loads them
+    // the results, straight into Download/Sphynx-Auto-Pilot-Storage; then the folder scan loads them
     private fun fetch(c: Context, j: Job) {
         setStatus(j, "downloading the results…")
         val r = call("kernels.KernelsApiService", "ListKernelSessionOutput",
@@ -554,7 +554,7 @@ object CloudTrain {
             return
         }
         val cr = c.contentResolver
-        val rel = Environment.DIRECTORY_DOWNLOADS + "/MLBB-Research/"
+        val rel = com.example.mlbbresearch.core.Storage.downloadsRel() + "/"
         val existing = cr.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.Downloads._ID),
             MediaStore.Downloads.DISPLAY_NAME + " = ? AND " + MediaStore.Downloads.RELATIVE_PATH + " = ?", arrayOf(name, rel), null)
             ?.use { if (it.moveToFirst()) ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, it.getLong(0)) else null }

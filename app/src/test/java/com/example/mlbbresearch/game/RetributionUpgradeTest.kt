@@ -80,4 +80,13 @@ class RetributionUpgradeTest {
         assertNull(GameStateTracker.blessedRetribution)
         assertEquals("Flicker", GameStateTracker.spellDisplay())
     }
+
+    // bug 5 (device test 2026-11-10): Retribution missed on the loading card; the Blessed button icon
+    // alone proves it, so the lane becomes Jungle
+    @Test fun blessedIconWithNoSpellKnownMeansRetribution() {
+        GameStateTracker.onButtonSpellVerified("Flame Retribution", 0.7f)
+        assertEquals("Retribution", GameStateTracker.spell())
+        assertEquals("Flame", GameStateTracker.blessedRetribution)
+        assertEquals(Lane.JUNGLE, LaneLogic.effective("Alucard", GameStateTracker.spell()).first)
+    }
 }

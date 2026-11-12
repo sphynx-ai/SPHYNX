@@ -79,7 +79,8 @@ object MetaAdvisor {
                     "(build, emblem, combo, how to play). $ORIGINAL_ONLY${searchHint(search)}Reply with ONLY one JSON object, no other words:\n" +
                     "{\"patch\":\"current ORIGINAL-server patch version and date\",\"build\":[\"the 6 items in buying order\"]," +
                     "\"emblem\":\"emblem set and talents\",\"spell\":\"best battle spell\"," +
-                    "\"lane\":\"exp|gold|mid|roam|jungle\",\"combo\":\"skill order using s1, s2, ult and a (basic attack), e.g. s2 > s1 > a > ult\"," +
+                    "\"lane\":\"exp|gold|mid|roam|jungle - its primary (most played) lane\",\"lane2\":\"exp|gold|mid|roam|jungle|none - its secondary lane\"," +
+                    "\"flex\":true or false - true if it is a flex pick that can be played in almost any lane,\"combo\":\"skill order using s1, s2, ult and a (basic attack), e.g. s2 > s1 > a > ult\"," +
                     "\"dash\":\"s1|s2|ult|none - the skill that dashes, leaps or blinks\"," +
                     "\"skill_order\":\"skill upgrade priority from the guides, e.g. ult > s1 > s2\"," +
                     "\"playstyle\":\"how to play $hero effectively in 1-2 short sentences (its job in fights, positioning)\"," +

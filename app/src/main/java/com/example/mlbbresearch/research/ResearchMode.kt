@@ -162,14 +162,83 @@ object ResearchMode {
     // the practice gate also watches the scoreboard while Player mode is on (Player is practice-only)
     fun gateWatching(): Boolean = on || com.example.mlbbresearch.ai.AiRuntime.playerOn
 
+    // THE GATE'S LAST READING, shown on the floating panel (device test 2026-11-10: "blocked" alone did not
+    // tell whether the scoreboard was read at all, or read and found unclear)
+    @Volatile var lastReading = "no loading screen / scoreboard reading yet"; private set
+    @Volatile var lastReadingAt = 0L; private set
+    private fun reading(text: String, nowMs: Long) { lastReading = text; lastReadingAt = nowMs }
+    private fun f2(v: Float) = "%.2f".format(java.util.Locale.US, v)
+
     fun observeScoreboard(px: IntArray, w: Int, h: Int, nowMs: Long = System.currentTimeMillis()) {
         if (!gateWatching() || nowMs - lastAt < EVERY_MS) return
+        // the app's floating window / boxes are hidden on the scoreboard; read only once they are gone
+        // (screen capture records them over the names - device test 2026-11-10)
+        if (!com.example.mlbbresearch.controller.OverlayManager.clearOfOverlay(nowMs)) {
+            reading("scoreboard seen - waiting for the floating window to hide", nowMs); return
+        }
         lastAt = nowMs
+        val m = matcher() ?: run { reading("scoreboard seen - the 'Computer' picture could not be loaded", nowMs); return }
+        val id = GameStateTracker.matchId
+        if (id == 0L) { reading("scoreboard seen - match not identified yet", nowMs); return }
+        val before = session.gate.state
+        val r = ScoreboardNameCheck.check(px, w, h, m)
+        // solo practice (2 players) or 5v5 (6+): the boss timers depend on it (game.MatchKind)
+        com.example.mlbbresearch.game.MatchKind.set(id, com.example.mlbbresearch.game.MatchKind.fromPlayers(r.players))
+        session.observe(id, r, nowMs)
+        reading("scoreboard ${w}x$h: ${r.verdict.name.lowercase().replace('_', ' ')} - ${r.note}" +
+            (if (r.selfRow >= 0) " (your row ${r.selfRow + 1})" else "") +
+            "; ally " + r.ally.joinToString(" ") { f2(it) } + " | enemy " + r.enemy.joinToString(" ") { f2(it) }, nowMs)
+        if (session.gate.state != before) { Diag.info(session.status(true)); GateFeedback.changed(session.gate.state) }
+    }
+
+    // THE LOADING SCREEN FROM THE PIXELS ALONE (no Gemma needed - owner 2026-11-10), at 0.8x the
+    // scoreboard's word size (measured on the owner's 2712x1220 screenshots - see LoadingNameCheck):
+    //  - solo practice: the enemy card's name at x 0.581, y 0.889;
+    //  - 5v5: a fixed grid, one card every 0.1073 of the width; name tops at y 0.349 (top row, from
+    //    x 0.0796) and y 0.889 (bottom row, from x 0.3894).
+    // Only verifies; anything else leaves the match to the scoreboard.
+    const val SOLO_NAME_X = 0.5808f
+    const val SOLO_NAME_Y = 0.8893f
+    const val NAME_SIZE = 0.8f
+    private val GRID = (0 until 5).map { (0.0796f + 0.1073f * it) to 0.3492f } + (0 until 5).map { (0.3894f + 0.1073f * it) to 0.8893f }
+    @Volatile private var lastLoadAt = 0L
+
+    fun observeLoadingFrame(px: IntArray, w: Int, h: Int, nowMs: Long = System.currentTimeMillis()) {
+        if (!gateWatching() || nowMs - lastLoadAt < EVERY_MS) return
+        if (!com.example.mlbbresearch.controller.OverlayManager.clearOfOverlay(nowMs)) return
+        lastLoadAt = nowMs
         val m = matcher() ?: return
         val id = GameStateTracker.matchId
+        if (id == 0L) { reading("loading screen - match not identified yet", nowMs); return }
+        if (session.gate.matchId == id && session.gate.state != PracticeGate.State.UNVERIFIED) return   // already decided
+        val solo = com.example.mlbbresearch.vision.ScreenReader.soloLoading(px, w, h)
+        val r = if (solo) LoadingNameCheck.fromSolo(m.score(px, w, h, SOLO_NAME_X, SOLO_NAME_Y, sizeMul = NAME_SIZE))
+        else LoadingNameCheck.fromGrid(GRID.map { (x, y) -> m.score(px, w, h, x, y, dx = 40, sizeMul = NAME_SIZE) })
+        // solo practice or 5v5 (game.MatchKind): the solo layout says solo; the 5v5 grid only when it was read
+        if (solo) com.example.mlbbresearch.game.MatchKind.set(id, com.example.mlbbresearch.game.MatchKind.Kind.SOLO)
+        else if (r.verdict == LoadingNameCheck.Verdict.ALL_COMPUTER) com.example.mlbbresearch.game.MatchKind.set(id, com.example.mlbbresearch.game.MatchKind.Kind.FIVE_V_FIVE)
         val before = session.gate.state
-        session.observe(id, ScoreboardNameCheck.check(px, w, h, m), nowMs)
-        if (session.gate.state != before) Diag.info(session.status(true))
+        session.observeLoading(id, r, nowMs)
+        reading("loading screen ${w}x$h: ${r.note}", nowMs)
+        if (session.gate.state != before) { Diag.info(session.status(true)); GateFeedback.changed(session.gate.state) }
+    }
+
+    fun observeLoading(reply: String?, green: Pair<Int, Int>?, myName: String, nowMs: Long = System.currentTimeMillis()) {
+        if (!gateWatching()) return
+        val id = GameStateTracker.matchId
+        val before = session.gate.state
+        val r = LoadingNameCheck.check(reply, green, myName)
+        session.observeLoading(id, r, nowMs)
+        reading("loading screen (Gemma): ${r.note}", nowMs)
+        Diag.info(if (session.gate.state != before) session.status(true) else "Practice check, loading screen: ${r.note}")
+        if (session.gate.state != before) GateFeedback.changed(session.gate.state)
+    }
+
+    // read the loading screen again while this match is not verified yet
+    fun loadingCheckWanted(): Boolean {
+        if (!gateWatching()) return false
+        val id = GameStateTracker.matchId
+        return id != 0L && (session.gate.matchId != id || session.gate.state == PracticeGate.State.UNVERIFIED)
     }
 
     // for R3 experiments: true only in a verified practice match, while research mode is on
@@ -208,8 +277,18 @@ object ResearchMode {
         }
     }
 
+    // the last reading for the floating panel, short: what was read and how long ago
+    fun lastReadingShort(nowMs: Long = System.currentTimeMillis()): String =
+        (if (lastReadingAt > 0) "${(nowMs - lastReadingAt) / 1000} s ago - " else "") + lastReading
+
     fun status(): String {
-        if (on) session.sync(GameStateTracker.matchId, System.currentTimeMillis())
+        val now = System.currentTimeMillis()
+        if (on) session.sync(GameStateTracker.matchId, now)
+        val last = "\n  gate's last reading" + (if (lastReadingAt > 0) " (${(now - lastReadingAt) / 1000} s ago)" else "") + ": $lastReading"
+        return statusBase() + last
+    }
+
+    private fun statusBase(): String {
         val base = session.status(on)
         if (!allowsAutonomy()) return base
         return if (experimentFailed) "$base - R3 experiment stopped after an error"

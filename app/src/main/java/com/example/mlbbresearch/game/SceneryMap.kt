@@ -64,48 +64,74 @@ object SceneryMap {
     private var waypointArrivedAt = 0L
     private var waypointStartedAt = 0L
 
-    // Default MLBB monster pits with open-mouth entrance stand-spots
-    private val defaultPits = listOf(
-        PitSpot(0.27f, 0.56f, 0.29f, 0.58f, -0.5f, -0.5f, "purple_buff", true),
-        PitSpot(0.52f, 0.77f, 0.50f, 0.75f, 0.5f, 0.5f, "orange_buff", true),
-        PitSpot(0.20f, 0.66f, 0.22f, 0.65f, -0.6f, 0.2f, "rockursa", false),
-        PitSpot(0.39f, 0.62f, 0.38f, 0.64f, 0.3f, -0.6f, "lithowanderer", false),
-        PitSpot(0.44f, 0.84f, 0.44f, 0.81f, 0.0f, 0.8f, "horned_lizard", false),
-        PitSpot(0.62f, 0.72f, 0.60f, 0.73f, 0.6f, -0.3f, "fire_beetle", false),
-        PitSpot(0.31f, 0.26f, 0.33f, 0.29f, -0.5f, -0.6f, "turtle_top", false),
-        PitSpot(0.67f, 0.68f, 0.64f, 0.65f, 0.5f, 0.6f, "lord_bot", false)
+    // MLBB monster pits: the pit (the monster), where to stand, and the way to the monster from there.
+    // Measured on the owner's 20 jungle screenshots (2026-11-11; game.JungleSpots): the stand spot is where the
+    // hero stood fighting it, the pit is the monster beside it on the screen. Your jungle, then the enemy's
+    // (the same map turned half a turn: 1 - x, 1 - y; the way to the monster turned too).
+    // (The Rockursa is gone - replaced by the Lava Golem (owner, 2026-11-11); the old pit list still had it, and its Lithowanderer,
+    // Horned Lizard and Fire Beetle were in the wrong places.)
+    private val ownPits = listOf(
+        PitSpot(0.27f, 0.52f, 0.29f, 0.52f, -1.0f, 0.0f, "purple_buff", true),
+        PitSpot(0.49f, 0.77f, 0.46f, 0.78f, 1.0f, -0.2f, "orange_buff", true),
+        PitSpot(0.51f, 0.70f, 0.48f, 0.70f, 1.0f, 0.0f, "lava_golem", false),
+        PitSpot(0.61f, 0.82f, 0.58f, 0.82f, 1.0f, 0.0f, "fire_beetle", false),
+        PitSpot(0.18f, 0.41f, 0.20f, 0.41f, -1.0f, 0.0f, "horned_lizard", false),
+        PitSpot(0.41f, 0.38f, 0.38f, 0.37f, 1.0f, 0.4f, "lithowanderer", false)
     )
+    private val defaultPits = ownPits + ownPits.map {
+        PitSpot(1f - it.x, 1f - it.y, 1f - it.standX, 1f - it.standY, -it.dirX, -it.dirY, "enemy_" + it.label, it.buff)
+    }
+    // the old built-in pits: a saved copy of one of them is dropped on load (it would override the measured
+    // ones); pits the calibration learned from real monsters are kept
+    private val OLD_DEFAULT_PITS = listOf(0.27f to 0.56f, 0.52f to 0.77f, 0.20f to 0.66f, 0.39f to 0.62f, 0.44f to 0.84f,
+        0.62f to 0.72f, 0.31f to 0.26f, 0.67f to 0.68f)
+    fun isOldDefaultPit(x: Float, y: Float): Boolean = OLD_DEFAULT_PITS.any { hypot(it.first - x, it.second - y) < 0.012f }
 
-    class Waypoint(val x: Float, val y: Float, val name: String)
+    // timeoutMs: how long the stop may take before the tour moves on (the enemy-base stops are farther apart)
+    class Waypoint(val x: Float, val y: Float, val name: String, val timeoutMs: Long = 9500L)
     val tourWaypoints: List<Waypoint> = listOf(
         Waypoint(0.18f, 0.82f, "Ally Base Gate"),
-        Waypoint(0.22f, 0.65f, "Ally Rockursa Pit"),
-        Waypoint(0.29f, 0.58f, "Ally Purple Buff Pit"),
-        Waypoint(0.38f, 0.64f, "Ally Lithowanderer & Mid Bush"),
+        Waypoint(0.20f, 0.41f, "Ally Horned Lizard Pit"),
+        Waypoint(0.29f, 0.52f, "Ally Purple Buff Pit"),
+        Waypoint(0.38f, 0.37f, "River Lithowanderer (top)"),
         Waypoint(0.50f, 0.50f, "Mid Lane River Crossing"),
-        Waypoint(0.33f, 0.29f, "Top-Left Turtle / Lord Pit"),
-        Waypoint(0.22f, 0.20f, "Top River Crab & Bush"),
+        Waypoint(0.30f, 0.29f, "Top-Left Boss Pit (Lord or Turtle)"),
+        Waypoint(0.21f, 0.27f, "Top River Crab & Bush"),
         Waypoint(0.10f, 0.55f, "EXP Lane Inner Tower"),
         Waypoint(0.09f, 0.30f, "EXP Lane Mid Tower & Bush"),
         Waypoint(0.10f, 0.12f, "EXP Lane Corner & Top Bush"),
         Waypoint(0.30f, 0.10f, "Enemy Top Lane Outer Tower"),
-        Waypoint(0.46f, 0.24f, "Enemy Orange Buff Pit"),
-        Waypoint(0.38f, 0.30f, "Enemy Upper Jungle Pit"),
-        Waypoint(0.58f, 0.36f, "Enemy Mid Bush & Litho"),
-        Waypoint(0.70f, 0.42f, "Enemy Purple Buff Pit"),
-        Waypoint(0.78f, 0.34f, "Enemy Golem Pit"),
-        Waypoint(0.64f, 0.65f, "Bottom-Right Lord / Turtle Pit"),
-        Waypoint(0.76f, 0.78f, "Bottom River Crab & Gold Bush"),
+        Waypoint(0.42f, 0.18f, "Enemy Fire Beetle Pit"),
+        Waypoint(0.54f, 0.22f, "Enemy Orange Buff Pit"),
+        Waypoint(0.52f, 0.30f, "Enemy Lava Golem Pit"),
+        Waypoint(0.58f, 0.36f, "Enemy Mid Bush"),
+        Waypoint(0.71f, 0.48f, "Enemy Purple Buff Pit"),
+        Waypoint(0.79f, 0.59f, "Enemy Horned Lizard Pit"),
+        Waypoint(0.68f, 0.70f, "Bottom-Right Boss Pit (Turtle or Lord)"),
+        Waypoint(0.79f, 0.72f, "Bottom River Crab & Gold Bush"),
         Waypoint(0.88f, 0.88f, "Gold Lane Corner & Bush"),
         Waypoint(0.88f, 0.62f, "Gold Lane Enemy Tower"),
         Waypoint(0.68f, 0.90f, "Gold Lane Mid Tower & Bush"),
         Waypoint(0.45f, 0.90f, "Gold Lane Inner Tower"),
-        Waypoint(0.44f, 0.81f, "Ally Lizard Pit"),
-        Waypoint(0.50f, 0.75f, "Ally Orange Buff Pit"),
-        Waypoint(0.60f, 0.73f, "Ally Fire Beetle Pit"),
+        Waypoint(0.58f, 0.82f, "Ally Fire Beetle Pit"),
+        Waypoint(0.46f, 0.78f, "Ally Orange Buff Pit"),
+        Waypoint(0.48f, 0.70f, "Ally Lava Golem Pit"),
+        Waypoint(0.62f, 0.63f, "River Lithowanderer (bottom)"),
         Waypoint(0.36f, 0.64f, "Mid Lane Ally Tower"),
         Waypoint(0.62f, 0.38f, "Mid Lane Enemy Tower"),
-        Waypoint(0.50f, 0.50f, "Center River Return")
+        // THE ENEMY BASE (owner, 2026-11-11: solo practice vs Computer with god mode on, so the Research player
+        // cannot die there). Measured on the owner's minimap (screenshot, 2026-11-10): enemy tower icons at
+        // top lane 0.27/0.54/0.72 (y 0.06), mid 0.60,0.42 / 0.70,0.32 / 0.78,0.21, gold lane 0.93,0.73 /
+        // 0.93,0.53 / 0.92,0.27, base core 0.87,0.10. Each stop is just on the lane side of its tower.
+        Waypoint(0.68f, 0.35f, "Mid Lane Enemy Inner Tower", 20_000L),
+        Waypoint(0.76f, 0.25f, "Mid Lane Enemy Base Tower", 20_000L),
+        Waypoint(0.83f, 0.15f, "Enemy Base (core)", 20_000L),
+        Waypoint(0.71f, 0.10f, "Top Lane Enemy Base Tower", 20_000L),
+        Waypoint(0.54f, 0.09f, "Top Lane Enemy Inner Tower", 20_000L),
+        Waypoint(0.89f, 0.29f, "Gold Lane Enemy Base Tower", 20_000L),
+        Waypoint(0.89f, 0.53f, "Gold Lane Enemy Inner Tower", 20_000L),
+        Waypoint(0.90f, 0.72f, "Gold Lane Enemy Outer Tower", 20_000L),
+        Waypoint(0.50f, 0.50f, "Center River Return", 20_000L)
     )
 
     // Perspective-foreshortened projection from 3D screen (sx, sy) to 2D minimap world coordinates (0..1)
@@ -227,7 +253,7 @@ object SceneryMap {
         }
 
         // 2) 3D Monsters on screen <-> Minimap Camps & Boss Pits
-        val allMapCamps = s.camps.map { it.x to it.y } + MinimapAnalyzer.PITS + defaultPits.map { it.x to it.y }
+        val allMapCamps = s.camps.map { it.x to it.y } + MinimapAnalyzer.PITS + defaultPits.map { MapSide.view(it.x to it.y) }
         for (m in s.monsters) {
             val (px, py) = projectToWorld(me, self, m.x, m.y)
             val nearCamp = allMapCamps.minByOrNull { hypot(it.first - px, it.second - py) }
@@ -287,15 +313,16 @@ object SceneryMap {
 
     // Re-applies memorized 3D walls and bushes onto WallMap whenever WallMap.update() refreshes the 40x40 minimap grid
     fun reapplyToWallMap() {
+        // (the saved scenery is on the owner's usual map; on a mirrored one it is put where it really is - MapSide)
         ensureLoaded()
         for (i in 0 until G * G) {
             if (walls[i]) {
-                val wx = (i % G + 0.5f) / G
-                val wy = (i / G + 0.5f) / G
+                val (wx, wy) = MapSide.view(((i % G + 0.5f) / G) to ((i / G + 0.5f) / G))
                 WallMap.markSceneryWall(wx, wy)
             }
         }
-        for ((bx, by) in bushes) {
+        for (b in bushes) {
+            val (bx, by) = MapSide.view(b)
             WallMap.markSceneryBush(bx, by)
         }
     }
@@ -345,6 +372,7 @@ object SceneryMap {
                     val px = p.optDouble("x", -1.0).toFloat()
                     val py = p.optDouble("y", -1.0).toFloat()
                     if (px !in 0f..1f || py !in 0f..1f) continue
+                    if (isOldDefaultPit(px, py)) continue          // a stale copy of an old built-in pit
                     val sx = p.optDouble("sx", px.toDouble()).toFloat()
                     val sy = p.optDouble("sy", py.toDouble()).toFloat()
                     val dx = p.optDouble("dx", 0.0).toFloat()
@@ -420,11 +448,13 @@ object SceneryMap {
         roamActive = true
         roamIdx = 0
         waypointArrivedAt = 0L
-        waypointStartedAt = System.currentTimeMillis()
+        // (the tour's clock starts at its first step, once the practice gate has unlocked the Player)
+        waypointStartedAt = 0L
         if (!com.example.mlbbresearch.ai.AiRuntime.playerOn) {
             com.example.mlbbresearch.ai.AiRuntime.start("player")
         }
-        status = "roaming map (1/${tourWaypoints.size}: ${tourWaypoints[0].name})"
+        status = calibrationBlock(playerUnlocked(), MatchKind.current(), MapSide.goldTop != null)
+            ?: "roaming map (1/${tourWaypoints.size}: ${tourWaypoints[0].name})"
         Diag.info("Scenery calibration roam started (${tourWaypoints.size} waypoints)")
         return status
     }
@@ -448,7 +478,12 @@ object SceneryMap {
     // Observe the actual 3D screen scenery every frame, synchronize landmarks with the minimap, and map into world coordinates
     fun observe(s: GameState) {
         ensureLoaded()
+        // A MIRRORED MATCH (EXP lane on top - owner, 2026-11-11: Solo matches can be either): what is seen is
+        // projected on THIS match's map, then stored on the saved scenery's map (Gold on top, Lord top-left) through
+        // MapSide.view - its own inverse. The live WallMap stays on this match's map. (Not mirrored: view = as is.)
+        fun keep(p: Pair<Float, Float>) = MapSide.view(p)
         val me = s.minimapSelf ?: return
+        val meKept = keep(me)
         val self = s.self ?: return
         val now = s.ts
 
@@ -456,8 +491,8 @@ object SceneryMap {
         syncWithMinimap(s, forceManual = false)
 
         // 0) Where the hero is standing right now is walkable ground, never a wall!
-        val selfGx = (me.first * G).toInt().coerceIn(0, G - 1)
-        val selfGy = (me.second * G).toInt().coerceIn(0, G - 1)
+        val selfGx = (meKept.first * G).toInt().coerceIn(0, G - 1)
+        val selfGy = (meKept.second * G).toInt().coerceIn(0, G - 1)
         walls[selfGy * G + selfGx] = false
         wallHits[selfGy * G + selfGx] = 0
         WallMap.clearWallCell(me.first, me.second)
@@ -479,8 +514,9 @@ object SceneryMap {
                 val sy = (gy + 0.5f) / 20f
                 if (hypot(sx - self.x, sy - self.y) < 0.07f) continue
                 val (wx, wy) = projectToWorld(me, self, sx, sy)
-                val wgx = (wx * G).toInt().coerceIn(0, G - 1)
-                val wgy = (wy * G).toInt().coerceIn(0, G - 1)
+                val (kx, ky) = keep(wx to wy)
+                val wgx = (kx * G).toInt().coerceIn(0, G - 1)
+                val wgy = (ky * G).toInt().coerceIn(0, G - 1)
                 if (wgx == selfGx && wgy == selfGy) continue
                 val idx = wgy * G + wgx
                 wallHits[idx]++
@@ -496,8 +532,9 @@ object SceneryMap {
         // 2) Project 3D screen bushes into world coordinates
         for (b in s.bushes) {
             val (wx, wy) = projectToWorld(me, self, b.x, b.y)
-            if (bushes.none { hypot(it.first - wx, it.second - wy) < 0.025f }) {
-                bushes.add(wx to wy)
+            val (kx, ky) = keep(wx to wy)
+            if (bushes.none { hypot(it.first - kx, it.second - ky) < 0.025f }) {
+                bushes.add(kx to ky)
                 WallMap.markSceneryBush(wx, wy)
                 changed = true
             }
@@ -505,32 +542,32 @@ object SceneryMap {
 
         // 3) Project 3D screen monsters into memorized Monster Pits along with walkable entrance stand-spot
         for (m in s.monsters) {
-            val (wx, wy) = projectToWorld(me, self, m.x, m.y)
+            val (wx, wy) = keep(projectToWorld(me, self, m.x, m.y))
             val dx = (m.x - self.x) * s.aspect
             val dy = m.y - self.y
             val dl = hypot(dx, dy).coerceAtLeast(1e-3f)
-            val ux = dx / dl; val uy = dy / dl
+            val (ux, uy) = MapSide.viewDir((dx / dl) to (dy / dl))
             val isBuff = com.example.mlbbresearch.game.JungleDb.isBuff(m.species)
             val existing = pits.firstOrNull { hypot(it.x - wx, it.y - wy) < 0.055f }
             if (existing != null) {
                 existing.x = existing.x * 0.7f + wx * 0.3f
                 existing.y = existing.y * 0.7f + wy * 0.3f
                 if (s.distToSelf(m.x, m.y) <= 0.34f) {
-                    existing.standX = existing.standX * 0.6f + me.first * 0.4f
-                    existing.standY = existing.standY * 0.6f + me.second * 0.4f
+                    existing.standX = existing.standX * 0.6f + meKept.first * 0.4f
+                    existing.standY = existing.standY * 0.6f + meKept.second * 0.4f
                     existing.dirX = ux; existing.dirY = uy
                 }
                 if (m.species.isNotEmpty()) existing.label = m.species
                 if (isBuff) existing.buff = true
             } else {
-                pits.add(PitSpot(wx, wy, me.first, me.second, ux, uy, m.species.ifEmpty { "camp" }, isBuff))
+                pits.add(PitSpot(wx, wy, meKept.first, meKept.second, ux, uy, m.species.ifEmpty { "camp" }, isBuff))
                 changed = true
             }
         }
 
         // 4) Project 3D enemy tower rings seen on screen into memorized Towers
         if (s.towerRing.zone != TowerRing.Zone.NONE) {
-            val (wx, wy) = projectToWorld(me, self, s.towerRing.cx, s.towerRing.cy)
+            val (wx, wy) = keep(projectToWorld(me, self, s.towerRing.cx, s.towerRing.cy))
             if (towers.none { hypot(it.first - wx, it.second - wy) < 0.04f }) {
                 towers.add(wx to wy)
                 changed = true
@@ -543,67 +580,112 @@ object SceneryMap {
     }
 
     // Best walkable entrance / stand-spot for a camp at (campX, campY)
+    // (the pits are kept on the owner's usual map, Gold lane on top / Lord top-left; with the EXP lane on top they are mirrored - MapSide)
     fun pitStandSpot(campX: Float, campY: Float): Pair<Float, Float> {
         ensureLoaded()
-        val p = pits.minByOrNull { hypot(it.x - campX, it.y - campY) }
-        if (p != null && hypot(p.x - campX, p.y - campY) < 0.07f) {
-            return p.standX to p.standY
+        val (cx, cy) = MapSide.view(campX to campY)
+        val p = pits.minByOrNull { hypot(it.x - cx, it.y - cy) }
+        if (p != null && hypot(p.x - cx, p.y - cy) < 0.07f) {
+            return MapSide.view(p.standX to p.standY)
         }
         return campX to campY
     }
 
     // Screen direction toward the monster inside the pit when standing at a memorized pit before HP bar appears
     fun pitAimDirection(s: GameState): Pair<Float, Float>? {
-        val me = s.minimapSelf ?: return null
+        val me = MapSide.view(s.minimapSelf ?: return null)
         val p = pits.minByOrNull { hypot(it.standX - me.first, it.standY - me.second) } ?: return null
         if (hypot(p.standX - me.first, p.standY - me.second) > 0.055f) return null
-        return p.dirX to p.dirY
+        return MapSide.viewDir(p.dirX to p.dirY)
     }
 
     // Autonomous Practice Mode Roam Tour decision
+    // SCENERY CALIBRATION ONLY IN AN UNLOCKED MATCH (owner, 2026-11-10): the tour starts, and moves on,
+    // only while the practice gate lets the Player play (verified practice vs Computer)
+    fun playerUnlocked(): Boolean = com.example.mlbbresearch.ai.AiRuntime.playerOn &&
+        com.example.mlbbresearch.ai.AiRuntime.playerGate == com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY
+
+    // RETURN TO BASE (owner, 2026-11-11): after the last tour stop the Research player walks back to its base
+    // (gate, then fountain). The scenery is still observed the whole way and re-synced / saved at each of
+    // these stops, so the walk back revalidates what the tour learned. The calibration ends at the fountain.
+    val returnWaypoints: List<Waypoint> = listOf(
+        Waypoint(0.18f, 0.82f, "Return: Ally Base Gate"),
+        Waypoint(0.07f, 0.93f, "Return: Base (fountain)")
+    )
+    private val route: List<Waypoint> by lazy { tourWaypoints + returnWaypoints }
+    fun returning(): Boolean = roamActive && roamIdx >= tourWaypoints.size
+    private fun stepLabel(i: Int): String = if (i < tourWaypoints.size) "${i + 1}/${tourWaypoints.size}"
+        else "returning to base ${i - tourWaypoints.size + 1}/${returnWaypoints.size}"
+
+    // WHEN THE CALIBRATION TOUR MAY RUN (null = it may; else why it waits):
+    //  - the practice gate has unlocked the Player;
+    //  - SOLO PRACTICE only (owner, 2026-11-11: god mode, which keeps the hero alive on the tour, can only be
+    //    turned on in Solo mode vs computer) - not in a 5v5, and not while the kind of match is not read yet;
+    //  - which lane is on top is known (Solo matches can have either - owner, 2026-11-11; Solo shows no lane
+    //    marks, so it is read from the Lord / Turtle icons - MapSide.fromPits): what is learned on a mirrored
+    //    map is stored mirrored back, so the side must be known.
+    fun calibrationBlock(unlocked: Boolean, kind: MatchKind.Kind, markRead: Boolean): String? = when {
+        !unlocked -> "waiting: starts when the practice gate unlocks the Player (open the scoreboard once)"
+        kind == MatchKind.Kind.FIVE_V_FIVE -> "waiting: scenery calibration runs only in Solo mode vs computer (god mode) - this is a 5v5"
+        kind != MatchKind.Kind.SOLO -> "waiting: is this Solo mode? (read from the loading screen or the scoreboard - open the scoreboard once)"
+        !markRead -> "waiting: which lane is on top - read from the Lord and Turtle icons on the minimap (both must show in their pits)"
+        else -> null
+    }
+
     fun roamDecision(s: GameState, p: HeroProfile): TacticalDecision? {
         if (!roamActive) return null
+        val block = calibrationBlock(playerUnlocked(), MatchKind.current(), MapSide.goldTop != null)
+        if (block != null) {
+            status = block
+            waypointStartedAt = 0L; waypointArrivedAt = 0L
+            return null
+        }
         val me = s.minimapSelf ?: return TacticalDecision(
             Intent.PUSH, 0.7f, -0.7f, emptyList(), -1f, -1f, "-", -1f, -1,
             "Scenery calibration: waiting for minimap position"
         )
         val now = s.ts
-        if (roamIdx >= tourWaypoints.size) {
+        if (roamIdx >= route.size) {
             stopRoam()
             return null
         }
-        val wp = tourWaypoints[roamIdx]
+        val wp = route[roamIdx]
+        // (the way back is long: more time per stop)
+        val stopTimeout = if (roamIdx < tourWaypoints.size) wp.timeoutMs else 30_000L
         if (waypointStartedAt == 0L) waypointStartedAt = now
-        val dist = hypot(wp.x - me.first, wp.y - me.second)
+        // (the tour is written on the usual map; on a mirrored one each stop is its mirror - the same places)
+        val (wpx, wpy) = MapSide.view(wp.x to wp.y)
+        val dist = hypot(wpx - me.first, wpy - me.second)
 
-        if (dist < 0.045f || now - waypointStartedAt > 9500L) {
+        if (dist < 0.045f || now - waypointStartedAt > stopTimeout) {
             if (waypointArrivedAt == 0L) {
                 waypointArrivedAt = now
                 syncWithMinimap(s, forceManual = true)
                 saveNow()
             }
             if (now - waypointArrivedAt < 350L) {
-                status = "scanning ${wp.name} (${roamIdx + 1}/${tourWaypoints.size}) · ${summary()}"
+                status = "scanning ${wp.name} (${stepLabel(roamIdx)}) · ${summary()}"
                 return TacticalDecision(
                     Intent.PUSH, 0f, 0f, emptyList(), -1f, -1f, wp.name, -1f, -1,
-                    "Scenery calibration (${roamIdx + 1}/${tourWaypoints.size}): scanning ${wp.name}"
+                    "Scenery calibration (${stepLabel(roamIdx)}): scanning ${wp.name}"
                 )
             }
             roamIdx++
             waypointArrivedAt = 0L
             waypointStartedAt = now
-            if (roamIdx >= tourWaypoints.size) {
+            if (roamIdx >= route.size) {
                 saveNow()
                 roamActive = false
-                status = "completed 100% · " + summary()
+                status = "completed 100% · back at base · " + summary()
                 Diag.info("Scenery calibration complete: $status")
                 return null
             }
         }
 
-        val nextWp = tourWaypoints[roamIdx]
-        val (dx, dy) = WallMap.direction(me, nextWp.x to nextWp.y) ?: run {
-            val rx = nextWp.x - me.first; val ry = nextWp.y - me.second
+        val nextWp = route[roamIdx]
+        val nextAt = MapSide.view(nextWp.x to nextWp.y)
+        val (dx, dy) = WallMap.direction(me, nextAt) ?: run {
+            val rx = nextAt.first - me.first; val ry = nextAt.second - me.second
             val l = hypot(rx, ry).coerceAtLeast(1e-4f)
             (rx / l) to (ry / l)
         }
@@ -611,10 +693,10 @@ object SceneryMap {
         HeroDb.dashSlot(s.ownHero)?.let { dash ->
             if (dash != "ult" && CooldownTracker.ready(dash, p)) casts.add(dash)
         }
-        status = "roaming ${roamIdx + 1}/${tourWaypoints.size}: ${nextWp.name} · ${summary()}"
+        status = (if (returning()) "" else "roaming ") + "${stepLabel(roamIdx)}: ${nextWp.name} · ${summary()}"
         return TacticalDecision(
             Intent.PUSH, dx, dy, casts, -1f, -1f, nextWp.name, -1f, -1,
-            "Scenery calibration (${roamIdx + 1}/${tourWaypoints.size}): -> ${nextWp.name}"
+            "Scenery calibration (${stepLabel(roamIdx)}): -> ${nextWp.name}"
         )
     }
 }

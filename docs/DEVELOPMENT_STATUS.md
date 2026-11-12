@@ -244,6 +244,45 @@ The receiving agent must independently inspect repository state before modifying
 
 Only mark a milestone complete when supported by verifiable evidence.
 
+### 8.1 Integrated roadmap (updated 2026-11-09 by Claude Code; Universal Device Compatibility phases added)
+
+Status labels used in this table:
+
+| Label | Meaning |
+|---|---|
+| COMPLETED | Merged, with CI passing. |
+| IN PROGRESS | Started, not finished. |
+| PLANNED | Agreed, not started. |
+| PROPOSED | Needs the owner's approval. |
+| BLOCKED | Waiting on something named. |
+| REQUIRES TESTING | Merged but not confirmed on a device. |
+
+No earlier phase was removed or re-scoped. The new phases A–G come from the owner's Universal Device Compatibility prompt (2026-11-09); details are in `docs/UNIVERSAL_COMPATIBILITY.md`.
+
+| # | Phase / item | Status | Evidence / dependency |
+|---|---|---|---|
+| 1 | Phase One audit, universal model, MLBB adapter, decision contract, readiness harness | COMPLETED | PRs #11, #12, #13 |
+| 2 | Decision logging; loading-spell hint | COMPLETED | PRs #14, #15 |
+| 3 | Research mode R1–R4 (practice gate, live status, arbiter in practice, practice moments and readiness test) | COMPLETED, REQUIRES TESTING | PRs #16, #18, #19, #20. The owner confirmed the gate works both ways (2026-11-08) |
+| 4 | R5 part 1: arbiter vs normal comparison (measurement) | COMPLETED | PR #21 |
+| 5 | R5 part 2: arbiter tuning | BLOCKED | Needs 5 or more verified practice matches per group. The 2026-11-08 recordings had none verified, because of the scoreboard bug fixed in #28 |
+| 6 | R4 small-model readiness decision | BLOCKED | Needs 200 or more practice moments, then the owner's decision |
+| 7 | Spatial map (5v5 landmarks) | COMPLETED, REQUIRES TESTING | PR #17. Validation needs the owner's screenshots before the strategy engine may use it |
+| 8 | Issue #2: target fusion, combat range, jungle fights, aim release, misread enemies, scoreboard | IN PROGRESS, REQUIRES TESTING | PRs #22, #26, #28. Open until the owner re-tests with a recording |
+| 9 | App: What's new, storage folder, app id `com.sphynx.autopilot`, session recorder | COMPLETED | PRs #23, #24, #25, #27 |
+| A | Universal compatibility architecture audit (read-only) | COMPLETED | `docs/UNIVERSAL_COMPATIBILITY.md`, 2026-11-09 |
+| B | Runtime-independent AI contracts (specification) | PROPOSED | Extends `universal/`; doc only |
+| C | Device Capability Manager (detection and display, no behaviour change), plus the crash-loop guard pulled forward from E | PROPOSED, recommended next | Pure Kotlin classification and tests |
+| D | Inference runtime abstraction (`LlmSlot` behind an interface); llama.cpp feasibility spike only | PROPOSED | After C |
+| E | Model registry, adaptive model selection, failure recovery; Builder and Ranked Drafter without Gemma | PROPOSED, REQUIRES OWNER APPROVAL | Owner decision on principle 9 for Builder / Ranked Drafter |
+| F | Resource and thermal optimisation (cadence, capture scaling, memory pressure) | PROPOSED | After C and E |
+| G | Universal device validation (compatibility matrix) | BLOCKED | Needs devices other than the POCO X6 Pro |
+| 10 | Housekeeping: status doc catch-up (this update), CI Node 20 warnings, unused `litert:1.4.2` dependency, batch-1 reference-manifest fixes | PLANNED | — |
+| 11 | Owner actions: GitHub Support purge of refs/pull/3–7; device re-tests | PENDING OWNER | — |
+| 12 | Second game adapter | FUTURE | After the MLBB boundary is proven |
+
+**Why the order changes:** only one item moves. The crash-loop guard (load sentinel) is pulled from Phase E into Phase C, because it is the only compatibility item that protects users right now. A native crash during a model load currently repeats on every app start. All other new phases follow the owner's order A to G.
+
 ## 9. Development Session Log
 
 Append a new dated entry after each meaningful assignment. Preserve historical entries; do not overwrite prior records.
@@ -384,6 +423,17 @@ Next recommended task:
 - **Build / test results:** none run for this change (documentation only). The baseline figures quoted come from earlier verified runs.
 - **Next recommended task:** owner decisions in audit §13, then Stage 2, step 1 (universal model package and capability registry, with no behaviour change).
 
+### 2026-11-09 — Claude Code — Universal Device Compatibility, Stage 1 (read-only audit and roadmap)
+
+- **Scope:** owner's Universal Device Compatibility prompt, Stage 1. No application source was changed and nothing was pushed by this work.
+- **Git state:** working from `origin/main` = `716af66`.
+  - `main` was rewritten after the PR #28 merge, apparently by the owner. Two commits were removed: "Add files via upload" (a 25 MB recording uploaded to `main` by mistake) and its "Delete …" commit. The PR #28 commit was re-parented as `17f96e0`.
+  - The tree is identical to the merged fix (VERIFIED: same tree hash `acfeb7e`).
+  - Lesson recorded: new branches are created from `origin/main`, never from a local `main`.
+- **Baseline:** `testDebugUnitTest` passes 168 of 168 and `assembleDebug` succeeds on `716af66` (VERIFIED 2026-11-09).
+- **Delivered:** `docs/UNIVERSAL_COMPATIBILITY.md` (architecture, AI dependency map, gaps, risks, proposed design) and roadmap §8.1.
+- **Catch-up of merged work since this log's last entry:** PRs #11–#28. See §8.1 rows 1–9.
+
 ## 10. Architectural Decision Log
 
 | Decision area | Current direction |
@@ -409,10 +459,13 @@ For each new decision, record its date, rationale, implementation impact, and ow
 | 2026-11-07 | Autonomous tactical actions stay disabled; no major rewrite; preserve MLBB functionality | Stability over speed | See finding 4.1 for the existing gated use | Owner directive |
 | 2026-11-07 | Pin `litertlm-android` to an exact version (`0.19.1`); upgrades go in their own PR | A new LiteRT-LM release could change how the Gemma models load and run without any code change | Builds are reproducible; upgrades must be made on purpose | Owner requested (PR #8) |
 | 2026-11-07 | Remove both videos and all old build output from the Git history of all branches (rewrite + force-push) | Repository size (283 MB → 1.1 MB) and removal of personal videos | All commit hashes changed; old clones must be re-cloned; GitHub PR refs #3–#7 still hold the old files until GitHub Support purges them | Owner approved scope and force-push |
+| 2026-11-09 | Universal Device Compatibility and Adaptive Intelligence becomes a permanent architectural requirement (15 principles; phases A–G added to the roadmap) | The app must work on modest Android devices and scale up on capable ones | Phase A done; B–G need approval phase by phase | Owner directive; implementation awaits Stage 2 approval |
 | 2026-11-09 | Remove the Experimental label from the small tactical model (Gemma 3 270M); MLBB `TACTICAL_ADVICE` = Partially Operational | Owner decision; the approved readiness test (200+ moments) has not been run yet | Its advice is accepted by the validator and can win the arbiter; Kotlin checks and validator rejections still apply; R4 readiness test stays available as a measurement | Owner decision |
 | 2026-11-10 | **Player mode is practice-only:** it plays only in a match verified as practice vs Computer (scoreboard check, `research/PlayerGate`); never in matches with real players. Goal: match or beat the game's own AI and use practice as the learning environment. Drafter and Builder stay available in all matches | Owner: "I don't want to use it to play live matches against real players anymore"; autonomy development needs one safe boundary | All autonomous play (Player, R3 arbiter, future autonomy levels) is behind the practice gate | Owner decision |
 | 2026-11-10 | **Companion split in non-practice matches:** skill leveling is advice only (panel shows which skill to level); item actives (Frozen, Wind Chant, Conceal) are pressed automatically by the Builder; quick buy and the low-HP item swap stay automatic | Owner: "It should just advise what to prioritize leveling up"; owner chose option 2 (automatic, part of the Builder) for item actives | `SkillAdvice` (no taps); `ActionExecutor.builderActive` gated by `PlayerGate.builderPressesActives`; setting "Press item actives" on the Build page | Owner decision |
 | 2026-11-10 | **Practice benchmark first:** before further AI tuning, every verified practice match the Player plays gets a scorecard (result, K/D/A, level at 5/10 min, idle and stuck time, intent time shares, deaths with likely cause); trend = last 5 vs the 5 before | Owner goal: play on par with the game's own AI or better; changes need a number to beat | `research/PracticeBenchmark` (pure, unit tested), Practice page, CSV export; measures only, no new actions. Gold per minute and damage are not measured (the app reads current gold only, and no damage figure) | Owner approved ("start the practice benchmark") |
+| 2026-11-10 | Push the Stage 1 / Phase Zero / Phase 0-1 audit documents as a PR; **authorize Phase One** of hybrid inference (contracts only, pure Kotlin, no behaviour change); Phase 2 (product blueprint) starts with screen mock-up pictures for the owner | Owner: "docs push as pr. for the screen design give me a picture. authorize phase one." | `docs/` PR; Phase One on its own branch; mock-ups delivered as images (no app code) | Owner decision |
+| 2026-11-10 | **Hardware-aware deployment profiles** (Lite / Balanced / Advanced / Maximum), chosen from measurements on the phone (free memory with MLBB running, loaded backend, speed test, thermal status), never from phone names; step down during a match on heat or low memory; the play loop never waits for an LLM | PM proposal checked by Claude Code (corrections: no 3+ GB GGUF strategist on 4 GB phones; a bigger tactical model must meet the ~350 ms budget and prove better advice; concurrency decided at runtime); owner: "yes add it" | `UNIVERSAL_COMPATIBILITY.md` §A.9; built in hybrid Phase Six (= Phase F), fed by PR #35 / #34 measurements | Owner decision |
 
 ## 11. Document Maintenance
 
