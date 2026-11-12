@@ -41,7 +41,7 @@ object CloudTrain {
         POLICY("policy", "Tactical networks", "train_tactical_policy.ipynb", false,
             listOf("mlbb_policies.zip"), "your recorded play (exported automatically)"),
         LLM("llm", "Small tactical model", "train_tactical_llm.ipynb", true,
-            listOf("gemma3-270m-mlbb-tactical.litertlm", "tactical_llm_info.json"), "fight moments (exported automatically, 150+ usable)")
+            listOf("gemma3-270m-mlbb-tactical.litertlm", "tactical_llm_info.json", "tactical_llm_trainable.zip"), "fight moments (exported automatically, 150+ usable)")
     }
 
     @Volatile internal var API = "https://api.kaggle.com/v1"        // (overridable for tests)
@@ -49,6 +49,7 @@ object CloudTrain {
     private val REPO_REFS = listOf("test/owner-2026-11-10", "main")
     @Volatile internal var REPO = "https://raw.githubusercontent.com/georgenaval1-blip/Sphynx-Auto-Pilot"
     private const val MIN_PLAY = 300      // recorded moments before the tactical networks are worth training
+    const val LLM_TRAINABLE = "tactical_llm_trainable.zip"   // the small model's trainable copy (~550 MB)
     private const val MIN_FIGHTS = 150    // fight moments before the small model is worth training
     // one worker per training for preparing / uploading / downloading (all four at once) ...
     private val io = Executors.newFixedThreadPool(4) { r -> Thread(r, "cloud-train").apply { priority = Thread.MIN_PRIORITY } }
@@ -133,7 +134,8 @@ object CloudTrain {
         // (the fight CSVs too: the fight-choice network is trained in the same notebook)
         Job.POLICY -> emptyList<Input>() to (all.filter { isPlayCsv(it.name) || isFightCsv(it.name) } + listOfNotNull(
             all.firstOrNull { it.name == "mlbb_policies.zip" }))
-        Job.LLM -> emptyList<Input>() to all.filter { isFightCsv(it.name) }
+        // (+ the last trained model's trainable copy: the training continues from it - owner, 2026-11-12)
+        Job.LLM -> emptyList<Input>() to (all.filter { isFightCsv(it.name) } + listOfNotNull(all.firstOrNull { it.name == LLM_TRAINABLE }))
     }
 
     // ---------------- is there enough to train on? (the Train button turns green) ----------------
