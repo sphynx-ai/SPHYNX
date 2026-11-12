@@ -182,6 +182,7 @@ object ResearchMode {
         if (id == 0L) { reading("scoreboard seen - match not identified yet", nowMs); return }
         val before = session.gate.state
         val r = ScoreboardNameCheck.check(px, w, h, m)
+        com.example.mlbbresearch.core.SessionRecorder.snap("gate-scoreboard", px, w, h, 8000L)
         // solo practice (2 players) or 5v5 (6+): the boss timers depend on it (game.MatchKind)
         com.example.mlbbresearch.game.MatchKind.set(id, com.example.mlbbresearch.game.MatchKind.fromPlayers(r.players))
         session.observe(id, r, nowMs)
@@ -212,6 +213,7 @@ object ResearchMode {
         if (id == 0L) { reading("loading screen - match not identified yet", nowMs); return }
         if (session.gate.matchId == id && session.gate.state != PracticeGate.State.UNVERIFIED) return   // already decided
         val solo = com.example.mlbbresearch.vision.ScreenReader.soloLoading(px, w, h)
+        com.example.mlbbresearch.core.SessionRecorder.snap("gate-loading", px, w, h, 8000L)
         val r = if (solo) LoadingNameCheck.fromSolo(m.score(px, w, h, SOLO_NAME_X, SOLO_NAME_Y, sizeMul = NAME_SIZE))
         else LoadingNameCheck.fromGrid(GRID.map { (x, y) -> m.score(px, w, h, x, y, dx = 40, sizeMul = NAME_SIZE) })
         // solo practice or 5v5 (game.MatchKind): the solo layout says solo; the 5v5 grid only when it was read

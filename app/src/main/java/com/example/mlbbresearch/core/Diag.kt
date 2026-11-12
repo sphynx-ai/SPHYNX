@@ -26,6 +26,9 @@ object Diag {
         }
     }
 
+    // the log file itself (copied next to every recording - SessionRecorder)
+    fun logFile(): File? = file
+
     fun info(msg: String) = log("INFO", msg)
 
     fun error(msg: String, t: Throwable? = null) =

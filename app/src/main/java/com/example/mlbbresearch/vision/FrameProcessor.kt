@@ -160,6 +160,20 @@ object FrameProcessor {
             fun mm(box: FloatArray?) = box?.let { (((it[0] + it[2]) / 2f - l) / (r - l).coerceAtLeast(0.01f)) to (((it[1] + it[3]) / 2f - t) / (b - t).coerceAtLeast(0.01f)) }
             com.example.mlbbresearch.game.MapSide.observe(com.example.mlbbresearch.game.MapSide.fromPits(mm(mini.lordIcon), mm(mini.turtleIcon)))
         }
+        // CLEAN SCREENSHOTS FOR THE RECORDING at key moments (owner, 2026-11-12): the lane side decided, an enemy
+        // hero or a monster first seen, your HP read as 0%
+        if (com.example.mlbbresearch.core.SessionRecorder.on && hint == ScreenHint.NONE && self != null) {
+            val rec = com.example.mlbbresearch.core.SessionRecorder
+            val side = com.example.mlbbresearch.game.MapSide.goldTop
+            if (side != snapSide) { snapSide = side; if (side != null) rec.snap("lane-side", px, w, h, 1000L) }
+            val enemyNow = tracks.isNotEmpty()
+            if (enemyNow && !snapEnemy) rec.snap("enemy-hero", px, w, h, 6000L)
+            snapEnemy = enemyNow
+            val monNow = seen.any { it.team == Team.NEUTRAL }
+            if (monNow && !snapMon) rec.snap("monster", px, w, h, 6000L)
+            snapMon = monNow
+            if (self.hp <= 0.02f) rec.snap("hp0", px, w, h, 10_000L)
+        }
         // which skill buttons the screen shows (normal / large HUD, 2-3-4 skills)
         if (hint == ScreenHint.NONE && self != null && frameNo % 10 == 5L) ScreenKit.observe(px, w, h)
         // which hero you play: its skill icons against learned looks and the wiki pictures (HeroVerifier)
@@ -594,6 +608,10 @@ object FrameProcessor {
         }
         return if (n == 0) floatArrayOf(0f, 0f, 0f) else floatArrayOf(o.toFloat() / n, bl.toFloat() / n, gr.toFloat() / n)
     }
+
+    private var snapSide: Boolean? = null
+    private var snapEnemy = false
+    private var snapMon = false
 
     // where monsters were seen in the last moments (a camp being fought): bars there stay monsters
     private val recentMonsters = ArrayList<Triple<Float, Float, Long>>()
