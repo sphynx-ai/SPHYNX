@@ -440,19 +440,27 @@ object FrameProcessor {
         val monsters = ArrayList<Seen>()
         val nowMs = System.currentTimeMillis()
         val aspect = if (h == 0) 1.78f else w.toFloat() / h
+        val selfBar = all.firstOrNull { it.team == Team.SELF }
         for (s in all) {
             // a red bar where yours sits is YOUR passive bar, not a unit (see ownBars)
             if (s.team == Team.ENEMY && kotlin.math.abs(s.barLeft - 0.471f) < 0.015f && s.barTop in 0.36f..0.43f) continue
-            // Confirmed Enemy Hero Protection (v37.16):
-            // Never misclassify an Enemy Hero as a jungle monster when their level badge is replaced by a colorful
-            // active skill duration icon (e.g. Cici s1, Balmond s2, Thamuz ult, Leomord ult) or partially occluded!
-            val confirmedEnemyHero = s.team == Team.ENEMY && s.hero && (
-                badgeDark(px, w, h, s) >= 0.20f ||
+            // AN ENEMY HERO NEEDS ITS OWN LEVEL BADGE AND AN ENEMY ON THE MINIMAP (owner, 2026-11-12 - recording
+            // 2026-11-11 0:36: the Molten Fiend's bar was taken for enemy heroes "#182 3%" / "#181 25%" because YOUR
+            // level badge's dark circle sat right next to it, and the enemy tracker then kept the ghost "confirmed"):
+            //  - the badge: a dark badge left of the bar that is not your own badge, a skill-duration icon in its
+            //    place (Cici s1, Thamuz ult...), the hero sub-bar, or a readable level number;
+            //  - and an enemy hero icon near you on the minimap (HeroBarRule);
+            //  - at a monster seen in the last 2.5 s (a camp being fought) the bar stays the monster unless its
+            //    level number is readable.
+            val glyph = s.team == Team.ENEMY && s.hero && LevelReader.glyph(px, w, h, s) != null
+            val badge = s.team == Team.ENEMY && s.hero && (
+                (badgeDark(px, w, h, s) >= 0.20f && !onOwnBadge(s, selfBar)) ||
                     s in barsWithSubBar ||
                     ScreenReader.badgeSkillDuration(px, w, h, s) >= 0f ||
-                    LevelReader.glyph(px, w, h, s) != null ||
-                    enemyTracker.isNearActiveTrack(s.x, s.y, nowMs, aspect)
+                    glyph
                 )
+            val confirmedEnemyHero = s.team == Team.ENEMY && s.hero &&
+                HeroBarRule.isEnemyHero(badge, enemyNearOnMap, atRecentMonster(s, nowMs, aspect), glyph)
             if (s.team == Team.ENEMY && s.hero && !confirmedEnemyHero) {
                 // an enemy TOWER's bar is red without a badge too: near an enemy tower on the
                 // minimap it is the tower (a structure), not a monster
@@ -491,6 +499,8 @@ object FrameProcessor {
                 monsters.add(m); out.add(m)
             } else out.add(s)
         }
+        for (m in monsters) recentMonsters.add(Triple(m.x, m.y, nowMs))
+        recentMonsters.removeAll { nowMs - it.third > HeroBarRule.MONSTER_MEMORY_MS }
         if (monsters.isEmpty()) return out
         // the Thunder Fenrir's cub: a small blue monster right next to the big one is the same camp
         val fenrir = monsters.filter { it.species == com.example.mlbbresearch.game.JungleDb.THUNDER_FENRIR.id }
@@ -573,6 +583,15 @@ object FrameProcessor {
         return if (n == 0) floatArrayOf(0f, 0f, 0f) else floatArrayOf(o.toFloat() / n, bl.toFloat() / n, gr.toFloat() / n)
     }
 
+    // where monsters were seen in the last moments (a camp being fought): bars there stay monsters
+    private val recentMonsters = ArrayList<Triple<Float, Float, Long>>()
+    private fun atRecentMonster(s: Seen, nowMs: Long, aspect: Float): Boolean =
+        recentMonsters.any { nowMs - it.third <= HeroBarRule.MONSTER_MEMORY_MS && kotlin.math.hypot((it.first - s.x) * aspect, it.second - s.y) <= HeroBarRule.MONSTER_NEAR }
+
+    // the bar's badge spot is YOUR level badge (left of your own bar, same height)
+    private fun onOwnBadge(s: Seen, self: Seen?): Boolean = self != null &&
+        HeroBarRule.overlapsOwnBadge(s.barLeft, (s.barTop + s.barBottom) / 2, self.barLeft, (self.barTop + self.barBottom) / 2)
+
     // dark level badge just left of a bar
     private fun badgeDark(px: IntArray, w: Int, h: Int, s: Seen): Float {
         val cy = ((s.barTop + s.barBottom) / 2 * h).toInt()
@@ -612,6 +631,7 @@ object FrameProcessor {
 
     fun reset() {
         enemyTracker.clear()
+        recentMonsters.clear()
         latest = null
         processedFps = 0f
     }
