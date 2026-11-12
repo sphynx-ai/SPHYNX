@@ -23,6 +23,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-12", Kind.FIXED, "The Lord only with 3 or more allies",
+            "The Research player kept hitting the Lord with no ally near and was killed by it. Now it starts, finishes or rotates " +
+                "to the Lord only with 3 or more allied heroes near it (on the screen, or on the minimap around you); with fewer it " +
+                "walks away from the Lord. The Turtle is unchanged.",
+            pr = 54, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.FIXED, "Jungle monsters no longer taken for low-HP enemy heroes",
             "Your recording (0:36) showed the Molten Fiend's bar read as two enemy heroes at 3% and 25% - the Player left the buff to " +
                 "\"chase a kill\" and spent Retribution on ghosts. A red bar now counts as an enemy hero only with its own level badge " +
