@@ -245,6 +245,29 @@ object SessionRecorder {
     // one file into the recordings folder (used by the Practice and Speed pages' exports)
     fun exportFile(c: Context, f: File, mime: String): String = export(c, f, mime)
 
+    // a new file in the recordings folder, written as a stream (big files: the training picture parts)
+    fun openOut(c: Context, name: String, mime: String): java.io.OutputStream {
+        Storage.dir(FOLDER)?.let { d -> return File(d, name).outputStream() }
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, name)
+            put(MediaStore.Downloads.MIME_TYPE, mime)
+            put(MediaStore.Downloads.RELATIVE_PATH, Storage.downloadsRel(FOLDER))
+        }
+        val uri = c.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: throw IllegalStateException("cannot create $name")
+        return c.contentResolver.openOutputStream(uri) ?: throw IllegalStateException("cannot write $name")
+    }
+
+    // remove a file from the recordings folder (the picture parts once they are on GitHub)
+    fun deleteFile(c: Context, name: String): Boolean {
+        var gone = Storage.dir(FOLDER)?.let { File(it, name).delete() } ?: false
+        try {
+            gone = c.contentResolver.delete(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                MediaStore.Downloads.DISPLAY_NAME + " = ? AND " + MediaStore.Downloads.RELATIVE_PATH + " = ?",
+                arrayOf(name, Storage.downloadsRel(FOLDER) + "/")) > 0 || gone
+        } catch (e: Exception) { }
+        return gone
+    }
+
     private fun export(c: Context, f: File, mime: String = "application/json"): String {
         Storage.dir(FOLDER)?.let { d ->
             f.copyTo(File(d, f.name), overwrite = true)

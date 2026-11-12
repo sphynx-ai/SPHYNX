@@ -496,6 +496,7 @@ object GameStateTracker {
             // recording ends at the match end screens; the end scoreboard may still lock the hero
             if (matchId != 0L) { lastMatchId = matchId; matchId = 0L; Diag.info("Match recording ended (match end)"); com.example.mlbbresearch.core.SessionRecorder.matchEnded() }
             lastMatchEndAt = now
+            com.example.mlbbresearch.learning.TrainingResults.matchEnded()   // tactical engine result of this match
             logMatch()                       // (it clears lastResultWin: the message uses the copy)
             matchStartAt = 0L
             Diag.info("Match end: " + when (result) { true -> "victory"; false -> "defeat"; null -> "result not read" })

@@ -27,4 +27,10 @@ class GitHubUploadTest {
         assertTrue(GitHubUpload.explain(404, "{}").contains(GitHubUpload.BRANCH))
         assertEquals("recordings-for-debugging", GitHubUpload.BRANCH)
     }
+
+    @Test fun pictureZipsGoAlone() {
+        val plan = GitHubUpload.plan(listOf("a.jsonl", "pictures-x-p1.zip", "pictures-x-p2.zip"), emptySet(), null)
+        assertEquals(listOf(listOf("a.jsonl"), listOf("pictures-x-p1.zip"), listOf("pictures-x-p2.zip")), plan)
+        assertEquals("Training pictures: pictures-x-p1.zip", GitHubUpload.message(listOf("pictures-x-p1.zip")))
+    }
 }
