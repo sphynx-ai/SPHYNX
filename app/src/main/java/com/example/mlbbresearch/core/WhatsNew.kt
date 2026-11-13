@@ -23,6 +23,15 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-13", Kind.FIXED, "Misreads and log noise from the 2026-11-13 recording",
+            "The K / D / A counter at the top is no longer read as a jungle monster at 3-5% HP. Recording screenshots: at " +
+                "most one \"monster\" a minute and one \"enemy hero\" every 20 s (30 of 39 were monsters). The learned enemy " +
+                "tower range no longer jumps (it was 6% to 16% in one match): misreads outside 4-10% are ignored and it " +
+                "moves one point at a time. The scoreboard's spell list starts empty in every match, and one scoreboard " +
+                "read no longer contradicts the spell button already recognised. An online answer cut off in the middle " +
+                "keeps its complete part (the meta update failed on one). The Coach's \"observed your sequence\" line is " +
+                "logged only when it changes.",
+            pr = 79, needsDeviceCheck = true),
         Entry("2026-11-13", Kind.IMPROVED, "No learning in Solo practice; learning from you by itself in 5v5",
             "Solo practice vs Computer is for calibration only (skill buttons, scenery): nothing is learned or recorded " +
                 "there - no recorded moments, no practice benchmark, no minimap or screen training pictures (the tour-stop " +

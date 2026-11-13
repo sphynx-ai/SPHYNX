@@ -63,6 +63,8 @@ object Coach {
         status = "you cast $slot" + if (e != null) " at an enemy ${(s.distToSelf(e.x, e.y) * 100).toInt()} away" else ""
     }
 
+    private var lastLogged = ""
+
     private fun endChain(hero: String) {
         val c = chain.toList()
         chain.clear()
@@ -76,7 +78,9 @@ object Coach {
         val best = counts.maxByOrNull { it.value }!!
         if (best.value >= 2) {
             Cfg.setRaw("coach_best_${key(hero)}", best.key)
-            Diag.info("Coach: observed your $hero sequence: ${best.key} (seen ${best.value} times; manual/built-in combo kept)")
+            // (only when it changed: the same line was written after every chain)
+            val line = "$hero: ${best.key} x${best.value}"
+            if (line != lastLogged) { lastLogged = line; Diag.info("Coach: observed your $hero sequence: ${best.key} (seen ${best.value} times; manual/built-in combo kept)") }
             status = "observed your sequence: ${best.key}"
         }
     }
