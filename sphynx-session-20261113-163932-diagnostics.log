@@ -1,0 +1,231 @@
+11-13 15:54:15 [INFO] Folder: nothing to read yet: allow all files access, or choose the /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage folder (Model page)
+11-13 15:55:14 [INFO] Accessibility service connected
+11-13 15:55:47 [INFO] Folder: last scan: Gemma 4 E2B copied, Gemma loading, Gemini API key, Cerebras API key, Groq API key, Kaggle key, small tactical model copied (Gemma 3 270M)
+11-13 15:55:51 [INFO] gemma model loaded on CPU
+11-13 15:55:51 [INFO] Gemma loaded from the folder
+11-13 15:57:06 [INFO] Screen capture started (800x1778)
+11-13 15:57:06 [INFO] learn started
+11-13 15:58:08 [INFO] Match recording started (hero seen; no loading screen)
+11-13 15:58:08 [INFO] Auto calibration (game): Screen: in game. Found 30: attack, s1, s2, ult, s1of4, s3, s2of4, ultOf4, s1of2, s2of2, s1Up, s2Up, ultUp, s1Up4, s2Up4, s3Up4, ultUp4, s1Up2, s2Up2, spell, regen, recall, quickBuy, activeItem, joystick, kdaK, kdaD, kdaA, mapTL, mapBR | attack button not seen: used MLBB's default layout
+11-13 15:58:08 [INFO] Portrait pictures: fetching 133 heroes' pictures for portrait matching
+11-13 15:58:08 [INFO] Spell pictures: fetching 15 battle spell icons from the wiki for spell matching
+11-13 15:58:09 [INFO] Map: Gold lane on top (the Lord's pit top-left)
+11-13 15:58:38 [INFO] Level 1 -> 2 (badge changed)
+11-13 15:58:42 [INFO] Level 2 -> 3 (skill point)
+11-13 15:58:54 [INFO] Auto-detect: Screen: in game. Found 30: attack, s1, s2, ult, s1of4, s3, s2of4, ultOf4, s1of2, s2of2, s1Up, s2Up, ultUp, s1Up4, s2Up4, s3Up4, ultUp4, s1Up2, s2Up2, spell, regen, recall, quickBuy, activeItem, joystick, kdaK, kdaD, kdaA, mapTL, mapBR | attack button not seen: used MLBB's default layout
+11-13 15:58:56 [INFO] Auto-detect: Screen: in game. Found 30: attack, s1, s2, ult, s1of4, s3, s2of4, ultOf4, s1of2, s2of2, s1Up, s2Up, ultUp, s1Up4, s2Up4, s3Up4, ultUp4, s1Up2, s2Up2, spell, regen, recall, quickBuy, activeItem, joystick, kdaK, kdaD, kdaA, mapTL, mapBR | attack button not seen: used MLBB's default layout
+11-13 15:59:15 [INFO] Recognised your battle spell from in-game spell button: Retribution (0.70, wiki pictures)
+11-13 15:59:15 [INFO] Learned the Retribution icon
+11-13 15:59:30 [INFO] Research mode on (practice-only gate; R3 arbiter experiment in verified practice only)
+11-13 15:59:30 [INFO] player started
+11-13 15:59:30 [INFO] Scenery calibration roam started (38 waypoints)
+11-13 15:59:34 [INFO] Player advises only (you play): waiting: open the scoreboard once to confirm a practice match vs Computer
+11-13 15:59:39 [INFO] Scoreboard: enemy spells from icons = Gord: Sprint
+11-13 15:59:39 [INFO] Match kind: Solo practice
+11-13 15:59:39 [INFO] Research: verified practice (all 9 others are Computer) - no experiment until Player mode plays
+11-13 15:59:42 [INFO] Scoreboard: enemy spells from icons = Atlas: Sprint, Gord: Sprint
+11-13 15:59:45 [INFO] Player plays: verified practice vs Computer
+11-13 15:59:45 [INFO] Speed: frame to touch about 87 ms (vision 65, waiting 0, deciding 22, touch queue 0)
+11-13 15:59:52 [INFO] Level 3 -> 4 (badge changed)
+11-13 15:59:53 [INFO] Gemma read your battle spell: Retribution
+11-13 15:59:55 [INFO] Level 4 -> 5 (badge changed)
+11-13 15:59:56 [INFO] Minimap portrait vs the wiki pictures: Alucard (0.82)
+11-13 16:00:01 [INFO] Speed: frame to touch about 206 ms (vision 50, waiting 35, deciding 3, touch queue 117)
+11-13 16:00:15 [INFO] Level 5 -> 6 (badge changed)
+11-13 16:00:16 [INFO] Speed: frame to touch about 141 ms (vision 41, waiting 12, deciding 2, touch queue 86)
+11-13 16:00:31 [INFO] Speed: frame to touch about 156 ms (vision 36, waiting 15, deciding 2, touch queue 103)
+11-13 16:00:46 [INFO] Speed: frame to touch about 140 ms (vision 40, waiting 14, deciding 3, touch queue 83)
+11-13 16:00:55 [INFO] Level 6 -> 7 (badge changed)
+11-13 16:01:01 [INFO] Speed: frame to touch about 96 ms (vision 33, waiting 11, deciding 1, touch queue 52)
+11-13 16:01:16 [INFO] Speed: frame to touch about 137 ms (vision 44, waiting 24, deciding 2, touch queue 67)
+11-13 16:01:27 [INFO] Enemy tower range learned: 6% of the minimap
+11-13 16:01:31 [INFO] Speed: frame to touch about 239 ms (vision 48, waiting 30, deciding 3, touch queue 157)
+11-13 16:01:31 [INFO] Level 7 -> 8 (badge changed)
+11-13 16:01:31 [INFO] Level 8 -> 10 (two-digit badge)
+11-13 16:01:33 [INFO] Enemy tower range learned: 7% of the minimap
+11-13 16:01:35 [INFO] Remembered the level 10 badge
+11-13 16:01:44 [INFO] Level 10 -> 11 (skill point)
+11-13 16:01:45 [INFO] Enemy tower range learned: 9% of the minimap
+11-13 16:01:46 [INFO] Speed: frame to touch about 353 ms (vision 48, waiting 29, deciding 2, touch queue 274)
+11-13 16:01:49 [INFO] Enemy tower range learned: 10% of the minimap
+11-13 16:01:51 [INFO] Enemy tower range learned: 12% of the minimap
+11-13 16:02:01 [INFO] Speed: frame to touch about 344 ms (vision 47, waiting 15, deciding 2, touch queue 279)
+11-13 16:02:09 [INFO] Level 11 -> 12 (badge changed)
+11-13 16:02:09 [INFO] Enemy tower range learned: 13% of the minimap
+11-13 16:02:12 [INFO] Enemy tower range learned: 12% of the minimap
+11-13 16:02:12 [INFO] Level 12 -> 13 (skill point)
+11-13 16:02:13 [INFO] Enemy tower range learned: 11% of the minimap
+11-13 16:02:16 [INFO] Speed: frame to touch about 274 ms (vision 52, waiting 27, deciding 2, touch queue 193)
+11-13 16:02:31 [INFO] Speed: frame to touch about 345 ms (vision 45, waiting 16, deciding 2, touch queue 282)
+11-13 16:02:46 [INFO] Speed: frame to touch about 383 ms (vision 46, waiting 18, deciding 3, touch queue 315)
+11-13 16:02:55 [INFO] Enemy tower range learned: 10% of the minimap
+11-13 16:02:59 [INFO] Enemy tower range learned: 12% of the minimap
+11-13 16:03:00 [INFO] Level 13 -> 14 (skill point)
+11-13 16:03:01 [INFO] Enemy tower range learned: 14% of the minimap
+11-13 16:03:01 [INFO] Speed: frame to touch about 290 ms (vision 43, waiting 19, deciding 3, touch queue 224)
+11-13 16:03:03 [INFO] Enemy tower range learned: 12% of the minimap
+11-13 16:03:08 [INFO] Level 14 -> 15 (badge changed)
+11-13 16:03:16 [INFO] Speed: frame to touch about 339 ms (vision 48, waiting 23, deciding 4, touch queue 264)
+11-13 16:03:31 [INFO] Speed: frame to touch about 317 ms (vision 59, waiting 30, deciding 3, touch queue 226)
+11-13 16:03:46 [INFO] Speed: frame to touch about 392 ms (vision 54, waiting 36, deciding 3, touch queue 300)
+11-13 16:04:01 [INFO] Speed: frame to touch about 162 ms (vision 47, waiting 22, deciding 2, touch queue 91)
+11-13 16:04:15 [INFO] Enemy tower range learned: 11% of the minimap
+11-13 16:04:16 [INFO] Speed: frame to touch about 261 ms (vision 74, waiting 43, deciding 4, touch queue 141)
+11-13 16:04:31 [INFO] Speed: frame to touch about 190 ms (vision 54, waiting 32, deciding 3, touch queue 101)
+11-13 16:04:36 [INFO] Enemy tower range learned: 10% of the minimap
+11-13 16:04:44 [INFO] Enemy tower range learned: 9% of the minimap
+11-13 16:04:46 [INFO] Speed: frame to touch about 270 ms (vision 65, waiting 57, deciding 4, touch queue 144)
+11-13 16:04:52 [INFO] Enemy tower range learned: 10% of the minimap
+11-13 16:04:59 [INFO] Enemy tower range learned: 9% of the minimap
+11-13 16:05:01 [INFO] Speed: frame to touch about 309 ms (vision 47, waiting 23, deciding 2, touch queue 236)
+11-13 16:05:13 [INFO] Enemy tower range learned: 8% of the minimap
+11-13 16:05:16 [INFO] Speed: frame to touch about 234 ms (vision 40, waiting 18, deciding 2, touch queue 174)
+11-13 16:05:22 [INFO] Enemy tower range learned: 7% of the minimap
+11-13 16:05:25 [INFO] Enemy tower range learned: 8% of the minimap
+11-13 16:05:31 [INFO] Speed: frame to touch about 217 ms (vision 44, waiting 19, deciding 3, touch queue 151)
+11-13 16:05:34 [INFO] Enemy tower range learned: 7% of the minimap
+11-13 16:05:43 [INFO] Enemy tower range learned: 10% of the minimap
+11-13 16:05:46 [INFO] Speed: frame to touch about 215 ms (vision 53, waiting 26, deciding 2, touch queue 134)
+11-13 16:06:01 [INFO] Speed: frame to touch about 242 ms (vision 84, waiting 60, deciding 4, touch queue 93)
+11-13 16:06:16 [INFO] Speed: frame to touch about 162 ms (vision 61, waiting 47, deciding 2, touch queue 52)
+11-13 16:06:26 [INFO] Scenery calibration complete: completed 100% · back at base · 1600 walls, 296 bushes, 24 pits, 42 towers
+11-13 16:07:38 [INFO] Screen capture stopped by the system
+11-13 16:10:25 [INFO] Deleted all recorded moments: 1015
+11-13 16:10:26 [INFO] Deleted all recorded moments: 0
+11-13 16:13:38 [INFO] Skills learned for Alucard from the wiki
+11-13 16:13:39 [INFO] Online meta for Alucard updated (null)
+11-13 16:15:46 [ERROR] General meta update failed :: java.lang.IllegalStateException: answer was not JSON: {"patch":"2.2.23 (November 11, 2026)","bans":["Hirara","Belerick","Gloo","Sun","Aulus","Atlas","Bane | 	at com.example.mlbbresearch.ai.MetaAdvisor.askOriginal(MetaAdvisor.kt:45) | 	at com.example.mlbbresearch.ai.MetaAdvisor.access$askOriginal(MetaAdvisor.kt:16) | 	at com.example.mlbbresearch.ai.MetaAdvisor$askOriginal$1.invokeSuspend(MetaAdvisor.kt:16) | 	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34) | 	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100) | 	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586) | 	at kotlinx.coroutines.scheduling.CoroutineSchedule
+11-13 16:19:07 [INFO] Screen capture started (800x1778)
+11-13 16:19:07 [INFO] learn started
+11-13 16:19:09 [INFO] Practice scorecard saved: Alucard, result unknown, 0/0/0, level 15
+11-13 16:19:10 [INFO] Auto calibration (select): Screen: hero select. Found 0: nothing | Confirm button not found
+11-13 16:19:50 [INFO] Match recording started (loading screen)
+11-13 16:20:06 [INFO] Recognised your battle spell from in-game spell button: Retribution (0.70, wiki pictures)
+11-13 16:20:07 [INFO] Map: EXP lane on top (the Turtle's pit top-left)
+11-13 16:20:09 [INFO] Remembered the level 1 badge
+11-13 16:20:10 [INFO] Minimap portrait vs the wiki pictures: Alucard (0.76)
+11-13 16:20:19 [INFO] Scoreboard: enemy spells from icons = Nana: Purify, Lesley: Purify
+11-13 16:20:38 [INFO] Level 1 -> 2 (badge changed)
+11-13 16:20:53 [INFO] Level 2 -> 3 (badge changed)
+11-13 16:21:07 [INFO] Level 3 -> 4 (badge changed)
+11-13 16:21:12 [INFO] Line-up read (loading): me Alucard (found by your name "100%KO"); my team Alucard, Tigreal, Miya, Kimmy; enemies Tigreal (Petrify), Tigreal (Purify)
+11-13 16:21:12 [INFO] Learned Alucard's look (portrait + in-game model)
+11-13 16:21:12 [INFO] Learning Alucard's skill icons (every 15 s)
+11-13 16:21:14 [INFO] Recognised your hero from its skill icons: Alucard
+11-13 16:21:24 [INFO] Level 4 -> 5 (skill point)
+11-13 16:21:27 [INFO] Level 5 -> 6 (badge changed)
+11-13 16:21:31 [INFO] Recognised your battle spell on the scoreboard: Vengeance (0.71, wiki pictures)
+11-13 16:21:35 [INFO] Level 6 -> 7 (skill point)
+11-13 16:21:36 [INFO] Retribution Upgraded to Flame
+11-13 16:22:01 [INFO] Remembered the level 7 badge
+11-13 16:22:22 [INFO] Level 7 -> 8 (badge changed)
+11-13 16:22:32 [INFO] Enemy tower range learned: 13% of the minimap
+11-13 16:22:33 [INFO] Enemy tower range learned: 15% of the minimap
+11-13 16:22:35 [INFO] Enemy tower range learned: 13% of the minimap
+11-13 16:22:35 [INFO] Remembered the level 8 badge
+11-13 16:22:45 [INFO] Enemy tower range learned: 12% of the minimap
+11-13 16:22:46 [INFO] Enemy tower range learned: 11% of the minimap
+11-13 16:23:11 [INFO] Level 8 -> 9 (badge changed)
+11-13 16:23:50 [INFO] Level 9 -> 10 (skill point)
+11-13 16:24:09 [INFO] Enemy tower range learned: 9% of the minimap
+11-13 16:24:25 [INFO] Enemy tower range learned: 10% of the minimap
+11-13 16:24:35 [INFO] Level 10 -> 11 (skill point)
+11-13 16:24:54 [INFO] Scoreboard: enemy spells from icons = Tigreal: Purify, Gatotkaca: Revitalize, Gord: Revitalize
+11-13 16:25:25 [INFO] Level 11 -> 12 (badge changed)
+11-13 16:26:06 [INFO] Remembered the level 12 badge
+11-13 16:26:06 [INFO] Level 12 -> 13 (badge changed)
+11-13 16:26:11 [INFO] Enemy tower range learned: 9% of the minimap
+11-13 16:26:13 [INFO] Enemy tower range learned: 8% of the minimap
+11-13 16:26:17 [INFO] Enemy tower range learned: 7% of the minimap
+11-13 16:26:23 [INFO] Enemy tower range learned: 8% of the minimap
+11-13 16:26:26 [INFO] Kill (K/D/A)
+11-13 16:26:32 [INFO] Coach: observed your Alucard sequence: s1 > s2 > s2 (seen 2 times; manual/built-in combo kept)
+11-13 16:26:34 [INFO] Kill (K/D/A)
+11-13 16:26:36 [INFO] Enemy tower range learned: 11% of the minimap
+11-13 16:26:38 [INFO] Coach: observed your Alucard sequence: s1 > s2 > s2 (seen 2 times; manual/built-in combo kept)
+11-13 16:26:39 [INFO] Enemy tower range learned: 13% of the minimap
+11-13 16:26:41 [INFO] Enemy tower range learned: 14% of the minimap
+11-13 16:26:41 [INFO] Remembered the level 13 badge
+11-13 16:26:44 [INFO] Enemy tower range learned: 15% of the minimap
+11-13 16:26:45 [INFO] Enemy tower range learned: 16% of the minimap
+11-13 16:26:50 [INFO] Level 13 -> 14 (badge changed)
+11-13 16:27:03 [INFO] Enemy tower range learned: 14% of the minimap
+11-13 16:27:03 [INFO] Enemy tower range learned: 13% of the minimap
+11-13 16:27:10 [INFO] Enemy tower range learned: 10% of the minimap
+11-13 16:27:14 [INFO] Enemy tower range learned: 11% of the minimap
+11-13 16:27:15 [INFO] Coach: observed your Alucard sequence: s1 > s2 > s2 (seen 2 times; manual/built-in combo kept)
+11-13 16:27:17 [INFO] Enemy tower range learned: 13% of the minimap
+11-13 16:27:18 [INFO] Enemy tower range learned: 15% of the minimap
+11-13 16:27:18 [INFO] Enemy tower range learned: 16% of the minimap
+11-13 16:27:40 [INFO] Level 14 -> 15 (skill point)
+11-13 16:27:53 [INFO] Coach: observed your Alucard sequence: s1 > s2 > s2 (seen 2 times; manual/built-in combo kept)
+11-13 16:27:58 [INFO] Coach: observed your Alucard sequence: s1 > s2 > s2 (seen 2 times; manual/built-in combo kept)
+11-13 16:29:01 [INFO] Remembered the level 15 badge
+11-13 16:29:03 [INFO] Enemy tower range learned: 15% of the minimap
+11-13 16:29:08 [INFO] Coach: observed your Alucard sequence: s1 > s2 > s2 (seen 2 times; manual/built-in combo kept)
+11-13 16:29:15 [INFO] Coach: observed your Alucard sequence: s1 > s2 > s2 (seen 2 times; manual/built-in combo kept)
+11-13 16:29:28 [INFO] Enemy tower range learned: 13% of the minimap
+11-13 16:29:37 [INFO] Enemy tower range learned: 15% of the minimap
+11-13 16:29:54 [INFO] Enemy tower range learned: 14% of the minimap
+11-13 16:29:55 [INFO] Coach: observed your Alucard sequence: s1 > s2 > s2 (seen 2 times; manual/built-in combo kept)
+11-13 16:29:58 [INFO] Enemy tower range learned: 13% of the minimap
+11-13 16:30:02 [INFO] Enemy tower range learned: 11% of the minimap
+11-13 16:30:03 [INFO] Enemy tower range learned: 10% of the minimap
+11-13 16:30:06 [INFO] Enemy tower range learned: 11% of the minimap
+11-13 16:30:08 [INFO] Coach: observed your Alucard sequence: s1 > s2 > s2 (seen 2 times; manual/built-in combo kept)
+11-13 16:30:22 [INFO] Match recording ended (match end)
+11-13 16:30:22 [INFO] Training result: Tactical engine (smart fights) 84.4% fights that went well
+11-13 16:30:22 [INFO] Match end: victory
+11-13 16:30:50 [INFO] End scoreboard: your name "100%KO" not among Computer, Computer, Computer, Computer, Computer - the highlighted row is used
+11-13 16:30:50 [INFO] End of match: ✓ Alucard · Retribution Upgraded to Flame LOCKED (row 1, highlighted row) - matches the detection
+11-13 16:35:37 [INFO] Research mode on (practice-only gate; R3 arbiter experiment in verified practice only)
+11-13 16:35:37 [INFO] player started
+11-13 16:35:40 [INFO] Screen capture stopped by the system
+11-13 16:35:44 [INFO] Screen capture started (800x1778)
+11-13 16:35:44 [INFO] Match recording started (hero seen; no loading screen)
+11-13 16:35:44 [INFO] Session recorder started (sphynx-session-20261113-163544.jsonl) with video
+11-13 16:35:44 [INFO] Session recorder: started by itself at the start of the match
+11-13 16:35:45 [INFO] Player advises only (you play): waiting: open the scoreboard once to confirm a practice match vs Computer
+11-13 16:36:14 [INFO] Match kind: 5v5
+11-13 16:36:14 [INFO] Research: verified practice (all 9 others are Computer) - no experiment until Player mode plays
+11-13 16:36:14 [INFO] Match recording started (loading screen)
+11-13 16:36:16 [INFO] Match kind: 5v5
+11-13 16:36:29 [INFO] Player plays: verified practice vs Computer
+11-13 16:36:29 [INFO] Speed: frame to touch about 211 ms (vision 71, waiting 35, deciding 11, touch queue 94)
+11-13 16:36:31 [INFO] Recognised your battle spell from in-game spell button: Retribution (0.70, wiki pictures)
+11-13 16:36:31 [INFO] Map: EXP lane on top (the Turtle's pit top-left)
+11-13 16:36:32 [INFO] Scoreboard: enemy spells from icons = Nana: Purify, Lesley: Purify
+11-13 16:36:40 [INFO] Level 1 -> 2 (skill point)
+11-13 16:36:44 [INFO] Speed: frame to touch about 258 ms (vision 52, waiting 32, deciding 7, touch queue 166)
+11-13 16:36:56 [INFO] Saved sphynx-session-20261113-163544.jsonl (160 KB) in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/recordings; Saved sphynx-session-20261113-163544.mp4 (24868 KB) in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/recordings; 3 research file(s) (R5 comparison, practice moments, readiness report, model speed, screen to touch); 8 debug file(s) (5 screenshots, settings, log, scenery picture)
+11-13 16:36:59 [INFO] Speed: frame to touch about 270 ms (vision 40, waiting 17, deciding 6, touch queue 208)
+11-13 16:37:13 [INFO] Level 2 -> 3 (badge changed)
+11-13 16:37:14 [INFO] Speed: frame to touch about 277 ms (vision 59, waiting 45, deciding 9, touch queue 164)
+11-13 16:37:17 [INFO] Level 3 -> 4 (badge changed)
+11-13 16:37:18 [INFO] Session recorder started (sphynx-session-20261113-163718.jsonl) with video
+11-13 16:37:27 [INFO] Level 4 -> 5 (badge changed)
+11-13 16:37:29 [INFO] Speed: frame to touch about 216 ms (vision 50, waiting 24, deciding 6, touch queue 137)
+11-13 16:37:44 [INFO] Speed: frame to touch about 235 ms (vision 64, waiting 53, deciding 6, touch queue 112)
+11-13 16:37:54 [INFO] Level 5 -> 6 (skill point)
+11-13 16:37:59 [INFO] Speed: frame to touch about 183 ms (vision 42, waiting 15, deciding 6, touch queue 119)
+11-13 16:38:04 [INFO] Level 6 -> 7 (badge changed)
+11-13 16:38:14 [INFO] Speed: frame to touch about 529 ms (vision 116, waiting 234, deciding 9, touch queue 170)
+11-13 16:38:16 [INFO] Line-up read (loading): me Alucard (found by your name "100%KO"); my team Alucard, Lancelot, Melissa; enemies Miya (Aegis), Belerick (Petrify), Lancelot (Purify), Lunox (Flameshot), Thamuz (Flicker)
+11-13 16:38:16 [INFO] Learned Alucard's look (portrait + in-game model)
+11-13 16:38:27 [INFO] Saved sphynx-session-20261113-163718.jsonl (536 KB) in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/recordings; Saved sphynx-session-20261113-163718.mp4 (24873 KB) in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/recordings; 4 research file(s) (R5 comparison, practice moments, readiness report, model speed, screen to touch); 13 debug file(s) (10 screenshots, settings, log, scenery picture)
+11-13 16:38:29 [INFO] Speed: frame to touch about 360 ms (vision 55, waiting 31, deciding 5, touch queue 269)
+11-13 16:38:44 [INFO] Level 7 -> 8 (remembered badge)
+11-13 16:38:44 [INFO] Speed: frame to touch about 339 ms (vision 69, waiting 100, deciding 5, touch queue 165)
+11-13 16:38:59 [INFO] Speed: frame to touch about 395 ms (vision 52, waiting 34, deciding 7, touch queue 302)
+11-13 16:39:14 [INFO] Speed: frame to touch about 370 ms (vision 67, waiting 103, deciding 4, touch queue 196)
+11-13 16:39:29 [INFO] Speed: frame to touch about 242 ms (vision 43, waiting 15, deciding 4, touch queue 181)
+11-13 16:39:32 [INFO] Session recorder started (sphynx-session-20261113-163932.jsonl) with video
+11-13 16:39:32 [INFO] Retribution Upgraded to Flame
+11-13 16:39:44 [INFO] Speed: frame to touch about 410 ms (vision 81, waiting 159, deciding 5, touch queue 165)
+11-13 16:39:45 [INFO] Level 8 -> 9 (badge changed)
+11-13 16:39:59 [INFO] Speed: frame to touch about 351 ms (vision 47, waiting 23, deciding 7, touch queue 275)
+11-13 16:40:13 [INFO] Learning Alucard's skill icons (every 15 s)
+11-13 16:40:14 [INFO] Speed: frame to touch about 317 ms (vision 41, waiting 156, deciding 4, touch queue 116)
+11-13 16:40:14 [INFO] Recognised your hero from its skill icons: Alucard
+11-13 16:40:16 [INFO] Level 9 -> 10 (badge changed)
+11-13 16:40:29 [INFO] Speed: frame to touch about 353 ms (vision 49, waiting 28, deciding 7, touch queue 269)
