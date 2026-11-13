@@ -2339,7 +2339,7 @@ class MainActivity : Activity() {
         btn("Groq API key (free)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) }
 
         title("SETTINGS")
-        switch("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it }
+        switch("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it; reloadGemmaForGpu() }
         switch("Small tactical model in fights", Cfg.tacticalLlmOn) { on ->
             Cfg.tacticalLlmOn = on
             if (on) ModelManager.loadTactical(this) { err -> runOnUiThread { toast(err ?: "Small tactical model loaded") } }
@@ -2401,7 +2401,7 @@ class MainActivity : Activity() {
                 ring.set(tr.improvementPct(prev?.score, now?.score), tr.circleText(prev, now).replace("no result yet", "-").replace("first result", "new"))
                 val when0 = now?.let { java.text.SimpleDateFormat("MMM d, HH:mm", java.util.Locale.US).format(java.util.Date(it.at)) }
                 detail.text = when {
-                    now == null -> if (k == com.example.mlbbresearch.learning.TrainingResults.Kind.ENGINE) "No result yet: a match with ${com.example.mlbbresearch.learning.TrainingResults.MIN_FIGHTS}+ smart fights records one."
+                    now == null -> if (k == com.example.mlbbresearch.learning.TrainingResults.Kind.ENGINE || k == com.example.mlbbresearch.learning.TrainingResults.Kind.YOU) "No result yet: a 5v5 match with ${com.example.mlbbresearch.learning.TrainingResults.MIN_FIGHTS}+ smart fights records one."
                         else "No result yet: train it (below) to get one."
                     prev == null -> "%.1f%% %s (%s). The next training is compared with this one.".format(now.score * 100, k.measure, when0)
                     else -> "%.1f%% %s now, %.1f%% last time (%s)%s".format(now.score * 100, k.measure, prev.score * 100, when0,
@@ -2726,6 +2726,14 @@ class MainActivity : Activity() {
     //  SETUP: permissions + calibration
     // =====================================================================
 
+    // the GPU switch changed while the model is loaded: load it again on the chosen processor (owner, 2026-11-13:
+    // turning the switch on did nothing until the next start, so Gemma stayed on the slow CPU)
+    private fun reloadGemmaForGpu() {
+        if (!GemmaEngine.ready) return
+        toast("Reloading the model on the " + (if (Cfg.useGpu) "GPU" else "CPU") + "…")
+        ModelManager.load(this) { err -> runOnUiThread { toast(err ?: ("Model loaded: " + GemmaEngine.state)) } }
+    }
+
     // switch to MLBB and start placing one group of buttons there in 5 s
     private fun calibrateLater(groupKey: String) {
         val o = AccessibilityController.instance?.overlay
@@ -2834,7 +2842,7 @@ class MainActivity : Activity() {
         sw4("Collect screen pictures (training)", Cfg.collectScreenDataset) { Cfg.collectScreenDataset = it }
         sw4("Smart fights (learning AI)", Cfg.smartFights) { Cfg.smartFights = it }
         sw4("Use the trained models", Cfg.detectorOn && Cfg.policyOn) { Cfg.detectorOn = it; Cfg.policyOn = it }
-        sw4("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it }
+        sw4("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it; reloadGemmaForGpu() }
         sw4("Show the AI's touches", Cfg.showTouches) { Cfg.showTouches = it }
 
         // 5. skill button calibration (before the scenery: the roam needs the buttons placed - owner, 2026-11-13)

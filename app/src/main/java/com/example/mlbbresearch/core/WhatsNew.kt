@@ -23,6 +23,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-13", Kind.FIXED, "Gemma on the GPU; training circles for the AI's fights and yours",
+            "Turning the GPU switch on (Model page or the first-run setup) now reloads the model on it at once: in your " +
+                "2026-11-13 match Gemma stayed on the CPU (line-up read 122 s, strategy answers 12-17 s). The GPU switch is " +
+                "ON on a new install (a speed setting). Learn page: the tactical engine circle now counts only the AI's " +
+                "fights, and a new circle counts your own fights (the first 84% was yours). The detector results show how " +
+                "many pictures they were tested on.",
+            pr = 80, needsDeviceCheck = true),
         Entry("2026-11-13", Kind.FIXED, "Misreads and log noise from the 2026-11-13 recording",
             "The K / D / A counter at the top is no longer read as a jungle monster at 3-5% HP. Recording screenshots: at " +
                 "most one \"monster\" a minute and one \"enemy hero\" every 20 s (30 of 39 were monsters). The learned enemy " +

@@ -18,8 +18,8 @@ import java.util.zip.ZipInputStream
 //  - Minimap / screen detector: boxes found (mAP50) from <kind>_detector_report.json (the notebooks write it).
 //  - Tactical networks: moves right (balanced accuracy) from policy_info_all.json inside mlbb_policies.zip.
 //  - Small tactical model: answers right (balanced accuracy) from tactical_llm_info.json.
-//  - Tactical engine (smart fights, learns on the phone): share of fights that went well (reward > 0) in a
-//    match, recorded at each match end (5 fights or more).
+//  - Tactical engine (smart fights, learns on the phone): share of the AI's fights that went well (reward > 0)
+//    in a match, recorded at each match end (5 fights or more). Your own fights are a result of their own.
 // Improvement = (score now - score last time) / score last time, in percent.
 object TrainingResults {
 
@@ -28,7 +28,9 @@ object TrainingResults {
         SCREEN("screen", "Screen detector", "boxes found (mAP50)"),
         POLICY("policy", "Tactical networks", "moves right (balanced)"),
         LLM("llm", "Small tactical model", "answers right (balanced)"),
-        ENGINE("engine", "Tactical engine (smart fights)", "fights that went well")
+        ENGINE("engine", "Tactical engine (the AI's fights)", "fights that went well"),
+        // (owner, 2026-11-13: the first engine result, 84%, measured the owner's own fights - they are counted apart)
+        YOU("you", "Your own fights (learned from)", "fights that went well")
     }
 
     class Result(val at: Long, val score: Double, val n: Int, val sig: String)
@@ -48,7 +50,7 @@ object TrainingResults {
             Kind.MINIMAP, Kind.SCREEN -> o.optDouble("map50", Double.NaN)
             Kind.POLICY -> o.optDouble("move_balanced", Double.NaN)
             Kind.LLM -> o.optDouble("balanced", -1.0).takeIf { it >= 0 } ?: o.optDouble("acc", Double.NaN)
-            Kind.ENGINE -> Double.NaN
+            Kind.ENGINE, Kind.YOU -> Double.NaN
         }
         if (v.isNaN() || v < 0.0 || v > 1.0) null else v
     } catch (e: Exception) { null }
@@ -106,7 +108,7 @@ object TrainingResults {
         Kind.SCREEN -> "screen_detector_report.json"
         Kind.LLM -> "tactical_llm_info.json"
         Kind.POLICY -> "mlbb_policies.zip"
-        Kind.ENGINE -> null
+        Kind.ENGINE, Kind.YOU -> null
     }
 
     // the result file's text (for the networks: policy_info_all.json inside the zip)
@@ -130,7 +132,7 @@ object TrainingResults {
     fun refresh(ctx: Context) {
         val files = AutoFolder.files(ctx)
         for (k in Kind.values()) {
-            if (k == Kind.ENGINE) continue
+            if (k == Kind.ENGINE || k == Kind.YOU) continue
             try {
                 val t = text(files, k) ?: continue
                 val score = scoreOf(k, t) ?: continue
@@ -143,14 +145,20 @@ object TrainingResults {
 
     private var fights = 0
     private var good = 0
+    private var yourFights = 0
+    private var yourGood = 0
 
     @Synchronized
-    fun fightScored(reward: Float) { fights++; if (reward > 0f) good++ }
+    fun fightScored(reward: Float, byYou: Boolean = false) {
+        if (byYou) { yourFights++; if (reward > 0f) yourGood++ } else { fights++; if (reward > 0f) good++ }
+    }
 
     @Synchronized
     fun matchEnded() {
-        if (fights >= MIN_FIGHTS) record(Kind.ENGINE, good.toDouble() / fights, fights, "match-" + System.currentTimeMillis())
-        fights = 0; good = 0
+        val now = System.currentTimeMillis()
+        if (fights >= MIN_FIGHTS) record(Kind.ENGINE, good.toDouble() / fights, fights, "match-$now")
+        if (yourFights >= MIN_FIGHTS) record(Kind.YOU, yourGood.toDouble() / yourFights, yourFights, "you-$now")
+        fights = 0; good = 0; yourFights = 0; yourGood = 0
     }
 
     // ---------------- export (for the GitHub upload) ----------------

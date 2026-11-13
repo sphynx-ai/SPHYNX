@@ -54,7 +54,9 @@ object Cfg {
     }
 
     // ---- model ----
-    var useGpu: Boolean get() = b("gpu", false); set(v) = put("gpu", v)
+    // (ON also on a new install - owner, 2026-11-13: it is a speed setting, not a feature; on the CPU the line-up
+    // read took 122 s and each strategy answer 12-17 s)
+    var useGpu: Boolean get() = b("gpu", true); set(v) = put("gpu", v)
     // model speed recorder: LiteRT-LM's detailed figures (tokens per second); takes effect when the models load
     var modelSpeedDetailed: Boolean get() = b("model_speed_detailed", false); set(v) = put("model_speed_detailed", v)
     // the small tactical language model (second slot): off until you turn it on (Model page)
