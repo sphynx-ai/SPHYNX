@@ -69,6 +69,9 @@ object SessionRecorder {
     fun matchStarted() {
         val c = ctxRef ?: return
         if (!Cfg.autoRecord || on) return
+        // only a 5v5 match is recorded by itself: Solo practice is for calibration (owner, 2026-11-13). When the
+        // kind is not known yet, the recording starts as soon as it is (game.MatchKind.onFiveVFive)
+        if (!com.example.mlbbresearch.learning.LearnGate.on()) return
         begin(c, 0, true)
         Diag.info("Session recorder: started by itself at the start of the match")
     }

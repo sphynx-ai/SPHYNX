@@ -23,6 +23,15 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-13", Kind.IMPROVED, "No learning in Solo practice; learning from you by itself in 5v5",
+            "Solo practice vs Computer is for calibration only (skill buttons, scenery): nothing is learned or recorded " +
+                "there - no recorded moments, no practice benchmark, no minimap or screen training pictures (the tour-stop " +
+                "pictures too), no fight scoring and no automatic recording. In a 5v5 match (vs Computer or real players) " +
+                "with the Research player off or only advising, the app learns from you by itself, and the floating panel " +
+                "says so (or says why it is not learning). Solo or 5v5 is now read from the loading screen and the " +
+                "scoreboard even with the Research player off. In the first-run setup the skill button calibration comes " +
+                "before the scenery calibration.",
+            pr = 78, needsDeviceCheck = true),
         Entry("2026-11-13", Kind.FIXED, "Recordings cover the whole match, without duplicate files",
             "Your 2026-11-13 recording covered only about half of the match: each part stopped at 25 MB (~70 s) and the next " +
                 "one had to be started by hand. Now a full part is closed and the next one starts at once, always (not only " +
