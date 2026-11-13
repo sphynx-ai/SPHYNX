@@ -436,7 +436,7 @@ Additional acceptance criteria:
 
 ## 6. Five approved gaming-AI technology work packages
 
-<text>**Status: OWNER-APPROVED / PLANNED FOR IMPLEMENTATION — all five work packages.**</text>
+**Status: OWNER-APPROVED / PLANNED FOR IMPLEMENTATION — all five work packages.**
 
 The owner has authorized implementation of all five work packages. They are committed roadmap scope, not proposed candidates awaiting another approval. They are distributed across the existing phases as submilestones; they do not create new phases, change phase order, or authorize skipping prerequisite architecture, reliability, or validation work.
 
