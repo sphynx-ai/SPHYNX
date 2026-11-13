@@ -22,6 +22,9 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
 
 ## App rules
 - Every feature switch is OFF by default on a new install; safety guards keep their safe position (Dry run ON).
+  The GPU switch is ON by default (a speed setting, not a feature).
+- No learning at all in Solo practice vs Computer (calibration only): no recorded moments, benchmark, training
+  pictures, fight scoring or automatic recording (`learning/LearnGate`). A 5v5 match is learned from by itself.
 - All calibration (buttons, minimap icons, scenery & minimap synchronization) is on the Setup page.
 - Never show or upload the Kaggle account name or any key / token.
 - Notebooks: `notebooks/` and `app/src/main/assets/notebooks/` must stay identical (the app trains from the
