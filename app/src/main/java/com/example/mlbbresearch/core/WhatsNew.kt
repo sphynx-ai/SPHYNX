@@ -23,6 +23,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-13", Kind.FIXED, "The AI remembers where it got stuck",
+            "When the hero walks into a wall the minimap did not show, that place used to be forgotten at the start of " +
+                "every match, so it got stuck at the same walls again. Now each stuck place is counted across matches: " +
+                "stuck there twice (in any matches) and it is a wall for the path finder from the first second of every " +
+                "later match. A place the hero later stands on is forgotten again. Setup page (scenery section): how many " +
+                "places are remembered, and a button to forget them.",
+            pr = 81, needsDeviceCheck = true),
         Entry("2026-11-13", Kind.FIXED, "Gemma on the GPU; training circles for the AI's fights and yours",
             "Turning the GPU switch on (Model page or the first-run setup) now reloads the model on it at once: in your " +
                 "2026-11-13 match Gemma stayed on the CPU (line-up read 122 s, strategy answers 12-17 s). The GPU switch is " +

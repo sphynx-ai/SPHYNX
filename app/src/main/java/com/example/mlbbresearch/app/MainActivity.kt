@@ -2988,6 +2988,15 @@ class MainActivity : Activity() {
             com.example.mlbbresearch.game.SceneryMap.clear()
             toast("Scenery map cleared")
         }
+        // the places the hero got stuck at, remembered across matches (owner, 2026-11-13)
+        val stuckInfo = text("", 12f, color = T.MUTED)
+        upd { stuckInfo.text = "Stuck places (walls the map did not show): " + com.example.mlbbresearch.vision.WallMap.stuckSummary() +
+            ". Stuck twice at a place = a wall in every later match; a place the hero later stands on is forgotten." }
+        btn("Forget the remembered stuck places") {
+            AlertDialog.Builder(this).setTitle("Forget every remembered stuck place?")
+                .setPositiveButton("Forget") { _, _ -> com.example.mlbbresearch.vision.WallMap.clearStuck(); toast("Forgotten") }
+                .setNegativeButton("Cancel", null).show()
+        }
         upd {
             val active = com.example.mlbbresearch.game.SceneryMap.roamActive
             camPresetBtn.text = "Camera Height: ${com.example.mlbbresearch.game.SceneryMap.cameraPresetLabel()}  (tap to change)"
