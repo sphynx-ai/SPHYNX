@@ -1,7 +1,8 @@
 package com.example.mlbbresearch.vision
 
 // PHANTOM "3% HP" MONSTERS (owner, 2026-11-13, from that day's recording): small orange / red things next to dark
-// ground (the hero's spinning emblems, red damage numbers) were read as monster or minion HP bars with 3-5% left,
+// ground (the emblems that circle your hero while you hold a buff - orange for the orange buff, purple for the
+// purple buff, owner 2026-11-13 - and red damage numbers) were read as monster or minion HP bars with 3-5% left,
 // and the Player then "finished the monster first" on empty ground. A real bar gets to 3% by going DOWN: it was
 // seen there with more HP a moment before. So a monster / minion bar at 6% or less only counts where a bar with
 // more HP was seen in the last 2 seconds. Turtle / Lord bars are not touched. One instance per screen reader.

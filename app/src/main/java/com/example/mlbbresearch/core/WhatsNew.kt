@@ -24,8 +24,8 @@ object WhatsNew {
 
     val ENTRIES: List<Entry> = listOf(
         Entry("2026-11-13", Kind.FIXED, "Phantom 3% monsters, and camp monsters read as enemy heroes",
-            "From your 2026-11-13 recording. Small orange / red things next to dark ground (your hero's spinning emblems, " +
-                "damage numbers) were read as monsters with 3-5% HP, and the Player \"finished\" them on empty ground: a " +
+            "From your 2026-11-13 recording. Small orange / red things next to dark ground (the emblems that circle your hero " +
+                "while you hold the orange buff, damage numbers) were read as monsters with 3-5% HP, and the Player \"finished\" them on empty ground: a " +
                 "monster or minion bar at 6% or less now only counts where a fuller bar was seen in the last 2 seconds. And " +
                 "the first sighting of a camp monster's bar (right above your own bar) was taken for an enemy hero for a " +
                 "moment, so the Player backed off in the middle of a camp: while you stand at a jungle camp or buff spot, a " +
