@@ -88,10 +88,10 @@ class MainActivity : Activity() {
     private var headerStatus: TextView? = null
     private var navScroll: HorizontalScrollView? = null
 
-    private val pages = listOf("home", "news", "player", "draft", "build", "meta", "library", "model", "learn", "practice", "speed", "logs", "setup")
+    private val pages = listOf("home", "news", "player", "draft", "build", "meta", "library", "model", "learn", "practice", "speed", "logs", "debug", "setup")
     private val labels = mapOf(
         "home" to "Home", "news" to "What's new", "player" to "Player", "draft" to "Draft", "build" to "Build", "meta" to "Meta", "library" to "Library",
-        "model" to "Model", "learn" to "Learn", "practice" to "Practice", "speed" to "Performance", "logs" to "Logs", "setup" to "Setup"
+        "model" to "Model", "learn" to "Learn", "practice" to "Practice", "speed" to "Performance", "logs" to "Logs", "debug" to "Debug data", "setup" to "Setup"
     )
 
     private val reqCapture = 42
@@ -140,7 +140,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), dp(10), dp(16), dp(6))
         }
-        header.addView(ImageView(this).apply { setImageResource(R.mipmap.ic_mlbb) }, LinearLayout.LayoutParams(dp(40), dp(40)))
+        header.addView(ImageView(this).apply { setImageResource(R.mipmap.ic_sphynx) }, LinearLayout.LayoutParams(dp(40), dp(40)))
         val names = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
         names.addView(TextView(this).apply {
             text = getString(R.string.app_name)
@@ -198,7 +198,7 @@ class MainActivity : Activity() {
         setContentView(root)
         defaultText = navButtons["home"]?.textColors
 
-        show("home")
+        show(if (Cfg.firstRunPending) "welcome" else "home")
     }
 
     override fun onResume() {
@@ -516,7 +516,9 @@ class MainActivity : Activity() {
             "practice" -> practicePage()
             "speed" -> speedPage()
             "logs" -> logsPage()
+            "debug" -> debugPage()
             "setup" -> setupPage()
+            "welcome" -> welcomePage()
         }
         for ((k, b) in navButtons) {
             val on = k == p
@@ -671,17 +673,7 @@ class MainActivity : Activity() {
         text("Idle: the AI had nothing to do. Stuck: walking but the camera did not move. Death cause: what the AI was " +
             "doing in the 5 s before (fighting, farming, escaping, ...), and \"outnumbered\" when more enemy heroes than " +
             "allies were close.", 12f, color = T.MUTED)
-        btn("Export the scorecards (CSV)") {
-            Thread {
-                val msg = try {
-                    val f = java.io.File(cacheDir, "practice_benchmark-" +
-                        java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date()) + ".csv")
-                    f.writeText(rm.benchCsv())
-                    com.example.mlbbresearch.core.SessionRecorder.exportFile(this, f, "text/csv").also { f.delete() }
-                } catch (e: Exception) { "Export failed: ${e.message}" }
-                runOnUiThread { toast(msg.take(150)) }
-            }.start()
-        }
+        text("Export: on the Debug data page (all exports for debugging are there).", 12f, color = T.MUTED)
         btn("Clear the scorecards") {
             AlertDialog.Builder(this).setTitle("Delete all practice scorecards?")
                 .setPositiveButton("Delete") { _, _ -> rm.clearBench(); toast("Deleted") }
@@ -1058,38 +1050,6 @@ class MainActivity : Activity() {
             comboBuiltInList.text = "Situational Built-In Combos for ${h ?: "hero"}:\n" +
                 ComboBook.describeAllCombos(h) +
                 (if (vars.isNotEmpty()) "\n\nAll Built-In Variants (${vars.size}):\n" + vars.joinToString("\n") { "• ${it.first}: ${it.second}" } else "")
-        }
-
-        title("IN-GAME SCENERY & MINIMAP SYNCHRONIZATION")
-        text("Synchronizes 3D screen scenery (towers, monster pits, bushes, walls) with the 2D minimap on every frame. Saved persistently on your phone (mlbb-scenery-sync.json in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage, or Download/Sphynx-Auto-Pilot-Storage without all files access) across app uninstall/reinstall — only deleted when you press Clear saved map scenery or Reset minimap sync offsets.", 12f, color = "#9AA0A6")
-        switch("Auto-sync 3D screen scenery with minimap landmarks", Cfg.sceneryAutoSync) { Cfg.sceneryAutoSync = it }
-        val sceneryInfo = text("", 13f)
-        val camPresetBtn = btn("") {
-            val lbl = com.example.mlbbresearch.game.SceneryMap.cycleCameraPreset()
-            toast("Camera preset: $lbl")
-        }
-        btn("Sync 3D Scenery & Minimap Now") {
-            val msg = com.example.mlbbresearch.game.SceneryMap.syncNow(GameStateTracker.state)
-            toast(msg)
-        }
-        val roamBtn = btn("") {
-            val msg = com.example.mlbbresearch.game.SceneryMap.toggleRoam()
-            toast(msg)
-        }
-        btn("Reset scenery-minimap sync offsets") {
-            toast(com.example.mlbbresearch.game.SceneryMap.resetSyncCalibration())
-        }
-        btn("Clear saved map scenery") {
-            com.example.mlbbresearch.game.SceneryMap.clear()
-            toast("Scenery map cleared")
-        }
-        upd {
-            val active = com.example.mlbbresearch.game.SceneryMap.roamActive
-            camPresetBtn.text = "Camera Height: ${com.example.mlbbresearch.game.SceneryMap.cameraPresetLabel()}  (tap to change)"
-            roamBtn.text = if (active) "Stop scenery calibration roam" else "Start scenery calibration roam (Practice Mode)"
-            sceneryInfo.text = "Memorized: ${com.example.mlbbresearch.game.SceneryMap.summary()}\n" +
-                "Roam status: ${com.example.mlbbresearch.game.SceneryMap.status}\n" +
-                com.example.mlbbresearch.game.SceneryMap.syncStatus()
         }
 
         title("JUNGLE, TURTLE & LORD")
@@ -2187,24 +2147,7 @@ class MainActivity : Activity() {
         btn("Run the speed test (both models, same questions every time)") {
             com.example.mlbbresearch.ai.ModelSpeed.runTest { msg -> runOnUiThread { toast(msg.take(150)) } }
         }
-        btn("Export the speed data (CSV)") {
-            Thread {
-                val msg = try {
-                    val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
-                    com.example.mlbbresearch.ai.ModelSpeed.save(sync = true); com.example.mlbbresearch.core.TouchSpeed.save(sync = true)
-                    val out = ArrayList<String>()
-                    for ((name, body) in listOf("model_speed" to com.example.mlbbresearch.ai.ModelSpeed.csv(),
-                                                "screen_to_touch" to com.example.mlbbresearch.core.TouchSpeed.csv())) {
-                        val f = java.io.File(cacheDir, "$name-$stamp.csv")
-                        f.writeText(body)
-                        out.add(com.example.mlbbresearch.core.SessionRecorder.exportFile(this, f, "text/csv"))
-                        f.delete()
-                    }
-                    out.joinToString("; ")
-                } catch (e: Exception) { "Export failed: ${e.message}" }
-                runOnUiThread { toast(msg.take(200)) }
-            }.start()
-        }
+        text("Export: on the Debug data page (all exports for debugging are there).", 12f, color = T.MUTED)
         btn("Clear the speed data") {
             AlertDialog.Builder(this).setTitle("Delete the recorded model speed and screen-to-touch data?")
                 .setPositiveButton("Delete") { _, _ ->
@@ -2355,7 +2298,7 @@ class MainActivity : Activity() {
             line(when { !com.example.mlbbresearch.ai.GroqClient.anyKey -> 0; com.example.mlbbresearch.ai.GroqClient.limited -> 1; else -> 2 },
                 "Online AI: " + (if (!com.example.mlbbresearch.ai.GroqClient.anyKey) "no key (groq_key.txt, gemini_key.txt, cerebras_key.txt)" else groqIndicator().second))
             line(if (com.example.mlbbresearch.learning.CloudTrain.ready()) 2 else 0, "Kaggle key: " +
-                (if (com.example.mlbbresearch.learning.CloudTrain.ready()) "set (${Cfg.kaggleUser})" else "not found (kaggle.json)"))
+                (if (com.example.mlbbresearch.learning.CloudTrain.ready()) "set" else "not found (kaggle.json)"))
             sb.append("\n\nMinimap: " + com.example.mlbbresearch.game.MapIntel.status)
             st.text = sb
         }
@@ -2391,12 +2334,12 @@ class MainActivity : Activity() {
         btn("Get Gemma 4 E2B (2.6 GB)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.MODEL_PAGE))) }
         btn("Get Gemma 3 270M") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.SMALL_MODEL_PAGE))) }
         btn("Training notebooks (GitHub)") {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/georgenaval1-blip/Ai-App/tree/main/notebooks")))
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/georgenaval1-blip/Sphynx-Auto-Pilot/tree/main/notebooks")))
         }
         btn("Groq API key (free)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) }
 
         title("SETTINGS")
-        switch("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it }
+        switch("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it; reloadGemmaForGpu() }
         switch("Small tactical model in fights", Cfg.tacticalLlmOn) { on ->
             Cfg.tacticalLlmOn = on
             if (on) ModelManager.loadTactical(this) { err -> runOnUiThread { toast(err ?: "Small tactical model loaded") } }
@@ -2432,6 +2375,41 @@ class MainActivity : Activity() {
     private fun learnPage() {
         DemoRecorder.refreshTotal()
         com.example.mlbbresearch.learning.LiveRecorder.refreshTotal()
+        // ---- how much better than the last training (owner, 2026-11-12) ----
+        title("Training progress")
+        val tr = com.example.mlbbresearch.learning.TrainingResults
+        Thread { try { tr.refresh(this) } catch (e: Exception) { } }.start()
+        val trc = card()
+        cardNote(trc, "Each circle: how much better (green) or worse (red) the last training is than the one before it.")
+        for (k in com.example.mlbbresearch.learning.TrainingResults.Kind.values()) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(4)) }
+            val ring = ProgressRing(this)
+            row.addView(ring, LinearLayout.LayoutParams(dp(68), dp(68)).apply { marginEnd = dp(12) })
+            val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            val name = TextView(this).apply { text = k.label; textSize = 14f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD) }
+            val detail = TextView(this).apply { textSize = 12f; setTextColor(c(T.MUTED)); setLineSpacing(0f, 1.1f) }
+            texts.addView(name); texts.addView(detail)
+            row.addView(texts, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            trc.addView(row)
+            var shownSig = "?"
+            upd {
+                val h = tr.history(k)
+                val now = h.lastOrNull(); val prev = if (h.size >= 2) h[h.size - 2] else null
+                val sig = (now?.sig ?: "") + "|" + (prev?.sig ?: "")
+                if (sig == shownSig) return@upd
+                shownSig = sig
+                ring.set(tr.improvementPct(prev?.score, now?.score), tr.circleText(prev, now).replace("no result yet", "-").replace("first result", "new"))
+                val when0 = now?.let { java.text.SimpleDateFormat("MMM d, HH:mm", java.util.Locale.US).format(java.util.Date(it.at)) }
+                detail.text = when {
+                    now == null -> if (k == com.example.mlbbresearch.learning.TrainingResults.Kind.ENGINE || k == com.example.mlbbresearch.learning.TrainingResults.Kind.YOU) "No result yet: a 5v5 match with ${com.example.mlbbresearch.learning.TrainingResults.MIN_FIGHTS}+ smart fights records one."
+                        else "No result yet: train it (below) to get one."
+                    prev == null -> "%.1f%% %s (%s). The next training is compared with this one.".format(now.score * 100, k.measure, when0)
+                    else -> "%.1f%% %s now, %.1f%% last time (%s)%s".format(now.score * 100, k.measure, prev.score * 100, when0,
+                        if (now.n > 0) " · ${now.n} checked" else "")
+                }
+            }
+        }
+
         // ---- one-tap training in the cloud (Kaggle) ----
         title("Train in the cloud")
         val ctc = card()
@@ -2606,6 +2584,16 @@ class MainActivity : Activity() {
                 "\nScreen: " + line(com.example.mlbbresearch.learning.DatasetZipper.Kind.SCREEN) +
                 "\nLast zip: " + zk.status
         }
+        // delete every picture of one kind (owner, 2026-11-12): the pictures, their zips, the parts waiting for upload
+        for (k in com.example.mlbbresearch.learning.DatasetZipper.Kind.values()) {
+            btn("Delete all ${k.label} pictures") {
+                AlertDialog.Builder(this).setTitle("Delete all ${k.label} pictures?")
+                    .setMessage("Deletes every ${k.label} training picture on the phone, its zips and the parts waiting for the " +
+                        "GitHub upload. Pictures already on Kaggle or GitHub stay there. This cannot be undone.")
+                    .setPositiveButton("Delete") { _, _ -> zk.deleteAll(this, k) { m -> runOnUiThread { toast(m.take(200)) } } }
+                    .setNegativeButton("Cancel", null).show()
+            }
+        }
         btn("Delete saved decisions") {
             AlertDialog.Builder(this).setTitle("Delete saved decisions?")
                 .setPositiveButton("Delete") { _, _ -> DatasetManager.clear { runOnUiThread { toast("Deleted") } } }
@@ -2617,27 +2605,33 @@ class MainActivity : Activity() {
     //  LOGS
     // =====================================================================
 
-    private fun logsPage() {
+    // THE DEBUG DATA PAGE (owner, 2026-11-12): everything needed for debugging on ONE page - the session recorder,
+    // the exports, and the upload to GitHub (branch recordings-for-debugging). The training data for the notebooks
+    // (Learn page: CSV exports, picture zips) is not here and is never uploaded.
+    private fun debugPage() {
         // SESSION RECORDER (data file + video, for bug reports)
         title("SESSION RECORDER - for bug reports")
         text("Records what the AI saw and decided (about 10 times a second, every aimed skill, the log) into a data file, " +
             "and a video of the AI's view with its targets and aim drawn on top. Start it before a match, stop it after; " +
-            "send both files (in Sphynx-Auto-Pilot-Storage/recordings). Screen capture must be on for the video.", 12f, color = T.MUTED)
+            "everything is saved in Sphynx-Auto-Pilot-Storage/recordings and uploaded from this page. Screen capture must be on for the video.", 12f, color = T.MUTED)
         val recInfo = text("", 12f)
         val recBtn = btn("") {
             val r = com.example.mlbbresearch.core.SessionRecorder
             if (r.on) { toast("Saving…"); r.stop(this) { msg -> runOnUiThread { toast(msg.take(200)) } } }
             else { r.start(this); toast(if (com.example.mlbbresearch.core.VideoRecorder.on) "Recording data + video" else "Recording data (start screen capture for video)") }
         }
+        switch("Start recording by itself at the start of every match (stops and saves at the match end)", Cfg.autoRecord) {
+            Cfg.autoRecord = it
+        }
         val limBtn = btn("") {
             val v = com.example.mlbbresearch.core.VideoRecorder
             val ch = v.SIZE_CHOICES_MB
             v.limitMb = ch[(ch.indexOf(v.limitMb) + 1) % ch.size]
-            toast("Video limit: ${v.limitMb} MB")
+            toast("Video part size: ${v.limitMb} MB")
         }
         upd {
             val v = com.example.mlbbresearch.core.VideoRecorder
-            limBtn.text = "Auto-stop at ${v.limitMb} MB video (" + (if (v.limitMb <= 25) "fits a GitHub website upload, about 1 minute" else "for a git push, about 4 minutes") + ") - tap to change"
+            limBtn.text = "New file every ${v.limitMb} MB of video (about ${v.partSeconds(v.limitMb) / 60} min ${v.partSeconds(v.limitMb) % 60} s) - tap to change"
         }
         upd {
             val r = com.example.mlbbresearch.core.SessionRecorder
@@ -2645,6 +2639,59 @@ class MainActivity : Activity() {
             recInfo.setTextColor(c(if (r.on) T.RED else T.MUTED))
             recBtn.text = if (r.on) "■ Stop and save the recording" else "● Start recording (data + video)"
         }
+
+
+        title("EXPORTS FOR DEBUGGING")
+        text("Every recording already saves the speed data, the scorecards, the settings, the full log and the scenery picture " +
+            "once, with its last part. These buttons save them now, without a recording (the same files, no second copy in CSV).", 12f, color = T.MUTED)
+        btn("Export the speed data and the scorecards now") {
+            Thread {
+                val msg = try { com.example.mlbbresearch.core.SessionRecorder.exportResearchNow(this) } catch (e: Exception) { "Export failed: ${e.message}" }
+                runOnUiThread { toast(msg.take(200)) }
+            }.start()
+        }
+        btn("Save the full log now (with crashes)") {
+            Thread {
+                val msg = try {
+                    val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
+                    val f = java.io.File(cacheDir, "diagnostics-$stamp.log")
+                    f.writeText(Diag.read())
+                    com.example.mlbbresearch.core.SessionRecorder.exportFile(this, f, "text/plain").also { f.delete() }
+                } catch (e: Exception) { "Export failed: ${e.message}" }
+                runOnUiThread { toast(msg.take(200)) }
+            }.start()
+        }
+
+        title("UPLOAD TO GITHUB")
+        val gh = com.example.mlbbresearch.core.GitHubUpload
+        text("Uploads everything in the recordings folder that is not on GitHub yet to the branch " + gh.BRANCH + ": all files " +
+            "that are not videos in one commit, each video in a commit of its own. It also sends the training results " +
+            "(every training's score and how much it improved) and the minimap and screen pictures taken since the last upload, " +
+            "zipped in parts of up to 95 MB (each part in a commit of its own). Every file is deleted from the phone once it is " +
+            "on GitHub. The picture zips used for training stay until a training with them finishes successfully. " +
+            "Needs a fine-grained GitHub token (this " +
+            "repository only, Contents: read and write) in the file " + gh.TOKEN_FILE + " in the app's folder.", 12f, color = T.MUTED)
+        val ghInfo = text("", 12f)
+        var ghState = "checking…"
+        fun refreshGh() {
+            Thread {
+                val line = try {
+                    (if (gh.token(this) != null) "✓ token found" else "✗ no token (" + gh.TOKEN_FILE + ")") + " · " + gh.pending(this) + " file(s) waiting"
+                } catch (e: Exception) { "could not check: ${e.message}" }
+                ghState = line
+            }.start()
+        }
+        refreshGh()
+        btn("Upload the debug data to GitHub now") {
+            toast("Uploading…")
+            gh.uploadAll(this) { msg -> refreshGh(); runOnUiThread { toast(msg.take(200)) } }
+        }
+        switch("Upload by itself after each recording", Cfg.autoUpload) { Cfg.autoUpload = it }
+        upd { ghInfo.text = ghState + "\n" + (if (gh.busy) "Uploading: " else "Last upload: ") + gh.status }
+    }
+
+    private fun logsPage() {
+        text("The session recorder, every export for debugging and the GitHub upload are on the Debug data page.", 12f, color = T.MUTED)
 
         title("DIAGNOSTICS - bugs and errors")
         val cur = text("")
@@ -2679,7 +2726,169 @@ class MainActivity : Activity() {
     //  SETUP: permissions + calibration
     // =====================================================================
 
+    // the GPU switch changed while the model is loaded: load it again on the chosen processor (owner, 2026-11-13:
+    // turning the switch on did nothing until the next start, so Gemma stayed on the slow CPU)
+    private fun reloadGemmaForGpu() {
+        if (!GemmaEngine.ready) return
+        toast("Reloading the model on the " + (if (Cfg.useGpu) "GPU" else "CPU") + "…")
+        ModelManager.load(this) { err -> runOnUiThread { toast(err ?: ("Model loaded: " + GemmaEngine.state)) } }
+    }
+
+    // switch to MLBB and start placing one group of buttons there in 5 s
+    private fun calibrateLater(groupKey: String) {
+        val o = AccessibilityController.instance?.overlay
+        if (o == null) { toast("Turn on the accessibility service first"); return }
+        if (!ScreenCaptureService.running) toast("Tip: start screen capture first so Auto-detect can see the game")
+        toast("Switch to MLBB now: calibration starts in 5 seconds")
+        ui.postDelayed({ o.startCalibrationGroup(groupKey) }, 5000)
+    }
+
+    // FIRST-RUN SETUP (owner, 2026-11-12): a new install opens here - permissions, the folder, the models,
+    // the main switches (all off on a new install), scenery calibration and skill button calibration.
+    // It can be opened again from the Setup page.
+    private fun welcomePage() {
+        title("WELCOME TO SPHYNX AUTO PILOT")
+        text("Six short steps get the app ready. Each turns green when it is done. Every switch starts OFF: turn on only " +
+            "what you want. You can do any step later from the Model, Learn and Setup pages.", 13f, color = T.MUTED)
+
+        // 1. permissions
+        val p1 = card()
+        val p1Head = cardHeader(p1, "1. Permissions", "", T.GOLD)
+        val p1Chip = (p1Head.parent as LinearLayout).getChildAt(1) as TextView
+        fun inCard(cd: LinearLayout, t: String, onClick: () -> Unit) = Button(this).apply {
+            text = t; isAllCaps = false; styleButton(this); setOnClickListener { onClick() }
+            cd.addView(this, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })
+        }
+        val acc = inCard(p1, "Accessibility service (touches and the floating icon)") { openAccessibility() }
+        inCard(p1, "Switch greyed out? Allow restricted settings") {
+            toast("Tap ⋮ (top-right), then 'Allow restricted settings'")
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+        }
+        val ov = inCard(p1, "Display over other apps") {
+            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+        }
+        val nt = inCard(p1, "Notifications") {
+            if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), reqNotify)
+        }
+        val fa = inCard(p1, "All files access (the app's folder)") {
+            try { startActivity(com.example.mlbbresearch.core.Storage.requestIntent(this)) }
+            catch (e: Exception) { toast("Open Settings > Apps > Special app access > All files access > Sphynx Auto Pilot") }
+        }
+        cardNote(p1, "POCO / Xiaomi: also allow 'pop-up windows while running in the background' and turn off 'Manage app if unused'.")
+        upd {
+            val a = AccessibilityController.instance != null
+            val o = Settings.canDrawOverlays(this)
+            val n = Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            val f = com.example.mlbbresearch.core.Storage.allFilesAccess
+            mark(acc, a); mark(ov, o); mark(nt, n); mark(fa, f)
+            val ok = listOf(a, o, n, f).count { it }
+            p1Chip.text = if (ok == 4) "done" else "$ok of 4"; p1Chip.setTextColor(c(if (ok == 4) T.GREEN else T.GOLD))
+        }
+
+        // 2. folder
+        val p2 = card()
+        val p2Head = cardHeader(p2, "2. The app's folder", "", T.GOLD)
+        val p2Chip = (p2Head.parent as LinearLayout).getChildAt(1) as TextView
+        val p2Note = cardNote(p2)
+        val pick = inCard(p2, "Choose the folder") {
+            @Suppress("DEPRECATION")
+            startActivityForResult(com.example.mlbbresearch.models.AutoFolder.pickIntent(), reqFolder)
+        }
+        inCard(p2, "Scan the folder now (models, detectors, networks, keys)") {
+            com.example.mlbbresearch.models.AutoFolder.scan(this) { msg -> runOnUiThread { toast(msg.take(150)) } }
+        }
+        upd {
+            val af = com.example.mlbbresearch.models.AutoFolder
+            val ok = com.example.mlbbresearch.core.Storage.allFilesAccess || af.treeUri != null
+            p2Note.text = com.example.mlbbresearch.core.Storage.status() + "\n" + af.folderHint + "\nLast scan: " + af.status
+            pick.text = if (af.treeUri == null) "Choose the folder" else "Change the folder"
+            mark(pick, af.treeUri != null)
+            p2Chip.text = if (ok) "done" else "to do"; p2Chip.setTextColor(c(if (ok) T.GREEN else T.GOLD))
+        }
+
+        // 3. models
+        val p3 = card()
+        val p3Head = cardHeader(p3, "3. Load the models", "", T.GOLD)
+        val p3Chip = (p3Head.parent as LinearLayout).getChildAt(1) as TextView
+        val p3Note = cardNote(p3)
+        val load = inCard(p3, "Load the strategic model (Gemma)") {
+            toast("Loading…")
+            ModelManager.load(this) { err -> runOnUiThread { toast(err ?: "Model loaded") } }
+        }
+        inCard(p3, "Get Gemma 4 E2B (2.6 GB)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.MODEL_PAGE))) }
+        cardNote(p3, "Put the .litertlm file in the app's folder, then Scan the folder (step 2): it is copied in. The trained " +
+            "detectors and networks load by themselves from the same folder. More on the Model page.")
+        upd {
+            val ready = GemmaEngine.ready
+            p3Note.text = "Strategic model: " + ModelManager.status(this) + (if (ready) " - loaded" else if (GemmaEngine.loading) " - loading…" else "") +
+                "\nSmall tactical model: " + ModelManager.tacticalStatus(this)
+            mark(load, ready)
+            p3Chip.text = if (ready) "done" else "to do"; p3Chip.setTextColor(c(if (ready) T.GREEN else T.GOLD))
+        }
+
+        // 4. initial setup: the main switches (all off on a new install)
+        val p4 = card()
+        cardHeader(p4, "4. Choose what runs", "your choice", T.ACCENT)
+        cardNote(p4, "Everything starts off. Dry run stays ON until you are ready (the AI then shows its moves but does not touch).")
+        fun sw4(label: String, get: Boolean, set: (Boolean) -> Unit) {
+            val s = switch(label, get, set)
+            (s.parent as? android.view.ViewGroup)?.removeView(s)
+            p4.addView(s)
+        }
+        sw4("Dry run (no touches)", Cfg.dryRun) { Cfg.dryRun = it }
+        sw4("Record each match by itself", Cfg.autoRecord) { Cfg.autoRecord = it }
+        sw4("Upload the debug data after each recording", Cfg.autoUpload) { Cfg.autoUpload = it }
+        sw4("Collect minimap pictures (training)", Cfg.collectDataset) { Cfg.collectDataset = it }
+        sw4("Collect screen pictures (training)", Cfg.collectScreenDataset) { Cfg.collectScreenDataset = it }
+        sw4("Smart fights (learning AI)", Cfg.smartFights) { Cfg.smartFights = it }
+        sw4("Use the trained models", Cfg.detectorOn && Cfg.policyOn) { Cfg.detectorOn = it; Cfg.policyOn = it }
+        sw4("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it; reloadGemmaForGpu() }
+        sw4("Show the AI's touches", Cfg.showTouches) { Cfg.showTouches = it }
+
+        // 5. skill button calibration (before the scenery: the roam needs the buttons placed - owner, 2026-11-13)
+        val p6 = card()
+        val p6Head = cardHeader(p6, "5. Skill button calibration", "", T.GOLD)
+        val p6Chip = (p6Head.parent as LinearLayout).getChildAt(1) as TextView
+        cardNote(p6, "Open a match, come back, tap the layout of your hero: drag the yellow markers onto the buttons (or " +
+            "Auto-detect), then Save. The first match also places them by itself.")
+        inCard(p6, "Calibrate 2-skill buttons") { calibrateLater("skills2") }
+        inCard(p6, "Calibrate 3-skill buttons") { calibrateLater("skills3") }
+        inCard(p6, "Calibrate 4-skill buttons") { calibrateLater("skills4") }
+        inCard(p6, "Calibrate joystick / attack / spell") { calibrateLater("game") }
+        upd {
+            val n = listOf("skills2", "skills3", "skills4").count { Layout.isGroupSaved(it) }
+            p6Chip.text = if (n > 0) "$n saved" else "to do"; p6Chip.setTextColor(c(if (n > 0) T.GREEN else T.GOLD))
+        }
+
+        // 6. scenery calibration
+        val p5 = card()
+        val p5Head = cardHeader(p5, "6. Scenery calibration", "", T.GOLD)
+        val p5Chip = (p5Head.parent as LinearLayout).getChildAt(1) as TextView
+        cardNote(p5, "Teaches the app where towers, pits, bushes and walls are on the screen compared to the minimap. Open a " +
+            "Solo practice match vs Computer, start screen capture, then start the roam: the hero walks the map by itself. Come back " +
+            "and stop it. Nothing is learned or recorded in Solo practice: it is for calibration only.")
+        inCard(p5, "Start screen capture") { if (!ScreenCaptureService.running) askScreenCapture() else toast("Screen capture is already on") }
+        val cam = inCard(p5, "") { toast(com.example.mlbbresearch.game.SceneryMap.cycleCameraPreset()) }
+        val roam = inCard(p5, "") { toast(com.example.mlbbresearch.game.SceneryMap.toggleRoam()) }
+        val p5Note = cardNote(p5)
+        upd {
+            val sm = com.example.mlbbresearch.game.SceneryMap
+            cam.text = "Camera height: ${sm.cameraPresetLabel()}  (tap to change)"
+            roam.text = if (sm.roamActive) "Stop the scenery calibration roam" else "Start the scenery calibration roam (Practice match)"
+            mark(roam, sm.roamActive, T.GOLD)
+            p5Note.text = "Memorized: ${sm.summary()}\n${sm.status}"
+            val done = Cfg.raw("first_run_scenery") == "1"
+            if (sm.roamActive) Cfg.setRaw("first_run_scenery", "1")
+            p5Chip.text = if (done) "done" else "to do"; p5Chip.setTextColor(c(if (done) T.GREEN else T.GOLD))
+        }
+
+        val fin = btn("Finish setup") { Cfg.firstRunPending = false; toast("Setup finished: you can change everything later"); show("home") }
+        mark(fin, true)
+        text("You can open this setup again from the Setup page.", 12f, color = T.MUTED)
+    }
+
     private fun setupPage() {
+        btn("Open the first-run setup") { show("welcome") }
         title("PERMISSIONS")
         val acc = btn("1. Accessibility service (touches)") { openAccessibility() }
         upd { mark(acc, AccessibilityController.instance != null) }
@@ -2756,17 +2965,47 @@ class MainActivity : Activity() {
         }
         btn("Clear the samples of this icon type") { com.example.mlbbresearch.vision.MinimapColors.clear(kinds[kindIdx]); toast("Cleared") }
 
-        title("SCENERY & MINIMAP SYNCHRONIZATION")
-        text("Aligns the 3D camera ground view with the minimap using visible towers, jungle pits, and bushes.", 12f, color = "#9AA0A6")
-        switch("Auto-sync 3D scenery with minimap", Cfg.sceneryAutoSync) { Cfg.sceneryAutoSync = it }
-        val setupSyncInfo = text("", 12.5f)
-        val setupCamBtn = btn("") { toast(com.example.mlbbresearch.game.SceneryMap.cycleCameraPreset()) }
-        btn("Sync Scenery & Minimap Now") { toast(com.example.mlbbresearch.game.SceneryMap.syncNow(GameStateTracker.state)) }
-        btn("Start / Stop Practice Mode Scenery Roam") { toast(com.example.mlbbresearch.game.SceneryMap.toggleRoam()) }
-        upd {
-            setupCamBtn.text = "Camera Height: ${com.example.mlbbresearch.game.SceneryMap.cameraPresetLabel()}  (tap to change)"
-            setupSyncInfo.text = com.example.mlbbresearch.game.SceneryMap.syncStatus() + "\nMemorized: " + com.example.mlbbresearch.game.SceneryMap.summary()
+        title("SCENERY CALIBRATION & MINIMAP SYNCHRONIZATION")
+        text("Synchronizes 3D screen scenery (towers, monster pits, bushes, walls) with the 2D minimap on every frame. Saved persistently on your phone (mlbb-scenery-sync.json in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage, or Download/Sphynx-Auto-Pilot-Storage without all files access) across app uninstall/reinstall — only deleted when you press Clear saved map scenery or Reset minimap sync offsets.", 12f, color = "#9AA0A6")
+        switch("Auto-sync 3D screen scenery with minimap landmarks", Cfg.sceneryAutoSync) { Cfg.sceneryAutoSync = it }
+        val sceneryInfo = text("", 13f)
+        val camPresetBtn = btn("") {
+            val lbl = com.example.mlbbresearch.game.SceneryMap.cycleCameraPreset()
+            toast("Camera preset: $lbl")
         }
+        btn("Sync 3D Scenery & Minimap Now") {
+            val msg = com.example.mlbbresearch.game.SceneryMap.syncNow(GameStateTracker.state)
+            toast(msg)
+        }
+        val roamBtn = btn("") {
+            val msg = com.example.mlbbresearch.game.SceneryMap.toggleRoam()
+            toast(msg)
+        }
+        btn("Reset scenery-minimap sync offsets") {
+            toast(com.example.mlbbresearch.game.SceneryMap.resetSyncCalibration())
+        }
+        btn("Clear saved map scenery") {
+            com.example.mlbbresearch.game.SceneryMap.clear()
+            toast("Scenery map cleared")
+        }
+        // the places the hero got stuck at, remembered across matches (owner, 2026-11-13)
+        val stuckInfo = text("", 12f, color = T.MUTED)
+        upd { stuckInfo.text = "Stuck places (walls the map did not show): " + com.example.mlbbresearch.vision.WallMap.stuckSummary() +
+            ". Stuck twice at a place = a wall in every later match; a place the hero later stands on is forgotten." }
+        btn("Forget the remembered stuck places") {
+            AlertDialog.Builder(this).setTitle("Forget every remembered stuck place?")
+                .setPositiveButton("Forget") { _, _ -> com.example.mlbbresearch.vision.WallMap.clearStuck(); toast("Forgotten") }
+                .setNegativeButton("Cancel", null).show()
+        }
+        upd {
+            val active = com.example.mlbbresearch.game.SceneryMap.roamActive
+            camPresetBtn.text = "Camera Height: ${com.example.mlbbresearch.game.SceneryMap.cameraPresetLabel()}  (tap to change)"
+            roamBtn.text = if (active) "Stop scenery calibration roam" else "Start scenery calibration roam (Practice Mode)"
+            sceneryInfo.text = "Memorized: ${com.example.mlbbresearch.game.SceneryMap.summary()}\n" +
+                "Roam status: ${com.example.mlbbresearch.game.SceneryMap.status}\n" +
+                com.example.mlbbresearch.game.SceneryMap.syncStatus()
+        }
+
 
         title("Presets")
         val active = text("", 13f)

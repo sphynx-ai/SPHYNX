@@ -262,11 +262,6 @@ object GroqClient {
     }
 
     // first {...} block of a reply
-    fun json(text: String): JSONObject? {
-        val clean = text.replace("```json", "").replace("```", "")
-        val a = clean.indexOf('{')
-        val b = clean.lastIndexOf('}')
-        if (a < 0 || b <= a) return null
-        return try { JSONObject(clean.substring(a, b + 1)) } catch (e: Exception) { null }
-    }
+    // (an answer cut off in the middle keeps its complete part - JsonRepair)
+    fun json(text: String): JSONObject? = JsonRepair.parse(text)
 }

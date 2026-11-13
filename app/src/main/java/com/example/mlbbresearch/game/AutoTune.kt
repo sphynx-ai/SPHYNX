@@ -47,6 +47,22 @@ object AutoTune {
         laneTravel(s)
     }
 
+    // THE TOWER RANGE, LEARNED STEADILY (owner, 2026-11-13: it jumped between 6% and 16% within one match). A
+    // measurement outside 4-10% of the minimap is a misread (the ring seen late, or another tower) and is ignored;
+    // a good one that differs by 1.5 points or more moves the value ONE point towards it; it stays within 4-10.
+    // Pure, unit tested.
+    const val RANGE_MIN = 4; const val RANGE_MAX = 10
+    fun nextTowerRange(old: Int, measuredPct: Float): Int {
+        val o = old.coerceIn(RANGE_MIN, RANGE_MAX)
+        if (measuredPct < RANGE_MIN || measuredPct > RANGE_MAX) return o
+        return when {
+            measuredPct - o >= 1.5f -> o + 1
+            o - measuredPct >= 1.5f -> o - 1
+            else -> o
+        }.coerceIn(RANGE_MIN, RANGE_MAX)
+    }
+    private var loggedRange = -99
+
     private fun towerRange(s: GameState) {
         val ring = s.towerRing
         val inside = ring.inside && (ring.zone == com.example.mlbbresearch.vision.TowerRing.Zone.RED ||
@@ -54,11 +70,13 @@ object AutoTune {
         val me = s.minimapSelf
         if (inside && !wasInside && me != null) {
             val d = s.towers.minOfOrNull { hypot(it.x - me.first, it.y - me.second) }
-            if (d != null && d in 0.03f..0.2f) {
-                val pct = d * 100f
-                val old = Cfg.towerRangePct.toFloat()
-                val n = (old * 0.7f + pct * 0.3f + 0.5f).toInt().coerceIn(3, 20)
-                if (n != Cfg.towerRangePct) { Cfg.towerRangePct = n; Diag.info("Enemy tower range learned: $n% of the minimap") }
+            if (d != null) {
+                val n = nextTowerRange(Cfg.towerRangePct, d * 100f)
+                if (n != Cfg.towerRangePct) {
+                    Cfg.towerRangePct = n
+                    // (logged only when it moved 2 points from the last line: the 2026-11-13 log had dozens of these)
+                    if (kotlin.math.abs(n - loggedRange) >= 2) { loggedRange = n; Diag.info("Enemy tower range learned: $n% of the minimap") }
+                }
                 status = "tower range ${Cfg.towerRangePct}% (learned)"
             }
         }

@@ -170,7 +170,8 @@ object ResearchMode {
     private fun f2(v: Float) = "%.2f".format(java.util.Locale.US, v)
 
     fun observeScoreboard(px: IntArray, w: Int, h: Int, nowMs: Long = System.currentTimeMillis()) {
-        if (!gateWatching() || nowMs - lastAt < EVERY_MS) return
+        if (!gateWatching()) { kindFromScoreboard(px, w, h, nowMs); return }
+        if (nowMs - lastAt < EVERY_MS) return
         // the app's floating window / boxes are hidden on the scoreboard; read only once they are gone
         // (screen capture records them over the names - device test 2026-11-10)
         if (!com.example.mlbbresearch.controller.OverlayManager.clearOfOverlay(nowMs)) {
@@ -182,6 +183,7 @@ object ResearchMode {
         if (id == 0L) { reading("scoreboard seen - match not identified yet", nowMs); return }
         val before = session.gate.state
         val r = ScoreboardNameCheck.check(px, w, h, m)
+        com.example.mlbbresearch.core.SessionRecorder.snap("gate-scoreboard", px, w, h, 8000L)
         // solo practice (2 players) or 5v5 (6+): the boss timers depend on it (game.MatchKind)
         com.example.mlbbresearch.game.MatchKind.set(id, com.example.mlbbresearch.game.MatchKind.fromPlayers(r.players))
         session.observe(id, r, nowMs)
@@ -189,6 +191,18 @@ object ResearchMode {
             (if (r.selfRow >= 0) " (your row ${r.selfRow + 1})" else "") +
             "; ally " + r.ally.joinToString(" ") { f2(it) } + " | enemy " + r.enemy.joinToString(" ") { f2(it) }, nowMs)
         if (session.gate.state != before) { Diag.info(session.status(true)); GateFeedback.changed(session.gate.state) }
+    }
+
+    // With the Research player off the scoreboard still tells Solo practice from 5v5 (the player count): learning
+    // depends on it (learning.LearnGate - owner, 2026-11-13). Nothing else is read here.
+    @Volatile private var lastKindAt = 0L
+    private fun kindFromScoreboard(px: IntArray, w: Int, h: Int, nowMs: Long) {
+        if (nowMs - lastKindAt < EVERY_MS || !com.example.mlbbresearch.controller.OverlayManager.clearOfOverlay(nowMs)) return
+        lastKindAt = nowMs
+        val id = GameStateTracker.matchId
+        if (id == 0L) return
+        val m = matcher() ?: return
+        com.example.mlbbresearch.game.MatchKind.set(id, com.example.mlbbresearch.game.MatchKind.fromPlayers(ScoreboardNameCheck.check(px, w, h, m).players))
     }
 
     // THE LOADING SCREEN FROM THE PIXELS ALONE (no Gemma needed - owner 2026-11-10), at 0.8x the
@@ -212,6 +226,7 @@ object ResearchMode {
         if (id == 0L) { reading("loading screen - match not identified yet", nowMs); return }
         if (session.gate.matchId == id && session.gate.state != PracticeGate.State.UNVERIFIED) return   // already decided
         val solo = com.example.mlbbresearch.vision.ScreenReader.soloLoading(px, w, h)
+        com.example.mlbbresearch.core.SessionRecorder.snap("gate-loading", px, w, h, 8000L)
         val r = if (solo) LoadingNameCheck.fromSolo(m.score(px, w, h, SOLO_NAME_X, SOLO_NAME_Y, sizeMul = NAME_SIZE))
         else LoadingNameCheck.fromGrid(GRID.map { (x, y) -> m.score(px, w, h, x, y, dx = 40, sizeMul = NAME_SIZE) })
         // solo practice or 5v5 (game.MatchKind): the solo layout says solo; the 5v5 grid only when it was read

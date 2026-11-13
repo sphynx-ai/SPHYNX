@@ -19,6 +19,19 @@ object MatchKind {
         if (id == matchId && kind == k) return
         id = matchId; kind = k
         com.example.mlbbresearch.core.Diag.info("Match kind: ${k.label}")
+        if (k == Kind.FIVE_V_FIVE) try { onFiveVFive?.invoke() } catch (t: Throwable) { }
+    }
+
+    // called when a match is recognised as 5v5 (ai.AiRuntime: the automatic recording and learning start there)
+    @Volatile var onFiveVFive: (() -> Unit)? = null
+
+    // THE LOADING SCREEN ALONE TELLS (owner, 2026-11-13: also with the Research player off): the solo layout = Solo
+    // practice, the two rows of five cards = 5v5. A match already read as Solo is not turned into 5v5 by a later
+    // loading frame; the scoreboard's player count decides when it is opened.
+    @Synchronized fun fromLoading(matchId: Long, soloLayout: Boolean) {
+        if (matchId == 0L) return
+        if (!soloLayout && id == matchId && kind == Kind.SOLO) return
+        set(matchId, if (soloLayout) Kind.SOLO else Kind.FIVE_V_FIVE)
     }
 
     // from the number of players the scoreboard shows (you included); 0 = not read

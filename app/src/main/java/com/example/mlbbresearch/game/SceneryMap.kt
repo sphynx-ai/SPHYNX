@@ -632,6 +632,36 @@ object SceneryMap {
         else -> null
     }
 
+    // A PICTURE OF THE SAVED SCENERY (owner, 2026-11-12; saved with every recording): walls grey, bushes green,
+    // pits orange (buffs) / purple (camps) with their stand spot, towers red, the tour's stops white - on the
+    // saved map (Gold lane on top, your base bottom-left)
+    fun renderPicture(size: Int = 512): android.graphics.Bitmap {
+        ensureLoaded()
+        val bmp = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+        val cv = android.graphics.Canvas(bmp)
+        cv.drawColor(android.graphics.Color.rgb(16, 22, 30))
+        val p = android.graphics.Paint().apply { isAntiAlias = true }
+        val cell = size.toFloat() / G
+        val w = walls
+        p.color = android.graphics.Color.rgb(120, 130, 140)
+        for (i in 0 until G * G) if (w[i]) { val x = (i % G) * cell; val y = (i / G) * cell; cv.drawRect(x, y, x + cell, y + cell, p) }
+        p.color = android.graphics.Color.rgb(60, 190, 90)
+        for ((bx, by) in bushes) cv.drawCircle(bx * size, by * size, cell * 0.8f, p)
+        for (pit in pits) {
+            p.color = if (pit.buff) android.graphics.Color.rgb(255, 150, 40) else android.graphics.Color.rgb(190, 110, 255)
+            cv.drawCircle(pit.x * size, pit.y * size, cell * 1.4f, p)
+            p.color = android.graphics.Color.WHITE
+            cv.drawLine(pit.x * size, pit.y * size, pit.standX * size, pit.standY * size, p)
+        }
+        p.color = android.graphics.Color.rgb(240, 70, 70)
+        for ((tx, ty) in towers) cv.drawRect(tx * size - cell, ty * size - cell, tx * size + cell, ty * size + cell, p)
+        p.color = android.graphics.Color.WHITE
+        for (wp in tourWaypoints) cv.drawCircle(wp.x * size, wp.y * size, cell * 0.45f, p)
+        return bmp
+    }
+
+    @Volatile var lastStopAt = 0L; private set      // when the tour last arrived at a stop (the picture collector)
+
     fun roamDecision(s: GameState, p: HeroProfile): TacticalDecision? {
         if (!roamActive) return null
         val block = calibrationBlock(playerUnlocked(), MatchKind.current(), MapSide.goldTop != null)
@@ -660,10 +690,16 @@ object SceneryMap {
         if (dist < 0.045f || now - waypointStartedAt > stopTimeout) {
             if (waypointArrivedAt == 0L) {
                 waypointArrivedAt = now
+                lastStopAt = now
+                // the recording's tour log (owner, 2026-11-12): each stop, reached or timed out, and how long it took
+                com.example.mlbbresearch.core.SessionRecorder.event(org.json.JSONObject().put("k", "tour").put("i", roamIdx)
+                    .put("name", wp.name).put("reached", dist < 0.045f).put("sec", (now - waypointStartedAt) / 1000.0)
+                    .put("dist", Math.round(dist * 1000f) / 1000.0).put("mirrored", MapSide.mirrored()))
                 syncWithMinimap(s, forceManual = true)
                 saveNow()
             }
-            if (now - waypointArrivedAt < 350L) {
+            // (a longer stop while the screen picture collector is on: it takes a clean picture here)
+            if (now - waypointArrivedAt < (if (Cfg.collectScreenDataset) 1100L else 350L)) {
                 status = "scanning ${wp.name} (${stepLabel(roamIdx)}) · ${summary()}"
                 return TacticalDecision(
                     Intent.PUSH, 0f, 0f, emptyList(), -1f, -1f, wp.name, -1f, -1,

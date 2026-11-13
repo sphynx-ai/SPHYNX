@@ -254,6 +254,9 @@ object GameStateTracker {
     // 3rd priority: in-game scoreboard spell icon verified against the 12 base wiki spell icons
     fun onScoreboardSpellVerified(rawSpell: String, score: Float) {
         val canon = SpellDb.match(rawSpell) ?: return
+        // the spell BUTTON was already recognised: one scoreboard read that says otherwise does not replace it
+        // (2026-11-13 log: "Vengeance" on the scoreboard in the middle of a Retribution match)
+        if (buttonSpell != null && buttonSpell != canon) return
         if (scoreboardSpell != canon) {
             scoreboardSpell = canon
             if (buttonSpell == null) iconSpell = canon
@@ -442,8 +445,13 @@ object GameStateTracker {
             kills = 0; deaths = 0; assists = 0
             matchStartAt = now
             MapSide.reset()                 // a new match: its lane marks are read again
+            com.example.mlbbresearch.vision.BuffEmblems.reset()
             // (the loading screen was missed: the match is recorded from here)
-            if (matchId == 0L) { matchId = now; Diag.info("Match recording started (hero seen; no loading screen)") }
+            if (matchId == 0L) {
+                matchId = now; Diag.info("Match recording started (hero seen; no loading screen)")
+                enemySpells = emptyMap(); allySpells = emptyMap()      // (the last match's scoreboard spells are not this match's)
+                com.example.mlbbresearch.core.SessionRecorder.matchStarted()
+            }
             com.example.mlbbresearch.vision.ScreenReader.clearResult()
             spawnAt = now
             com.example.mlbbresearch.vision.LevelReader.reset()
@@ -494,9 +502,13 @@ object GameStateTracker {
             val result = com.example.mlbbresearch.vision.ScreenReader.lastResultWin
             lastResultWin = result
             // recording ends at the match end screens; the end scoreboard may still lock the hero
-            if (matchId != 0L) { lastMatchId = matchId; matchId = 0L; Diag.info("Match recording ended (match end)") }
+            val recorded = matchId != 0L
+            if (recorded) { lastMatchId = matchId; matchId = 0L; Diag.info("Match recording ended (match end)") }
             lastMatchEndAt = now
+            com.example.mlbbresearch.learning.TrainingResults.matchEnded()   // tactical engine result of this match
             logMatch()                       // (it clears lastResultWin: the message uses the copy)
+            // (after the scorecard is saved: the recording's last part carries this match's scorecard, not the last one's)
+            if (recorded) com.example.mlbbresearch.core.SessionRecorder.matchEnded()
             matchStartAt = 0L
             Diag.info("Match end: " + when (result) { true -> "victory"; false -> "defeat"; null -> "result not read" })
         }
@@ -511,11 +523,13 @@ object GameStateTracker {
             // (also right after a match: a loading screen once the last one ended / was played is a new match)
             if (now - loadingSeenAt > 120_000 || lastMatchEndAt > loadingSeenAt || lastInGame > loadingSeenAt) {
                 matchId = now; Diag.info("Match recording started (loading screen)")
+                enemySpells = emptyMap(); allySpells = emptyMap()      // (the last match's scoreboard spells are not this match's)
+                com.example.mlbbresearch.core.SessionRecorder.matchStarted()
             }
             loadingSeenAt = now
         }
         if (phase != state.phase) phaseSince = now
-        if (phase == Phase.IN_GAME && before == Phase.DEAD) spawnAt = now
+        if (phase == Phase.IN_GAME && before == Phase.DEAD) { spawnAt = now; com.example.mlbbresearch.vision.BuffEmblems.reset() }   // (a death loses the buffs)
         if (phase == Phase.DEAD) lastInGame = now
 
         // big map open: its portraits and icons are not units on the field
@@ -531,6 +545,8 @@ object GameStateTracker {
         return s
     }
 
+    private val hpGuard = HpGuard()
+
     private fun makeState(v: VisionResult, now: Long, phase: Phase, onMap: Boolean, hero: String?, spell: String?, lane: Lane,
                           matchSec: Int, sinceSpawnMs: Long): GameState {
         fun field(x: Float, y: Float) = !onMap || !(x < 0.45f && y < 0.85f)
@@ -543,14 +559,16 @@ object GameStateTracker {
         val seenEnemies = v.enemyHeroes.filter { field(it.x, it.y) }
         val mapInfo = if (onMap) MapIntel.Info.NONE else MapIntel.read(v.minimap, now, seenEnemies, v.self)
         val enemies = if (onMap) seenEnemies else MapIntel.screenEnemiesConfirmed(seenEnemies, v.minimap.self, v.self, v.aspect, now)
+        // a sudden 0% reading right after a healthy one is not believed (HpGuard - owner, 2026-11-12)
+        val hpRead = hpGuard.filter(v.self?.hp ?: -1f, now, v.hint == ScreenHint.DEAD)
         return GameState(
             ts = now,
             phase = phase,
             self = v.self,
             // the HP decisions use: HP + shield / armour (+ half the stored energy) by the hero's bar model
-            selfHp = v.self?.let { HeroKit.effectiveHp(hero, it.hp, it.extra) } ?: -1f,
+            selfHp = v.self?.let { HeroKit.effectiveHp(hero, hpRead, it.extra) } ?: -1f,
             selfExtra = v.self?.extra ?: 0f,
-            selfHpRaw = v.self?.hp ?: -1f,
+            selfHpRaw = hpRead,
             allies = v.allies.filter { field(it.x, it.y) },
             enemies = enemies,
             enemyMinions = v.enemyMinions.filter { field(it.x, it.y) },
@@ -635,6 +653,29 @@ object GameStateTracker {
     // the last match end screen: true = victory, false = defeat, null = not seen
     @Volatile var lastResultWin: Boolean? = null
         private set
+
+    // SCREEN CAPTURE STOPPED MID-MATCH (owner, 2026-11-13): the match end screen will never be seen, so after a minute
+    // without capture the match is closed as unfinished - its scorecard and recording are saved, not left open.
+    @Volatile private var captureStoppedAt = 0L
+    fun captureStopped() {
+        val at = System.currentTimeMillis(); captureStoppedAt = at
+        Thread({
+            val waited = try { Thread.sleep(CAPTURE_GRACE_MS); true } catch (e: InterruptedException) { false }
+            if (waited && captureStoppedAt == at && !com.example.mlbbresearch.capture.ScreenCaptureService.running)
+                try { closeUnfinished() } catch (t: Throwable) { Diag.error("Closing the unfinished match", t) }
+        }, "capture-grace").start()
+    }
+    const val CAPTURE_GRACE_MS = 60_000L
+    private fun closeUnfinished() {
+        if (matchStartAt == 0L && matchId == 0L) return
+        Diag.info("Match closed as unfinished: screen capture stopped (no match end screen seen)")
+        if (matchId != 0L) { lastMatchId = matchId; matchId = 0L }
+        lastMatchEndAt = System.currentTimeMillis()
+        com.example.mlbbresearch.learning.TrainingResults.matchEnded()
+        logMatch()
+        com.example.mlbbresearch.core.SessionRecorder.matchEnded()
+        matchStartAt = 0L
+    }
 
     private fun logMatch() {
         if (matchStartAt == 0L) { com.example.mlbbresearch.learning.ABCompare.matchStart(); HeroKit.resetForm(); com.example.mlbbresearch.vision.ScreenKit.reset(); return }

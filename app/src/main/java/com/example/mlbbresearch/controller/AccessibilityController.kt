@@ -147,6 +147,7 @@ class AccessibilityController : AccessibilityService() {
                     q = listOf(Act.Joy(wj.cx, wj.cy, wj.x, wj.y, CastTiming.JOY_HOLD_MS))
                     show = false
                     inFlightAt = now
+                    sliceOnly = true
                 } else {
                     joyStroke = null
                     inFlight = false
@@ -170,16 +171,34 @@ class AccessibilityController : AccessibilityService() {
                     pendingActs = null; pendingShow = false
                 }
                 inFlightAt = now
-                if (pendingSince > 0L) com.example.mlbbresearch.core.Speed.touch(inFlightAt - pendingSince)
+                if (pendingSince > 0L) { com.example.mlbbresearch.core.Speed.touch(inFlightAt - pendingSince); lastQueueMs = inFlightAt - pendingSince }
                 pendingSince = 0L
             }
         }
         if (!send(q, show)) next()
     }
 
+    @Volatile private var lastQueueMs = 0L       // how long the gesture being sent waited (for the recording)
+    @Volatile private var sliceOnly = false      // a joystick slice repeated by itself: not recorded
+
     @Synchronized
     private fun send(acts: List<Act>, showTouches: Boolean): Boolean {
         val now = System.currentTimeMillis()
+        // the recording's touch rows (owner, 2026-11-12): what goes to the screen, and its wait in the queue
+        if (!sliceOnly) try {
+            com.example.mlbbresearch.core.SessionRecorder.event(org.json.JSONObject().put("k", "touch").put("q", lastQueueMs)
+                .put("acts", org.json.JSONArray(acts.map { a ->
+                    when (a) {
+                        is Act.Joy -> "joy:%.2f,%.2f".format(java.util.Locale.US, a.x - a.cx, a.y - a.cy)
+                        is Act.JoyRelease -> "joyRelease"
+                        is Act.SkillAim -> "aim:${a.pressHoldMs}+${a.aimHoldMs}"
+                        is Act.Tap -> "tap:%.2f,%.2f:${a.holdMs}".format(java.util.Locale.US, a.x, a.y)
+                        is Act.Drag -> "drag:${a.ms}"
+                        else -> "other"
+                    }
+                })))
+        } catch (e: Exception) { }
+        sliceOnly = false; lastQueueMs = 0L
         val (rw, rh) = com.example.mlbbresearch.core.ScreenGeom.size(this)
         val w = rw.toFloat()
         val h = rh.toFloat()
@@ -198,14 +217,15 @@ class AccessibilityController : AccessibilityService() {
             joyAct = lastWantedJoy
         }
         val skillAim = acts.filterIsInstance<Act.SkillAim>().firstOrNull()
-        val maxOtherDur = acts.maxOfOrNull {
+        // (the joystick's own hold is not counted here: CastTiming.joyDuration decides it)
+        val maxOtherDur = acts.filter { it !is Act.Joy && it !is Act.JoyRelease }.maxOfOrNull {
             when (it) {
                 is Act.SkillAim -> it.pressHoldMs
                 is Act.Tap -> it.startMs + it.holdMs
                 is Act.Drag -> it.startMs + it.ms
-                else -> CastTiming.JOY_HOLD_MS
+                else -> CastTiming.JOY_SLICE_MS
             }
-        } ?: CastTiming.JOY_HOLD_MS
+        } ?: 0L
 
         val held = joyStroke?.takeIf { joyStrokeEndedAt == 0L || now - joyStrokeEndedAt <= 280L }
         var newJoy: GestureDescription.StrokeDescription? = null
@@ -213,14 +233,14 @@ class AccessibilityController : AccessibilityService() {
             if (joyAct != null && !release) {
                 val ty = joyAct.y * h
                 val tx = if (held != null && kotlin.math.abs(joyAct.x * w - joyX) < 1f && kotlin.math.abs(ty - joyY) < 1f) nudge(joyX) else joyAct.x * w
-                val joyDur = maxOf(joyAct.ms, maxOtherDur, CastTiming.JOY_HOLD_MS)
+                val joyDur = CastTiming.joyDuration(held != null, joyAct.ms, maxOtherDur)
                 if (held != null) {
                     try {
                         val p = Path()
                         p.moveTo(joyX, joyY)
                         for ((vx, vy) in joyAct.via) p.lineTo(vx * w, vy * h)
                         p.lineTo(tx, ty)
-                        newJoy = held.continueStroke(p, 0L, joyDur.coerceAtLeast(180L), true)
+                        newJoy = held.continueStroke(p, 0L, joyDur.coerceAtLeast(CastTiming.JOY_SLICE_MS), true)
                     } catch (_: Exception) {
                         newJoy = null
                     }

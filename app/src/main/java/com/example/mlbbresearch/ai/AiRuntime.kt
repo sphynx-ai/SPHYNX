@@ -64,6 +64,14 @@ object AiRuntime {
 
     init {
         GameStateTracker.onNewMatch = { stdSelectAt = 0L; stdSelectTries = 0 }
+        // a 5v5 match was recognised: the automatic recording starts here (never in Solo practice), and the app
+        // learns from you by itself (owner, 2026-11-13)
+        com.example.mlbbresearch.game.MatchKind.onFiveVFive = {
+            try {
+                com.example.mlbbresearch.core.SessionRecorder.matchStarted()
+                if (!learnOn && anyOn()) start("learn")
+            } catch (t: Throwable) { Diag.error("Starting to learn in a 5v5 match", t) }
+        }
     }
 
     fun anyOn() = playerOn || drafterOn || builderOn || learnOn || com.example.mlbbresearch.research.ResearchMode.on
@@ -207,8 +215,8 @@ object AiRuntime {
                 com.example.mlbbresearch.core.TouchSpeed.tick()
                 if (v != null) {
                     GameStateTracker.update(v)
-                    if (learnOn && v.hint != com.example.mlbbresearch.vision.ScreenHint.LIVE && v.hint != com.example.mlbbresearch.vision.ScreenHint.LIVE_DEAD) DemoRecorder.observe(v, aiPlaying = playerOn, s = GameStateTracker.state)
-                    if (learnOn && Cfg.liveLearn) com.example.mlbbresearch.learning.LiveRecorder.observe(v)
+                    if (learnOn && com.example.mlbbresearch.learning.LearnGate.on() && v.hint != com.example.mlbbresearch.vision.ScreenHint.LIVE && v.hint != com.example.mlbbresearch.vision.ScreenHint.LIVE_DEAD) DemoRecorder.observe(v, aiPlaying = playerOn, s = GameStateTracker.state)
+                    if (learnOn && Cfg.liveLearn && com.example.mlbbresearch.learning.LearnGate.on()) com.example.mlbbresearch.learning.LiveRecorder.observe(v)
                     // Zero-latency reaction (v37.09): run the tactical decision immediately on the fresh vision frame!
                     if (playerOn && System.currentTimeMillis() - lastFastTacticAt >= 28L) {
                         lastFastTacticAt = System.currentTimeMillis()
@@ -239,7 +247,7 @@ object AiRuntime {
                 val s = GameStateTracker.state
                 val stale = System.currentTimeMillis() - s.ts > 1500
                 // you just died: the moments you recorded in the 6 s before led to it
-                if (learnOn && !stale && s.phase == Phase.DEAD && prevPhase != Phase.DEAD && prevPhase.inMatch &&
+                if (learnOn && com.example.mlbbresearch.learning.LearnGate.on() && !stale && s.phase == Phase.DEAD && prevPhase != Phase.DEAD && prevPhase.inMatch &&
                     System.currentTimeMillis() - lastDeathMark > 10_000) {
                     lastDeathMark = System.currentTimeMillis()
                     DemoRecorder.markDeath(lastDeathMark)
@@ -266,7 +274,7 @@ object AiRuntime {
                     val hero = s.ownHero
                     // what Coach learned from you (e.g. your wave-clear skill) on top of the hero's profile
                     val profile = com.example.mlbbresearch.learning.Coach.adjust(HeroDb.profile(hero), hero)
-                    if (Cfg.coachMode) com.example.mlbbresearch.learning.Coach.tick(s)
+                    if (Cfg.coachMode && com.example.mlbbresearch.learning.LearnGate.on()) com.example.mlbbresearch.learning.Coach.tick(s)
                     val plan = StrategicAdvisor.plan
                     val bias = Cfg.learnedBias(hero ?: "unknown")
                     // SCENERY CALIBRATION (owner, 2026-11-11): while the tour runs the Player does not fight -
@@ -295,7 +303,7 @@ object AiRuntime {
                     // logging mode only: records every engine's advice next to what is played (never changes it)
                     com.example.mlbbresearch.engines.DecisionLogging.observe(s, brainOption, option)
                     // research R4 (verified practice only): records this fight moment for the small-model test
-                    com.example.mlbbresearch.research.ResearchMode.recordMoment(s, profile, option)
+                    if (com.example.mlbbresearch.learning.LearnGate.on()) com.example.mlbbresearch.research.ResearchMode.recordMoment(s, profile, option)
                     var d = if (calibrating) TacticalEngine.calibrationStep(s, profile)
                         else TacticalEngine.decide(s, profile, plan, bias, option)
                     // fights: play the hero's combo in order instead of pressing everything at once
@@ -341,7 +349,7 @@ object AiRuntime {
                     // screen-to-touch recorder: from the start of reading this frame to its touches being queued
                     com.example.mlbbresearch.core.TouchSpeed.log.frameToDecision(System.currentTimeMillis() - s.ts)
                     com.example.mlbbresearch.core.Speed.decided((tDecide - s.ts - com.example.mlbbresearch.core.Speed.vision.toLong()).coerceAtLeast(0L), System.currentTimeMillis() - tDecide)
-                    ExperienceRecorder.record(s, d, plan.plan, plan.aggression + bias)
+                    if (com.example.mlbbresearch.learning.LearnGate.on()) ExperienceRecorder.record(s, d, plan.plan, plan.aggression + bias)
                     ActionExecutor.maybeUpgrade(s)
                     if (Cfg.playerQuickBuy) ActionExecutor.maybeQuickBuy(s)
                 } else if (playerOn && !stale && !s.phase.inMatch) {
@@ -354,12 +362,14 @@ object AiRuntime {
                 // settings the app learns by itself (tower range, base-to-lane time)
                 if (inGame) com.example.mlbbresearch.game.AutoTune.observe(s)
                 // Player off and you play: everything you do is yours (combos, cast distance, joystick)
-                if (!playerOn && learnOn && inGame) com.example.mlbbresearch.learning.Coach.tick(s, youPlay = true)
+                // (no learning at all in Solo practice - learning.LearnGate)
+                val learns = learnOn && com.example.mlbbresearch.learning.LearnGate.on()
+                if (!playerOn && learns && inGame) com.example.mlbbresearch.learning.Coach.tick(s, youPlay = true)
                 // your moments: whenever you play yourself, also while helping the AI (coach)
-                if (learnOn && inGame && (!playerOn || com.example.mlbbresearch.learning.Coach.userActive())) DemoRecorder.record(s)
+                if (learns && inGame && (!playerOn || com.example.mlbbresearch.learning.Coach.userActive())) DemoRecorder.record(s)
                 // (learning from the heroes you watch while dead was removed at your request)
                 // watching another player's live match: their play, recorded like a match of yours
-                if (learnOn && Cfg.liveLearn && !stale && s.phase == Phase.LIVE) com.example.mlbbresearch.learning.LiveRecorder.record(s)
+                if (learns && Cfg.liveLearn && !stale && s.phase == Phase.LIVE) com.example.mlbbresearch.learning.LiveRecorder.record(s)
                 if (builderOn && inGame) {
                     if (Cfg.qbOn) QuickBuySwap.watch(s)
                     // item actives: the Builder presses them in every match the Player does not play (owner, 2026-11-10)
@@ -379,7 +389,7 @@ object AiRuntime {
                     val nowB = System.currentTimeMillis()
                     val enemiesNear = s.enemiesWithin(0.9f).size
                     val alliesNear = 1 + s.allies.count { it.hero && s.distToSelf(it.x, it.y) <= 0.9f }
-                    com.example.mlbbresearch.research.ResearchMode.benchTick(com.example.mlbbresearch.game.GameStateTracker.matchId, nowB,
+                    if (com.example.mlbbresearch.learning.LearnGate.on()) com.example.mlbbresearch.research.ResearchMode.benchTick(com.example.mlbbresearch.game.GameStateTracker.matchId, nowB,
                         gate ?: com.example.mlbbresearch.research.ResearchMode.playerVerdict(nowB), inGame, playing,
                         if (playing) benchIntent?.name else null, playing && benchIdle,
                         playing && benchMoving && nowB - com.example.mlbbresearch.game.GameStateTracker.lastMotionAt > 1000,
@@ -495,7 +505,7 @@ object AiRuntime {
             if (!playerOn && com.example.mlbbresearch.research.ResearchMode.on) "Research (practice check)" else null,
             if (drafterOn) (if (Cfg.ranked) "Drafter (ranked)" else "Drafter (standard)") else null,
             if (builderOn) "Builder" else null,
-            if (learnOn && Cfg.coachMode) "Learning from you" else null
+            if (learnOn && com.example.mlbbresearch.learning.LearnGate.on()) "Learning from you" else null
         ).joinToString(" + ") + if (Cfg.autonomous && drafterOn && builderOn) " (autonomous${if (Cfg.dryRun) ", dry run" else ""})" else ""
     }
 
@@ -532,6 +542,7 @@ object AiRuntime {
         com.example.mlbbresearch.game.MapSide.goldTop?.let { sb.append(if (it) " (Gold lane on top)" else " (EXP lane on top)") }
         com.example.mlbbresearch.game.MatchKind.current().takeIf { it != com.example.mlbbresearch.game.MatchKind.Kind.UNKNOWN }?.let { sb.append(" | ").append(it.label) }
         sb.append("\nHero: ").append(GameStateTracker.verifiedHeroPanel()).append(" | spell: ").append(GameStateTracker.verifiedSpellPanel())
+        if (s.phase.inMatch) sb.append("\nBuffs held: ").append(com.example.mlbbresearch.vision.BuffEmblems.text())
         sb.append("\nGemma: ").append(GemmaEngine.state)
         if (StrategicAdvisor.busyWith.isNotEmpty()) sb.append(" (").append(StrategicAdvisor.busyWith).append(")")
         sb.append(" | capture ").append("%.0f".format(FrameProcessor.processedFps)).append(" fps")
@@ -545,11 +556,17 @@ object AiRuntime {
                 .append(" (survival ").append(Utility.lastSurvival.toInt()).append(")")
             if (Cfg.useCombos) sb.append("\nCombo: ").append(ComboRunner.status)
         }
-        if (learnOn && Cfg.coachMode) {
-            sb.append("\n\nLEARNING FROM YOU").append(if (playerOn) " (while you take over)" else "")
-            sb.append("\nYou: ").append(DemoRecorder.lastAction)
-            sb.append("\nSaved: ").append(DemoRecorder.recorded).append(" this session, ").append(DemoRecorder.total).append(" total")
-            sb.append("\nCoach: ").append(com.example.mlbbresearch.learning.Coach.summary(s.ownHero))
+        // LEARNING FROM YOU (owner, 2026-11-13): by itself in a 5v5 match while the Research player is off or only
+        // advises; never in Solo practice. Always shown, with the reason when nothing is learned.
+        if (learnOn) {
+            val kind = com.example.mlbbresearch.game.MatchKind.current()
+            val plays = playerOn && playerGate == com.example.mlbbresearch.research.PlayerGate.Verdict.PLAY
+            sb.append("\n\n").append(com.example.mlbbresearch.learning.LearnGate.panelTitle(kind, s.phase.inMatch, plays))
+            if (com.example.mlbbresearch.learning.LearnGate.learns(kind)) {
+                sb.append("\nYou: ").append(DemoRecorder.lastAction)
+                sb.append("\nSaved: ").append(DemoRecorder.recorded).append(" this session, ").append(DemoRecorder.total).append(" total")
+                sb.append("\nCoach: ").append(com.example.mlbbresearch.learning.Coach.summary(s.ownHero))
+            }
         }
         if (drafterOn && StrategicAdvisor.draftText.isNotEmpty()) sb.append("\n\nDRAFT\n").append(StrategicAdvisor.draftText)
         if (builderOn) {

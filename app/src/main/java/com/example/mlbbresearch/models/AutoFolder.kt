@@ -261,7 +261,7 @@ object AutoFolder {
                                     }
                                 }
                                 // the notebook's bundle: every hero's network + the all-heroes one
-                                n.endsWith(".zip") && (n.contains("polic") || n.contains("tactical")) -> {
+                                n.endsWith(".zip") && (n.contains("polic") || n.contains("tactical")) && !n.startsWith("tactical_llm_trainable") -> {
                                     val sig = "${e.name}:${e.size}:${e.modified}"
                                     if (Cfg.raw("auto_sig_policyzip") != sig) {
                                         val names = unpackPolicies(app, e)
@@ -372,7 +372,7 @@ object AutoFolder {
                                     val o = org.json.JSONObject(text(e))
                                     val u = o.optString("username").trim(); val k = o.optString("key").trim()
                                     if (u.isNotEmpty() && k.isNotEmpty() && (u != Cfg.kaggleUser || k != Cfg.kaggleKey)) {
-                                        Cfg.kaggleUser = u; Cfg.kaggleKey = k; found.add("Kaggle key ($u)")
+                                        Cfg.kaggleUser = u; Cfg.kaggleKey = k; found.add("Kaggle key")
                                     }
                                 }
                                 n == "groq_model.txt" -> {

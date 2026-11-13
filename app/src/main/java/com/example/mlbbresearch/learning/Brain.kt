@@ -198,6 +198,8 @@ object Brain {
     @Synchronized
     fun evaluateDue(s: GameState) {
         if (pending.isEmpty()) return
+        // no learning at all in Solo practice (LearnGate): the fights there are not scored
+        if (!LearnGate.on()) { pending.clear(); return }
         val now = s.ts
         val it = pending.iterator()
         var changed = false
@@ -209,6 +211,7 @@ object Brain {
             it.remove()
             val r = reward(p, s, died)
             ABCompare.fight(r, died, p.byYou)            // small model on vs off comparison
+            TrainingResults.fightScored(r, p.byYou)               // the Learn page's tactical engine circle
             com.example.mlbbresearch.research.ResearchMode.onFightScored(r, died, p.byYou)   // research R5 (verified practice only)
             for (key in listOf(p.hero, "all")) update(modelFor(key, own = true), p.option, p.x, r)
             learnedThisSession++

@@ -88,11 +88,12 @@ object StrategicAdvisor {
         }
         // 1a. THE LINE-UP: the loading screen (top row = my team, me first on the left; bottom row =
         // the enemies) and the scoreboard (my team left, me on top; enemies right) show all 10 heroes
-        // and their battle spells. Read once on the loading screen, checked again on the scoreboard.
-        val lineupDue = (s.phase == Phase.LOADING && (GameStateTracker.lineupReadAt == 0L ||
-                com.example.mlbbresearch.research.ResearchMode.loadingCheckWanted())) ||
-            (s.phase == Phase.SCOREBOARD && (GameStateTracker.enemySpells.size < 5 || GameStateTracker.enemyTeam.size < 5 || GameStateTracker.scoreboardHero == null) &&
-                now - GameStateTracker.lineupReadAt > 60_000)
+        // and their battle spells. CUT DOWN (owner, 2026-11-12 - the 2026-11-11 recording: the Gemma line-up read
+        // took 50 s on the loading screen and 70 s on the scoreboard, holding Gemma all that time): read ONCE per
+        // match, on the loading screen only; never on the scoreboard (the enemy spells are read there from the
+        // icons, by pixels); never in Solo practice (one Computer). The practice gate no longer uses it.
+        val lineupDue = s.phase == Phase.LOADING && GameStateTracker.lineupReadAt == 0L &&
+            com.example.mlbbresearch.game.MatchKind.current() != com.example.mlbbresearch.game.MatchKind.Kind.SOLO
         // (the loading screen: tried again 2 s after a read that did not find your name - your word)
         // the END-OF-MATCH scoreboard: the names of my team's rows (my row = my player name) - v36.87
         if (com.example.mlbbresearch.vision.EndBoard.needsName() && GemmaEngine.visionOk && now - lastLineup > 2000) {
@@ -275,15 +276,14 @@ object StrategicAdvisor {
         val prompt = com.example.mlbbresearch.game.PlayerName.lineupPrompt(phase == Phase.LOADING)
         val reply = ask("line-up (${phase.label})", prompt, img, 0.0) ?: return
         val lu = com.example.mlbbresearch.game.PlayerName.parseLineup(reply, phase == Phase.LOADING, green = GameStateTracker.loadingGreen)
-        // the practice gate: are the 9 others "Computer"? (verifies the match before it starts)
-        if (phase == Phase.LOADING) com.example.mlbbresearch.research.ResearchMode.observeLoading(reply,
-            GameStateTracker.loadingGreen, com.example.mlbbresearch.game.PlayerName.get())
+        // (the practice gate no longer reads Gemma's answer - owner, 2026-11-12: its pixel check decides; Gemma
+        // misread the Computer cards as "9 other cards are not Computer")
         if (lu == null) {
             // (the cards' places are random: without your name on the screen nothing is decided)
             Diag.info("Line-up (${phase.label}): " + (if (com.example.mlbbresearch.game.PlayerName.get().isBlank())
                 "your green name / player name was not found on it" else "your player name was not found"))
-            // (the loading screen is read again 2 s later while it lasts; the scoreboard a minute later)
-            if (phase != Phase.LOADING) GameStateTracker.lineupReadAt = System.currentTimeMillis()
+            // (read once per match: not again - owner, 2026-11-12)
+            GameStateTracker.lineupReadAt = System.currentTimeMillis()
             return
         }
         val mine = lu.mine.filter { it.hero != null }; val theirs = lu.theirs.filter { it.hero != null }
@@ -440,8 +440,14 @@ object StrategicAdvisor {
 
     private suspend fun ask(what: String, prompt: String, img: android.graphics.Bitmap?, temp: Double = 0.2): String? {
         busyWith = what
+        val askedAt = System.currentTimeMillis()
         return try {
-            GemmaEngine.ask(prompt, img, temp, purpose = what)
+            com.example.mlbbresearch.core.SessionRecorder.snapBitmap("gemma-" + what.substringBefore(' '), img)
+            GemmaEngine.ask(prompt, img, temp, purpose = what).also { reply ->
+                // the recording keeps what was asked and answered (owner, 2026-11-12)
+                com.example.mlbbresearch.core.SessionRecorder.event(org.json.JSONObject().put("k", "gemma").put("what", what)
+                    .put("ms", System.currentTimeMillis() - askedAt).put("prompt", prompt.take(1500)).put("reply", (reply ?: "").take(1500)))
+            }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (t: Throwable) {

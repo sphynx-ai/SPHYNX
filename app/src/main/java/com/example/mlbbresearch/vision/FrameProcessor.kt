@@ -52,6 +52,7 @@ object FrameProcessor {
     private val hud = listOf(
         floatArrayOf(0.30f, 0.00f, 0.70f, 0.09f),   // top scoreboard
         floatArrayOf(0.80f, 0.00f, 1.00f, 0.14f),   // top-right buttons
+        floatArrayOf(0.70f, 0.00f, 0.80f, 0.09f),   // the K / D / A counter (2026-11-13 recording: read as a jungle monster at 3-5% HP)
         floatArrayOf(0.62f, 0.52f, 1.00f, 1.00f),   // skill buttons
         floatArrayOf(0.76f, 0.40f, 0.92f, 0.52f),   // the ultimate button's top (it reaches above the others)
         floatArrayOf(0.42f, 0.04f, 0.59f, 0.125f),  // turtle / lord HP bar under the scoreboard (read separately)
@@ -103,6 +104,10 @@ object FrameProcessor {
         if (hint == ScreenHint.RESULT_BOARD && frameNo % 5 == 0L) try { EndBoard.observe(px, w, h) } catch (e: Exception) { }
         // the loading screen: your card = the one with the GREEN name (v36.92), and its spell icon vs the 12 wiki pictures (v37.00)
         // the practice gate: solo practice is verified from its loading card (no Gemma needed)
+        // Solo practice or 5v5, from the loading screen's layout (game.MatchKind; learning depends on it - learning.LearnGate)
+        if (hint == ScreenHint.LOADING) try {
+            com.example.mlbbresearch.game.MatchKind.fromLoading(com.example.mlbbresearch.game.GameStateTracker.matchId, ScreenReader.soloLoading(px, w, h))
+        } catch (e: Exception) { }
         if (hint == ScreenHint.LOADING) try { com.example.mlbbresearch.research.ResearchMode.observeLoadingFrame(px, w, h) } catch (e: Exception) { }
         if (hint == ScreenHint.LOADING && frameNo % 5 == 1L) try {
             val green = com.example.mlbbresearch.game.PlayerName.greenCard(px, w, h)
@@ -160,6 +165,30 @@ object FrameProcessor {
             fun mm(box: FloatArray?) = box?.let { (((it[0] + it[2]) / 2f - l) / (r - l).coerceAtLeast(0.01f)) to (((it[1] + it[3]) / 2f - t) / (b - t).coerceAtLeast(0.01f)) }
             com.example.mlbbresearch.game.MapSide.observe(com.example.mlbbresearch.game.MapSide.fromPits(mm(mini.lordIcon), mm(mini.turtleIcon)))
         }
+        // CLEAN SCREENSHOTS FOR THE RECORDING at key moments (owner, 2026-11-12): the lane side decided, an enemy
+        // hero or a monster first seen, your HP read as 0%
+        if (com.example.mlbbresearch.core.SessionRecorder.on && hint == ScreenHint.NONE && self != null) {
+            val rec = com.example.mlbbresearch.core.SessionRecorder
+            val side = com.example.mlbbresearch.game.MapSide.goldTop
+            if (side != snapSide) { snapSide = side; if (side != null) rec.snap("lane-side", px, w, h, 1000L) }
+            val enemyNow = tracks.isNotEmpty()
+            if (enemyNow && !snapEnemy) rec.snap("enemy-hero", px, w, h, 20_000L)
+            snapEnemy = enemyNow
+            val monNow = seen.any { it.team == Team.NEUTRAL }
+            // (one a minute: 30 of the 39 screenshots of the 2026-11-13 recording were "monster")
+            if (monNow && !snapMon) rec.snap("monster", px, w, h, 60_000L)
+            snapMon = monNow
+            if (self.hp <= 0.02f) rec.snap("hp0", px, w, h, 10_000L)
+        }
+        // which buff you hold: the orange / purple emblems circling your hero (BuffEmblems; about 3 looks a second)
+        if (hint == ScreenHint.NONE && self != null && frameNo % 5 == 2L) try {
+            if (BuffEmblems.observe(px, w, h, self.x, self.y)) {
+                com.example.mlbbresearch.core.Diag.info("Buff emblems: you hold " + BuffEmblems.text() +
+                    " (orange ${BuffEmblems.lastCounts[0]}, purple ${BuffEmblems.lastCounts[1]} pixels)")
+                // (a clean screenshot each time the reading changes: the purple colour is still to be confirmed)
+                com.example.mlbbresearch.core.SessionRecorder.snap("buff-" + BuffEmblems.text().replace(" + ", "-").replace(" buff", ""), px, w, h, 2000L)
+            }
+        } catch (e: Exception) { }
         // which skill buttons the screen shows (normal / large HUD, 2-3-4 skills)
         if (hint == ScreenHint.NONE && self != null && frameNo % 10 == 5L) ScreenKit.observe(px, w, h)
         // which hero you play: its skill icons against learned looks and the wiki pictures (HeroVerifier)
@@ -221,7 +250,9 @@ object FrameProcessor {
             ?.let { LevelReader.levelOf(px, w, h, it) } ?: -1
 
         // detector training pictures (every 6 s in a match, Learn page switch)
-        com.example.mlbbresearch.learning.DatasetCollector.maybeSave(px, w, h, mini, self != null && hint == ScreenHint.NONE)
+        // (never in Solo practice: no learning there - learning.LearnGate)
+        val learns = com.example.mlbbresearch.learning.LearnGate.on()
+        if (learns) com.example.mlbbresearch.learning.DatasetCollector.maybeSave(px, w, h, mini, self != null && hint == ScreenHint.NONE)
 
         // an enemy tower's range circle (every 2nd frame; must show the same colour twice in a row)
         if (self != null && (hint == ScreenHint.NONE || live) && frameNo % 2 == 0L) {
@@ -270,7 +301,7 @@ object FrameProcessor {
             processMs = System.currentTimeMillis() - t0
         )
         // whole-screen detector training pictures (every 10 s in a match)
-        com.example.mlbbresearch.learning.ScreenDatasetCollector.maybeSave(px, w, h, result, mini, self != null && hint == ScreenHint.NONE,
+        if (learns) com.example.mlbbresearch.learning.ScreenDatasetCollector.maybeSave(px, w, h, result, mini, self != null && hint == ScreenHint.NONE,
             com.example.mlbbresearch.game.JungleNav.atBuff, com.example.mlbbresearch.game.GameStateTracker.state.matchSec,
             steadySmall.filter { it.team == Team.NEUTRAL } + seen.filter { it.team == Team.NEUTRAL && it.hero }, ring)
         latest = result
@@ -431,8 +462,23 @@ object FrameProcessor {
         return seen.filter { it !in roamers }
     }
 
+    // (phantom low bars are dropped last - LowBarRule)
+    private val lowBars = LowBarRule()
     private fun monstersFromRedBars(all: List<Seen>, px: IntArray, w: Int, h: Int, mini: MinimapInfo): List<Seen> {
+        val list = monstersFromRedBars0(all, px, w, h, mini)
+        val now = System.currentTimeMillis()
+        fun small(u: Seen) = !u.hero && (u.team == Team.NEUTRAL || u.team == Team.ENEMY)
+        for (u in list) if (small(u)) lowBars.seen(u.x, u.y, u.hp, now)
+        return list.filter { u -> !small(u) || lowBars.counts(u.x, u.y, u.hp, now) }
+    }
+
+    private fun monstersFromRedBars0(all: List<Seen>, px: IntArray, w: Int, h: Int, mini: MinimapInfo): List<Seen> {
         val enemyNearOnMap = enemyNearOnMinimap(mini, w, h)
+        // you stand at a jungle camp / buff spot: a bar there is a hero only with a readable level number (HeroBarRule)
+        val atCampSpot = try {
+            com.example.mlbbresearch.game.JungleSpots.campAt(mini.self,
+                com.example.mlbbresearch.game.MatchKind.jungleSec(com.example.mlbbresearch.game.GameStateTracker.state.matchSec), System.currentTimeMillis()) != null
+        } catch (e: Exception) { false }
         val nearEnemyTower = mini.self?.let { me ->
             (mini.towers.map { it.x to it.y } + listOfNotNull(mini.enemyBase)).any { kotlin.math.hypot(it.first - me.first, it.second - me.second) < 0.12f }
         } ?: false
@@ -440,19 +486,27 @@ object FrameProcessor {
         val monsters = ArrayList<Seen>()
         val nowMs = System.currentTimeMillis()
         val aspect = if (h == 0) 1.78f else w.toFloat() / h
+        val selfBar = all.firstOrNull { it.team == Team.SELF }
         for (s in all) {
             // a red bar where yours sits is YOUR passive bar, not a unit (see ownBars)
             if (s.team == Team.ENEMY && kotlin.math.abs(s.barLeft - 0.471f) < 0.015f && s.barTop in 0.36f..0.43f) continue
-            // Confirmed Enemy Hero Protection (v37.16):
-            // Never misclassify an Enemy Hero as a jungle monster when their level badge is replaced by a colorful
-            // active skill duration icon (e.g. Cici s1, Balmond s2, Thamuz ult, Leomord ult) or partially occluded!
-            val confirmedEnemyHero = s.team == Team.ENEMY && s.hero && (
-                badgeDark(px, w, h, s) >= 0.20f ||
+            // AN ENEMY HERO NEEDS ITS OWN LEVEL BADGE AND AN ENEMY ON THE MINIMAP (owner, 2026-11-12 - recording
+            // 2026-11-11 0:36: the Molten Fiend's bar was taken for enemy heroes "#182 3%" / "#181 25%" because YOUR
+            // level badge's dark circle sat right next to it, and the enemy tracker then kept the ghost "confirmed"):
+            //  - the badge: a dark badge left of the bar that is not your own badge, a skill-duration icon in its
+            //    place (Cici s1, Thamuz ult...), the hero sub-bar, or a readable level number;
+            //  - and an enemy hero icon near you on the minimap (HeroBarRule);
+            //  - at a monster seen in the last 2.5 s (a camp being fought) the bar stays the monster unless its
+            //    level number is readable.
+            val glyph = s.team == Team.ENEMY && s.hero && LevelReader.glyph(px, w, h, s) != null
+            val badge = s.team == Team.ENEMY && s.hero && (
+                (badgeDark(px, w, h, s) >= 0.20f && !onOwnBadge(s, selfBar)) ||
                     s in barsWithSubBar ||
                     ScreenReader.badgeSkillDuration(px, w, h, s) >= 0f ||
-                    LevelReader.glyph(px, w, h, s) != null ||
-                    enemyTracker.isNearActiveTrack(s.x, s.y, nowMs, aspect)
+                    glyph
                 )
+            val confirmedEnemyHero = s.team == Team.ENEMY && s.hero &&
+                HeroBarRule.isEnemyHero(badge, enemyNearOnMap, atRecentMonster(s, nowMs, aspect), glyph, atCampSpot)
             if (s.team == Team.ENEMY && s.hero && !confirmedEnemyHero) {
                 // an enemy TOWER's bar is red without a badge too: near an enemy tower on the
                 // minimap it is the tower (a structure), not a monster
@@ -491,6 +545,20 @@ object FrameProcessor {
                 monsters.add(m); out.add(m)
             } else out.add(s)
         }
+        // at a jungle camp with no enemy wave near on the minimap, minion-sized enemy bars are the camp (CampRule)
+        mini.self?.let { me ->
+            val sec = com.example.mlbbresearch.game.MatchKind.jungleSec(com.example.mlbbresearch.game.GameStateTracker.state.matchSec)
+            val camp = com.example.mlbbresearch.game.JungleSpots.campAt(me, sec, nowMs)
+            if (CampRule.minionIsTheCamp(camp != null, CampRule.waveNear(me, mini.enemyWaves))) for (i in out.indices) {
+                val u = out[i]
+                if (u.team == Team.ENEMY && !u.hero) {
+                    val m = u.copy(team = Team.NEUTRAL, species = camp!!.id)
+                    out[i] = m; monsters.add(m)
+                }
+            }
+        }
+        for (m in monsters) recentMonsters.add(Triple(m.x, m.y, nowMs))
+        recentMonsters.removeAll { nowMs - it.third > HeroBarRule.MONSTER_MEMORY_MS }
         if (monsters.isEmpty()) return out
         // the Thunder Fenrir's cub: a small blue monster right next to the big one is the same camp
         val fenrir = monsters.filter { it.species == com.example.mlbbresearch.game.JungleDb.THUNDER_FENRIR.id }
@@ -573,6 +641,19 @@ object FrameProcessor {
         return if (n == 0) floatArrayOf(0f, 0f, 0f) else floatArrayOf(o.toFloat() / n, bl.toFloat() / n, gr.toFloat() / n)
     }
 
+    private var snapSide: Boolean? = null
+    private var snapEnemy = false
+    private var snapMon = false
+
+    // where monsters were seen in the last moments (a camp being fought): bars there stay monsters
+    private val recentMonsters = ArrayList<Triple<Float, Float, Long>>()
+    private fun atRecentMonster(s: Seen, nowMs: Long, aspect: Float): Boolean =
+        recentMonsters.any { nowMs - it.third <= HeroBarRule.MONSTER_MEMORY_MS && kotlin.math.hypot((it.first - s.x) * aspect, it.second - s.y) <= HeroBarRule.MONSTER_NEAR }
+
+    // the bar's badge spot is YOUR level badge (left of your own bar, same height)
+    private fun onOwnBadge(s: Seen, self: Seen?): Boolean = self != null &&
+        HeroBarRule.overlapsOwnBadge(s.barLeft, (s.barTop + s.barBottom) / 2, self.barLeft, (self.barTop + self.barBottom) / 2)
+
     // dark level badge just left of a bar
     private fun badgeDark(px: IntArray, w: Int, h: Int, s: Seen): Float {
         val cy = ((s.barTop + s.barBottom) / 2 * h).toInt()
@@ -612,6 +693,7 @@ object FrameProcessor {
 
     fun reset() {
         enemyTracker.clear()
+        recentMonsters.clear()
         latest = null
         processedFps = 0f
     }

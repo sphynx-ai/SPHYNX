@@ -75,7 +75,7 @@ object DatasetZipper {
 
     // the time in a picture's name (mm_1730450000000.png -> 1730450000000)
     private fun stamp(name: String, kind: Kind): Long =
-        if (name.startsWith(kind.prefix)) name.removePrefix(kind.prefix).substringBefore('.').toLongOrNull() ?: 0L else 0L
+        if (name.startsWith(kind.prefix)) name.removePrefix(kind.prefix).substringBefore('.').substringBefore('_').toLongOrNull() ?: 0L else 0L   // (mm_<time>_gs.png: the tag is not part of the time)
 
     // zip the pictures newer than the last zip, in the background; done(message)
     fun zipNew(ctx: Context, kind: Kind, why: String, done: ((String) -> Unit)? = null) {
@@ -90,6 +90,54 @@ object DatasetZipper {
             Diag.info("Training pictures: $msg")
             done?.invoke(msg)
         }.start()
+    }
+
+    // delete a dataset zip (after a successful training): the app's folder, or its Download folder
+    fun deleteZip(c: Context, name: String): Boolean {
+        var gone = com.example.mlbbresearch.core.Storage.dir()?.let { java.io.File(it, name).delete() } ?: false
+        try {
+            gone = c.contentResolver.delete(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                MediaStore.Downloads.DISPLAY_NAME + " = ? AND " + MediaStore.Downloads.RELATIVE_PATH + " = ?",
+                arrayOf(name, com.example.mlbbresearch.core.Storage.downloadsRel() + "/")) > 0 || gone
+        } catch (e: Exception) { }
+        return gone
+    }
+
+    // DELETE ALL PICTURES of one kind (owner, 2026-11-12: a button each on the Learn page): the pictures and their
+    // labels, that kind's dataset zips and the parts waiting for the GitHub upload. classes.txt stays. Background.
+    fun deleteAll(ctx: Context, kind: Kind, done: (String) -> Unit) {
+        val c = ctx.applicationContext
+        Thread {
+            val msg = try {
+                var files = 0
+                synchronized(this) {
+                    for (i in list(c, kind)) if (i.name != "classes.txt") try { if (i.delete()) files++ } catch (e: Exception) { }
+                }
+                val zips = com.example.mlbbresearch.models.AutoFolder.files(c).map { it.name }
+                    .filter { it.startsWith(kind.zipName + "-") && it.endsWith(".zip") }
+                var gone = 0
+                for (z in zips) if (deleteZip(c, z)) gone++
+                val parts = partsPrefix(kind)
+                var partsGone = 0
+                for (p in com.example.mlbbresearch.core.GitHubUpload.files(c).map { it.name }.filter { it.startsWith(parts) })
+                    if (com.example.mlbbresearch.core.SessionRecorder.deleteFile(c, p)) partsGone++
+                PictureExport.setTrainedWaiting(PictureExport.trainedWaiting().filterNot { it.startsWith(kind.zipName + "-") }.toSet())
+                Cfg.setRaw(kind.key + "_n", "0")
+                "Deleted ${kind.label} pictures: $files file(s), $gone zip(s), $partsGone upload part(s)" +
+                    if (gone < zips.size) " (${zips.size - gone} zip(s) in the chosen folder could not be deleted: delete them in a file manager)" else ""
+            } catch (t: Throwable) { Diag.error("Deleting the ${kind.label} pictures", t); "Deleting failed (see Logs)" }
+            status = msg
+            Diag.info(msg)
+            done(msg)
+        }.start()
+    }
+
+    private fun partsPrefix(kind: Kind) = PictureExport.PREFIX + kind.zipName + "-"
+
+    // zip now on the caller's thread (the GitHub upload zips the new pictures first)
+    fun zipBlocking(ctx: Context, kind: Kind, why: String): String {
+        synchronized(this) { if (busy) return "${kind.zipName}: already zipping"; busy = true }
+        return try { zip(ctx.applicationContext, kind, why).also { status = it } } finally { busy = false }
     }
 
     private fun zip(c: Context, kind: Kind, why: String): String {

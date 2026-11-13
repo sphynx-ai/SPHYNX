@@ -10,7 +10,32 @@ object Cfg {
     fun init(ctx: Context) {
         if (!::prefs.isInitialized) {
             prefs = ctx.applicationContext.getSharedPreferences("cfg", Context.MODE_PRIVATE)
+            keepOldDefaults()
         }
+    }
+
+    // ALL SWITCHES OFF BY DEFAULT (owner, 2026-11-12) - on a NEW install only. A phone that already ran the app
+    // keeps how it behaved: every switch it never changed is saved once with its old default (on).
+    // Safety guards keep their safe position everywhere: Dry run on, the Quick buy guards on.
+    const val DEFAULTS_GEN = 2
+    val OLD_ON_DEFAULTS = listOf(
+        "gpu", "decision_log", "touches", "show_det", "player_qb", "coach", "auto_sit_combo", "auto_record",
+        "auto_upload", "scenery_auto_sync", "std_hero", "online_meta", "online_auto", "online_draft", "collect_ds",
+        "collect_sds", "live_learn", "policy_on", "smart_fights", "brain_you", "det_on", "builder_actives")
+
+    // the first-run setup (owner, 2026-11-12): shown on a new install until "Finish setup"
+    var firstRunPending: Boolean get() = s("first_run", "") == "pending"; set(v) = put("first_run", if (v) "pending" else "done")
+
+    // what to save once (pure, unit tested): nothing on a new install or when already done
+    fun oldDefaultsToKeep(saved: Set<String>): List<String> =
+        if (saved.isEmpty() || "defaults_gen" in saved) emptyList() else OLD_ON_DEFAULTS.filter { it !in saved }
+
+    private fun keepOldDefaults() {
+        if (prefs.contains("defaults_gen")) return
+        val e = prefs.edit()
+        if (prefs.all.isEmpty()) e.putString("first_run", "pending")      // a new install: the first-run setup opens
+        oldDefaultsToKeep(prefs.all.keys).forEach { e.putBoolean(it, true) }
+        e.putInt("defaults_gen", DEFAULTS_GEN).apply()
     }
 
     private fun b(k: String, d: Boolean) = prefs.getBoolean(k, d)
@@ -29,6 +54,8 @@ object Cfg {
     }
 
     // ---- model ----
+    // (ON also on a new install - owner, 2026-11-13: it is a speed setting, not a feature; on the CPU the line-up
+    // read took 122 s and each strategy answer 12-17 s)
     var useGpu: Boolean get() = b("gpu", true); set(v) = put("gpu", v)
     // model speed recorder: LiteRT-LM's detailed figures (tokens per second); takes effect when the models load
     var modelSpeedDetailed: Boolean get() = b("model_speed_detailed", false); set(v) = put("model_speed_detailed", v)
@@ -37,13 +64,13 @@ object Cfg {
     // the fight-choice network (numeric, from the tactical-network notebook) advises in fights
     var fightNetOn: Boolean get() = b("fight_net", false); set(v) = put("fight_net", v)
     // logging mode: record every engine's advice next to what is played (never acts on it)
-    var decisionLogOn: Boolean get() = b("decision_log", true); set(v) = put("decision_log", v)
+    var decisionLogOn: Boolean get() = b("decision_log", false); set(v) = put("decision_log", v)
 
     // ---- player ----
     var myHero: String get() = s("my_hero", ""); set(v) = put("my_hero", v)        // the last hero you played (automatic)
     var manualHero: String get() = s("manual_hero", ""); set(v) = put("manual_hero", v) // chosen by you: beats detection
-    var showTouches: Boolean get() = b("touches", true); set(v) = put("touches", v)
-    var showDetections: Boolean get() = b("show_det", true); set(v) = put("show_det", v)
+    var showTouches: Boolean get() = b("touches", false); set(v) = put("touches", v)
+    var showDetections: Boolean get() = b("show_det", false); set(v) = put("show_det", v)
     var strategyEverySec: Int get() = i("strat_sec", 8); set(v) = put("strat_sec", v)
     var strategyWithImage: Boolean get() = b("strat_img", false); set(v) = put("strat_img", v)
     var pushDir: String get() = s("push_dir", "up-right"); set(v) = put("push_dir", v)
@@ -60,7 +87,7 @@ object Cfg {
     var useRegen: Boolean get() = true; set(v) {}
     var regenHpPct: Int get() = i("regen_hp", 60); set(v) = put("regen_hp", v)
     var jungleRoute: Boolean get() = true; set(v) {}
-    var playerQuickBuy: Boolean get() = b("player_qb", true); set(v) = put("player_qb", v)
+    var playerQuickBuy: Boolean get() = b("player_qb", false); set(v) = put("player_qb", v)
     // reserve the ultimate for enemy heroes: never on minions, jungle monsters, turtle or lord
     var noUltOnCreeps: Boolean get() = true; set(v) {}
     // Skill 1 / 2 go out as soon as they are ready while fighting creeps or heroes (target in reach)
@@ -72,7 +99,7 @@ object Cfg {
     var wallAvoid: Boolean get() = true; set(v) {}
     // coach: the AI plays, YOU can take over the joystick or skills at any moment; it steps back
     // while you touch, and learns your combos, when / how far you cast, and how you walk
-    var coachMode: Boolean get() = b("coach", true); set(v) = put("coach", v)
+    var coachMode: Boolean get() = b("coach", false); set(v) = put("coach", v)
     var smoothJoystick: Boolean get() = true; set(v) {}
 
     // ---- hero, spell, lane, combos, objectives ----
@@ -84,7 +111,7 @@ object Cfg {
     var laneTravelSec: Int get() = i("lane_travel", 12); set(v) = put("lane_travel", v)
     var useCombos: Boolean get() = true; set(v) {}
     // Automatic selection of skill combo based on the live combat situation (Burst, Chase, Poke, Pre-Lv4, Retreat) (v37.11)
-    var autoSituationalCombo: Boolean get() = b("auto_sit_combo", true); set(v) = put("auto_sit_combo", v)
+    var autoSituationalCombo: Boolean get() = b("auto_sit_combo", false); set(v) = put("auto_sit_combo", v)
     var aimSkills: Boolean get() = true; set(v) {}
     var comboUrl: String get() = s("combo_url", "https://mobile-legends.fandom.com/wiki/{hero}"); set(v) = put("combo_url", v)
     private fun normHeroKey(hero: String): String = hero.trim().lowercase().filter { it.isLetterOrDigit() }
@@ -124,11 +151,16 @@ object Cfg {
         if (clean.isEmpty()) prefs.edit().remove(k).apply() else put(k, clean)
     }
 
+    // start a session recording by itself at the start of every match (owner, 2026-11-12; can be switched off)
+    var autoRecord: Boolean get() = b("auto_record", false); set(v) = put("auto_record", v)
+    // upload the debug data to GitHub by itself after each recording (needs github_token.txt; can be switched off)
+    var autoUpload: Boolean get() = b("auto_upload", false); set(v) = put("auto_upload", v)
+
     fun heroCombo(hero: String): String? = manualCombo(hero)
     fun setHeroCombo(hero: String, v: String?) = setManualCombo(hero, v)
 
     // Scenery & Minimap synchronization calibration settings (v37.11)
-    var sceneryAutoSync: Boolean get() = b("scenery_auto_sync", true); set(v) = put("scenery_auto_sync", v)
+    var sceneryAutoSync: Boolean get() = b("scenery_auto_sync", false); set(v) = put("scenery_auto_sync", v)
     var cameraHeightMode: String get() = s("cam_height_mode", "high"); set(v) = put("cam_height_mode", v) // "high", "low", "wide"
     var sceneryScaleX: Float get() = f("scenery_scale_x", 0.158f); set(v) = put("scenery_scale_x", v)
     var sceneryScaleY: Float get() = f("scenery_scale_y", 0.112f); set(v) = put("scenery_scale_y", v)
@@ -143,7 +175,7 @@ object Cfg {
     // ---- match type: "standard" (pick hero, spell, emblem) or "ranked" (ban & pick) ----
     var matchMode: String get() = s("match_mode", "standard"); set(v) = put("match_mode", v)
     val ranked: Boolean get() = matchMode == "ranked"
-    var stdPickHero: Boolean get() = b("std_hero", true); set(v) = put("std_hero", v)
+    var stdPickHero: Boolean get() = b("std_hero", false); set(v) = put("std_hero", v)
     var stdChangeSpell: Boolean get() = b("std_spell", false); set(v) = put("std_spell", v)
     var stdChangeEmblem: Boolean get() = b("std_emblem", false); set(v) = put("std_emblem", v)
 
@@ -163,9 +195,9 @@ object Cfg {
         set(v) = put("groq_model", v)
     const val DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
     private val OLD_GROQ_MODELS = setOf("groq/compound", "groq/compound-mini", "compound-beta", "compound-beta-mini", "")
-    var useOnlineMeta: Boolean get() = b("online_meta", true); set(v) = put("online_meta", v)
-    var onlineAuto: Boolean get() = b("online_auto", true); set(v) = put("online_auto", v)
-    var onlineDraft: Boolean get() = b("online_draft", true); set(v) = put("online_draft", v)
+    var useOnlineMeta: Boolean get() = b("online_meta", false); set(v) = put("online_meta", v)
+    var onlineAuto: Boolean get() = b("online_auto", false); set(v) = put("online_auto", v)
+    var onlineDraft: Boolean get() = b("online_draft", false); set(v) = put("online_draft", v)
     // web search costs Groq's free tier a lot (one search ~100-300K tokens; the daily limit is ~200K):
     // only the patch meta searches by default; heroes, skills and the draft answer from the model + the saved patch
     var heroWebSearch: Boolean get() = b("hero_web_search", false); set(v) = put("hero_web_search", v)
@@ -186,11 +218,11 @@ object Cfg {
     fun setHeroDash(hero: String, v: String) = put("dash_" + hero.lowercase(), v)
 
     // save minimap pictures with pre-drawn boxes to train the detector (Download/Sphynx-Auto-Pilot-Storage/dataset)
-    var collectDataset: Boolean get() = b("collect_ds", true); set(v) = put("collect_ds", v)          // minimap pictures
-    var collectScreenDataset: Boolean get() = b("collect_sds", true); set(v) = put("collect_sds", v)  // whole-screen pictures
+    var collectDataset: Boolean get() = b("collect_ds", false); set(v) = put("collect_ds", v)          // minimap pictures
+    var collectScreenDataset: Boolean get() = b("collect_sds", false); set(v) = put("collect_sds", v)  // whole-screen pictures
 
     // ---- learning from live matches (watching another player) ----
-    var liveLearn: Boolean get() = b("live_learn", true); set(v) = put("live_learn", v)
+    var liveLearn: Boolean get() = b("live_learn", false); set(v) = put("live_learn", v)
     var liveHero: String get() = s("live_hero", ""); set(v) = put("live_hero", v)
     // the watched player's role: exp | gold | mid | roam | jungle
     var liveLaneName: String get() = s("live_lane", "exp"); set(v) = put("live_lane", v)
@@ -201,13 +233,13 @@ object Cfg {
     }
 
     // ---- trained tactical network (policy.tflite) ----
-    var policyOn: Boolean get() = b("policy_on", true); set(v) = put("policy_on", v)
+    var policyOn: Boolean get() = b("policy_on", false); set(v) = put("policy_on", v)
     var policyMinConf: Float get() = f("policy_conf", 0.55f); set(v) = put("policy_conf", v)
 
     // ---- smart fights (the learning brain) ----
-    var smartFights: Boolean get() = b("smart_fights", true); set(v) = put("smart_fights", v)
+    var smartFights: Boolean get() = b("smart_fights", false); set(v) = put("smart_fights", v)
     var exploreLevel: Int get() = i("explore", 1); set(v) = put("explore", v)     // 0 low, 1 normal, 2 high
-    var brainLearnsFromYou: Boolean get() = b("brain_you", true); set(v) = put("brain_you", v)
+    var brainLearnsFromYou: Boolean get() = b("brain_you", false); set(v) = put("brain_you", v)
 
     // ---- learn from me (imitation) ----
     // learning from you is part of the coach mode (no separate switches any more)
@@ -222,7 +254,7 @@ object Cfg {
     var heroBarMinWidthPct: Float get() = f("hero_bar_w", 4.5f); set(v) = put("hero_bar_w", v)
 
     // ---- optional trained detector (.tflite from the Colab notebook) ----
-    var detectorOn: Boolean get() = b("det_on", true); set(v) = put("det_on", v)
+    var detectorOn: Boolean get() = b("det_on", false); set(v) = put("det_on", v)
     // the whole-screen detector's class names (screen_labels.txt)
     var screenLabels: String get() = s("screen_labels", "hero_ally,hero_enemy,hero_self,minion_ally,minion_enemy,lord,turtle,molten_fiend,thunder_fenrir,lava_golem,horned_lizard,fire_beetle,lithowanderer,crab,cyclone_eye,jungle_creep,tower_ally,tower_ally_plated,tower_enemy,tower_enemy_plated,base_ally,base_enemy,bush,wall"); set(v) = put("screen_labels", v)
     var detectorLabels: String get() = s("det_labels", "hero_icon,lord_icon,turrent_icon,turrets-heros,turtle_icon")
@@ -241,7 +273,7 @@ object Cfg {
     // ---- auto quick buy (item swap when about to die) ----
     var qbOn: Boolean get() = b("qb_on", false); set(v) = put("qb_on", v)
     // Builder presses item actives (Frozen, Wind Chant, Conceal) in every match the Player does not play
-    var builderActives: Boolean get() = b("builder_actives", true); set(v) = put("builder_actives", v)
+    var builderActives: Boolean get() = b("builder_actives", false); set(v) = put("builder_actives", v)
     var qbRequireFull: Boolean get() = b("qb_full", true); set(v) = put("qb_full", v)
     var qbRequireGold: Boolean get() = b("qb_gold", true); set(v) = put("qb_gold", v)
     var qbHpPercent: Int get() = i("qb_hp", 25); set(v) = put("qb_hp", v)
