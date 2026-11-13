@@ -542,6 +542,7 @@ object AiRuntime {
         com.example.mlbbresearch.game.MapSide.goldTop?.let { sb.append(if (it) " (Gold lane on top)" else " (EXP lane on top)") }
         com.example.mlbbresearch.game.MatchKind.current().takeIf { it != com.example.mlbbresearch.game.MatchKind.Kind.UNKNOWN }?.let { sb.append(" | ").append(it.label) }
         sb.append("\nHero: ").append(GameStateTracker.verifiedHeroPanel()).append(" | spell: ").append(GameStateTracker.verifiedSpellPanel())
+        if (s.phase.inMatch) sb.append("\nBuffs held: ").append(com.example.mlbbresearch.vision.BuffEmblems.text())
         sb.append("\nGemma: ").append(GemmaEngine.state)
         if (StrategicAdvisor.busyWith.isNotEmpty()) sb.append(" (").append(StrategicAdvisor.busyWith).append(")")
         sb.append(" | capture ").append("%.0f".format(FrameProcessor.processedFps)).append(" fps")

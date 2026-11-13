@@ -373,6 +373,8 @@ object SessionRecorder {
             o.put("side", when (com.example.mlbbresearch.game.MapSide.goldTop) { true -> "GOLD_TOP"; false -> "EXP_TOP"; null -> "?" })
             o.put("kind", com.example.mlbbresearch.game.MatchKind.current().name)
             o.put("lat", Speed.total().toInt())
+            // the buffs you hold, read from the emblems around your hero (vision.BuffEmblems)
+            com.example.mlbbresearch.vision.BuffEmblems.held.takeIf { it.isNotEmpty() }?.let { b -> o.put("buf", JSONArray(b.map { it.name })) }
             // research mode: rs = [verified practice?, arm (ARBITER / NORMAL)] - R3 / R5
             if (com.example.mlbbresearch.research.ResearchMode.on) o.put("rs", JSONArray(listOf(
                 com.example.mlbbresearch.research.ResearchMode.allowsAutonomy(), com.example.mlbbresearch.research.ResearchMode.arm().name)))
