@@ -256,7 +256,7 @@ object SessionRecorder {
             val lk = k.lowercase()
             if (v == null || listOf("key", "token", "secret", "pass", "uri", "kaggle").any { it in lk }) continue
             val sv = v.toString()
-            if (sv.length > 300) continue
+            if (sv.length > 300 && k != "stuck_cells") continue      // (the remembered stuck places are debug data: kept whole)
             o.put(k, v)
         }
         return o

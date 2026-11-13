@@ -39,9 +39,27 @@ object WallMap {
     @Volatile var samples = 0
         private set
 
+    @Synchronized
     fun reset() {
         dark.fill(0); seen.fill(0); blocked.fill(0); wall = BooleanArray(G * G); samples = 0
         bushN.fill(0); laneN.fill(0); riverN.fill(0); terrain = Array(G * G) { Terrain.UNKNOWN }
+        // the places the hero got stuck at in earlier matches are walls from the start (StuckMemory)
+        val next = BooleanArray(G * G)
+        for ((c, n) in stuck()) if (c in 0 until G * G) { blocked[c] = n; if (n >= StuckMemory.WALL_AT) next[c] = true }
+        wall = next
+    }
+
+    // ---- the stuck places, kept across matches (owner, 2026-11-13) ----
+    private const val STUCK_KEY = "stuck_cells"
+    private var stuckCache: MutableMap<Int, Int>? = null
+    private fun stuck(): MutableMap<Int, Int> = stuckCache ?: StuckMemory.parse(
+        try { com.example.mlbbresearch.core.Cfg.raw(STUCK_KEY) } catch (t: Throwable) { null }).also { stuckCache = it }
+    private fun saveStuck() { try { com.example.mlbbresearch.core.Cfg.setRaw(STUCK_KEY, StuckMemory.format(stuck()).ifEmpty { null }) } catch (t: Throwable) { } }
+    @Synchronized fun stuckSummary(): String = stuck().let { m -> "${StuckMemory.walls(m).size} remembered as walls, ${m.size - StuckMemory.walls(m).size} seen once" }
+    @Synchronized fun clearStuck() {
+        for (c in stuck().keys) if (c in 0 until G * G) blocked[c] = 0
+        stuck().clear(); saveStuck()
+        com.example.mlbbresearch.core.Diag.info("Stuck places: all forgotten")
     }
 
     // one minimap pixel -> its terrain shade (null = an icon / text covers the ground there)
@@ -160,8 +178,14 @@ object WallMap {
         val y = ((at.second + dy * 1.5f / G) * G).toInt()
         if (x !in 0 until G || y !in 0 until G) return
         val i = y * G + x
-        blocked[i]++
-        if (blocked[i] >= 2) wall = wall.copyOf().also { it[i] = true }
+        // (counted across matches: the second time, in any match, it is a wall for good)
+        val n = StuckMemory.hit(stuck(), i)
+        blocked[i] = n
+        saveStuck()
+        if (n >= StuckMemory.WALL_AT && !wall[i]) {
+            wall = wall.copyOf().also { it[i] = true }
+            if (n == StuckMemory.WALL_AT) com.example.mlbbresearch.core.Diag.info("Stuck place remembered as a wall (minimap cell $x, $y)")
+        }
     }
 
     @Synchronized
@@ -179,6 +203,7 @@ object WallMap {
         if (gx !in 0 until G || gy !in 0 until G) return
         val i = gy * G + gx
         blocked[i] = 0
+        if (stuck().remove(i) != null) saveStuck()          // the hero stands here: it was not a wall
         if (wall[i]) wall = wall.copyOf().also { it[i] = false }
     }
 
