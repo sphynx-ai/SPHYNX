@@ -180,6 +180,15 @@ object FrameProcessor {
             snapMon = monNow
             if (self.hp <= 0.02f) rec.snap("hp0", px, w, h, 10_000L)
         }
+        // which buff you hold: the orange / purple emblems circling your hero (BuffEmblems; about 3 looks a second)
+        if (hint == ScreenHint.NONE && self != null && frameNo % 5 == 2L) try {
+            if (BuffEmblems.observe(px, w, h, self.x, self.y)) {
+                com.example.mlbbresearch.core.Diag.info("Buff emblems: you hold " + BuffEmblems.text() +
+                    " (orange ${BuffEmblems.lastCounts[0]}, purple ${BuffEmblems.lastCounts[1]} pixels)")
+                // (a clean screenshot each time the reading changes: the purple colour is still to be confirmed)
+                com.example.mlbbresearch.core.SessionRecorder.snap("buff-" + BuffEmblems.text().replace(" + ", "-").replace(" buff", ""), px, w, h, 2000L)
+            }
+        } catch (e: Exception) { }
         // which skill buttons the screen shows (normal / large HUD, 2-3-4 skills)
         if (hint == ScreenHint.NONE && self != null && frameNo % 10 == 5L) ScreenKit.observe(px, w, h)
         // which hero you play: its skill icons against learned looks and the wiki pictures (HeroVerifier)

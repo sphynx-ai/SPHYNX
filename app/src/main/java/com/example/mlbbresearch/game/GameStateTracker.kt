@@ -445,6 +445,7 @@ object GameStateTracker {
             kills = 0; deaths = 0; assists = 0
             matchStartAt = now
             MapSide.reset()                 // a new match: its lane marks are read again
+            com.example.mlbbresearch.vision.BuffEmblems.reset()
             // (the loading screen was missed: the match is recorded from here)
             if (matchId == 0L) {
                 matchId = now; Diag.info("Match recording started (hero seen; no loading screen)")
@@ -528,7 +529,7 @@ object GameStateTracker {
             loadingSeenAt = now
         }
         if (phase != state.phase) phaseSince = now
-        if (phase == Phase.IN_GAME && before == Phase.DEAD) spawnAt = now
+        if (phase == Phase.IN_GAME && before == Phase.DEAD) { spawnAt = now; com.example.mlbbresearch.vision.BuffEmblems.reset() }   // (a death loses the buffs)
         if (phase == Phase.DEAD) lastInGame = now
 
         // big map open: its portraits and icons are not units on the field
