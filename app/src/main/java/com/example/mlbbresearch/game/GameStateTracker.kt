@@ -254,6 +254,9 @@ object GameStateTracker {
     // 3rd priority: in-game scoreboard spell icon verified against the 12 base wiki spell icons
     fun onScoreboardSpellVerified(rawSpell: String, score: Float) {
         val canon = SpellDb.match(rawSpell) ?: return
+        // the spell BUTTON was already recognised: one scoreboard read that says otherwise does not replace it
+        // (2026-11-13 log: "Vengeance" on the scoreboard in the middle of a Retribution match)
+        if (buttonSpell != null && buttonSpell != canon) return
         if (scoreboardSpell != canon) {
             scoreboardSpell = canon
             if (buttonSpell == null) iconSpell = canon
@@ -443,7 +446,11 @@ object GameStateTracker {
             matchStartAt = now
             MapSide.reset()                 // a new match: its lane marks are read again
             // (the loading screen was missed: the match is recorded from here)
-            if (matchId == 0L) { matchId = now; Diag.info("Match recording started (hero seen; no loading screen)"); com.example.mlbbresearch.core.SessionRecorder.matchStarted() }
+            if (matchId == 0L) {
+                matchId = now; Diag.info("Match recording started (hero seen; no loading screen)")
+                enemySpells = emptyMap(); allySpells = emptyMap()      // (the last match's scoreboard spells are not this match's)
+                com.example.mlbbresearch.core.SessionRecorder.matchStarted()
+            }
             com.example.mlbbresearch.vision.ScreenReader.clearResult()
             spawnAt = now
             com.example.mlbbresearch.vision.LevelReader.reset()
@@ -515,6 +522,7 @@ object GameStateTracker {
             // (also right after a match: a loading screen once the last one ended / was played is a new match)
             if (now - loadingSeenAt > 120_000 || lastMatchEndAt > loadingSeenAt || lastInGame > loadingSeenAt) {
                 matchId = now; Diag.info("Match recording started (loading screen)")
+                enemySpells = emptyMap(); allySpells = emptyMap()      // (the last match's scoreboard spells are not this match's)
                 com.example.mlbbresearch.core.SessionRecorder.matchStarted()
             }
             loadingSeenAt = now

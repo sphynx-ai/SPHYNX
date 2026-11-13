@@ -52,6 +52,7 @@ object FrameProcessor {
     private val hud = listOf(
         floatArrayOf(0.30f, 0.00f, 0.70f, 0.09f),   // top scoreboard
         floatArrayOf(0.80f, 0.00f, 1.00f, 0.14f),   // top-right buttons
+        floatArrayOf(0.70f, 0.00f, 0.80f, 0.09f),   // the K / D / A counter (2026-11-13 recording: read as a jungle monster at 3-5% HP)
         floatArrayOf(0.62f, 0.52f, 1.00f, 1.00f),   // skill buttons
         floatArrayOf(0.76f, 0.40f, 0.92f, 0.52f),   // the ultimate button's top (it reaches above the others)
         floatArrayOf(0.42f, 0.04f, 0.59f, 0.125f),  // turtle / lord HP bar under the scoreboard (read separately)
@@ -171,10 +172,11 @@ object FrameProcessor {
             val side = com.example.mlbbresearch.game.MapSide.goldTop
             if (side != snapSide) { snapSide = side; if (side != null) rec.snap("lane-side", px, w, h, 1000L) }
             val enemyNow = tracks.isNotEmpty()
-            if (enemyNow && !snapEnemy) rec.snap("enemy-hero", px, w, h, 6000L)
+            if (enemyNow && !snapEnemy) rec.snap("enemy-hero", px, w, h, 20_000L)
             snapEnemy = enemyNow
             val monNow = seen.any { it.team == Team.NEUTRAL }
-            if (monNow && !snapMon) rec.snap("monster", px, w, h, 6000L)
+            // (one a minute: 30 of the 39 screenshots of the 2026-11-13 recording were "monster")
+            if (monNow && !snapMon) rec.snap("monster", px, w, h, 60_000L)
             snapMon = monNow
             if (self.hp <= 0.02f) rec.snap("hp0", px, w, h, 10_000L)
         }
