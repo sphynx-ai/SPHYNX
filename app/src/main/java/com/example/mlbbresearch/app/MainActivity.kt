@@ -97,6 +97,7 @@ class MainActivity : Activity() {
     private val reqCapture = 42
     private val reqNotify = 43
     private val reqFolder = 46
+    private val reqGguf = 47
 
     private val refresher = object : Runnable {
         override fun run() {
@@ -229,6 +230,10 @@ class MainActivity : Activity() {
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
+            reqGguf -> if (resultCode == RESULT_OK) data?.data?.let { uri ->
+                toast("Testing the model... (see Model page)")
+                com.example.mlbbresearch.inference.LlamaCppSpike.run(this, uri) { msg -> runOnUiThread { toast(msg.lineSequence().first().take(150)) } }
+            }
             reqFolder -> if (resultCode == RESULT_OK) data?.data?.let { uri ->
                 com.example.mlbbresearch.models.AutoFolder.onPicked(this, uri) { msg -> runOnUiThread { toast(msg.take(150)) } }
             }
@@ -2364,6 +2369,22 @@ class MainActivity : Activity() {
         // the detector and the tactical network are used together: one switch
         switch("Use the trained models", Cfg.detectorOn && Cfg.policyOn) {
             Cfg.detectorOn = it; Cfg.policyOn = it
+        }
+
+        // PHASE 3a SPIKE: does the GGUF engine (llama.cpp) build and run on this phone?
+        title("GGUF ENGINE TEST (llama.cpp)")
+        text("A test only: pick a small .gguf model (under 1 GB, e.g. a 0.5B or 1B Q4 model). The app asks it one " +
+            "fixed question and shows the speed. It is not used by the AI and the model is freed afterwards.", 13f, color = T.MUTED)
+        val gc = card()
+        val gInfo = cardText(gc, 12f)
+        val gLast = cardText(gc, 13f)
+        val sp = com.example.mlbbresearch.inference.LlamaCppSpike
+        gInfo.text = sp.info()
+        upd { gLast.text = sp.last }
+        btn("Pick a .gguf file and test") {
+            if (sp.running) { toast("A test is already running"); return@btn }
+            @Suppress("DEPRECATION")
+            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), reqGguf)
         }
     }
 
