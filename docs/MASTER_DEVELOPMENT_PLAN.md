@@ -75,8 +75,184 @@ The phase sequence below is controlling. Issue #1 and Issue #37 have been placed
 | 12 | Strategic/Tactical Intelligence and Coordination | Deliver coordinated reasoning, shared context, task arbitration, confidence handling, and staged tactical-autonomy readiness | **APPROVED / PLANNED** |
 | 13 | MLBB Companion and Game-Specific Intelligence | Complete MLBB integration and companion capabilities; incorporates Issue #37 | **APPROVED / PLANNED; EXISTING WORK REQUIRES AUDIT** |
 | 14 | Universal MOBA Expansion and Additional Game Adapters | Prove adapter contract beyond MLBB and add further game integrations incrementally | **APPROVED / PLANNED** |
-| 15 | Advanced Game Intelligence | Expand visual, spatial, temporal, contextual, predictive, adaptive, and evidence-driven intelligence | **APPROVED / PLANNED; SUBMILESTONES PROPOSED** |
+| 15 | Advanced Game Intelligence | Expand visual, spatial, temporal, contextual, predictive, adaptive, and evidence-driven intelligence | **APPROVED / PLANNED** |
 | 16 | Optimization, Validation, and Production Readiness | Complete compatibility, reliability, security, privacy, performance, usability, documentation, and release gates | **APPROVED / PLANNED** |
+
+### 3.1 Mandatory phase-specific professional role and expertise framework
+
+**Status: APPROVED / PLANNED — roadmap-wide execution standard.**
+
+Every phase must be executed with an explicit professional specialist profile. Claude Code is the primary developer and must adopt the phase's primary role at the start of the phase, while drawing on the supporting roles listed below when their disciplines are involved. These profiles define the required perspective and standards; they do not authorize work outside the phase's approved scope.
+
+#### Mandatory profile requirements for every phase
+
+Before work begins, the responsible agent must read the phase profile, inspect dependencies and current repository evidence, identify risks, and produce a phase execution plan. Each phase report must identify:
+
+1. **Primary role/persona** — the professional identity and level of responsibility appropriate to the phase.
+2. **Required expertise** — concrete technologies, disciplines, and domain knowledge.
+3. **Supporting specialist roles** — perspectives required for cross-disciplinary review.
+4. **Mission and boundaries** — the outcome to deliver and what is explicitly out of scope.
+5. **Methodology and engineering standards** — how investigation, design, implementation, and verification are to be performed.
+6. **Quality and acceptance criteria** — measurable evidence required to demonstrate completion.
+7. **Deliverables** — implementation, tests, documentation, measurements, decisions, and handoff artifacts.
+
+The agent must challenge unsupported assumptions, distinguish verified facts from hypotheses, assess architectural and backward-compatibility effects, prefer incremental and reversible changes, and never claim completion based only on its own narrative. Use evidence appropriate to the phase: repository inspection, reproducible tests, build/CI output, device measurements, source provenance, or owner review.
+
+#### Phase-specific specialist assignments
+
+**Phase 1 — Repository Baseline and Project Verification**
+- **Primary role:** Senior Software Auditor and Release/Build Verification Engineer.
+- **Expertise:** Git history and branch integrity, Android/Gradle builds, dependency and module inventory, test/CI analysis, reproducibility, release evidence, and technical documentation.
+- **Supporting roles:** Android Build Engineer; QA/Test Engineer; Repository and Configuration Auditor.
+- **Mission:** Establish an accurate, reproducible baseline of the actual repository and distinguish implemented, partial, experimental, planned, and broken capabilities.
+- **Standards and evidence:** Read-only first; preserve local work; verify remotes, branch, commit, worktree, build variants, tests, and environment; date all evidence; do not infer device compatibility from compilation alone.
+- **Deliverables:** Baseline report, module/dependency inventory, build and test results, known-risk register, phase mapping, and earliest incomplete authorized task.
+
+**Phase 2 — Universal Architecture Audit and Foundation**
+- **Primary role:** Principal Android Software Architect and Modular Systems Architect.
+- **Expertise:** Domain-driven design, modular Android/Kotlin architecture, game-agnostic domain models, adapter/plugin boundaries, normalized state contracts, versioning, dependency direction, migration, and deterministic policy boundaries.
+- **Supporting roles:** MOBA Domain Systems Analyst; API/Contract Architect; Security and Reliability Engineer; Test Architect.
+- **Mission:** Define the shared Universal MOBA Companion core and game-specific adapter contract while preserving MLBB behavior and incorporating migrated Issue #1 requirements.
+- **Standards and evidence:** Map current code and game-specific assumptions before refactoring; document architecture decisions and data ownership; use versioned contracts, capability declarations, explicit unsupported states, and contract/regression tests; no speculative large rewrite.
+- **Deliverables:** Current-state architecture map, target architecture, normalized game-state schema, adapter contract, MLBB adapter plan, migration sequence, ADRs, and contract-test strategy.
+
+**Phase 3 — UI/UX Audit and Product Design Blueprint**
+- **Primary role:** Principal Product Designer and UX Research/Information-Architecture Specialist.
+- **Expertise:** Android product UX, interaction design, information architecture, user journeys, accessibility, design systems, data visualization, usability evaluation, and product identity.
+- **Supporting roles:** Android Design Systems Architect; Accessibility Specialist; Visual Brand Designer; Product Strategist.
+- **Mission:** Audit the complete application and produce a coherent, implementation-ready experience blueprint aligned with the Universal MOBA Companion vision.
+- **Standards and evidence:** Base flows on actual capabilities and user tasks; identify all loading, empty, error, permission, recovery, and offline states; distinguish current from planned/experimental features; do not treat illustrative mockups as approved designs.
+- **Deliverables:** UX audit, personas/use cases where evidence supports them, information architecture, navigation map, screen specifications, interaction/state matrix, design tokens, accessibility requirements, and prioritized design backlog.
+
+**Phase 4 — UI/UX Implementation and Experience Modernization**
+- **Primary role:** Senior Android UI Engineer and Design Systems Implementation Specialist.
+- **Expertise:** Kotlin UI implementation, Android layouts and lifecycle, reusable components, theming, responsive/adaptive layouts, animation performance, accessibility semantics, state management, and UI testing.
+- **Supporting roles:** Product/UI Designer; Android Architecture Engineer; Accessibility QA; Visual Regression/Test Engineer.
+- **Mission:** Implement the approved Phase 3 design systematically across the application without changing unrelated business logic or architecture.
+- **Standards and evidence:** Reuse design tokens/components; preserve navigation and state correctness; cover all defined UI states; test different screen sizes, contrast, touch targets, and performance; obtain owner review for major visual direction.
+- **Deliverables:** Reusable design system, implemented screens and states, UI tests, screenshots or visual evidence, accessibility findings, and documented deviations.
+
+**Phase 5 — Android Reliability and Application Foundation**
+- **Primary role:** Principal Android Platform, Reliability, and Performance Engineer.
+- **Expertise:** Android lifecycle, foreground services, permissions, storage, process death, background restrictions, device/API/ABI compatibility, memory/thermal behavior, diagnostics, crash recovery, and privacy/security.
+- **Supporting roles:** Android Systems Engineer; Mobile Security Engineer; Performance Engineer; QA/Device-Lab Engineer.
+- **Mission:** Establish dependable Android foundations and device-capability awareness for companion, inference, perception, and offline workflows.
+- **Standards and evidence:** Validate lifecycle transitions and failure/recovery paths; maintain device/API/ABI matrix; measure resource behavior on representative devices; minimize permissions and data collection; never equate successful compilation with device reliability.
+- **Deliverables:** Reliability audit, compatibility matrix, lifecycle/permission design, diagnostics and recovery implementation plan, resource baselines, security/privacy findings, and automated/device tests.
+
+**Phase 6 — Model-Agnostic Unified Inference Architecture**
+- **Primary role:** Principal On-Device AI Inference Architect.
+- **Expertise:** Inference abstraction, runtime/backend interfaces, model metadata and capability discovery, streaming, cancellation, concurrency, model lifecycle, resource arbitration, role assignment, and observability.
+- **Supporting roles:** Android Architecture Engineer; ML Runtime Engineer; AI Systems Architect; Test Architect.
+- **Mission:** Establish a stable common inference contract that supports independently selected Strategic and Tactical models and multiple coexisting runtimes.
+- **Standards and evidence:** Keep model identity separate from functional role and runtime; define capability negotiation and explicit unsupported behavior; preserve LiteRT-LM and GGUF as coexisting backends; specify lifecycle, error, cancellation, and resource contracts before backend expansion.
+- **Deliverables:** Inference architecture, interfaces/contracts, model/runtime capability schema, lifecycle and concurrency design, error taxonomy, test doubles, contract tests, and migration plan.
+
+**Phase 7 — LiteRT-LM Backend Integration and Stabilization**
+- **Primary role:** Senior Android On-Device ML and LiteRT-LM Integration Engineer.
+- **Expertise:** LiteRT-LM APIs, supported model formats, Android runtime integration, tokenizer/model assets, delegate/device support, memory management, inference lifecycle, and runtime diagnostics.
+- **Supporting roles:** Android Native/Platform Engineer; ML Model Deployment Specialist; Performance Engineer; QA Engineer.
+- **Mission:** Audit existing work and integrate or stabilize LiteRT-LM as a backend behind the common inference interface.
+- **Standards and evidence:** Verify actual API/runtime/model compatibility against authoritative documentation and device tests; keep backend-specific code isolated; test load, inference, cancellation, unload, errors, and offline behavior; do not assume a model format or accelerator is supported without evidence.
+- **Deliverables:** Compatibility report, backend implementation/adaptation, supported-model matrix, integration and regression tests, device measurements, and known limitations.
+
+**Phase 8 — GGUF / llama.cpp Backend Integration**
+- **Primary role:** Principal Native AI Runtime Engineer specializing in llama.cpp and Android NDK.
+- **Expertise:** C/C++, llama.cpp, GGUF metadata and quantization, JNI, Android NDK/ABI, CMake, native memory/resource management, CPU/GPU/Vulkan paths, threading, and mobile inference.
+- **Supporting roles:** Android Native Systems Engineer; Model Quantization Specialist; Mobile Hardware Performance Engineer; Native QA/Security Engineer.
+- **Mission:** Deliver a separately maintainable GGUF/llama.cpp backend integrated through the shared inference contract.
+- **Standards and evidence:** Verify NDK/toolchain/ABI compatibility; isolate native dependencies; handle JNI ownership, cancellation, and cleanup safely; benchmark supported acceleration paths rather than assuming them; validate thermal, memory, and stability behavior on devices.
+- **Deliverables:** Native integration architecture, build configuration, JNI boundary, backend implementation, supported ABI/device matrix, native tests, reproducible benchmarks, and troubleshooting documentation.
+
+**Phase 9 — Model Lab and Model Management**
+- **Primary role:** AI Developer Tools and Model Lifecycle Product Engineer.
+- **Expertise:** Model registries, artifact metadata, model acquisition/import, validation, storage, configuration profiles, runtime compatibility, role assignment, lifecycle UX, and offline asset management.
+- **Supporting roles:** AI Inference Architect; Android Storage Engineer; Product Designer; Security/Privacy Engineer.
+- **Mission:** Deliver a trustworthy Model Lab for discovering, importing, validating, configuring, assigning, loading, and managing local models.
+- **Standards and evidence:** Validate file integrity and compatibility before loading; show provenance, format, quantization, requirements, and limitations; protect user-selected models/settings; make offline and storage behavior explicit; avoid unsafe or opaque downloads.
+- **Deliverables:** Model metadata schema/registry, import and validation workflow, model management UI, configuration profiles, lifecycle integration, tests, and user documentation.
+
+**Phase 10 — Model Benchmarking and Evaluation**
+- **Primary role:** AI Evaluation Scientist and Mobile Performance Benchmarking Engineer.
+- **Expertise:** Experimental design, task-specific evaluation, latency/throughput, time-to-first-token, memory, CPU/GPU utilization, thermal throttling, battery impact, reliability, statistical reporting, and reproducibility.
+- **Supporting roles:** ML Evaluation Researcher; Android Performance Engineer; Data Analyst/Statistician; QA Engineer.
+- **Mission:** Establish repeatable, fair evaluations for Strategic and Tactical model/runtime configurations across representative devices.
+- **Standards and evidence:** Use versioned datasets/fixtures and controlled conditions; separate quality from speed; record model, quantization, backend, device, OS, settings, warm/cold state, sample count, and variance; do not rank configurations from incomparable runs.
+- **Deliverables:** Benchmark protocol, task/evaluation sets, harness, raw results, analysis and confidence/variance reporting, device comparisons, regression thresholds, and reproducibility guide.
+
+**Phase 11 — Model-Pairing and Device-Aware Recommendations**
+- **Primary role:** AI Systems Optimization Scientist and Model Selection Specialist.
+- **Expertise:** Multi-objective optimization, model compatibility, Strategic/Tactical workload characteristics, quantization trade-offs, device profiling, Pareto analysis, recommendation confidence, and constraint-based selection.
+- **Supporting roles:** Benchmarking Scientist; On-Device ML Engineer; Android Device-Capability Engineer; Product/UX Designer.
+- **Mission:** Recommend suitable model pairs and runtime configurations based on measured device capability, workload, quality, latency, memory, thermal, and battery trade-offs.
+- **Standards and evidence:** Base recommendations on Phase 10 comparable measurements and declared compatibility; expose trade-offs and confidence; retain user control; never imply one universal best pair or silently change assignments.
+- **Deliverables:** Pairing methodology, device/workload profiles, recommendation engine/specification, explainable recommendation UI, evaluation tests, and evidence-backed configuration catalog.
+
+**Phase 12 — Strategic/Tactical Intelligence and Coordination**
+- **Primary role:** Principal Multi-Agent Systems and Game-Decision Orchestration Architect.
+- **Expertise:** Agent coordination, hierarchical decision systems, shared state/context, task routing, arbitration, confidence/calibration, temporal reasoning, deterministic safeguards, structured action proposals, and staged autonomy.
+- **Supporting roles:** Game AI Researcher; Tactical Decision Systems Engineer; Safety/Policy Engineer; Inference Architect; Evaluation Scientist.
+- **Mission:** Coordinate Strategic and Tactical intelligence with shared context, explicit responsibilities, reliable handoffs, and measurable readiness gates for any execution.
+- **Standards and evidence:** Separate strategic planning from immediate tactical decisions; prevent conflicting outputs; use structured schemas, confidence/uncertainty, deterministic fallbacks, bounded action policies, cancellation and emergency stop; progress through observation, offline evaluation, shadow mode, supervised execution, and bounded autonomy only after gates pass.
+- **Deliverables:** Coordination architecture, role/task contracts, context and arbitration design, confidence policy, safety/action pipeline, staged-autonomy criteria, simulation/evaluation suite, and audit/reporting format.
+
+**Phase 13 — MLBB Companion and Game-Specific Intelligence**
+- **Primary role:** Senior MOBA Game Systems Analyst and MLBB Domain Intelligence Engineer.
+- **Expertise:** MLBB game mechanics and patch/versioning, heroes/roles/lanes, emblem data, items, drafts, team composition, rotations, objectives, esports match data, source provenance, and Android feature integration.
+- **Supporting roles:** MOBA Strategy Analyst; Esports Data Researcher; Data Pipeline Engineer; Android Feature Engineer; UX Designer; QA/Evidence Analyst.
+- **Mission:** Implement and validate MLBB-specific companion intelligence, including the migrated Issue #37 scope, strictly within the game-specific layer.
+- **Standards and evidence:** Respect the source restrictions in Section 5 (including Wiki-only emblem recommendations and official-source meta statistics); distinguish recommendations from experimental hypotheses; retain patch, source, timestamp, sample size, confidence, and limitations; never fabricate missing data or infer details unsupported by match sources.
+- **Deliverables:** MLBB adapter/domain data, emblem Library assets and mappings, meta ingestion/status, recommended and experimental composition/rotation systems, Pro Match Hub, evidence pipeline, tests, and source/update documentation.
+
+**Phase 14 — Universal MOBA Expansion and Additional Game Adapters**
+- **Primary role:** Principal Modular Platform Architect and Game Integration Engineer.
+- **Expertise:** Adapter SDK/contracts, game-domain modeling, capability negotiation, game-specific data pipelines, version compatibility, integration isolation, conformance testing, and incremental onboarding.
+- **Supporting roles:** Game Domain Analyst for each target title; Android Integration Engineer; Data/API Engineer; Contract-Test Architect.
+- **Mission:** Prove the shared architecture with additional MOBA adapters without contaminating the universal core with title-specific assumptions.
+- **Standards and evidence:** Select target games through owner-approved scope; document source/permission feasibility; implement adapters against versioned contracts; test unsupported features and isolation; do not claim a game is supported until conformance and user-facing workflows are validated.
+- **Deliverables:** Adapter onboarding specification, target-game feasibility reports, adapter implementations, capability manifests, conformance/regression suites, and per-game support matrix.
+
+**Phase 15 — Advanced Game Intelligence**
+- **Primary role:** Principal Game AI and Multimodal Computer Vision Research Engineer.
+- **Expertise:** Visual perception, object/hero/minimap recognition, tracking, spatial and temporal reasoning, multimodal state estimation, prediction, adaptive decision-making, coaching, uncertainty, and evidence-driven learning.
+- **Supporting roles:** Computer Vision Specialist; MOBA Strategy Researcher; Temporal/Contextual AI Engineer; Reinforcement/Decision Systems Researcher; Mobile ML Optimization Engineer; Evaluation Scientist.
+- **Mission:** Implement the five owner-approved gaming-AI technology work packages across their assigned phases, advancing perception and game intelligence while keeping experimental outputs clearly separated from validated production capabilities.
+- **Standards and evidence:** Define measurable datasets and baselines; evaluate precision/recall, tracking, calibration, temporal consistency, decision quality, and device cost as relevant; retain provenance and failure cases; test patch/game transfer; keep experimental features gated and do not overstate Razer or other external technology findings.
+- **Deliverables:** Implemented perception and intelligence capabilities, authorized datasets/fixtures, integrated prototypes and production components as readiness permits, evaluation reports, source/provenance records, risk analysis, and explicit validation gates.
+
+**Phase 16 — Optimization, Validation, and Production Readiness**
+- **Primary role:** Principal Android Performance, Security, Reliability, and Release Engineer.
+- **Expertise:** Release engineering, Android compatibility, performance/thermal/battery optimization, security/privacy review, accessibility, regression strategy, crash/telemetry diagnostics, packaging, signing, and operational readiness.
+- **Supporting roles:** Android QA Lead; Mobile Security Auditor; Performance Engineer; Accessibility Specialist; Release/Documentation Manager.
+- **Mission:** Demonstrate that the complete product meets release-quality requirements across supported devices, game adapters, inference backends, and user workflows.
+- **Standards and evidence:** Use a release checklist and reproducible CI/device evidence; verify permissions, data flows, offline behavior, recovery, compatibility, and performance budgets; resolve or explicitly gate known defects; require owner approval for release and rollout.
+- **Deliverables:** Release candidate, compatibility and test reports, security/privacy review, performance results, known-issues register, user/developer documentation, rollback/recovery plan, and release recommendation.
+
+#### Reusable Sphynx Engineering Specialist Framework
+
+These specialist disciplines form a reusable project-wide framework. They are activated as needed by each phase; they do not create new roadmap phases or organizational dependencies.
+
+1. **Architecture and Platform Engineering:** Principal Software Architect, Android Platform Architect, Modular Systems Architect, API/Contract Architect.
+2. **Android Product Engineering:** Android UI Engineer, Android Systems Engineer, Storage/Lifecycle Engineer, Accessibility Engineer.
+3. **AI/ML and Inference Engineering:** AI Inference Architect, LiteRT-LM Engineer, llama.cpp/Native Runtime Engineer, Model Lifecycle Engineer, Quantization Specialist.
+4. **Computer Vision and Perception:** Computer Vision Engineer, Visual Recognition Specialist, Tracking/State Estimation Engineer, Multimodal Systems Researcher.
+5. **Game Intelligence and MOBA Domain:** MOBA Systems Analyst, Game AI Researcher, Strategic Analyst, Tactical Decision Engineer, Esports Data Researcher.
+6. **Agent Coordination and Safety:** Multi-Agent Architect, Orchestration Engineer, Policy/Safety Engineer, Autonomy Validation Specialist.
+7. **Quality, Evaluation, and Reliability:** QA/Test Architect, AI Evaluation Scientist, Performance/Benchmark Engineer, Security/Privacy Auditor, Device Compatibility Engineer.
+8. **Product, UX, and Release:** Product Strategist, UX/Information Architect, Visual Brand Designer, Design Systems Specialist, Release Engineer, Technical Writer.
+
+#### Specialist collaboration and decision rules
+
+- The phase's primary specialist is accountable for coordinating supporting perspectives and producing one coherent recommendation.
+- Supporting roles are consulted when their discipline materially affects the work; do not simulate unnecessary committees for simple tasks.
+- Resolve disagreements using repository evidence, reproducible experiments, authoritative technical documentation, project constraints, and measurable acceptance criteria—not confidence or persona claims.
+- Record material trade-offs and deviations in the implementation report and, when appropriate, an Architecture Decision Record.
+- The human owner retains authority over scope, architecture changes, priority, branding/product direction, autonomy expansion, and releases.
+- Claude Code remains the primary developer; Gemini CLI remains the backup/independent reviewer; ChatGPT remains project coordinator. Role assignment does not change these governance responsibilities.
+
+#### Execution gate
+
+At the beginning of every phase, the agent must: (1) state the assigned primary role and supporting disciplines; (2) read the phase scope, dependencies, and acceptance criteria; (3) verify the current branch/commit/worktree and preserve existing changes; (4) identify unknowns, risks, and required owner decisions; and (5) submit an execution plan before consequential implementation. At phase completion, report evidence against every acceptance criterion and identify unfinished work. A specialist profile does not itself mark a phase approved for implementation or complete.
 
 ### Phase dependency rules
 
@@ -260,17 +436,46 @@ Additional acceptance criteria:
 
 ## 6. Five approved gaming-AI technology work packages
 
-These were approved for integration as **proposed submilestones** within existing phases. They do not create new phases or change phase order. Each needs a scoped implementation proposal and acceptance criteria before implementation.
+**Status: OWNER-APPROVED / PLANNED FOR IMPLEMENTATION — all five work packages.**
 
-| Work package | Proposed placement | Scope |
+The owner has authorized implementation of all five work packages. They are committed roadmap scope, not proposed candidates awaiting another approval. They are distributed across the existing phases as submilestones; they do not create new phases, change phase order, or authorize skipping prerequisite architecture, reliability, or validation work.
+
+**Execution rule:** Implement each package when its assigned phase is reached and its dependencies are satisfied. Phase 1 must first establish the current repository baseline. The responsible agent must then inspect existing code and avoid duplicating working capabilities. Each package may be delivered incrementally across its mapped phases. A package is not complete merely because research, a prototype, or one phase's portion is complete; completion requires its acceptance criteria and evidence across the applicable placements. Experimental algorithms may remain explicitly experimental, but the work to build, evaluate, and integrate them is approved.
+
+| Work package | Approved implementation placement | Required implementation scope |
 |---|---|---|
-| Visual Intelligence and Computer Vision | Phases 5, 12, 13, 15 | Screen understanding, object/hero/minimap recognition, tracking, spatial awareness, confidence and perception validation |
-| Temporal and Contextual Game Intelligence | Phases 12, 13, 15 | Event sequences, match progression, temporal state, context windows, changing game conditions |
-| Advanced Strategic and Tactical Intelligence | Phases 10, 11, 12, 15 | Macro reasoning, tactical decision quality, model coordination, prediction, readiness-gated autonomy |
-| Gaming AI Companion and Coaching Research | Phases 3, 12, 13, 15 | Evaluate relevant companion/coaching products and technologies, including Razer-related developments; translate validated opportunities into requirements |
-| Adaptive and Predictive Game Intelligence | Phases 10, 12, 13, 15 | Context-aware recommendations, prediction, adaptation, feedback, confidence, and evidence-based learning |
+| **WP-01 — Visual Intelligence and Computer Vision** | Phases 5, 12, 13, 15 | Build the Android-ready perception pipeline; screen understanding; hero, creep, objective, UI and minimap recognition; marker/object tracking; spatial mapping; temporal association; confidence and uncertainty; calibration and perception validation. Integrate MLBB-specific recognition through its adapter while keeping reusable perception contracts game-agnostic. |
+| **WP-02 — Temporal and Contextual Game Intelligence** | Phases 12, 13, 15 | Implement event sequencing, match-phase and progression tracking, temporal state/history, context windows, changing game conditions, state transitions, event correlation, and context-aware interpretation. Preserve timestamps, provenance, confidence, and stale/unknown states. |
+| **WP-03 — Advanced Strategic and Tactical Intelligence** | Phases 10, 11, 12, 15 | Implement measurable macro-strategy and tactical decision evaluation; objective prioritization; rotations and draft/context reasoning; prediction; Strategic/Tactical coordination; structured action proposals; and staged autonomy readiness. Autonomous execution remains gated by safety, permissions, game rules, measured performance, and explicit release criteria. |
+| **WP-04 — Gaming AI Companion and Coaching Technologies (including Razer research)** | Phases 3, 12, 13, 15 | Turn the approved gaming-AI/Razer technology assessment into product requirements and implement relevant companion/coaching capabilities: contextual assistance, match awareness, coaching feedback, overlays or equivalent Android-compatible presentation, and useful workflow integrations. Verify current capabilities, technical feasibility, platform compatibility, licensing, privacy, and game-policy constraints. Do not assume access to proprietary Razer systems or APIs; implement independently where appropriate and feasible. |
+| **WP-05 — Adaptive and Predictive Game Intelligence** | Phases 10, 12, 13, 15 | Implement context-aware recommendations and prediction; feedback capture; adaptation across match phases, compositions, matchups, and patches; confidence and uncertainty; evaluation against baselines; and evidence-based learning. Keep user data and learned state offline-first by default, with transparent controls and no unsupported claims of model learning. |
 
-Research findings are not implementation authorization. Each submilestone must state opportunity, source/evidence, product fit, feasibility, dependencies, risks, and measurable acceptance criteria.
+### Required cross-package implementation outputs
+
+- Architecture and data-flow design showing universal-core versus game-adapter responsibilities.
+- Concrete implementation tasks and dependencies under the assigned phases.
+- Versioned interfaces, data contracts, provenance, confidence, and failure/unknown-state handling.
+- Working code integrated with the app's existing architecture, not research documents alone.
+- Unit, contract, integration, regression, and device tests appropriate to each capability.
+- Benchmarks and measured quality/resource costs where relevant, including latency, memory, CPU/GPU, thermal behavior, and battery impact.
+- Offline-first behavior, privacy/security review, source/licensing review, and compatibility documentation.
+- Phase-by-phase progress reports identifying implemented, experimental, blocked, and verified portions.
+
+### Acceptance criteria
+
+- [ ] All five work packages have implementation tasks mapped to their approved phase placements.
+- [ ] Existing functionality is audited before replacement; working capabilities are reused and extended.
+- [ ] Reusable perception, temporal, intelligence, and adaptation contracts remain game-agnostic; MLBB-specific logic remains in the MLBB adapter.
+- [ ] Visual recognition and tracking are evaluated with documented datasets/fixtures, precision/recall, tracking quality, confidence calibration, and failure cases.
+- [ ] Temporal/contextual state is tested for ordering, missing events, stale data, interruptions, and match-state transitions.
+- [ ] Strategic and Tactical outputs are evaluated against documented baselines and representative scenarios; action execution remains behind the autonomy safety gate.
+- [ ] Companion/coaching capabilities derived from Razer or other technology research are supported by current source evidence and implemented only where technically and legally feasible.
+- [ ] Adaptive/predictive recommendations are evaluated across relevant patches, roles, compositions, and match contexts, with sample sizes and confidence disclosed.
+- [ ] Each capability exposes appropriate confidence, provenance, freshness, limitations, and fallback behavior.
+- [ ] Offline operation and Android device resource constraints are validated on representative devices.
+- [ ] Tests, measurements, documentation, and integration evidence are recorded before any capability is marked VERIFIED or complete.
+
+**Status semantics:** These five packages are approved for implementation now, but their implementation status remains **APPROVED / PLANNED** until work actually begins. When work begins, update the relevant submilestone to **IN PROGRESS**; mark individual deliverables **VERIFIED** only with reproducible evidence. Experimental components may retain an experimental runtime label without reverting the approved work package itself to PROPOSED.
 
 ## 7. Cross-phase UI/UX requirements
 
@@ -334,7 +539,7 @@ The original GitHub records are historical traceability references. Their closur
 - Preserve the 16-phase order unless the owner explicitly approves a change.
 - Add capabilities as submilestones under the best-fitting phase; avoid duplicate phases.
 - Every submilestone needs scope, dependencies, owner approval where required, acceptance criteria, and evidence.
-- Keep proposed research separate from approved implementation.
+- Keep exploratory research findings distinct from approved implementation requirements; use evidence gates for technical promotion, not as a reason to defer the five owner-approved gaming-AI work packages.
 - Keep MLBB-specific logic inside its adapter and game-specific data layer.
 - Keep Strategic recommendations distinct from Tactical execution.
 - Do not hardcode model identities as permanent role assignments.
