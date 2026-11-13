@@ -75,7 +75,7 @@ The phase sequence below is controlling. Issue #1 and Issue #37 have been placed
 | 12 | Strategic/Tactical Intelligence and Coordination | Deliver coordinated reasoning, shared context, task arbitration, confidence handling, and staged tactical-autonomy readiness | **APPROVED / PLANNED** |
 | 13 | MLBB Companion and Game-Specific Intelligence | Complete MLBB integration and companion capabilities; incorporates Issue #37 | **APPROVED / PLANNED; EXISTING WORK REQUIRES AUDIT** |
 | 14 | Universal MOBA Expansion and Additional Game Adapters | Prove adapter contract beyond MLBB and add further game integrations incrementally | **APPROVED / PLANNED** |
-| 15 | Advanced Game Intelligence | Expand visual, spatial, temporal, contextual, predictive, adaptive, and evidence-driven intelligence | **APPROVED / PLANNED; SUBMILESTONES PROPOSED** |
+| 15 | Advanced Game Intelligence | Expand visual, spatial, temporal, contextual, predictive, adaptive, and evidence-driven intelligence | **APPROVED / PLANNED** |
 | 16 | Optimization, Validation, and Production Readiness | Complete compatibility, reliability, security, privacy, performance, usability, documentation, and release gates | **APPROVED / PLANNED** |
 
 ### 3.1 Mandatory phase-specific professional role and expertise framework
@@ -216,9 +216,9 @@ The agent must challenge unsupported assumptions, distinguish verified facts fro
 - **Primary role:** Principal Game AI and Multimodal Computer Vision Research Engineer.
 - **Expertise:** Visual perception, object/hero/minimap recognition, tracking, spatial and temporal reasoning, multimodal state estimation, prediction, adaptive decision-making, coaching, uncertainty, and evidence-driven learning.
 - **Supporting roles:** Computer Vision Specialist; MOBA Strategy Researcher; Temporal/Contextual AI Engineer; Reinforcement/Decision Systems Researcher; Mobile ML Optimization Engineer; Evaluation Scientist.
-- **Mission:** Advance perception and game intelligence using validated research and the proposed gaming-AI work packages while maintaining clear separation between experimental research and production capability.
+- **Mission:** Implement the five owner-approved gaming-AI technology work packages across their assigned phases, advancing perception and game intelligence while keeping experimental outputs clearly separated from validated production capabilities.
 - **Standards and evidence:** Define measurable datasets and baselines; evaluate precision/recall, tracking, calibration, temporal consistency, decision quality, and device cost as relevant; retain provenance and failure cases; test patch/game transfer; keep experimental features gated and do not overstate Razer or other external technology findings.
-- **Deliverables:** Research-to-product proposals, datasets/fixtures where authorized, perception and intelligence prototypes, evaluation reports, integration proposals, risk analysis, and owner-review gates for promotion.
+- **Deliverables:** Implemented perception and intelligence capabilities, authorized datasets/fixtures, integrated prototypes and production components as readiness permits, evaluation reports, source/provenance records, risk analysis, and explicit validation gates.
 
 **Phase 16 — Optimization, Validation, and Production Readiness**
 - **Primary role:** Principal Android Performance, Security, Reliability, and Release Engineer.
@@ -436,17 +436,46 @@ Additional acceptance criteria:
 
 ## 6. Five approved gaming-AI technology work packages
 
-These were approved for integration as **proposed submilestones** within existing phases. They do not create new phases or change phase order. Each needs a scoped implementation proposal and acceptance criteria before implementation.
+<text>**Status: OWNER-APPROVED / PLANNED FOR IMPLEMENTATION — all five work packages.**</text>
 
-| Work package | Proposed placement | Scope |
+The owner has authorized implementation of all five work packages. They are committed roadmap scope, not proposed candidates awaiting another approval. They are distributed across the existing phases as submilestones; they do not create new phases, change phase order, or authorize skipping prerequisite architecture, reliability, or validation work.
+
+**Execution rule:** Implement each package when its assigned phase is reached and its dependencies are satisfied. Phase 1 must first establish the current repository baseline. The responsible agent must then inspect existing code and avoid duplicating working capabilities. Each package may be delivered incrementally across its mapped phases. A package is not complete merely because research, a prototype, or one phase's portion is complete; completion requires its acceptance criteria and evidence across the applicable placements. Experimental algorithms may remain explicitly experimental, but the work to build, evaluate, and integrate them is approved.
+
+| Work package | Approved implementation placement | Required implementation scope |
 |---|---|---|
-| Visual Intelligence and Computer Vision | Phases 5, 12, 13, 15 | Screen understanding, object/hero/minimap recognition, tracking, spatial awareness, confidence and perception validation |
-| Temporal and Contextual Game Intelligence | Phases 12, 13, 15 | Event sequences, match progression, temporal state, context windows, changing game conditions |
-| Advanced Strategic and Tactical Intelligence | Phases 10, 11, 12, 15 | Macro reasoning, tactical decision quality, model coordination, prediction, readiness-gated autonomy |
-| Gaming AI Companion and Coaching Research | Phases 3, 12, 13, 15 | Evaluate relevant companion/coaching products and technologies, including Razer-related developments; translate validated opportunities into requirements |
-| Adaptive and Predictive Game Intelligence | Phases 10, 12, 13, 15 | Context-aware recommendations, prediction, adaptation, feedback, confidence, and evidence-based learning |
+| **WP-01 — Visual Intelligence and Computer Vision** | Phases 5, 12, 13, 15 | Build the Android-ready perception pipeline; screen understanding; hero, creep, objective, UI and minimap recognition; marker/object tracking; spatial mapping; temporal association; confidence and uncertainty; calibration and perception validation. Integrate MLBB-specific recognition through its adapter while keeping reusable perception contracts game-agnostic. |
+| **WP-02 — Temporal and Contextual Game Intelligence** | Phases 12, 13, 15 | Implement event sequencing, match-phase and progression tracking, temporal state/history, context windows, changing game conditions, state transitions, event correlation, and context-aware interpretation. Preserve timestamps, provenance, confidence, and stale/unknown states. |
+| **WP-03 — Advanced Strategic and Tactical Intelligence** | Phases 10, 11, 12, 15 | Implement measurable macro-strategy and tactical decision evaluation; objective prioritization; rotations and draft/context reasoning; prediction; Strategic/Tactical coordination; structured action proposals; and staged autonomy readiness. Autonomous execution remains gated by safety, permissions, game rules, measured performance, and explicit release criteria. |
+| **WP-04 — Gaming AI Companion and Coaching Technologies (including Razer research)** | Phases 3, 12, 13, 15 | Turn the approved gaming-AI/Razer technology assessment into product requirements and implement relevant companion/coaching capabilities: contextual assistance, match awareness, coaching feedback, overlays or equivalent Android-compatible presentation, and useful workflow integrations. Verify current capabilities, technical feasibility, platform compatibility, licensing, privacy, and game-policy constraints. Do not assume access to proprietary Razer systems or APIs; implement independently where appropriate and feasible. |
+| **WP-05 — Adaptive and Predictive Game Intelligence** | Phases 10, 12, 13, 15 | Implement context-aware recommendations and prediction; feedback capture; adaptation across match phases, compositions, matchups, and patches; confidence and uncertainty; evaluation against baselines; and evidence-based learning. Keep user data and learned state offline-first by default, with transparent controls and no unsupported claims of model learning. |
 
-Research findings are not implementation authorization. Each submilestone must state opportunity, source/evidence, product fit, feasibility, dependencies, risks, and measurable acceptance criteria.
+### Required cross-package implementation outputs
+
+- Architecture and data-flow design showing universal-core versus game-adapter responsibilities.
+- Concrete implementation tasks and dependencies under the assigned phases.
+- Versioned interfaces, data contracts, provenance, confidence, and failure/unknown-state handling.
+- Working code integrated with the app's existing architecture, not research documents alone.
+- Unit, contract, integration, regression, and device tests appropriate to each capability.
+- Benchmarks and measured quality/resource costs where relevant, including latency, memory, CPU/GPU, thermal behavior, and battery impact.
+- Offline-first behavior, privacy/security review, source/licensing review, and compatibility documentation.
+- Phase-by-phase progress reports identifying implemented, experimental, blocked, and verified portions.
+
+### Acceptance criteria
+
+- [ ] All five work packages have implementation tasks mapped to their approved phase placements.
+- [ ] Existing functionality is audited before replacement; working capabilities are reused and extended.
+- [ ] Reusable perception, temporal, intelligence, and adaptation contracts remain game-agnostic; MLBB-specific logic remains in the MLBB adapter.
+- [ ] Visual recognition and tracking are evaluated with documented datasets/fixtures, precision/recall, tracking quality, confidence calibration, and failure cases.
+- [ ] Temporal/contextual state is tested for ordering, missing events, stale data, interruptions, and match-state transitions.
+- [ ] Strategic and Tactical outputs are evaluated against documented baselines and representative scenarios; action execution remains behind the autonomy safety gate.
+- [ ] Companion/coaching capabilities derived from Razer or other technology research are supported by current source evidence and implemented only where technically and legally feasible.
+- [ ] Adaptive/predictive recommendations are evaluated across relevant patches, roles, compositions, and match contexts, with sample sizes and confidence disclosed.
+- [ ] Each capability exposes appropriate confidence, provenance, freshness, limitations, and fallback behavior.
+- [ ] Offline operation and Android device resource constraints are validated on representative devices.
+- [ ] Tests, measurements, documentation, and integration evidence are recorded before any capability is marked VERIFIED or complete.
+
+**Status semantics:** These five packages are approved for implementation now, but their implementation status remains **APPROVED / PLANNED** until work actually begins. When work begins, update the relevant submilestone to **IN PROGRESS**; mark individual deliverables **VERIFIED** only with reproducible evidence. Experimental components may retain an experimental runtime label without reverting the approved work package itself to PROPOSED.
 
 ## 7. Cross-phase UI/UX requirements
 
@@ -510,7 +539,7 @@ The original GitHub records are historical traceability references. Their closur
 - Preserve the 16-phase order unless the owner explicitly approves a change.
 - Add capabilities as submilestones under the best-fitting phase; avoid duplicate phases.
 - Every submilestone needs scope, dependencies, owner approval where required, acceptance criteria, and evidence.
-- Keep proposed research separate from approved implementation.
+- Keep exploratory research findings distinct from approved implementation requirements; use evidence gates for technical promotion, not as a reason to defer the five owner-approved gaming-AI work packages.
 - Keep MLBB-specific logic inside its adapter and game-specific data layer.
 - Keep Strategic recommendations distinct from Tactical execution.
 - Do not hardcode model identities as permanent role assignments.
