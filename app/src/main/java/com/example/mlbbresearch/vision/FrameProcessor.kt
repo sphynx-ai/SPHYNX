@@ -453,8 +453,23 @@ object FrameProcessor {
         return seen.filter { it !in roamers }
     }
 
+    // (phantom low bars are dropped last - LowBarRule)
+    private val lowBars = LowBarRule()
     private fun monstersFromRedBars(all: List<Seen>, px: IntArray, w: Int, h: Int, mini: MinimapInfo): List<Seen> {
+        val list = monstersFromRedBars0(all, px, w, h, mini)
+        val now = System.currentTimeMillis()
+        fun small(u: Seen) = !u.hero && (u.team == Team.NEUTRAL || u.team == Team.ENEMY)
+        for (u in list) if (small(u)) lowBars.seen(u.x, u.y, u.hp, now)
+        return list.filter { u -> !small(u) || lowBars.counts(u.x, u.y, u.hp, now) }
+    }
+
+    private fun monstersFromRedBars0(all: List<Seen>, px: IntArray, w: Int, h: Int, mini: MinimapInfo): List<Seen> {
         val enemyNearOnMap = enemyNearOnMinimap(mini, w, h)
+        // you stand at a jungle camp / buff spot: a bar there is a hero only with a readable level number (HeroBarRule)
+        val atCampSpot = try {
+            com.example.mlbbresearch.game.JungleSpots.campAt(mini.self,
+                com.example.mlbbresearch.game.MatchKind.jungleSec(com.example.mlbbresearch.game.GameStateTracker.state.matchSec), System.currentTimeMillis()) != null
+        } catch (e: Exception) { false }
         val nearEnemyTower = mini.self?.let { me ->
             (mini.towers.map { it.x to it.y } + listOfNotNull(mini.enemyBase)).any { kotlin.math.hypot(it.first - me.first, it.second - me.second) < 0.12f }
         } ?: false
@@ -482,7 +497,7 @@ object FrameProcessor {
                     glyph
                 )
             val confirmedEnemyHero = s.team == Team.ENEMY && s.hero &&
-                HeroBarRule.isEnemyHero(badge, enemyNearOnMap, atRecentMonster(s, nowMs, aspect), glyph)
+                HeroBarRule.isEnemyHero(badge, enemyNearOnMap, atRecentMonster(s, nowMs, aspect), glyph, atCampSpot)
             if (s.team == Team.ENEMY && s.hero && !confirmedEnemyHero) {
                 // an enemy TOWER's bar is red without a badge too: near an enemy tower on the
                 // minimap it is the tower (a structure), not a monster
