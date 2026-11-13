@@ -27,15 +27,19 @@ import java.util.Locale
 // instead of opening a second one. It never touches the game.
 object VideoRecorder {
 
-    const val BITRATE = 3_000_000
+    // (owner, 2026-11-13: 3 Mbit/s filled 25 MB in ~70 s; half of it still shows the overlay clearly)
+    const val BITRATE = 1_500_000
     const val MAX_MS = 20 * 60_000L          // never longer than 20 minutes
 
-    // AUTO-STOP (owner request): the recording stops and saves itself when the video reaches this size,
-    // so the file can be sent: 25 MB fits a GitHub website upload, 95 MB a git push (limit 100 MB).
-    val SIZE_CHOICES_MB = listOf(25, 95)
+    // PART SIZE: at this size the video is closed and the recording continues in a new file (SessionRecorder).
+    // 25 MB fits a GitHub website upload; 50 MB (default) is about 4 minutes; GitHub refuses files over 100 MB.
+    val SIZE_CHOICES_MB = listOf(25, 50, 95)
+    const val DEFAULT_MB = 50
     var limitMb: Int
-        get() = Cfg.raw("rec_video_limit_mb")?.toIntOrNull()?.takeIf { it in SIZE_CHOICES_MB } ?: 25
-        set(v) = Cfg.setRaw("rec_video_limit_mb", v.toString())
+        get() = Cfg.raw("rec_video_limit_mb2")?.toIntOrNull()?.takeIf { it in SIZE_CHOICES_MB } ?: DEFAULT_MB
+        set(v) = Cfg.setRaw("rec_video_limit_mb2", v.toString())
+    // about how long a part of this size is (pure, unit tested)
+    fun partSeconds(mb: Int): Int = (limitBytes(mb) * 8 / BITRATE).toInt()
     // stop a little early: the file's index is written at the end
     fun limitBytes(mb: Int): Long = mb * 1024L * 1024L * 97 / 100
     @Volatile var bytesWritten = 0L; private set

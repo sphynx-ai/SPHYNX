@@ -2627,11 +2627,11 @@ class MainActivity : Activity() {
             val v = com.example.mlbbresearch.core.VideoRecorder
             val ch = v.SIZE_CHOICES_MB
             v.limitMb = ch[(ch.indexOf(v.limitMb) + 1) % ch.size]
-            toast("Video limit: ${v.limitMb} MB")
+            toast("Video part size: ${v.limitMb} MB")
         }
         upd {
             val v = com.example.mlbbresearch.core.VideoRecorder
-            limBtn.text = "Auto-stop at ${v.limitMb} MB video (" + (if (v.limitMb <= 25) "fits a GitHub website upload, about 1 minute" else "for a git push, about 4 minutes") + ") - tap to change"
+            limBtn.text = "New file every ${v.limitMb} MB of video (about ${v.partSeconds(v.limitMb) / 60} min ${v.partSeconds(v.limitMb) % 60} s) - tap to change"
         }
         upd {
             val r = com.example.mlbbresearch.core.SessionRecorder
@@ -2643,23 +2643,10 @@ class MainActivity : Activity() {
 
         title("EXPORTS FOR DEBUGGING")
         text("Every recording already saves the speed data, the scorecards, the settings, the full log and the scenery picture " +
-            "next to it. These buttons save them now, without a recording.", 12f, color = T.MUTED)
-        btn("Export the speed data and the scorecards (CSV)") {
+            "once, with its last part. These buttons save them now, without a recording (the same files, no second copy in CSV).", 12f, color = T.MUTED)
+        btn("Export the speed data and the scorecards now") {
             Thread {
-                val msg = try {
-                    val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
-                    com.example.mlbbresearch.ai.ModelSpeed.save(sync = true); com.example.mlbbresearch.core.TouchSpeed.save(sync = true)
-                    val out = ArrayList<String>()
-                    for ((name, body) in listOf("model_speed" to com.example.mlbbresearch.ai.ModelSpeed.csv(),
-                                                "screen_to_touch" to com.example.mlbbresearch.core.TouchSpeed.csv(),
-                                                "practice_benchmark" to com.example.mlbbresearch.research.ResearchMode.benchCsv())) {
-                        val f = java.io.File(cacheDir, "$name-$stamp.csv")
-                        f.writeText(body)
-                        out.add(com.example.mlbbresearch.core.SessionRecorder.exportFile(this, f, "text/csv"))
-                        f.delete()
-                    }
-                    out.joinToString("; ")
-                } catch (e: Exception) { "Export failed: ${e.message}" }
+                val msg = try { com.example.mlbbresearch.core.SessionRecorder.exportResearchNow(this) } catch (e: Exception) { "Export failed: ${e.message}" }
                 runOnUiThread { toast(msg.take(200)) }
             }.start()
         }

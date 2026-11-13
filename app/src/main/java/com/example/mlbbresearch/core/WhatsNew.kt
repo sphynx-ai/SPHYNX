@@ -23,6 +23,15 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-13", Kind.FIXED, "Recordings cover the whole match, without duplicate files",
+            "Your 2026-11-13 recording covered only about half of the match: each part stopped at 25 MB (~70 s) and the next " +
+                "one had to be started by hand. Now a full part is closed and the next one starts at once, always (not only " +
+                "with the automatic upload); the video uses half the data and a part is 50 MB, about 4 minutes. The settings, " +
+                "the log, the scenery picture and the research files are saved once per recording (with its last part), not " +
+                "with every part, and the CSV copies are gone. The match's own scorecard is saved before the recording is " +
+                "closed. When screen capture stops in the middle of a match, the match is closed as unfinished after a " +
+                "minute, so its scorecard and recording are still saved.",
+            pr = 77, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.FIXED, "The small tactical model keeps learning between trainings",
             "On Kaggle each training of the small tactical model started again from plain Gemma 3 270M. Now the notebook " +
                 "also saves a trainable copy (tactical_llm_trainable.zip, ~500 MB) that the app downloads and sends with the " +
