@@ -55,7 +55,7 @@ object SessionRecorder {
         "RECORDING: $rows rows, ${bytes / 1024} KB, ${(System.currentTimeMillis() - startedAt) / 1000} s; video: " +
             (if (VideoRecorder.on || VideoRecorder.frames > 0) "${VideoRecorder.bytesWritten / (1024 * 1024)} of ${VideoRecorder.limitMb} MB, " +
                 "${VideoRecorder.frames} frames (${VideoRecorder.note})" else "off (start screen capture first)") +
-            (if (parts > 0) "; part ${parts + 1}" else "") + " - at the limit: continues in a new file when the GitHub upload is on, else stops and saves"
+            (if (parts > 0) "; part ${parts + 1}" else "") + " - at the limit it continues in a new file by itself"
     else "Off. Last file: $lastExport"
 
     // AUTOMATIC RECORDING (owner, 2026-11-12): started at the start of every match (the loading screen, or your hero
@@ -65,13 +65,11 @@ object SessionRecorder {
     @Volatile var autoStarted = false; private set
     fun init(c: Context) { ctxRef = c.applicationContext }
     fun currentName(): String = name
-    // does a full recording continue in a new file? (pure, unit tested)
-    fun rollsOver(autoUpload: Boolean, hasToken: Boolean): Boolean = autoUpload && hasToken
     @Volatile var parts = 0; private set          // files this recording was continued into
     fun matchStarted() {
         val c = ctxRef ?: return
         if (!Cfg.autoRecord || on) return
-        start(c); autoStarted = true
+        begin(c, 0, true)
         Diag.info("Session recorder: started by itself at the start of the match")
     }
     fun matchEnded() {
@@ -80,9 +78,12 @@ object SessionRecorder {
         stop(c) { msg -> lastExport = "match end: $msg" }
     }
 
-    @Synchronized fun start(ctx: Context) {
+    @Synchronized fun start(ctx: Context) = begin(ctx, 0, false)
+
+    // part: 0 = a new recording; 1.. = the same recording continued in a new file at the video's size limit
+    @Synchronized private fun begin(ctx: Context, part: Int, auto: Boolean) {
         if (on) return
-        autoStarted = false; parts = 0
+        autoStarted = auto; parts = part
         appCtx = ctx.applicationContext
         name = "sphynx-session-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date()) + ".jsonl"
         val f = File(ctx.applicationContext.cacheDir, name)
@@ -90,35 +91,49 @@ object SessionRecorder {
         snaps.clear(); snapAt.clear()
         on = true
         write(JSONObject().put("k", "start").put("t", startedAt)
-            .put("app", AppVersion.VERSION).put("commit", com.example.mlbbresearch.BuildConfig.GIT_COMMIT).put("auto", autoStarted).put("phone", Build.MANUFACTURER + " " + Build.MODEL).put("android", Build.VERSION.SDK_INT)
+            .put("app", AppVersion.VERSION).put("commit", com.example.mlbbresearch.BuildConfig.GIT_COMMIT).put("auto", autoStarted).put("part", part + 1).put("phone", Build.MANUFACTURER + " " + Build.MODEL).put("android", Build.VERSION.SDK_INT)
             .put("aimSkills", Cfg.aimSkills)
             .put("note", "t = wall-clock ms; ms = match seconds (the in-game timer). Screen positions are 0..1."))
         val app = ctx.applicationContext
-        // AT THE VIDEO'S SIZE LIMIT (owner, 2026-11-12): with the automatic GitHub upload on (and a token), the
-        // recording CONTINUES in a new file - the full one is saved and uploaded meanwhile - so a whole match is
-        // covered without gaps. Without it, everything is stopped and saved, as before.
-        VideoRecorder.onLimit = {
-            if (on) {
-                val wasAuto = autoStarted
-                val roll = rollsOver(Cfg.autoUpload, try { GitHubUpload.token(app) != null } catch (e: Exception) { false })
-                stop(app) { msg ->
-                    lastExport = (if (roll) "continued in a new file; saved: " else "auto-stopped: ") + msg
-                    // (a recording started by the match is not continued once that match is over)
-                    if (roll && (!wasAuto || com.example.mlbbresearch.game.GameStateTracker.matchId != 0L)) {
-                        val part = parts; start(app); autoStarted = wasAuto; parts = part + 1
-                    }
-                }
-            }
-        }
+        // AT THE VIDEO'S SIZE LIMIT (owner, 2026-11-13): the recording ALWAYS continues in a new file, at once - the
+        // full one is saved (and uploaded when that switch is on) in the background - so a whole match is covered.
+        VideoRecorder.onLimit = { if (on) roll(app) }
         if (com.example.mlbbresearch.capture.ScreenCaptureService.running) {
             VideoRecorder.start(File(ctx.applicationContext.cacheDir, name.removeSuffix(".jsonl") + ".mp4"))
         }
         Diag.info("Session recorder started ($name)" + if (VideoRecorder.on) " with video" else " (no video: screen capture is off)")
     }
 
+    // the full file is closed and the next part started at once (no gap); the full one is saved in the background
+    private fun roll(app: Context) {
+        val wasAuto = autoStarted
+        // (a recording started by the match is not continued once that match is over)
+        if (wasAuto && com.example.mlbbresearch.game.GameStateTracker.matchId == 0L) { stop(app) { msg -> lastExport = "auto-stopped: $msg" }; return }
+        val video = try { VideoRecorder.stop() } catch (e: Exception) { null }
+        val f: File; val w: java.io.Writer?; val shots: List<File>
+        synchronized(this) {
+            if (!on) { video?.delete(); return }
+            write(JSONObject().put("k", "stop").put("t", System.currentTimeMillis()).put("rows", rows)
+                .put("sec", (System.currentTimeMillis() - startedAt) / 1000).put("continues", true))
+            on = false
+            val t = tmp
+            if (t == null) { video?.delete(); return }
+            f = t; w = out; out = null; tmp = null
+            shots = takeShots()
+            val part = parts
+            begin(app, part + 1, wasAuto)
+        }
+        io.execute {
+            val msg = save(app, f, w, video, shots, last = false)
+            lastExport = "continued in a new file; saved: $msg"
+            Diag.info(msg)
+            uploadIfOn(app)
+        }
+    }
+
     // stops and saves the file; done(message) on the main thread's caller side
     fun stop(ctx: Context, done: (String) -> Unit) {
-        val f: File; val w: java.io.Writer?
+        val f: File; val w: java.io.Writer?; val shots: List<File>
         synchronized(this) {
             if (!on) { done("Not recording"); return }
             write(JSONObject().put("k", "stop").put("t", System.currentTimeMillis()).put("rows", rows)
@@ -126,26 +141,45 @@ object SessionRecorder {
             on = false
             f = tmp ?: run { done("Nothing recorded"); return }
             w = out; out = null; tmp = null
+            shots = takeShots()
         }
         val app = ctx.applicationContext
         io.execute {
             val video = try { VideoRecorder.stop() } catch (e: Exception) { null }
-            val msg = try {
-                w?.close()
-                val m1 = export(app, f).also { f.delete() }
-                val m2 = video?.let { v -> try { export(app, v, "video/mp4").also { v.delete() } } catch (e: Exception) { "video not saved: ${e.message}" } }
-                    ?: "no video (screen capture was off, or no frame arrived)"
-                val m3 = exportResearch(app, f.name.removeSuffix(".jsonl"))
-                val m4 = exportDebug(app, f.name.removeSuffix(".jsonl"))
-                "$m1; $m2" + (if (m3.isNotEmpty()) "; $m3" else "") + (if (m4.isNotEmpty()) "; $m4" else "")
-            } catch (e: Exception) { "Saving the recording failed: ${e.message}" }
+            val msg = save(app, f, w, video, shots, last = true)
             lastExport = msg
             Diag.info(msg)
             done(msg)
-            // the debug data goes to GitHub by itself (Debug data page switch; only with a token)
-            try { if (Cfg.autoUpload && GitHubUpload.token(app) != null) GitHubUpload.uploadAll(app) } catch (e: Exception) { }
+            uploadIfOn(app)
         }
     }
+
+    // the debug data goes to GitHub by itself (Debug data page switch; only with a token)
+    private fun uploadIfOn(app: Context) {
+        try { if (Cfg.autoUpload && GitHubUpload.token(app) != null) GitHubUpload.uploadAll(app) } catch (e: Exception) { }
+    }
+
+    // one part's files: the data file, the video and its screenshots. The files that are the same for the whole
+    // recording (research files, settings, the log, the scenery picture) are saved ONCE, with the last part
+    // (owner, 2026-11-13: every part used to carry its own identical copies).
+    private fun save(app: Context, f: File, w: java.io.Writer?, video: File?, shots: List<File>, last: Boolean): String = try {
+        w?.close()
+        val base = f.name.removeSuffix(".jsonl")
+        val m1 = export(app, f).also { f.delete() }
+        val m2 = video?.let { v -> try { export(app, v, "video/mp4").also { v.delete() } } catch (e: Exception) { "video not saved: ${e.message}" } }
+            ?: "no video (screen capture was off, or no frame arrived)"
+        var n = 0
+        for (s in shots) try { if (s.length() > 0) { export(app, s, "image/jpeg"); n++ }; s.delete() } catch (e: Exception) { }
+        val m3 = if (last) exportResearch(app, base) else ""
+        val m4 = if (last) exportDebug(app, base) else ""
+        "$m1; $m2; $n screenshot(s)" + (if (m3.isNotEmpty()) "; $m3" else "") + (if (m4.isNotEmpty()) "; $m4" else "")
+    } catch (e: Exception) { "Saving the recording failed: ${e.message}" }
+
+    private fun takeShots(): List<File> = synchronized(snaps) { ArrayList(snaps).also { snaps.clear() } }
+
+    // the research files now, without a recording (Debug data page button)
+    fun exportResearchNow(c: Context): String =
+        exportResearch(c.applicationContext, "export-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())).ifEmpty { "Nothing to export yet" }
 
     // the research files (R5 comparison ab_log.json, R4 practice_moments.jsonl, readiness_report.txt) live in
     // the app's private storage; copies go next to the recording: <session>-ab_log.json etc.
@@ -232,14 +266,12 @@ object SessionRecorder {
         fun put(name: String, mime: String, write: (File) -> Unit) = try {
             val f = File(tmpDir, name); write(f); if (f.length() > 0) { export(c, f, mime); n++ }; f.delete()
         } catch (e: Exception) { }
-        val shots = synchronized(snaps) { ArrayList(snaps).also { snaps.clear() } }
-        for (f in shots) try { if (f.length() > 0) { export(c, f, "image/jpeg"); n++ }; f.delete() } catch (e: Exception) { }
         put("$base-settings.json", "application/json") { it.writeText(settingsJson(Cfg.all()).toString(1)) }
         put("$base-diagnostics.log", "text/plain") { f -> Diag.logFile()?.takeIf { it.exists() }?.copyTo(f, overwrite = true) }
         put("$base-scenery.png", "image/png") { f ->
             f.outputStream().use { com.example.mlbbresearch.game.SceneryMap.renderPicture().compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
         }
-        return if (n > 0) "$n debug file(s) (${shots.size} screenshots, settings, log, scenery picture)" else ""
+        return if (n > 0) "$n debug file(s) (settings, log, scenery picture)" else ""
     }
 
     // one file into the recordings folder (used by the Practice and Speed pages' exports)

@@ -232,6 +232,7 @@ class ScreenCaptureService : Service() {
         thread?.quitSafely()
         display = null; reader = null; projection = null
         FrameHub.reset()
+        com.example.mlbbresearch.game.GameStateTracker.captureStopped()   // an open match is closed after a minute without capture
         super.onDestroy()
     }
 }

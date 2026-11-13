@@ -494,10 +494,13 @@ object GameStateTracker {
             val result = com.example.mlbbresearch.vision.ScreenReader.lastResultWin
             lastResultWin = result
             // recording ends at the match end screens; the end scoreboard may still lock the hero
-            if (matchId != 0L) { lastMatchId = matchId; matchId = 0L; Diag.info("Match recording ended (match end)"); com.example.mlbbresearch.core.SessionRecorder.matchEnded() }
+            val recorded = matchId != 0L
+            if (recorded) { lastMatchId = matchId; matchId = 0L; Diag.info("Match recording ended (match end)") }
             lastMatchEndAt = now
             com.example.mlbbresearch.learning.TrainingResults.matchEnded()   // tactical engine result of this match
             logMatch()                       // (it clears lastResultWin: the message uses the copy)
+            // (after the scorecard is saved: the recording's last part carries this match's scorecard, not the last one's)
+            if (recorded) com.example.mlbbresearch.core.SessionRecorder.matchEnded()
             matchStartAt = 0L
             Diag.info("Match end: " + when (result) { true -> "victory"; false -> "defeat"; null -> "result not read" })
         }
@@ -641,6 +644,29 @@ object GameStateTracker {
     // the last match end screen: true = victory, false = defeat, null = not seen
     @Volatile var lastResultWin: Boolean? = null
         private set
+
+    // SCREEN CAPTURE STOPPED MID-MATCH (owner, 2026-11-13): the match end screen will never be seen, so after a minute
+    // without capture the match is closed as unfinished - its scorecard and recording are saved, not left open.
+    @Volatile private var captureStoppedAt = 0L
+    fun captureStopped() {
+        val at = System.currentTimeMillis(); captureStoppedAt = at
+        Thread({
+            val waited = try { Thread.sleep(CAPTURE_GRACE_MS); true } catch (e: InterruptedException) { false }
+            if (waited && captureStoppedAt == at && !com.example.mlbbresearch.capture.ScreenCaptureService.running)
+                try { closeUnfinished() } catch (t: Throwable) { Diag.error("Closing the unfinished match", t) }
+        }, "capture-grace").start()
+    }
+    const val CAPTURE_GRACE_MS = 60_000L
+    private fun closeUnfinished() {
+        if (matchStartAt == 0L && matchId == 0L) return
+        Diag.info("Match closed as unfinished: screen capture stopped (no match end screen seen)")
+        if (matchId != 0L) { lastMatchId = matchId; matchId = 0L }
+        lastMatchEndAt = System.currentTimeMillis()
+        com.example.mlbbresearch.learning.TrainingResults.matchEnded()
+        logMatch()
+        com.example.mlbbresearch.core.SessionRecorder.matchEnded()
+        matchStartAt = 0L
+    }
 
     private fun logMatch() {
         if (matchStartAt == 0L) { com.example.mlbbresearch.learning.ABCompare.matchStart(); HeroKit.resetForm(); com.example.mlbbresearch.vision.ScreenKit.reset(); return }
