@@ -10,8 +10,13 @@ object HeroBarRule {
     const val MONSTER_NEAR = 0.12f            // screen heights (x scaled by the aspect)
     const val BADGE_W = 0.022f                // the badge spot left of a bar (screen widths), as badgeDark reads it
 
-    fun isEnemyHero(badge: Boolean, enemyNearOnMap: Boolean, atRecentMonster: Boolean, levelNumber: Boolean): Boolean =
-        badge && enemyNearOnMap && (!atRecentMonster || levelNumber)
+    // atCampSpot (owner, 2026-11-13 - that day's recording): you stand at a jungle camp / buff spot. A monster's bar
+    // only shows once it is hit, so its FIRST sighting had no "recent monster" yet and the bar - right above your
+    // own bar and badge - was taken for an enemy hero for a moment ("brain: back off" in the middle of a camp).
+    // At a camp spot a bar is an enemy hero only when its level number can be read.
+    fun isEnemyHero(badge: Boolean, enemyNearOnMap: Boolean, atRecentMonster: Boolean, levelNumber: Boolean,
+                    atCampSpot: Boolean = false): Boolean =
+        badge && enemyNearOnMap && (!(atRecentMonster || atCampSpot) || levelNumber)
 
     // the badge spot of a bar at (barLeft, cy) overlaps YOUR badge (left of your bar at (selfLeft, selfCy))
     fun overlapsOwnBadge(barLeft: Float, cy: Float, selfLeft: Float, selfCy: Float): Boolean =

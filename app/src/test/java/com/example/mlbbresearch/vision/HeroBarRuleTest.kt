@@ -25,4 +25,10 @@ class HeroBarRuleTest {
         assertFalse(HeroBarRule.overlapsOwnBadge(barLeft = 0.30f, cy = 0.385f, selfLeft = 0.471f, selfCy = 0.39f))
         assertFalse(HeroBarRule.overlapsOwnBadge(barLeft = 0.465f, cy = 0.20f, selfLeft = 0.471f, selfCy = 0.39f))
     }
+
+    // 2026-11-13 recording: the first sighting of a camp monster's bar, right above your own bar
+    @Test fun atACampSpotABarIsAHeroOnlyWithItsLevelNumber() {
+        assertFalse(HeroBarRule.isEnemyHero(badge = true, enemyNearOnMap = true, atRecentMonster = false, levelNumber = false, atCampSpot = true))
+        assertTrue(HeroBarRule.isEnemyHero(badge = true, enemyNearOnMap = true, atRecentMonster = false, levelNumber = true, atCampSpot = true))
+    }
 }
