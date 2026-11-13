@@ -103,6 +103,10 @@ object FrameProcessor {
         if (hint == ScreenHint.RESULT_BOARD && frameNo % 5 == 0L) try { EndBoard.observe(px, w, h) } catch (e: Exception) { }
         // the loading screen: your card = the one with the GREEN name (v36.92), and its spell icon vs the 12 wiki pictures (v37.00)
         // the practice gate: solo practice is verified from its loading card (no Gemma needed)
+        // Solo practice or 5v5, from the loading screen's layout (game.MatchKind; learning depends on it - learning.LearnGate)
+        if (hint == ScreenHint.LOADING) try {
+            com.example.mlbbresearch.game.MatchKind.fromLoading(com.example.mlbbresearch.game.GameStateTracker.matchId, ScreenReader.soloLoading(px, w, h))
+        } catch (e: Exception) { }
         if (hint == ScreenHint.LOADING) try { com.example.mlbbresearch.research.ResearchMode.observeLoadingFrame(px, w, h) } catch (e: Exception) { }
         if (hint == ScreenHint.LOADING && frameNo % 5 == 1L) try {
             val green = com.example.mlbbresearch.game.PlayerName.greenCard(px, w, h)
@@ -235,7 +239,9 @@ object FrameProcessor {
             ?.let { LevelReader.levelOf(px, w, h, it) } ?: -1
 
         // detector training pictures (every 6 s in a match, Learn page switch)
-        com.example.mlbbresearch.learning.DatasetCollector.maybeSave(px, w, h, mini, self != null && hint == ScreenHint.NONE)
+        // (never in Solo practice: no learning there - learning.LearnGate)
+        val learns = com.example.mlbbresearch.learning.LearnGate.on()
+        if (learns) com.example.mlbbresearch.learning.DatasetCollector.maybeSave(px, w, h, mini, self != null && hint == ScreenHint.NONE)
 
         // an enemy tower's range circle (every 2nd frame; must show the same colour twice in a row)
         if (self != null && (hint == ScreenHint.NONE || live) && frameNo % 2 == 0L) {
@@ -284,7 +290,7 @@ object FrameProcessor {
             processMs = System.currentTimeMillis() - t0
         )
         // whole-screen detector training pictures (every 10 s in a match)
-        com.example.mlbbresearch.learning.ScreenDatasetCollector.maybeSave(px, w, h, result, mini, self != null && hint == ScreenHint.NONE,
+        if (learns) com.example.mlbbresearch.learning.ScreenDatasetCollector.maybeSave(px, w, h, result, mini, self != null && hint == ScreenHint.NONE,
             com.example.mlbbresearch.game.JungleNav.atBuff, com.example.mlbbresearch.game.GameStateTracker.state.matchSec,
             steadySmall.filter { it.team == Team.NEUTRAL } + seen.filter { it.team == Team.NEUTRAL && it.hero }, ring)
         latest = result

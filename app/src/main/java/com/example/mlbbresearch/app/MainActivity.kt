@@ -2837,12 +2837,28 @@ class MainActivity : Activity() {
         sw4("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it }
         sw4("Show the AI's touches", Cfg.showTouches) { Cfg.showTouches = it }
 
-        // 5. scenery calibration
+        // 5. skill button calibration (before the scenery: the roam needs the buttons placed - owner, 2026-11-13)
+        val p6 = card()
+        val p6Head = cardHeader(p6, "5. Skill button calibration", "", T.GOLD)
+        val p6Chip = (p6Head.parent as LinearLayout).getChildAt(1) as TextView
+        cardNote(p6, "Open a match, come back, tap the layout of your hero: drag the yellow markers onto the buttons (or " +
+            "Auto-detect), then Save. The first match also places them by itself.")
+        inCard(p6, "Calibrate 2-skill buttons") { calibrateLater("skills2") }
+        inCard(p6, "Calibrate 3-skill buttons") { calibrateLater("skills3") }
+        inCard(p6, "Calibrate 4-skill buttons") { calibrateLater("skills4") }
+        inCard(p6, "Calibrate joystick / attack / spell") { calibrateLater("game") }
+        upd {
+            val n = listOf("skills2", "skills3", "skills4").count { Layout.isGroupSaved(it) }
+            p6Chip.text = if (n > 0) "$n saved" else "to do"; p6Chip.setTextColor(c(if (n > 0) T.GREEN else T.GOLD))
+        }
+
+        // 6. scenery calibration
         val p5 = card()
-        val p5Head = cardHeader(p5, "5. Scenery calibration", "", T.GOLD)
+        val p5Head = cardHeader(p5, "6. Scenery calibration", "", T.GOLD)
         val p5Chip = (p5Head.parent as LinearLayout).getChildAt(1) as TextView
         cardNote(p5, "Teaches the app where towers, pits, bushes and walls are on the screen compared to the minimap. Open a " +
-            "Practice match, start screen capture, then start the roam: the hero walks the map by itself. Come back and stop it.")
+            "Solo practice match vs Computer, start screen capture, then start the roam: the hero walks the map by itself. Come back " +
+            "and stop it. Nothing is learned or recorded in Solo practice: it is for calibration only.")
         inCard(p5, "Start screen capture") { if (!ScreenCaptureService.running) askScreenCapture() else toast("Screen capture is already on") }
         val cam = inCard(p5, "") { toast(com.example.mlbbresearch.game.SceneryMap.cycleCameraPreset()) }
         val roam = inCard(p5, "") { toast(com.example.mlbbresearch.game.SceneryMap.toggleRoam()) }
@@ -2856,21 +2872,6 @@ class MainActivity : Activity() {
             val done = Cfg.raw("first_run_scenery") == "1"
             if (sm.roamActive) Cfg.setRaw("first_run_scenery", "1")
             p5Chip.text = if (done) "done" else "to do"; p5Chip.setTextColor(c(if (done) T.GREEN else T.GOLD))
-        }
-
-        // 6. skill button calibration
-        val p6 = card()
-        val p6Head = cardHeader(p6, "6. Skill button calibration", "", T.GOLD)
-        val p6Chip = (p6Head.parent as LinearLayout).getChildAt(1) as TextView
-        cardNote(p6, "Open a match, come back, tap the layout of your hero: drag the yellow markers onto the buttons (or " +
-            "Auto-detect), then Save. The first match also places them by itself.")
-        inCard(p6, "Calibrate 2-skill buttons") { calibrateLater("skills2") }
-        inCard(p6, "Calibrate 3-skill buttons") { calibrateLater("skills3") }
-        inCard(p6, "Calibrate 4-skill buttons") { calibrateLater("skills4") }
-        inCard(p6, "Calibrate joystick / attack / spell") { calibrateLater("game") }
-        upd {
-            val n = listOf("skills2", "skills3", "skills4").count { Layout.isGroupSaved(it) }
-            p6Chip.text = if (n > 0) "$n saved" else "to do"; p6Chip.setTextColor(c(if (n > 0) T.GREEN else T.GOLD))
         }
 
         val fin = btn("Finish setup") { Cfg.firstRunPending = false; toast("Setup finished: you can change everything later"); show("home") }

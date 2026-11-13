@@ -198,6 +198,8 @@ object Brain {
     @Synchronized
     fun evaluateDue(s: GameState) {
         if (pending.isEmpty()) return
+        // no learning at all in Solo practice (LearnGate): the fights there are not scored
+        if (!LearnGate.on()) { pending.clear(); return }
         val now = s.ts
         val it = pending.iterator()
         var changed = false
