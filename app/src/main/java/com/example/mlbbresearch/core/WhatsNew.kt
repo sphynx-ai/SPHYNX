@@ -30,7 +30,7 @@ object WhatsNew {
                 "2026-11-13 recording (22 of 22 screenshots right). The purple colour is a first guess - that recording has " +
                 "no frame with it - so a screenshot is saved with the recording each time a buff reading changes, to " +
                 "confirm it. The jungle route does not use the reading yet.",
-            pr = 83, needsDeviceCheck = true),
+            pr = 84, needsDeviceCheck = true),
         Entry("2026-11-13", Kind.FIXED, "Phantom 3% monsters, and camp monsters read as enemy heroes",
             "From your 2026-11-13 recording. Small orange / red things next to dark ground (the emblems that circle your hero " +
                 "while you hold the orange buff, damage numbers) were read as monsters with 3-5% HP, and the Player \"finished\" them on empty ground: a " +
