@@ -197,6 +197,8 @@ Android app (Kotlin, package `com.example.mlbbresearch`, app id `com.sphynx.auto
 - After the queue is merged, post the phone steps (`git pull`, rebuild) and a device-test checklist.
 - There is no Android SDK in the cloud container: CI is the build check. Add unit tests for pure logic.
 - Every PR adds a What's new entry (`core/WhatsNew.kt`, `needsDeviceCheck = true` until the owner tests it on the phone).
+- Every PR raises the app version by one step (owner, 2026-11-14): `sphynxVersion` in `app/build.gradle.kts`
+  (37.20 -> 37.21; after 37.99 comes 38.00) and the same `version` on its What's new entry (a unit test checks).
 - Only work the owner has tested on the phone goes to `main`.
 
 ### Debug data (owner, 2026-11-12)

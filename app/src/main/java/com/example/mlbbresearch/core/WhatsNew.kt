@@ -19,10 +19,18 @@ object WhatsNew {
         val details: String,
         val pr: Int,
         val issue: Int? = null,
-        val needsDeviceCheck: Boolean = false   // merged, but not yet confirmed on a phone
+        val needsDeviceCheck: Boolean = false,  // merged, but not yet confirmed on a phone
+        val version: String? = null             // the app version that brought it (from 37.20, owner 2026-11-14)
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "Version numbers go up with every change (now 37.20)",
+            "The app was still called version 37.19, as on 2026-11-08, although dozens of changes had come since, so " +
+                "two builds could not be told apart on the Home page. From now on the version goes up by one step " +
+                "with every change merged into the test branch: 37.20 is this one, the next is 37.21. Each What's new " +
+                "entry shows its version. Also: git now ignores the native build folder (app/.cxx), so it no longer " +
+                "shows as an untracked file on your phone; and Phase 1 of the development plan is complete.",
+            pr = 9, version = "37.20"),
         Entry("2026-11-14", Kind.IMPROVED, "Sphynx-Storage has three folders: Input, Output, Recordings",
             "Inside /CodeOnTheGoProjects/Sphynx-Storage: Input is where you put models and keys (.litertlm, .gguf, " +
                 ".tflite, groq_key.txt, kaggle.json, github_token.txt); Output holds what the app makes (training " +
@@ -439,5 +447,5 @@ object WhatsNew {
 
     fun counts(): Map<Kind, Int> = ENTRIES.groupingBy { it.kind }.eachCount()
 
-    fun ref(e: Entry): String = "#${e.pr}" + (e.issue?.let { " · issue #$it" } ?: "")
+    fun ref(e: Entry): String = (e.version?.let { "v$it · " } ?: "") + "#${e.pr}" + (e.issue?.let { " · issue #$it" } ?: "")
 }
