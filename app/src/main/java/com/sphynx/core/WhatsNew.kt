@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "Development plan: what every screen shows when loading, empty or failing",
+            "Phase 3: one way for each situation, used everywhere (docs/PHASE_3_STATE_MATRIX.md) - loading and progress " +
+                "(with Stop where it can stop), empty pages with one next step, errors with Try again, missing " +
+                "permissions with a Fix button, and a question before every delete or reset. It also lists the 11 " +
+                "delete / reset buttons that act today without asking. The app itself does not change yet (Phase 4).",
+            pr = 24, version = "37.34"),
         Entry("2026-11-14", Kind.IMPROVED, "Help \"?\" next to each setting, like the game",
             "As in the game's own settings: a small \"?\" now sits at the end of each button or switch that has an " +
                 "explanation. Tap it and the explanation opens in a bubble next to it; tap anywhere else to close it. " +
