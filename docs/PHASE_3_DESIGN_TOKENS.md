@@ -99,7 +99,7 @@ Line height is 1.4× for Inter text and 1.2× for pixel text. No text below 13sp
 3. State is never shown by colour alone: there's always a word or an icon too.
 4. Every drawn icon has a TalkBack label (`contentDescription`). Today there are 6 in the whole app (finding 17).
 5. Text scales with the phone's font-size setting. Labels wrap or end with "…", **never break inside a word** ("Equipmen/t", finding 23).
-6. Hold-"?" descriptions (owner rule) stay. On first run, a one-time hint points at the "?".
+6. Help "?" at each control (owner rule, 2026-11-14): 22dp circle, 44dp tap area, bubble in `surface`-dark with `text`, at most 320dp wide, closed by a tap elsewhere.
 
 ## 6. Components (to be built in Phase 4 from these tokens)
 - **Navigation and structure:** bottom bar, segmented sub-page row, card, section header.

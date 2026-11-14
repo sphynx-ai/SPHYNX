@@ -19,7 +19,7 @@
 | Element | Where | Behaviour |
 |---|---|---|
 | Sphynx mark, name and the AI status line ("AI off" / "Player on – Dry run" / …) | Header, left | Tapping the status opens Play |
-| Hold-"?" for descriptions (owner rule) | Header | Unchanged |
+| Help "?" (owner rule, 2026-11-14) | At the end of each control that has a description | Tap: the description in a bubble next to it (like the game's settings); tap elsewhere: closed |
 | **STOP** | Header, right, always | Unchanged: emergency stop of every engine |
 | Bottom bar: **Play · Hero & match · Knowledge · AI & models · Settings** | Bottom | 5 items, icon + label; the selected one is marked by colour **and** shape, not colour alone |
 | Floating panel | Over the game | Unchanged in this step (see Section 5) |

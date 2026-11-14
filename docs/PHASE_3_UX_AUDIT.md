@@ -93,7 +93,7 @@ Severity: **H** = blocks or confuses a core task, **M** = slows down or risks mi
     - MUTED on SURF 5.9:1, MUTED on SURF2 5.2:1;
     - ACCENT on SURF 5.6:1, RED 5.7:1, GREEN 9.3:1, GOLD 10.6:1.
 17. **M — Screen-reader labels.** There is 1 `contentDescription` in the main screen and 5 in the panel. Drawn icons need labels for TalkBack.
-18. **L — Help descriptions are hidden behind the hold-"?" button** (owner rule). This keeps pages short. But a new user may not discover it: *(phone check)* is the "?" noticeable enough on first run?
+18. **L — Help descriptions were hidden behind one hold-"?" button in the header.** That kept pages short, but a new user might not find it. **Resolved 2026-11-14 (owner):** a "?" at each control, tap for a bubble, like the game's settings.
 
 ### Visual system
 19. **M — Two palettes.** The main app uses `T` (blue accent) and the panel uses the brand palette (ice, titanium, obsidian). The brand in `docs/brand/` should become the one source, with semantic tokens (surface, text, accent, success, warning, danger, status levels).
