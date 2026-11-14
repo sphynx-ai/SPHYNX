@@ -2,7 +2,7 @@
 
 **Roadmap:** `docs/MASTER_DEVELOPMENT_PLAN.md`, Phase 1 (deliverables) and Section 9 (checklist).
 **Prepared by:** Claude Code, 2026-11-14 (UTC). Replaces the 2026-11-12 draft on branch `docs/phase-1-baseline`, which described the old repository and is out of date.
-**Status of this phase:** **IN PROGRESS.** Everything that can be checked from the repository and CI is answered below with evidence. Two items need the owner's phone (Section 2).
+**Status of this phase:** **COMPLETE (2026-11-14).** Every checklist item is answered with evidence, including the owner's working copy (Section 2), and the owner decided the versioning (Section 7, risk 3). The risks in Section 7 stay open for the phases that own them.
 
 Statuses follow the plan's definitions (Section 1 of the plan). A green CI run is **VERIFIED** evidence that the app builds and its unit tests pass. It is not evidence of device behaviour.
 
@@ -23,23 +23,17 @@ Statuses follow the plan's definitions (Section 1 of the plan). A green CI run i
 | Leftover branches | `test/owner-2026-11-10` (old name of the test branch) and `test/gguf-spike` (GGUF phone test) are both fully contained in `sphynx-test-branch`. The cloud session may not delete branches; the owner can | `git merge-base` | VERIFIED |
 | Debug uploads | branch `recordings-for-debugging`, last upload `7365593` (2026-11-14). Uploads to the new repository work from the phone | `git log` | VERIFIED |
 
-## 2. Owner's working copy (checklist items 1–2) — AWAITING OWNER
+## 2. Owner's working copy (checklist items 1–2) — VERIFIED 2026-11-14
 
-From the owner's terminal output and build logs on 2026-11-14:
+Output of `git status`, `git log --oneline -1` and `git remote -v`, run by the owner in the phone's project folder on 2026-11-14:
 
 | Item | Value | Status |
 |---|---|---|
-| Folder | `/storage/emulated/0/CodeOnTheGoProjects/SPHYNX` | REPORTED (build log) |
-| Remote | `https://github.com/sphynx-ai/SPHYNX` | REPORTED (terminal) |
-| Branch, commit | `sphynx-test-branch`; the last confirmed build was `a041aae` (PR #6) | REPORTED (build log) |
-| Clean working tree | **unknown**. Code on the Go rewrites `.cg/gradle-sync/*` on every sync, and those files are still committed on `main` (Section 7, risk 2) | AWAITING OWNER |
-
-**To close items 1–2, run in the project folder and send the output:**
-```
-git status
-git log --oneline -1
-```
-Any local changes the output shows are kept, not overwritten.
+| Folder | `/storage/emulated/0/CodeOnTheGoProjects/SPHYNX` | VERIFIED |
+| Remote | `https://github.com/sphynx-ai/SPHYNX` (fetch and push) | VERIFIED |
+| Branch | `sphynx-test-branch`, tracking `origin/sphynx-test-branch` | VERIFIED |
+| Commit | `a041aae` (PR #6). PRs #7 and #8 were merged afterwards; the next `git pull` brings them | VERIFIED |
+| Local changes | **none**. The only untracked item was `app/.cxx/`, the native build folder, which git now ignores (`.gitignore`, this PR) | VERIFIED |
 
 ## 3. Build and test baseline (checklist item 5)
 
@@ -91,7 +85,7 @@ Status is about each phase's **acceptance criteria**, not whether related code e
 
 | Phase | What exists today | Status |
 |---:|---|---|
-| 1 Baseline | This report | IN PROGRESS |
+| 1 Baseline | This report | COMPLETE (2026-11-14) |
 | 2 Universal architecture | `universal/`, `adapters/MlbbAdapter`, `engines/`. Most game logic is still MLBB-specific inside `game/`, `vision/` and `ai/`. No documented, versioned game-state contract | PARTIALLY STARTED; acceptance criteria unmet |
 | 3 UI/UX blueprint | Brand identity approved 2026-11-14 (`docs/brand/`: symbol, wordmark, colours, type, rules). No UX audit or design system for the app yet | PARTIALLY STARTED |
 | 4 UI/UX implementation | New icon and restyled floating panel (PR #6); hold-"?" descriptions (PR #4). App pages not yet on the brand palette or fonts | PARTIALLY STARTED |
@@ -120,7 +114,7 @@ Status is about each phase's **acceptance criteria**, not whether related code e
 |---:|---|---|---|
 | 1 | **`main` is 84 commits behind the test branch** | `main` doesn't hold the current app; "only phone-tested work goes to `main`" means a large batch is waiting | Owner confirms the device checks (Section 6); then move tested work to `main` in one reviewed PR |
 | 2 | **`main` still tracks `.cg/gradle-sync/*`** (Code on the Go's build cache); the test branch ignores it | Switching branches on the phone fails until the files are reset (seen 2026-11-14) | Fixed automatically when the test branch reaches `main` |
-| 3 | **Version stuck at 37.19 / 3719** since 2026-11-08 | Builds can't be told apart by version; only the git commit (recorded in recordings) identifies them | Owner decision: adopt a version bump per merged PR or per phone-tested batch |
+| 3 | **Version stuck at 37.19 / 3719** since 2026-11-08 | Builds can't be told apart by version; only the git commit (recorded in recordings) identifies them | **RESOLVED 2026-11-14.** Owner chose one step per merged PR (37.20, 37.21, …). The version is written once in `app/build.gradle.kts`; the newest What's new entry carries it and a unit test checks they match |
 | 4 | **Native build state on shared storage** (`app/.cxx`) | "build.ninja still dirty" after native changes; fixed by deleting `app/.cxx` | Watch; if it recurs, move the native build folder off shared storage |
 | 5 | **One large UI file** (`MainActivity`, 3,198 lines) | Hard to change safely | Phase 3/4: split only after the UX audit |
 | 6 | **No instrumented or UI tests**; device behaviour depends on manual phone checks | Regressions in UI and permissions are found late | Phase 5/16; keep pure logic unit-tested meanwhile |
@@ -133,10 +127,10 @@ Status is about each phase's **acceptance criteria**, not whether related code e
 
 ## 8. Earliest incomplete phase and next task (checklist item 7)
 
-- **Earliest incomplete phase: Phase 1.** Only items 1–2 (the owner's working copy) remain open.
+- **Phase 1 is complete.** The earliest incomplete phase is **Phase 2** (Universal Architecture Audit and Foundation).
 - **Owner tasks to close Phase 1:**
-  1. Send the output of `git status` and `git log --oneline -1` from the phone's project folder.
-  2. Decide on versioning (risk 3).
+  1. ~~Send the output of `git status` and `git log --oneline -1`~~ — done 2026-11-14 (Section 2).
+  2. ~~Decide on versioning (risk 3)~~ — one step per merged PR, 2026-11-14.
   3. Optional: delete `test/owner-2026-11-10`, `test/gguf-spike` and other merged branches on GitHub.
 - **Then Phase 2, submilestone 1:** inventory the modules, dependencies, MLBB-specific assumptions and runtime paths before any refactor (read-only, report first).
 
@@ -144,11 +138,11 @@ Status is about each phase's **acceptance criteria**, not whether related code e
 
 1. **Phase / submilestone:** Phase 1 — repository baseline and verification.
 2. **Repository / branch / commit:** `sphynx-ai/SPHYNX`; `main` `162eaf3`; `sphynx-test-branch` `9c8d6e0`.
-3. **Working tree:** cloud container clean; owner's phone AWAITING (Section 2).
+3. **Working tree:** cloud container clean; owner's phone clean (Section 2, VERIFIED 2026-11-14).
 4. **Authorized scope:** owner, 2026-11-14: "Now we can start our Master Development Plan, lets start with phase 1."
 5. **Files changed:** this document; the plan's Phase 1 status and Section 9 checkpoint. No code.
 6. **Acceptance:** Phase 1 deliverables — baseline report, module and dependency inventory, build and test results, risk register, phase mapping, earliest incomplete task — all present; checklist items 3–7 answered with evidence; items 1–2 open.
 7. **Evidence:** CI runs 43531789404 and 43625350104 (dated above); `git` commands listed in each row.
-8. **Risks / blockers:** Section 7. Blocker for closing Phase 1: the owner's working-copy check.
+8. **Risks / blockers:** Section 7. None block closing Phase 1.
 9. **Decisions / deviations:** none. No phase reordering; no code changed.
 10. **Next task / owner decisions:** Section 8.

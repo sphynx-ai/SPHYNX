@@ -23,3 +23,7 @@ Thumbs.db
 
 # Large media: kept outside the repository (recordings stay in Git history / the Videos branch)
 *.mp4
+
+# native (llama.cpp) build output: CMake / ninja working folders (owner phone check, 2026-11-14)
+.cxx/
+.externalNativeBuild/

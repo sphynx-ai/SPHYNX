@@ -24,6 +24,15 @@ class WhatsNewTest {
         assertEquals(e.size, e.map { it.pr to (it.date >= "2026-11-14") }.toSet().size)
     }
 
+    // one version step per merged pull request (owner, 2026-11-14): the newest entry carries the app's
+    // version, so a pull request that forgets to raise it fails here
+    @Test fun theNewestEntryCarriesTheAppVersion() {
+        assertEquals(com.example.mlbbresearch.BuildConfig.VERSION_NAME, e.first().version)
+        val versions = e.mapNotNull { it.version }
+        assertEquals(versions.size, versions.toSet().size)
+        assertEquals(versions.sortedDescending(), versions)
+    }
+
     @Test fun groupingKeepsEveryEntry() {
         assertEquals(e.size, WhatsNew.byDate().sumOf { it.second.size })
         assertEquals(e.size, WhatsNew.counts().values.sum())
