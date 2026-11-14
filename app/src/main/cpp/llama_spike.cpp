@@ -26,13 +26,22 @@ static std::string jsonEscape(const std::string & s) {
 }
 
 static bool g_init = false;
+// llama.cpp's own warnings and errors during the current run, returned in the report: when a model
+// does not load, they say why (bad header, unknown architecture, out of memory), not just "failed"
+static std::string g_log;
 
 void sphynx_llama_init(void (*log)(int level, const char * text)) {
     if (g_init) return;
     static void (*s_log)(int, const char *) = nullptr;
     s_log = log;
     llama_log_set([](ggml_log_level level, const char * text, void *) {
-        if (s_log && level >= GGML_LOG_LEVEL_WARN) s_log((int) level, text);
+        // a continuation piece (progress dots, the rest of a line) belongs to the message before it
+        static ggml_log_level last = GGML_LOG_LEVEL_INFO;
+        if (level == GGML_LOG_LEVEL_CONT) level = last; else last = level;
+        if (level < GGML_LOG_LEVEL_WARN || !text) return;
+        g_log += text;
+        if (g_log.size() > 4000) g_log.erase(0, g_log.size() - 4000);
+        if (s_log) s_log((int) level, text);
     }, nullptr);
     llama_backend_init();
     g_init = true;
@@ -48,6 +57,7 @@ std::string sphynx_llama_run(const std::string & path, const std::string & promp
     int nPrompt = 0, nGen = 0;
     uint64_t sizeBytes = 0;
     bool templated = false;
+    g_log.clear();
 
     llama_model_params mp = llama_model_default_params();
     mp.n_gpu_layers = 0;
@@ -116,6 +126,7 @@ done:
              "\"loadMs\":%lld,\"promptTokens\":%d,\"promptMs\":%lld,\"genTokens\":%d,\"genMs\":%lld,\"sizeBytes\":%llu,\"threads\":%d,\"templated\":%s",
              loadMs, nPrompt, promptMs, nGen, genMs, (unsigned long long) sizeBytes, (int) threads, templated ? "true" : "false");
     std::string json = std::string("{\"ok\":") + (err.empty() ? "true" : "false") + ",\"error\":\"" + jsonEscape(err) +
-                       "\",\"model\":\"" + jsonEscape(desc) + "\"," + nums + ",\"text\":\"" + jsonEscape(out) + "\"}";
+                       "\",\"model\":\"" + jsonEscape(desc) + "\"," + nums + ",\"text\":\"" + jsonEscape(out) +
+                       "\",\"log\":\"" + jsonEscape(g_log) + "\"}";
     return json;
 }

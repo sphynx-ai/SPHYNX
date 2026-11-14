@@ -35,4 +35,31 @@ class LlamaCppSpikeTest {
     @Test fun threadsStayBetweenOneAndFour() {
         assertTrue(LlamaCppSpike.threads() in 1..4)
     }
+
+    // the picked file is checked before llama.cpp loads it, so a bad download says what is wrong
+    @Test fun aRealGgufHeaderPasses() {
+        val head = "GGUF".toByteArray() + byteArrayOf(3, 0, 0, 0)
+        assertEquals(null, LlamaCppSpike.checkHeader(head, 400L * 1024 * 1024))
+        assertEquals(null, LlamaCppSpike.checkHeader(head, -1))   // size unknown: let llama.cpp decide
+    }
+
+    @Test fun badDownloadsAreNamed() {
+        assertTrue(LlamaCppSpike.checkHeader("GGUF".toByteArray(), 2048)!!.contains("did not finish"))
+        assertTrue(LlamaCppSpike.checkHeader("<!DOCTYPE html>".toByteArray(), 9000)!!.contains("web page"))
+        assertTrue(LlamaCppSpike.checkHeader("version https://git-lfs.github.com/spec/v1".toByteArray(), 130)!!.contains("Git LFS"))
+        assertTrue(LlamaCppSpike.checkHeader(ByteArray(0), 0)!!.contains("empty"))
+        assertTrue(LlamaCppSpike.checkHeader(byteArrayOf(0x50, 0x4B, 3, 4), 5000)!!.contains("50 4B 03 04"))
+    }
+
+    @Test fun aFailureShowsWhatLlamaCppSaid() {
+        val log = "llama_model_load: error loading model: unknown model architecture: 'qwen9'\n.......\n" +
+            "llama_model_load_from_file_impl: failed to load model\n"
+        val j = JSONObject().put("ok", false).put("error", "the model could not be loaded").put("log", log)
+        val r = LlamaCppSpike.format("q.gguf", j, 10, "read in place and copied: both failed", 1800)
+        assertTrue(r.startsWith("q.gguf: FAILED - the model could not be loaded\n"))
+        assertTrue(r.contains("File: read in place and copied: both failed"))
+        assertTrue(r.contains("Free memory: 1800 MB"))
+        assertTrue(r.contains("unknown model architecture: 'qwen9'"))
+        assertTrue(!r.contains("......."))   // progress dots are left out
+    }
 }
