@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "Development plan: Phase 2 has started (architecture map)",
+            "Phase 2 of the development plan makes the app's core work for any MOBA, with MLBB as its first game. Its " +
+                "first step maps the app as it is today: which parts are game-neutral and which assume MLBB, how the " +
+                "parts depend on each other, the path from a screen frame to a touch, and how the AI models are kept " +
+                "within the safety rules (docs/PHASE_2_ARCHITECTURE_MAP.md). No change to the app itself.",
+            pr = 10, version = "37.21"),
         Entry("2026-11-14", Kind.IMPROVED, "Version numbers go up with every change (now 37.20)",
             "The app was still called version 37.19, as on 2026-11-08, although dozens of changes had come since, so " +
                 "two builds could not be told apart on the Home page. From now on the version goes up by one step " +
