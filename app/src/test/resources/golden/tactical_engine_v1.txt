@@ -1,0 +1,22 @@
+# TacticalEngine golden decisions, v1 - recorded 2026-11-14 from CI (sphynx-test-branch after #15, v37.26).
+# One line per scenario of TacticalEngineGoldenTest, in its fixed order:
+#   name | intent | move x,y | casts | target label hp | reason
+# A change here is a change of MLBB behaviour: only on purpose, in the same PR, with the reason in the PR.
+# Known (recorded as is, not fixed here): some engine memory survives TacticalEngine.reset() between scenarios -
+# enemy_tower_on_minimap still "holds position at monster (last seen at 30% HP)" from the Turtle scenario before it.
+nothing_around | PUSH | move 0.00,0.00 | casts - | target - -1.00 | Mid lane (fast wave clear, 1-3-1 semi-roam, objective control): at Mid lane clash point: waiting for minion wave (farm)
+enemy_minion_wave | LANE_CLEAR | move 0.99,-0.17 | casts s2,s1 | target 3 minions 0.30 | pushing the wave (3), hitting one at 30%
+weak_enemy_in_reach | ENGAGE | move 0.99,-0.17 | casts attack,s1,s2,ult | target enemy #1 0.12 | finishing enemy at 12% HP
+outnumbered_low_hp | RETREAT | move -0.82,0.57 | casts s1 | target away -1.00 | outnumbered 2 vs 1
+low_hp_alone | RECALL | move 0.00,0.00 | casts recall | target - -1.00 | low HP, safe to recall
+even_duel_with_ally | ENGAGE | move 0.99,-0.14 | casts s1,s2,ult | target enemy #4 0.75 | target HP 75%, 35 away, engage 64, survival 41
+marksman_poke_range | PUSH | move 0.00,0.00 | casts - | target - -1.00 | Mid lane (fast wave clear, 1-3-1 semi-roam, objective control): at Mid lane clash point: waiting for minion wave (fight)
+enemy_dashing_at_me | RETREAT | move -0.83,0.56 | casts - | target away -1.00 | HP 60%, survival 17
+jungle_creep | JUNGLE | move 0.96,-0.27 | casts attack | target monster 0.80 | Molten Fiend (orange buff) HP 80%
+turtle_low_with_ally | OBJECTIVE | move 0.94,-0.35 | casts attack,s2,s1 | target objective 0.30 | turtle HP 30%, with 1 allies
+enemy_tower_on_minimap | JUNGLE | move 0.60,0.80 | casts attack,s2,s1 | target monster 0.30 | holding position at monster (last seen at 30% HP) (keeping out of enemy tower range)
+before_ultimate_level_2 | GROUP | move -0.81,0.58 | casts - | target enemy #7 0.90 | positioning: engage 29 is not enough, keeping distance
+retreat_plan_enemy_far | PUSH | move 0.00,0.00 | casts - | target - -1.00 | Mid lane (fast wave clear, 1-3-1 semi-roam, objective control): at Mid lane clash point: waiting for minion wave (retreat)
+dead | IDLE | move 0.00,0.00 | casts - | target - -1.00 | waiting
+shop_open | IDLE | move 0.00,0.00 | casts - | target - -1.00 | waiting
+no_self_seen | IDLE | move 0.00,0.00 | casts - | target - -1.00 | waiting

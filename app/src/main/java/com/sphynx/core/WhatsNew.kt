@@ -24,13 +24,20 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "A safety net for how the Player plays MLBB",
+            "Phase 2: 16 fixed MLBB situations (a minion wave, a weak enemy in reach, low HP alone, outnumbered, an " +
+                "enemy dashing at you, a jungle camp, the Turtle, an enemy tower, before the ultimate, dead, shop open...) " +
+                "now go through the Player's fast rules in a test, and the decisions are compared with the recorded " +
+                "ones. The coming clean-ups of the code must keep MLBB play exactly the same; any change shows up here. " +
+                "Also: the new app id and the com.sphynx code name are confirmed on your phone. No change to the app itself.",
+            pr = 16, version = "37.26"),
         Entry("2026-11-14", Kind.IMPROVED, "The code is now called com.sphynx inside too",
             "The app's code still carried its first name (com.example.mlbbresearch) inside; it is now com.sphynx, " +
                 "the same as the app id. You see no difference, with one exception: Android lists the Accessibility " +
                 "service under its new inside name, so turn Sphynx on again once in Accessibility. Please check that a " +
                 "GGUF model still loads (Model page): its native bridge carries the name. New tests now check the names " +
                 "the compiler cannot see (native functions, shrinker rules, manifest).",
-            pr = 15, needsDeviceCheck = true, version = "37.25"),
+            pr = 15, version = "37.25"),
         Entry("2026-11-14", Kind.IMPROVED, "Development plan: a written contract for the game state",
             "Phase 2, step 3: the game-neutral description of a match moment (what the decision checks and the " +
                 "decision log read) now has a version number and written rules (docs/contracts/UNIVERSAL_MATCH_STATE.md): " +
@@ -45,7 +52,7 @@ object WhatsNew {
                 "most settings come back by themselves from the backups in Sphynx-Storage/Output once All files access " +
                 "is on (restart the app once); models and keys are read from Sphynx-Storage/Input as before. Check " +
                 "the switches once. When the new app works, uninstall the old one.",
-            pr = 13, needsDeviceCheck = true, version = "37.23"),
+            pr = 13, version = "37.23"),
         Entry("2026-11-14", Kind.IMPROVED, "Development plan: the target design for the app's parts",
             "Phase 2, step 2: a written decision (docs/adr/0001-layered-architecture.md) splits the app into four " +
                 "layers - phone services, the game-neutral core, one adapter per game (MLBB first) and the app " +
