@@ -31,6 +31,8 @@ In the app: `res/drawable/ic_sphynx_fg.xml`, `ic_sphynx_bg.xml`, `ic_sphynx_mono
 
 Sora Semibold for titles; Inter for advice, labels and buttons; JetBrains Mono for numbers, timers and logs. (Not yet applied inside the app.)
 
+**Inside the app (owner, 2026-11-14):** a pixel-style font (bundled, open license; candidate Pixelify Sans, to be picked from a phone sample) for headings and numbers, and Inter for running text and buttons. See `docs/PHASE_3_DESIGN_TOKENS.md`.
+
 ## Rules
 
 - Clear space: one bar width (a quarter of the symbol) on every side.

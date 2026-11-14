@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "Development plan: the new look (colours, fonts, sizes)",
+            "Phase 3: the design rules for the new look (docs/PHASE_3_DESIGN_TOKENS.md): one set of brand colours for the " +
+                "app and the floating panel; your choice of fonts - a pixel-style font for headings and numbers and Inter " +
+                "for longer text, both inside the app so every phone looks the same; bigger text (descriptions at least " +
+                "14); buttons that are easy to read (dark text on light, a darker red STOP); every tap target at least " +
+                "48; states always with a word, not only a colour. The app itself does not change yet (Phase 4).",
+            pr = 22, version = "37.32"),
         Entry("2026-11-14", Kind.IMPROVED, "Development plan: the new layout of the app (5 sections)",
             "Phase 3: from your screenshots and your yes, the plan for the app's layout: five sections in a bar at the " +
                 "bottom - Play, Hero & match, Knowledge, AI & models, Settings & help - instead of 14 tabs; one place " +
