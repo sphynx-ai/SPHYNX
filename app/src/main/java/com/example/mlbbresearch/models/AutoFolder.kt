@@ -99,16 +99,28 @@ object AutoFolder {
         val cr = ctx.contentResolver
         treeUri?.let { tree ->
             try {
-                val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
-                cr.query(children, arrayOf(
-                    DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                    DocumentsContract.Document.COLUMN_SIZE, DocumentsContract.Document.COLUMN_LAST_MODIFIED
-                ), null, null, null)?.use { c ->
-                    while (c.moveToNext()) {
-                        val doc = DocumentsContract.buildDocumentUriUsingTree(tree, c.getString(0))
-                        out.add(Entry(c.getString(1) ?: continue, c.getLong(2), c.getLong(3)) { cr.openInputStream(doc) })
+                // the chosen folder's files, then those in its Input and Output folders
+                fun listDoc(docId: String, depth: Int) {
+                    val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId)
+                    cr.query(children, arrayOf(
+                        DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                        DocumentsContract.Document.COLUMN_SIZE, DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+                        DocumentsContract.Document.COLUMN_MIME_TYPE
+                    ), null, null, null)?.use { c ->
+                        while (c.moveToNext()) {
+                            val name = c.getString(1) ?: continue
+                            if (c.getString(4) == DocumentsContract.Document.MIME_TYPE_DIR) {
+                                if (depth == 0 && (name.equals(com.example.mlbbresearch.core.StorageLayout.INPUT, true) ||
+                                        name.equals(com.example.mlbbresearch.core.StorageLayout.OUTPUT, true))) listDoc(c.getString(0), 1)
+                                continue
+                            }
+                            if (out.any { it.name == name }) continue
+                            val doc = DocumentsContract.buildDocumentUriUsingTree(tree, c.getString(0))
+                            out.add(Entry(name, c.getLong(2), c.getLong(3)) { cr.openInputStream(doc) })
+                        }
                     }
                 }
+                listDoc(DocumentsContract.getTreeDocumentId(tree), 0)
             } catch (e: Exception) {
                 Diag.error("Reading the chosen folder", e)
                 status = "cannot read the chosen folder: choose it again"
@@ -116,16 +128,19 @@ object AutoFolder {
         }
         // the storage folder itself when all files access is on, then the app's own folder (the old
         // MLBB-Research folders are not read - owner, 2026-11-11)
-        for (dir in listOfNotNull(com.example.mlbbresearch.core.Storage.dir(), localDir(ctx)))
+        // (Input first, then Output, then the top of the folder: files put there by hand or by older versions)
+        val st = com.example.mlbbresearch.core.Storage
+        val lay = com.example.mlbbresearch.core.StorageLayout
+        for (dir in listOfNotNull(st.dir(lay.INPUT), st.dir(lay.OUTPUT), st.dir(), localDir(ctx)?.let { java.io.File(it, lay.INPUT) }, localDir(ctx)))
             dir.listFiles()?.forEach { f -> if (f.isFile && out.none { it.name == f.name }) out.add(Entry(f.name, f.length(), f.lastModified()) { f.inputStream() }) }
         // the app's own files saved in Download without the permission (exports, Kaggle results): the app's
         // Download/Sphynx-Storage
         try {
-            val rel = com.example.mlbbresearch.core.Storage.downloadsRel() + "/"
+            val rels = com.example.mlbbresearch.core.Storage.readableDownloadRels()
             cr.query(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                 arrayOf(android.provider.MediaStore.Downloads._ID, android.provider.MediaStore.Downloads.DISPLAY_NAME,
                     android.provider.MediaStore.Downloads.SIZE, android.provider.MediaStore.Downloads.DATE_MODIFIED),
-                android.provider.MediaStore.Downloads.RELATIVE_PATH + " = ?", arrayOf(rel), null)?.use { c ->
+                com.example.mlbbresearch.core.Storage.relIn(rels), rels.toTypedArray(), null)?.use { c ->
                 while (c.moveToNext()) {
                     val name = c.getString(1) ?: continue
                     if (out.any { it.name == name }) continue
@@ -217,6 +232,11 @@ object AutoFolder {
         Thread {
             val found = ArrayList<String>()
             try {
+                // sort the folder into Input / Output / Recordings first (owner, 2026-11-14)
+                try {
+                    val moved = com.example.mlbbresearch.core.Storage.organize()
+                    if (moved.isNotEmpty()) Diag.info("Folder sorted into Input / Output / Recordings: " + moved.joinToString("; "))
+                } catch (e: Exception) { Diag.error("Sorting the folder", e) }
                 val files = list(app)
                 if (treeUri == null && files.isEmpty()) {
                     status = "nothing to read yet: allow all files access, or choose the /$FOLDER_PATH folder (Model page)"

@@ -28,7 +28,7 @@ import java.util.concurrent.Executors
 //  5. downloads the results straight into Download/Sphynx-Storage, and the folder scan loads them
 // The notebooks run unattended there (their Kaggle mode) and keep what they learned: the last
 // detector / networks go back up with the next run.
-// Needs kaggle.json (kaggle.com > Settings > API > Create New Token) in the Sphynx-Storage folder;
+// Needs kaggle.json (kaggle.com > Settings > API > Create New Token) in the Sphynx-Storage/Input folder;
 // for the small model, accept the Gemma licence on kaggle.com once.
 object CloudTrain {
 
@@ -73,11 +73,11 @@ object CloudTrain {
         val byName = LinkedHashMap<String, Input>()
         try { for (e in AutoFolder.files(ctx)) byName[e.name] = Input(e.name, e.size, e.open) } catch (e: Exception) { }
         // the app's own files in Download/Sphynx-Storage (exports, zips, results)
-        val base = com.example.mlbbresearch.core.Storage.downloadsRel() + "/"
+        val rels = com.example.mlbbresearch.core.Storage.readableDownloadRels()
         try {
             ctx.contentResolver.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                 arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME, MediaStore.Downloads.SIZE, MediaStore.Downloads.RELATIVE_PATH),
-                MediaStore.Downloads.RELATIVE_PATH + " = ?", arrayOf(base), null)?.use { c ->
+                com.example.mlbbresearch.core.Storage.relIn(rels), rels.toTypedArray(), null)?.use { c ->
                 while (c.moveToNext()) {
                     val name = c.getString(1) ?: continue
                     val uri = ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, c.getLong(0))
@@ -196,7 +196,7 @@ object CloudTrain {
     // ---------------- the button ----------------
 
     fun start(ctx: Context, j: Job, done: (String) -> Unit) {
-        if (!ready()) { done("Put kaggle.json in the Sphynx-Storage folder first (kaggle.com > Settings > API > Create New Token)"); return }
+        if (!ready()) { done("Put kaggle.json in the Sphynx-Storage/Input folder first (kaggle.com > Settings > API > Create New Token)"); return }
         synchronized(busy) { if (j in busy || Cfg.raw("ct_run_${j.key}") != null) { done("${j.label}: already training"); return }; busy.add(j) }
         val c = ctx.applicationContext
         done("${j.label}: preparing…")
@@ -566,8 +566,11 @@ object CloudTrain {
     }
 
     private fun save(c: Context, name: String, input: InputStream) {
+        // what the app loads (detector, labels, networks, model) goes to Input; the rest (best.pt,
+        // reports, trainable zips) to Output (owner, 2026-11-14)
+        val area = com.example.mlbbresearch.core.StorageLayout.areaFor(name) ?: com.example.mlbbresearch.core.StorageLayout.OUTPUT
         // v37.19: straight into the app's folder when all files access is on (the folder scan reads it)
-        com.example.mlbbresearch.core.Storage.dir()?.let { d ->
+        com.example.mlbbresearch.core.Storage.dir(area)?.let { d ->
             val tmp = java.io.File(d, "$name.part")
             tmp.outputStream().use { input.copyTo(it, 1 shl 16) }
             val dst = java.io.File(d, name); dst.delete()
@@ -575,7 +578,7 @@ object CloudTrain {
             return
         }
         val cr = c.contentResolver
-        val rel = com.example.mlbbresearch.core.Storage.downloadsRel() + "/"
+        val rel = com.example.mlbbresearch.core.Storage.downloadsRel(area) + "/"
         val existing = cr.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.Downloads._ID),
             MediaStore.Downloads.DISPLAY_NAME + " = ? AND " + MediaStore.Downloads.RELATIVE_PATH + " = ?", arrayOf(name, rel), null)
             ?.use { if (it.moveToFirst()) ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, it.getLong(0)) else null }

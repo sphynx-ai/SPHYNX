@@ -233,10 +233,11 @@ object ScreenDatasetCollector {
 
     private fun write(c: Context, sub: String, name: String, mime: String, body: (java.io.OutputStream) -> Unit) {
         // v37.19: straight into the app's folder when all files access is on
-        com.example.mlbbresearch.core.Storage.dir("screen_dataset" + if (sub.isEmpty()) "" else "/$sub")?.let { d ->
+        // under Output/ (owner, 2026-11-14)
+        com.example.mlbbresearch.core.Storage.dir(com.example.mlbbresearch.core.StorageLayout.OUTPUT + "/screen_dataset" + if (sub.isEmpty()) "" else "/$sub")?.let { d ->
             java.io.File(d, name).outputStream().use(body); return
         }
-        val rel = com.example.mlbbresearch.core.Storage.downloadsRel("screen_dataset") + if (sub.isEmpty()) "" else "/$sub"
+        val rel = com.example.mlbbresearch.core.Storage.downloadsRel(com.example.mlbbresearch.core.StorageLayout.OUTPUT + "/screen_dataset") + if (sub.isEmpty()) "" else "/$sub"
         // a file of that name may already be there (classes.txt from an earlier run, a re-install):
         // overwrite it instead of failing on the duplicate name
         val existing = try {

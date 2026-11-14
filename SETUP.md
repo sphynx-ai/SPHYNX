@@ -24,7 +24,7 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
 
 1. Setup page: turn on the accessibility service (it is a NEW service name, so turn it on again),
    allow Display over other apps and Notifications.
-2. Download the Gemma 4 E2B strategic model `.litertlm` file (Model page link, accept the licence) into the Sphynx-Storage folder,
+2. Download the Gemma 4 E2B strategic model `.litertlm` file (Model page link, accept the licence) into Sphynx-Storage/Input,
    then Model page -> *Choose the folder*. The app copies and loads it by itself (see "One folder" below).
 3. Home: Start screen capture, then switch on Player / Drafter / Builder.
 4. Setup page: calibrate the buttons (see below).
@@ -77,7 +77,7 @@ your Kotlin is older than 2.3: change `latest.release` to `0.16.1`.
 
 ## Online meta with Groq (Meta page)
 
-- Get a free API key at console.groq.com/keys and save it as `groq_key.txt` (key on the first line) in the Sphynx-Storage folder.
+- Get a free API key at console.groq.com/keys and save it as `groq_key.txt` (key on the first line) in Sphynx-Storage/Input.
 - The default model, `openai/gpt-oss-120b`, searches the web with Groq's built-in browser search tool. It looks
   for the latest patch notes, hero adjustments, tier lists and guides. `openai/gpt-oss-20b` also searches (faster,
   less accurate). Other models answer from memory only. To use another model, put its name in `groq_model.txt` in the folder.
@@ -384,7 +384,7 @@ in reach: secured first unless a good fight is on) -> then the role's own order:
 ## Tactical network: only the reliable parts are used (v33)
 
 - The notebook writes `policy_info.json` next to `policy.tflite`: how well the joystick and each button did on your
-  most recent play. Put both files in the Sphynx-Storage folder.
+  most recent play. Put both files in Sphynx-Storage/Input.
 - The app then uses the network's joystick only with 40%+ (every move counted equally) on 300+ checked moments and
   15+ of each move, and a button only with 20+ presses checked and 40%+ of its presses right. The rest stays with
   the rules. Without the file, everything it suggests is used (as before).
@@ -416,7 +416,7 @@ lithowanderer, crab, cyclone_eye, jungle_creep, tower_ally, tower_ally_plated, t
 2. Quick: zip `screen_dataset`, open `notebooks/train_screen_detector.ipynb` in Colab (T4 GPU), run all, choose the
    zip. Best: upload the folder to a Roboflow project, fix and add boxes (ally towers are never drawn by the app),
    generate a version and use the notebook's Roboflow cell instead.
-3. Put `mlbb_screen_detector.tflite` and `screen_labels.txt` in the Sphynx-Storage folder; the app loads them.
+3. Put `mlbb_screen_detector.tflite` and `screen_labels.txt` in Sphynx-Storage/Input; the app loads them.
 
 What the AI does with it (only filling gaps in the colour vision):
 - jungle monsters with no HP bar near them = monsters nobody has hit yet: the AI walks up and attacks
@@ -484,6 +484,7 @@ Pictures are taken from the 800-px capture, so tiny far-away things are hard.
 ## One folder for all your files (v26)
 
 1. With your file manager, make the folder **CodeOnTheGoProjects/Sphynx-Storage** at the top of the phone's storage (next to Download). (Before v37.19 this was Download/MLBB-Research.)
+   Inside it the app keeps three folders: **Input** (put models and keys here), **Output** (what the app makes: training pictures, exports, training results, backups) and **Recordings** (debug data, uploaded then deleted). The app creates them and moves the files it recognises into them by itself.
    App -> Model page -> *Allow all files access* -> turn it on: the app then reads the folder by itself AND saves its exports,
    training pictures, Kaggle results and backups in it. Without it, use the folder picker below and the app's own files go to Download/MLBB-Research.
 2. Put the downloaded files in it:
@@ -519,7 +520,7 @@ The AI now has three brains, each at its own speed:
 3. Open `notebooks/train_tactical_policy.ipynb` in Google Colab, upload the CSV, run all cells. It trains a small
    network (9 joystick choices: the 8 directions or stand; 6 buttons: attack, skill 1, skill 2, ultimate, spell,
    recall), shows how often it matches your most recent play, and makes `policy.tflite` (about 55 KB).
-4. Put `policy.tflite` in the Sphynx-Storage folder; the app loads it by itself. It runs in about a millisecond per decision.
+4. Put `policy.tflite` in Sphynx-Storage/Input; the app loads it by itself. It runs in about a millisecond per decision.
 - How it is used: its joystick choice in fights and when lining up on a minion wave (from 55% confidence, setting on
   the Model page), its buttons when it is sure (60%, attack 50%) and the skill is ready. Retreat, recall / Regen, the
   tower circle, finishing monsters and no early duels always come first; jungle / lane / objective routes stay with
@@ -709,7 +710,7 @@ need a few matches per hero.
    or go to colab.research.google.com > GitHub > paste this repo's URL). Pick a T4 GPU and run every cell.
    You need a free Roboflow account and its API key. Default dataset: "Mobile Legends Minimap Dataset" by gladi
    (Roboflow Universe, CC BY 4.0).
-3. It downloads `mlbb_detector.tflite` and `labels.txt`. Put both files in the Sphynx-Storage folder; the app loads them by itself.
+3. It downloads `mlbb_detector.tflite` and `labels.txt`. Put both files in Sphynx-Storage/Input; the app loads them by itself.
 4. The Home preview shows detections as cyan boxes, and Gemma's strategy prompt gets the counts
    (for example "1 turtle_icon, 4 hero_icon").
 
@@ -747,7 +748,7 @@ or the defaults, and every hero keeps learning cast modes and aiming from play. 
 a patch can change a skill, so a Groq fetch or a learned result replaces them.
 
 Tactical networks (v36.9) - nothing to set in the notebook: upload all your mlbb-my-play and mlbb-live CSV files, run
-all cells, download `mlbb_policies.zip`, put it in the Sphynx-Storage folder. Inside: one network for ALL heroes (it also
+all cells, download `mlbb_policies.zip`, put it in Sphynx-Storage/Input. Inside: one network for ALL heroes (it also
 gets each hero's type - role, melee / ranged, starts fights / protects, early / late game - from the hero_type column of
 the export) and one network per hero with 1500+ moments. The app unpacks it and, while you play, loads your hero's own
 network, else the all-heroes one. The Model page lists the networks on the phone. Older single policy.tflite files still work.
@@ -998,7 +999,7 @@ New:
 
 ## Two Gemma models: Gemma 4 E2B strategic + small tactical model (v36.17)
 
-Files (put them in the Sphynx-Storage folder; the app sorts them by itself):
+Files (put them in Sphynx-Storage/Input; the app sorts them by itself):
 - strategic: `gemma-4-E2B-it.litertlm` (Hugging Face: litert-community/gemma-4-E2B-it-litert-lm, about 2.6 GB).
   Gemma 3n E2B still works; when both are in the folder, Gemma 4 is used. GPU first, falls back to the CPU.
 - small tactical (optional): a Gemma 3 270M `.litertlm` (or Gemma 3 1B). A file with 270m / 1b / tactic in its name, or
@@ -1032,7 +1033,7 @@ How the small model plays (Model page switch "Small tactical model in fights", o
   - prints how often it is right on your newest fights vs always giving the most common answer
   - continues from your last trained model (My Drive/MLBB-Research/tactical_llm) on every re-run
   - makes gemma3-270m-mlbb-tactical.litertlm (int8, 256-token prompts, 512 tokens of memory), copied to Drive and
-    downloaded: put it in the Sphynx-Storage folder; the app puts it in the small-model slot by itself
+    downloaded: put it in Sphynx-Storage/Input; the app puts it in the small-model slot by itself
 - tested here on a tiny stand-in model: loading, labelling, training, testing, saving, continuing, converting to
   .litertlm, and running that file with the LiteRT-LM runtime. Not tested: the real Gemma 3 270M download and how well
   it learns (that needs your fights). Versions that work together: litert-torch 0.10.0 + litert-lm-builder 0.18.1
@@ -1083,7 +1084,7 @@ it has an API, free GPUs (about 30 h a week) and runs notebooks unattended. So t
 
 Once:
 1. make a free account on kaggle.com and verify your phone number there (needed for GPU and internet in notebooks)
-2. kaggle.com > Settings > API > Create New Token: it downloads kaggle.json - put it in the Sphynx-Storage folder and tap
+2. kaggle.com > Settings > API > Create New Token: it downloads kaggle.json - put it in Sphynx-Storage/Input and tap
    Scan the folder now (Model page)
 3. for the small tactical model: open the Gemma model page on kaggle.com and accept the licence
 4. optional, for the minimap detector: roboflow_key.txt (your Roboflow API key) in the folder adds the public minimap

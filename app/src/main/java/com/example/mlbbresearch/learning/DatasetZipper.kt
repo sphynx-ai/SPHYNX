@@ -54,16 +54,24 @@ object DatasetZipper {
     // and in Download/Sphynx-Storage/<folder>/... (saved without it)
     private fun list(c: Context, kind: Kind): List<Item> {
         val out = ArrayList<Item>()
-        com.example.mlbbresearch.core.Storage.dir(kind.folder)?.let { top ->
-            top.walkTopDown().filter { it.isFile }.forEach { f ->
-                val rel = kind.folder + f.parentFile!!.absolutePath.removePrefix(top.absolutePath)
-                out.add(Item(f.name, rel, { f.inputStream() }, { f.delete() }))
+        // Output/<folder> (owner, 2026-11-14), and <folder> at the top where older versions saved
+        val outFolder = com.example.mlbbresearch.core.StorageLayout.OUTPUT + "/" + kind.folder
+        for (topName in listOf(outFolder, kind.folder)) {
+            if (topName == kind.folder && com.example.mlbbresearch.core.Storage.dir() != null &&
+                !java.io.File(com.example.mlbbresearch.core.Storage.root(), kind.folder).isDirectory) continue
+            com.example.mlbbresearch.core.Storage.dir(topName)?.let { top ->
+                top.walkTopDown().filter { it.isFile }.forEach { f ->
+                    val rel = kind.folder + f.parentFile!!.absolutePath.removePrefix(top.absolutePath)
+                    out.add(Item(f.name, rel, { f.inputStream() }, { f.delete() }))
+                }
             }
         }
-        val base = com.example.mlbbresearch.core.Storage.downloadsRel(kind.folder) + "/"
+        val bases = listOf(com.example.mlbbresearch.core.Storage.downloadsRel(outFolder) + "/",
+            com.example.mlbbresearch.core.Storage.downloadsRel(kind.folder) + "/")
         c.contentResolver.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
             arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME, MediaStore.Downloads.RELATIVE_PATH),
-            MediaStore.Downloads.RELATIVE_PATH + " LIKE ?", arrayOf("$base%"), null)?.use { cur ->
+            MediaStore.Downloads.RELATIVE_PATH + " LIKE ? OR " + MediaStore.Downloads.RELATIVE_PATH + " LIKE ?",
+            arrayOf("${bases[0]}%", "${bases[1]}%"), null)?.use { cur ->
             while (cur.moveToNext()) {
                 val uri = ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cur.getLong(0))
                 out.add(Item(cur.getString(1) ?: continue, cur.getString(2) ?: "", { c.contentResolver.openInputStream(uri) },
@@ -94,11 +102,15 @@ object DatasetZipper {
 
     // delete a dataset zip (after a successful training): the app's folder, or its Download folder
     fun deleteZip(c: Context, name: String): Boolean {
-        var gone = com.example.mlbbresearch.core.Storage.dir()?.let { java.io.File(it, name).delete() } ?: false
+        // in Output (owner, 2026-11-14), or at the top where older versions saved it
+        var gone = false
+        for (d in listOfNotNull(com.example.mlbbresearch.core.Storage.dir(com.example.mlbbresearch.core.StorageLayout.OUTPUT), com.example.mlbbresearch.core.Storage.dir()))
+            gone = java.io.File(d, name).delete() || gone
         try {
+            val rels = com.example.mlbbresearch.core.Storage.readableDownloadRels()
             gone = c.contentResolver.delete(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                MediaStore.Downloads.DISPLAY_NAME + " = ? AND " + MediaStore.Downloads.RELATIVE_PATH + " = ?",
-                arrayOf(name, com.example.mlbbresearch.core.Storage.downloadsRel() + "/")) > 0 || gone
+                MediaStore.Downloads.DISPLAY_NAME + " = ? AND " + com.example.mlbbresearch.core.Storage.relIn(rels),
+                arrayOf(name) + rels.toTypedArray()) > 0 || gone
         } catch (e: Exception) { }
         return gone
     }
@@ -151,12 +163,12 @@ object DatasetZipper {
         val newest = pics.maxOf { stamp(it.name, kind) }
         val name = kind.zipName + "-" + SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date()) + ".zip"
         // v37.19: the zip goes straight into the app's folder when all files access is on
-        val direct = com.example.mlbbresearch.core.Storage.dir()
+        val direct = com.example.mlbbresearch.core.Storage.dir(com.example.mlbbresearch.core.StorageLayout.OUTPUT)
         val os0: java.io.OutputStream? = if (direct != null) java.io.File(direct, name).outputStream() else {
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, name)
                 put(MediaStore.Downloads.MIME_TYPE, "application/zip")
-                put(MediaStore.Downloads.RELATIVE_PATH, com.example.mlbbresearch.core.Storage.downloadsRel())
+                put(MediaStore.Downloads.RELATIVE_PATH, com.example.mlbbresearch.core.Storage.downloadsRel(com.example.mlbbresearch.core.StorageLayout.OUTPUT))
             }
             val uri = c.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
                 ?: throw IllegalStateException("could not create $name")

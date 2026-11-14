@@ -62,7 +62,7 @@ object GitHubUpload {
 
     // the token: github_token.txt in the app's folder (first line)
     fun token(ctx: Context): String? = try {
-        (Storage.dir()?.let { File(it, TOKEN_FILE) }?.takeIf { it.isFile }?.readText()
+        (listOfNotNull(Storage.dir(StorageLayout.INPUT), Storage.dir()).map { File(it, TOKEN_FILE) }.firstOrNull { it.isFile }?.readText()
             ?: com.example.mlbbresearch.models.AutoFolder.files(ctx).firstOrNull { it.name.equals(TOKEN_FILE, ignoreCase = true) }
                 ?.open?.invoke()?.use { it.readBytes().toString(Charsets.UTF_8) })
             ?.lineSequence()?.firstOrNull()?.trim()?.takeIf { it.length >= 20 }
@@ -75,10 +75,10 @@ object GitHubUpload {
             out.add(Item(f.name, f.length()) { f.inputStream() })
         }
         try {
-            val rel = Storage.downloadsRel(SessionRecorder.FOLDER) + "/"
+            val rels = SessionRecorder.recordingRels()
             ctx.contentResolver.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                 arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME, MediaStore.Downloads.SIZE),
-                MediaStore.Downloads.RELATIVE_PATH + " = ?", arrayOf(rel), null)?.use { c ->
+                Storage.relIn(rels), rels.toTypedArray(), null)?.use { c ->
                 while (c.moveToNext()) {
                     val name = c.getString(1) ?: continue
                     if (out.any { it.name == name } || c.getLong(2) <= 0) continue

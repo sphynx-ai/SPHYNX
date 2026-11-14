@@ -23,6 +23,15 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "Sphynx-Storage has three folders: Input, Output, Recordings",
+            "Inside /CodeOnTheGoProjects/Sphynx-Storage: Input is where you put models and keys (.litertlm, .gguf, " +
+                ".tflite, groq_key.txt, kaggle.json, github_token.txt); Output holds what the app makes (training " +
+                "pictures, CSV exports, picture zips, Kaggle extras such as best.pt, the calibration and online-data " +
+                "backups); Recordings holds the debug recordings and logs (uploaded, then deleted). On the next start " +
+                "the app moves the files it recognises into their folder; anything it does not recognise stays where " +
+                "it is, and nothing is overwritten. A file you put at the top by hand is still found. Also: the " +
+                "Phase 1 report of the development plan (docs/PHASE_1_BASELINE.md).",
+            pr = 8, needsDeviceCheck = true),
         Entry("2026-11-14", Kind.FIXED, "The Home page no longer shows an empty box for the power symbol",
             "The Home page line about the floating icon used the power symbol as text, and your phone's font has no " +
                 "power symbol, so it showed an empty box. It now says \"the power button on the floating icon\".",

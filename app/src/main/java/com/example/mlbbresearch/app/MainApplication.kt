@@ -75,7 +75,7 @@ class MainApplication : Application() {
         com.example.mlbbresearch.learning.PolicyNet.init(this)
         Thread { com.example.mlbbresearch.learning.PolicyNet.load(this) }.start()
         Thread { com.example.mlbbresearch.learning.FightNet.load(this) }.start()
-        // and pick up anything new in the Sphynx-Storage folder (model, detector, network, Groq key)
+        // and pick up anything new in the Sphynx-Storage/Input folder (model, detector, network, Groq key)
         com.example.mlbbresearch.models.AutoFolder.scan(this)
         // cloud training runs that were going when the app closed
         com.example.mlbbresearch.learning.CloudTrain.resume(this)

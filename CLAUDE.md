@@ -227,4 +227,7 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
 - Notebooks: `notebooks/` and `app/src/main/assets/notebooks/` must stay identical (the app trains from the
   built-in copy; GitHub `Sphynx` is only the fallback).
 - Storage: `/CodeOnTheGoProjects/Sphynx-Storage` (or `Download/Sphynx-Storage`); the old
-  MLBB-Research folder is ignored completely.
+  MLBB-Research folder is ignored completely. Inside it (owner, 2026-11-14) three folders: `Input` (what the app
+  reads: models, keys), `Output` (what it makes: training pictures, exports, Kaggle extras, backups) and
+  `Recordings` (debug data). `core/StorageLayout.kt` decides which file goes where; a new file type the app
+  reads or writes must be added there. Write into the right folder; read through `AutoFolder.files`.
