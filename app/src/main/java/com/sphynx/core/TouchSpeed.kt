@@ -14,7 +14,7 @@ object TouchSpeed {
     @Volatile private var unsaved = 0
     private val io = Executors.newSingleThreadExecutor { r -> Thread(r, "touch-speed").apply { priority = Thread.MIN_PRIORITY } }
 
-    private fun file(): File? = com.sphynx.vision.HeroVerifier.appContext()?.let {
+    private fun file(): File? = Probes.appContext()?.let {
         File(File(it.filesDir, "research").apply { mkdirs() }, "screen_to_touch.jsonl") }
 
     private fun ensureLoaded() {
@@ -36,8 +36,8 @@ object TouchSpeed {
     fun tick() {
         try {
             ensureLoaded()
-            val row = log.flush(System.currentTimeMillis(), com.sphynx.capture.FrameHub.fps,
-                com.sphynx.vision.FrameProcessor.processedFps, PhoneState.read())
+            val row = log.flush(System.currentTimeMillis(), Probes.captureFps(),
+                Probes.framesReadFps(), PhoneState.read())
             if (row != null && ++unsaved >= 12) save()      // about once a minute while playing
         } catch (t: Throwable) { }
     }

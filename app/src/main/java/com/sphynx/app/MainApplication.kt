@@ -10,6 +10,7 @@ import com.sphynx.learning.ExperienceRecorder
 class MainApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        ProbesWiring.install()      // before any core service reads the AI / game / vision (ADR 0001)
         Cfg.init(this)
         com.sphynx.core.SessionRecorder.init(this)
         com.sphynx.vision.HeroVerifier.init(this)

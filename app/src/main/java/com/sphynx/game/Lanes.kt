@@ -32,6 +32,9 @@ enum class Lane(val label: String) {
     EXP("EXP lane"), GOLD("Gold lane"), MID("Mid lane"), ROAM("Roam"), JUNGLE("Jungle");
 
     companion object {
+        /** The watched player's lane for live learning (Settings stores its name; unknown = EXP). */
+        fun live(): Lane = of(com.sphynx.core.Cfg.liveLaneName) ?: EXP
+
         fun of(key: String): Lane? = when (key) {
             "exp" -> EXP; "gold" -> GOLD; "mid" -> MID; "roam" -> ROAM; "jungle" -> JUNGLE; else -> null
         }

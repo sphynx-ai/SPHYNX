@@ -634,7 +634,7 @@ object GameStateTracker {
             emptyList(), v.minimap, v.saturation, emptyMap(), v.hint, HudInfo.NONE, null, null, emptyList(), IntArray(3), -1f,
             emptyList(), false, v.screenWalls, processMs = v.processMs)
         val hero = HeroDb.match(Cfg.liveHero)
-        val s = makeState(vv, now, Phase.LIVE, false, hero, null, Cfg.liveLane, sec, Long.MAX_VALUE)
+        val s = makeState(vv, now, Phase.LIVE, false, hero, null, Lane.live(), sec, Long.MAX_VALUE)
         if (state.phase != Phase.LIVE) phaseSince = now
         state = s
         return s
