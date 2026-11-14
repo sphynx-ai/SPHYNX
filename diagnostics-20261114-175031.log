@@ -1,0 +1,18 @@
+11-14 17:21:33 [INFO] Folder: nothing to read yet: allow all files access, or choose the /CodeOnTheGoProjects/Sphynx-Storage folder (Model page)
+11-14 17:22:04 [INFO] GGUF test: qwen2.5-0.5b-instruct-q4_k_m.gguf: OK Model: qwen2 1B Q4_K - Medium (462 MB) Load: 0.7 s · threads 4 · chat format yes Prompt: 30 tokens in 0.5 s (61.2 tok/s) Answer: 26 tokens in 1.0 s (25.5 tok/s) Total: 3.2 s File: copied into the app (reading in place failed) Text: A jungler should focus on posi
+11-14 17:23:05 [INFO] GitHub upload: No token: put a fine-grained GitHub token (this repository, Contents: read and write) in github_token.txt in the app's folder
+11-14 17:27:30 [INFO] Tactical network loaded: all, 51 inputs
+11-14 17:27:30 [INFO] detector loaded: input 320x320 FLOAT32 channels first, output 1x8x2100
+11-14 17:27:30 [INFO] screen detector loaded: input 640x640 FLOAT32 channels first, output 1x28x8400
+11-14 17:27:31 [INFO] Folder: last scan: Gemma 4 E2B copied, Gemma loading, Gemini API key, Cerebras API key, Groq API key, online data restored (2 from mlbb-online-meta.json), online data restored (1 from mlbb-online-skills.json), Kaggle key, detector class names, tactical networks: all heroes, Alucard, detector loaded, screen detector loaded, small tactical model copied (Gemma 3 270M)
+11-14 17:27:56 [INFO] Training result: Minimap detector 55.7% boxes found (mAP50)
+11-14 17:27:56 [INFO] Training result: Screen detector 21.9% boxes found (mAP50)
+11-14 17:27:56 [INFO] Training result: Tactical networks 23.0% moves right (balanced)
+11-14 17:28:03 [INFO] GitHub upload: Uploaded 2 file(s) in 1 commit(s) to recordings-for-debugging (Saved training-results-20261114-172756.json (2 KB) in /CodeOnTheGoProjects/Sphynx-Storage/recordings; pictures: nothing new)
+11-14 17:49:24 [INFO] Tactical network loaded: all, 51 inputs
+11-14 17:49:24 [INFO] detector loaded: input 320x320 FLOAT32 channels first, output 1x8x2100
+11-14 17:49:24 [INFO] screen detector loaded: input 640x640 FLOAT32 channels first, output 1x28x8400
+11-14 17:49:24 [INFO] Folder: last scan: Gemma loading
+11-14 17:49:34 [INFO] gemma model loaded on GPU
+11-14 17:49:34 [INFO] Gemma loaded from the folder
+11-14 17:49:58 [INFO] GGUF test: Llama-3.2-1B-Instruct-Q4_K_M.gguf: OK Model: llama 1B Q4_K - Medium (762 MB) Load: 2.5 s · threads 4 · chat format yes Prompt: 32 tokens in 0.4 s (74.1 tok/s) Answer: 64 tokens in 4.8 s (13.4 tok/s) Total: 7.9 s File: read in place Text: In the first two minutes of a MOBA match, a jungler should foc
