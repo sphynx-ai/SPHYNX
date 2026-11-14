@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "Help \"?\" next to each setting, like the game",
+            "As in the game's own settings: a small \"?\" now sits at the end of each button or switch that has an " +
+                "explanation. Tap it and the explanation opens in a bubble next to it; tap anywhere else to close it. " +
+                "The \"?\" in the header (hold to see every description of the page) is gone.",
+            pr = 23, needsDeviceCheck = true, version = "37.33"),
         Entry("2026-11-14", Kind.IMPROVED, "Development plan: the new look (colours, fonts, sizes)",
             "Phase 3: the design rules for the new look (docs/PHASE_3_DESIGN_TOKENS.md): one set of brand colours for the " +
                 "app and the floating panel; your choice of fonts - a pixel-style font for headings and numbers and Inter " +
