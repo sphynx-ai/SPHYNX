@@ -212,6 +212,8 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
 - The app is called **Sphynx** (owner, 2026-11-14): never use the old name anywhere (code, text, folders, docs).
   The folder is `/CodeOnTheGoProjects/Sphynx-Storage`. The app id `com.sphynx.autopilot` stays as it is: changing it
   would install a separate app without the owner's calibration and permissions.
+- Brand (owner, 2026-11-14): the symbol, wordmark, colours and usage rules are in `docs/brand/`. Icons on the
+  floating panel are drawn (`controller/PanelIcons.kt`), never text symbols or emoji: a phone's font may lack them.
 - Descriptions under buttons and switches are hidden and show only while the small "?" circle in the header is held
   (`app/HelpHold.kt`). A static `text(...)` line on a page is a description automatically; pass `describe = false`
   for information that must stay visible (field labels, the app version), and wrap card notes that explain a button

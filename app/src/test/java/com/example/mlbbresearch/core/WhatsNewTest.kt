@@ -19,7 +19,9 @@ class WhatsNewTest {
 
     @Test fun newestFirstAndOneLinePerPullRequest() {
         assertEquals(e.map { it.date }.sortedDescending(), e.map { it.date })
-        assertEquals(e.size, e.map { it.pr }.toSet().size)
+        // pull request numbers started again at 1 when the project moved to sphynx-ai/SPHYNX
+        // (2026-11-13), so a number can appear twice: once before the move and once after
+        assertEquals(e.size, e.map { it.pr to (it.date >= "2026-11-14") }.toSet().size)
     }
 
     @Test fun groupingKeepsEveryEntry() {

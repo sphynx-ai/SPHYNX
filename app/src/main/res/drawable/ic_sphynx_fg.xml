@@ -1,37 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Sphynx: a sphynx cat head (big ears, amber eyes) with an arrow for a nose and an AI spark -->
+<!-- Sphynx "Lockframe": two interlocking halves around one point of focus (docs/brand) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- head -->
-    <path android:pathData="M38,49 L37,27 L49,36 L59,36 L71,27 L70,49 L78,59 L66,76 L54,80 L42,76 L30,59 Z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:startX="54" android:startY="27"
-                android:endX="54" android:endY="80"
-                android:startColor="#22D3EE"
-                android:endColor="#6366F1"
-                android:type="linear" />
-        </aapt:attr>
-    </path>
-    <!-- inner ears -->
-    <path android:pathData="M39,46 L38.5,31 L46,37 Z M69,46 L69.5,31 L62,37 Z"
-        android:fillColor="#590B1220" />
-    <!-- forehead mark -->
-    <path android:pathData="M54,40 L56,44 L54,48 L52,44 Z"
-        android:fillColor="#D9FFFFFF" />
-    <!-- amber eyes with slit pupils -->
-    <path android:pathData="M39,55 Q45,48 51,55 Q45,60 39,55 Z M57,55 Q63,48 69,55 Q63,60 57,55 Z"
-        android:fillColor="#FBBF24" />
-    <path android:pathData="M44.4,51 L45.6,51 L45.6,59 L44.4,59 Z M62.4,51 L63.6,51 L63.6,59 L62.4,59 Z"
-        android:fillColor="#0B1220" />
-    <!-- arrow (nose) -->
-    <path android:pathData="M54,62 L59,72 L54,69 L49,72 Z"
-        android:fillColor="#FFFFFF" />
-    <!-- AI spark -->
-    <path android:pathData="M78,29L79.4,32.6L83,34L79.4,35.4L78,39L76.6,35.4L73,34L76.6,32.6Z"
-        android:fillColor="#F472B6" />
+    <path android:fillColor="#F4F6F8" android:pathData="M54,24.73 L83.27,54 L77.42,59.85 L54,36.44 L48.15,42.29 L51.07,45.22 L42.29,54 L33.51,45.22 Z M54,83.27 L24.73,54 L30.58,48.15 L54,71.56 L59.85,65.71 L56.93,62.78 L65.71,54 L74.49,62.78 Z" />
+    <path android:fillColor="#35C2B0" android:pathData="M54,48.15 L59.85,54 L54,59.85 L48.15,54 Z" />
 </vector>

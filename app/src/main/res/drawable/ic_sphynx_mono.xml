@@ -1,12 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- one-colour version for themed icons: the head with the eyes and the arrow cut out -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillType="evenOdd"
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M38,49 L37,27 L49,36 L59,36 L71,27 L70,49 L78,59 L66,76 L54,80 L42,76 L30,59 Z M39,55 Q45,60 51,55 Q45,48 39,55 Z M57,55 Q63,60 69,55 Q63,48 57,55 Z M54,62 L49,72 L54,69 L59,72 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M54,24.73 L83.27,54 L77.42,59.85 L54,36.44 L48.15,42.29 L51.07,45.22 L42.29,54 L33.51,45.22 Z M54,83.27 L24.73,54 L30.58,48.15 L54,71.56 L59.85,65.71 L56.93,62.78 L65.71,54 L74.49,62.78 Z M54,48.15 L59.85,54 L54,59.85 L48.15,54 Z" />
 </vector>
