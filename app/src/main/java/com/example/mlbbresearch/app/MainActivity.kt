@@ -100,6 +100,7 @@ class MainActivity : Activity() {
     private val reqCapture = 42
     private val reqNotify = 43
     private val reqFolder = 46
+    private val reqGguf = 47
 
     private val refresher = object : Runnable {
         override fun run() {
@@ -252,6 +253,12 @@ class MainActivity : Activity() {
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
+            reqGguf -> if (resultCode == RESULT_OK) data?.data?.let { uri ->
+                toast("Adding the model... (see Model page)")
+                com.example.mlbbresearch.models.GgufLibrary.add(this, uri) { msg ->
+                    runOnUiThread { toast(msg.take(150)); if (page == "model") show("model") }
+                }
+            }
             reqFolder -> if (resultCode == RESULT_OK) data?.data?.let { uri ->
                 com.example.mlbbresearch.models.AutoFolder.onPicked(this, uri) { msg -> runOnUiThread { toast(msg.take(150)) } }
             }
@@ -2414,6 +2421,69 @@ class MainActivity : Activity() {
         switch("Use the trained models", Cfg.detectorOn && Cfg.policyOn) {
             Cfg.detectorOn = it; Cfg.policyOn = it
         }
+
+        // PHASE 8: GGUF models run by llama.cpp (LlamaCppBackend, the shared inference contract)
+        ggufSection()
+    }
+
+    private fun ggufSection() {
+        val lib = com.example.mlbbresearch.models.GgufLibrary
+        val be = lib.backend(this)
+        title("GGUF MODELS (LLAMA.CPP)")
+        text("Add a .gguf model: it is copied into the app. Load it, then ask the test question to see how fast this " +
+            "phone answers. Runs on the CPU. Not used by the AI yet: the Strategic and Tactical engines still use " +
+            "their LiteRT models.", 13f, color = T.MUTED)
+        val gc = card()
+        val gEngine = cardText(gc, 12f)
+        val gStatus = cardText(gc, 13f)
+        gEngine.text = com.example.mlbbresearch.inference.LlamaJni.info()
+        upd {
+            val st = be.status()
+            val info = be.modelInfo
+            gStatus.text = st.describe() +
+                (if (st.ready && info != null) "\n" + info.optString("model") + " · context ${info.optInt("nCtx")} tokens · ${info.optInt("threads")} threads" else "") +
+                (if (lib.status.isNotBlank()) "\n" + lib.status else "")
+        }
+        btn("Add a .gguf model") {
+            if (lib.busy) { toast(lib.status); return@btn }
+            @Suppress("DEPRECATION")
+            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), reqGguf)
+        }
+
+        val models = lib.models(this)
+        if (models.isEmpty()) text("No GGUF model added yet.", 13f, describe = false)
+        for (f in models) {
+            val mc = card()
+            cardHeader(mc, f.name, "${f.length() / (1024 * 1024)} MB")
+            val loadBtn = btn("") {
+                if (lib.loadedFile(this) == f) {
+                    Thread { lib.unload(this) }.start()
+                } else {
+                    toast("Loading ${f.name}...")
+                    lib.load(this, f) { msg -> runOnUiThread { toast(msg.lineSequence().first().take(150)) } }
+                }
+            }
+            upd { loadBtn.text = if (lib.loadedFile(this) == f) "Unload ${f.name}" else "Load ${f.name}" }
+            btn("Remove ${f.name}") {
+                Thread {
+                    val ok = lib.remove(this, f)
+                    runOnUiThread { toast(if (ok) "Removed ${f.name}" else "Could not remove ${f.name}"); if (page == "model") show("model") }
+                }.start()
+            }
+        }
+
+        val tc = card()
+        cardHeader(tc, "Test question")
+        cardNote(tc, lib.TEST_PROMPT)
+        val tAnswer = cardText(tc, 14f)
+        val tLine = cardNote(tc)
+        upd {
+            val t = lib.test
+            tAnswer.text = t?.partial()?.trim()?.ifEmpty { if (t.done) "(empty answer)" else "..." } ?: "Not asked yet."
+            tLine.text = lib.testLine
+        }
+        btn("Ask the test question") { lib.askTest(this)?.let { toast(it) } }
+        btn("Stop the answer") { lib.stopTest(this) }
     }
 
 

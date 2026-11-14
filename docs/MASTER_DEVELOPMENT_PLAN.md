@@ -68,7 +68,7 @@ The phase sequence below is controlling. Issue #1, Issue #37, and the MLBB-speci
 | 5 | Android Reliability and Application Foundation | Stabilize lifecycle, permissions, storage, device capability detection, crash recovery, diagnostics, and compatibility | **APPROVED / PLANNED** |
 | 6 | Model-Agnostic Unified Inference Architecture | Establish common inference contracts, role assignment, model lifecycle, streaming, cancellation, health, and backend abstraction | **APPROVED / PLANNED** |
 | 7 | LiteRT-LM Backend Integration and Stabilization | Integrate and validate LiteRT-LM through the common inference interface on supported Android devices | **APPROVED / PLANNED; VERIFY EXISTING IMPLEMENTATION** |
-| 8 | GGUF / llama.cpp Backend Integration | Add a separately maintained Android native inference backend, including NDK/CMake/JNI/ABI and device validation | **APPROVED / PLANNED; VERIFY FEASIBILITY AND IMPLEMENTATION** |
+| 8 | GGUF / llama.cpp Backend Integration | Add a separately maintained Android native inference backend, including NDK/CMake/JNI/ABI and device validation | **IN PROGRESS** — feasibility VERIFIED on the owner's phone 2026-11-14; backend implementation started (Section 9.1) |
 | 9 | Model Lab and Model Management | Deliver model registry, metadata, role assignment, configuration profiles, loading status, and management | **APPROVED / PLANNED** |
 | 10 | Model Benchmarking and Evaluation | Establish repeatable Strategic and Tactical evaluations for quality, latency, reliability, memory, thermal behavior, and battery impact | **APPROVED / PLANNED** |
 | 11 | Model-Pairing and Device-Aware Recommendations | Compare model pairs and recommend configurations based on device, backend, workload, quality, and resource trade-offs | **APPROVED / PLANNED** |
@@ -555,6 +555,21 @@ Before assigning the next implementation phase:
 7. Report the earliest incomplete phase and exact next authorized task.
 
 No phase is complete solely because a GitHub issue was closed or a planning document was written.
+
+### 9.1 Phase 8 evidence (2026-11-14)
+
+**Owner decision (2026-11-14):** start Phase 8 now, after the GGUF feasibility test passed on the phone, before Phases 6–7 are complete. The backend uses the Phase 6 contract code that already exists (`inference/InferenceBackend` and its request, event, status and error types); it is the first runtime built on it.
+
+**Device evidence — VERIFIED (owner's phone, `test/gguf-spike` at `dc89e3c`, CPU only, 4 threads, arm64-v8a with NEON, ARM_FMA, FP16_VA, DOTPROD).** Same question for both runs; source: the app's diagnostics logs uploaded to `recordings-for-debugging` (commits `c1aa582`, `7365593`).
+
+| Model | File | Load | Prompt | Answer | Note |
+|---|---|---|---|---|---|
+| Qwen2.5 0.5B Instruct Q4_K_M | 462 MB | 0.7 s | 61.2 tok/s | **25.5 tok/s** | Read from a copy: reading the picked file in place failed (the app had no All files access at that moment). Answer repeated itself. |
+| Llama 3.2 1B Instruct Q4_K_M | 762 MB | 2.5 s | 74.1 tok/s | **13.4 tok/s** | Read in place; ran while Gemma 4 E2B was loaded on the GPU. Relevant answer. |
+
+**Not yet verified:** heat, battery and stability over a whole match; models above 1B; phones other than the owner's; GPU / Vulkan acceleration (not built); a computer-side run of the native engine with a real model.
+
+**Implementation (IN PROGRESS):** `LlamaCppBackend` (kept-loaded model, streaming, cancel, timeout, CPU check before the library loads), GGUF models added by copying into the app, a test question on the Model page. Not yet assigned to the Strategic or Tactical role (Phases 9, 11 and 12).
 
 ## 10. GitHub Issues policy and migration record
 

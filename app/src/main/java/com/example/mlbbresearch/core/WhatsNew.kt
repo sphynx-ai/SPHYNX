@@ -23,6 +23,14 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.NEW, "GGUF models: add, load and ask them on the Model page",
+            "The GGUF engine (llama.cpp) is now a real part of the app instead of a one-off test. On the Model page, " +
+                "add a .gguf model (it is copied into the app), load it, and ask the test question: the answer streams " +
+                "in as it is written, Stop ends it, and the speed is shown. The model stays loaded until you unload it. " +
+                "It runs on the CPU. A phone whose processor is too old is told so instead of the app closing. Your " +
+                "2026-11-14 tests: Qwen2.5 0.5B answered at 25.5 tokens per second, Llama 3.2 1B at 13.4. The AI " +
+                "does not use GGUF models yet.",
+            pr = 5, needsDeviceCheck = true),
         Entry("2026-11-14", Kind.IMPROVED, "The app is called Sphynx; descriptions show only while you hold \"?\"",
             "The app's new name is Sphynx: the launcher, the header, the notifications and the pages. Its folder is now " +
                 "/CodeOnTheGoProjects/Sphynx-Storage (Download/Sphynx-Storage without All files access), the debug uploads " +

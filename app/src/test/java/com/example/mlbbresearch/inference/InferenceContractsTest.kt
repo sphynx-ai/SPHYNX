@@ -20,7 +20,7 @@ class InferenceContractsTest {
         assertEquals(BackendType.LLAMA_CPP, BackendType.forFileName("qwen2.5-0.5b-q4_k_m.gguf"))
         assertNull(BackendType.forFileName("model.bin"))
         assertNull(BackendType.forFileName("noextension"))
-        assertFalse(BackendType.LLAMA_CPP.shippedNative)
+        assertTrue(BackendType.LLAMA_CPP.shippedNative)     // Phase 8: built from app/src/main/cpp
     }
 
     // ---- configuration ----

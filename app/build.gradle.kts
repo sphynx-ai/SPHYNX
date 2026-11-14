@@ -30,6 +30,17 @@ android {
     namespace = "com.example.mlbbresearch"
     compileSdk = 36
 
+    // PHASE 8 (GGUF backend): llama.cpp built from source (app/src/main/cpp). The NDK and CMake versions are
+    // exactly the ones Code on the Go has on the owner's phone (NDK Installer plugin), so the phone
+    // can build it; CI installs the same versions.
+    ndkVersion = "29.0.14206865"
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
     // disable linter
     lint {
         checkReleaseBuilds = false
@@ -75,6 +86,15 @@ android {
 
         vectorDrawables {
             useSupportLibrary = true
+        }
+
+        // the llama.cpp library is built for 64-bit ARM phones only (the other ABIs' libraries from
+        // LiteRT-LM and TFLite are still packaged as before)
+        externalNativeBuild {
+            cmake {
+                abiFilters("arm64-v8a")
+                arguments("-DANDROID_STL=c++_static")
+            }
         }
     }
 
