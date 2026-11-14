@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "Development plan: a written contract for the game state",
+            "Phase 2, step 3: the game-neutral description of a match moment (what the decision checks and the " +
+                "decision log read) now has a version number and written rules (docs/contracts/UNIVERSAL_MATCH_STATE.md): " +
+                "an unknown value is empty, never a guess or -1; health and progress are 0..1; MLBB-only details stay in " +
+                "their own list. New tests check that the MLBB adapter always keeps these rules. No change to how the " +
+                "app plays.",
+            pr = 14, version = "37.24"),
         Entry("2026-11-14", Kind.IMPROVED, "New app id: com.sphynx",
             "The app id is now com.sphynx (was com.sphynx.autopilot). Android sees it as a new app, so it installs " +
                 "next to the old one. Give the new one its permissions again (Accessibility, display over other apps, " +
