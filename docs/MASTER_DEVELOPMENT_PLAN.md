@@ -62,7 +62,7 @@ The phase sequence below is controlling. Issue #1, Issue #37, and the MLBB-speci
 | Phase | Name | Primary outcome | Planning status |
 |---:|---|---|---|
 | 1 | Repository Baseline and Project Verification | Establish authoritative repository, branch, build/test baseline, inventory, and evidence-backed current state | **COMPLETE** (2026-11-14) — baseline report `docs/PHASE_1_BASELINE.md`; owner's working copy VERIFIED; versioning decided |
-| 2 | Universal Architecture Audit and Foundation | Define shared MOBA core, normalized game-state contract, and adapter boundaries; incorporates Issue #1 | **IN PROGRESS** — submilestone 1 (current-state map) done 2026-11-14: `docs/PHASE_2_ARCHITECTURE_MAP.md` |
+| 2 | Universal Architecture Audit and Foundation | Define shared MOBA core, normalized game-state contract, and adapter boundaries; incorporates Issue #1 | **IN PROGRESS** — submilestone 1 (current-state map) done 2026-11-14: `docs/PHASE_2_ARCHITECTURE_MAP.md`; submilestone 2 (target architecture) proposed 2026-11-14: `docs/adr/0001-layered-architecture.md`, enforced by `ArchitectureRulesTest` (31-item shrinking baseline), awaiting owner review |
 | 3 | UI/UX Audit and Product Design Blueprint | Complete UX audit, information architecture, design system, screen flows, and interaction specifications | **APPROVED / PLANNED** |
 | 4 | UI/UX Implementation and Experience Modernization | Implement approved design system and screen-by-screen experience, including all product states | **APPROVED / PLANNED** |
 | 5 | Android Reliability and Application Foundation | Stabilize lifecycle, permissions, storage, device capability detection, crash recovery, diagnostics, and compatibility | **APPROVED / PLANNED** |
@@ -541,7 +541,7 @@ UI/UX is a core workstream and product-quality requirement throughout the roadma
 
 ## 9. Current execution checkpoint
 
-**Current phase: Phase 2 — IN PROGRESS (started 2026-11-14).** Phase 1 is COMPLETE. Phase 2 submilestone 1 (current-state architecture map) is done: `docs/PHASE_2_ARCHITECTURE_MAP.md`. Evidence, the risk register and the phase mapping are in `docs/PHASE_1_BASELINE.md`. Phase 8 also runs, by owner decision (Section 9.1). Do not infer the active phase from this roadmap alone.
+**Current phase: Phase 2 — IN PROGRESS (started 2026-11-14).** Phase 1 is COMPLETE. Phase 2 submilestone 1 (current-state architecture map) is done: `docs/PHASE_2_ARCHITECTURE_MAP.md`. Submilestone 2 (target layered architecture) is proposed in `docs/adr/0001-layered-architecture.md` (owner review pending); `ArchitectureRulesTest` blocks new forbidden dependencies. Evidence, the risk register and the phase mapping are in `docs/PHASE_1_BASELINE.md`. Phase 8 also runs, by owner decision (Section 9.1). Do not infer the active phase from this roadmap alone.
 
 The latest GitHub main branch observed while preparing this document was commit 0652ebfb1a6916a3a478d0b488405f11517eca7a (2026-11-12; merge of PR #35). The repository's existing docs/DEVELOPMENT_STATUS.md contains historical reports and milestone records, including a separate earlier milestone sequence. Those historical records must not be mistaken for this 16-phase product roadmap or a current live status check.
 
