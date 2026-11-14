@@ -14,6 +14,9 @@ object Cfg {
         }
     }
 
+    /** Unit tests only: keep the settings in [p] (an in-memory store) instead of the phone's storage. */
+    fun useForTests(p: SharedPreferences) { prefs = p }
+
     // ALL SWITCHES OFF BY DEFAULT (owner, 2026-11-12) - on a NEW install only. A phone that already ran the app
     // keeps how it behaved: every switch it never changed is saved once with its old default (on).
     // Safety guards keep their safe position everywhere: Dry run on, the Quick buy guards on.
