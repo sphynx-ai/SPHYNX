@@ -81,6 +81,8 @@ One app module (`:app`). **179 Kotlin files, 35,973 lines.** Native: 9 files of 
 
 **Permissions:** accessibility service, overlay (`SYSTEM_ALERT_WINDOW`), screen capture (foreground service, media projection), all-files access (`MANAGE_EXTERNAL_STORAGE`, plus legacy read/write), internet, notifications, vibrate.
 
+**Storage layout:** `/CodeOnTheGoProjects/Sphynx-Storage` (or `Download/Sphynx-Storage` without All files access) holds `Input/` (models, keys), `Output/` (training pictures, exports, Kaggle extras, backups) and `Recordings/` (debug data), sorted by `core/StorageLayout.kt` (owner, 2026-11-14, PR #8).
+
 **Other checks:** `notebooks/` and `app/src/main/assets/notebooks/` are identical (owner rule) — VERIFIED. No keys or tokens are committed; the only matches are `ghp_...` placeholders in the bundled Claude API documentation — VERIFIED.
 
 ## 5. Delivered work mapped to the 16 phases (checklist item 4)

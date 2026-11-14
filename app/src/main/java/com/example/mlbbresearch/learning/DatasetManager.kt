@@ -63,19 +63,20 @@ object DatasetManager {
             }
             val name = "$prefix-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date()) + ".csv"
             // v37.19: straight into the app's folder when all files access is on
-            com.example.mlbbresearch.core.Storage.dir()?.let { d ->
+            val out = com.example.mlbbresearch.core.StorageLayout.OUTPUT
+            com.example.mlbbresearch.core.Storage.dir(out)?.let { d ->
                 java.io.File(d, name).writeText(sb.toString())
-                return@onDb "Exported $rows rows to ${com.example.mlbbresearch.core.Storage.writeLabel}/$name"
+                return@onDb "Exported $rows rows to ${com.example.mlbbresearch.core.Storage.writeLabel}/$out/$name"
             }
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, name)
                 put(MediaStore.Downloads.MIME_TYPE, "text/csv")
-                put(MediaStore.Downloads.RELATIVE_PATH, com.example.mlbbresearch.core.Storage.downloadsRel())
+                put(MediaStore.Downloads.RELATIVE_PATH, com.example.mlbbresearch.core.Storage.downloadsRel(out))
             }
             val uri = ctx.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
                 ?: throw IllegalStateException("could not create the file")
             ctx.contentResolver.openOutputStream(uri)?.use { it.write(sb.toString().toByteArray()) }
-            "Exported $rows rows to ${com.example.mlbbresearch.core.Storage.FALLBACK_REL}/$name"
+            "Exported $rows rows to ${com.example.mlbbresearch.core.Storage.FALLBACK_REL}/$out/$name"
         }) { msg ->
             if (msg != null) Diag.info(msg)
             done(msg ?: "Export failed (see Logs)")

@@ -35,7 +35,8 @@ object SessionRecorder {
 
     const val FRAME_EVERY_MS = 100L
     const val MAX_BYTES = 40L * 1024 * 1024
-    const val FOLDER = "recordings"
+    const val FOLDER = StorageLayout.RECORDINGS     // was "recordings" (owner, 2026-11-14: Input / Output / Recordings)
+    const val LEGACY_FOLDER = "recordings"
 
     @Volatile var on = false; private set
     @Volatile var rows = 0; private set
@@ -277,6 +278,9 @@ object SessionRecorder {
         return if (n > 0) "$n debug file(s) (settings, log, scenery picture)" else ""
     }
 
+    /** Download-fallback folders that hold recordings: Recordings, and "recordings" of older versions. */
+    fun recordingRels(): List<String> = listOf(FOLDER, LEGACY_FOLDER).map { Storage.downloadsRel(it) + "/" }.distinct()
+
     // one file into the recordings folder (used by the Practice and Speed pages' exports)
     fun exportFile(c: Context, f: File, mime: String): String = export(c, f, mime)
 
@@ -296,9 +300,10 @@ object SessionRecorder {
     fun deleteFile(c: Context, name: String): Boolean {
         var gone = Storage.dir(FOLDER)?.let { File(it, name).delete() } ?: false
         try {
+            val rels = recordingRels()
             gone = c.contentResolver.delete(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                MediaStore.Downloads.DISPLAY_NAME + " = ? AND " + MediaStore.Downloads.RELATIVE_PATH + " = ?",
-                arrayOf(name, Storage.downloadsRel(FOLDER) + "/")) > 0 || gone
+                MediaStore.Downloads.DISPLAY_NAME + " = ? AND " + Storage.relIn(rels),
+                arrayOf(name) + rels.toTypedArray()) > 0 || gone
         } catch (e: Exception) { }
         return gone
     }

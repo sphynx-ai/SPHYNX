@@ -150,9 +150,14 @@ object OnlineBackup {
             // 1. Direct file paths: the app's folder /CodeOnTheGoProjects/Sphynx-Storage first (v37.19),
             // then Download/Sphynx-Storage (without all files access). The old MLBB-Research folders
             // are not read (owner, 2026-11-11)
+            // Output/ first (owner, 2026-11-14: Input / Output / Recordings), then the top of the folder,
+            // where older versions saved them
+            val out = com.example.mlbbresearch.core.StorageLayout.OUTPUT
+            val pub = try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), com.example.mlbbresearch.core.Storage.FALLBACK_NAME) } catch (e: Exception) { null }
+            val top = try { com.example.mlbbresearch.core.Storage.root() } catch (e: Exception) { null }
             val dirs = listOfNotNull(
-                try { com.example.mlbbresearch.core.Storage.root() } catch (e: Exception) { null },
-                try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), com.example.mlbbresearch.core.Storage.FALLBACK_NAME) } catch (e: Exception) { null },
+                top?.let { File(it, out) }, top,
+                pub?.let { File(it, out) }, pub,
                 com.example.mlbbresearch.models.AutoFolder.localDir(c)
             ).distinctBy { it.absolutePath }
 
@@ -174,8 +179,8 @@ object OnlineBackup {
                     cr.query(
                         MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                         arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME, MediaStore.Downloads.DATE_MODIFIED),
-                        MediaStore.Downloads.DISPLAY_NAME + " LIKE ? AND " + MediaStore.Downloads.RELATIVE_PATH + " = ?",
-                        arrayOf("$base%.json", com.example.mlbbresearch.core.Storage.downloadsRel() + "/"),
+                        MediaStore.Downloads.DISPLAY_NAME + " LIKE ? AND " + com.example.mlbbresearch.core.Storage.relIn(com.example.mlbbresearch.core.Storage.readableDownloadRels()),
+                        arrayOf("$base%.json") + com.example.mlbbresearch.core.Storage.readableDownloadRels().toTypedArray(),
                         MediaStore.Downloads.DATE_MODIFIED + " DESC"
                     )?.use { cur ->
                         while (cur.moveToNext()) {
@@ -331,11 +336,12 @@ object OnlineBackup {
 
     // Writes to ALL available persistent locations so scenery & minimap sync always survives uninstall/reinstall
     private fun writeEverywhere(c: Context, name: String, text: String) {
-        writeDirect(name, text)
-        writeInFolder(c, name, text)
+        // with All files access the direct copy (in Output) already lasts through a reinstall; the chosen
+        // folder's copy would land at the top of the storage folder again
+        if (!writeDirect(name, text)) writeInFolder(c, name, text)
         writeInDownloads(c, name, text)
         try {
-            val pubDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), com.example.mlbbresearch.core.Storage.FALLBACK_NAME)
+            val pubDir = File(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), com.example.mlbbresearch.core.Storage.FALLBACK_NAME), com.example.mlbbresearch.core.StorageLayout.OUTPUT)
             if (pubDir.exists() || pubDir.mkdirs()) {
                 File(pubDir, name).writeText(text, Charsets.UTF_8)
             }
@@ -349,7 +355,7 @@ object OnlineBackup {
 
     // v37.19: straight into /CodeOnTheGoProjects/Sphynx-Storage when all files access is on
     private fun writeDirect(name: String, text: String): Boolean = try {
-        com.example.mlbbresearch.core.Storage.dir()?.let { d -> File(d, name).writeText(text, Charsets.UTF_8); true } ?: false
+        com.example.mlbbresearch.core.Storage.dir(com.example.mlbbresearch.core.StorageLayout.OUTPUT)?.let { d -> File(d, name).writeText(text, Charsets.UTF_8); true } ?: false
     } catch (e: Exception) { Diag.error("Writing $name in the app's folder", e); false }
 
     private fun write(c: Context, name: String, text: String) {
@@ -383,7 +389,7 @@ object OnlineBackup {
     private fun writeInDownloads(c: Context, name: String, text: String) {
         try {
             val cr = c.contentResolver
-            val rel = com.example.mlbbresearch.core.Storage.downloadsRel() + "/"
+            val rel = com.example.mlbbresearch.core.Storage.downloadsRel(com.example.mlbbresearch.core.StorageLayout.OUTPUT) + "/"
             val existing = cr.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.Downloads._ID),
                 MediaStore.Downloads.DISPLAY_NAME + " = ? AND " + MediaStore.Downloads.RELATIVE_PATH + " = ?", arrayOf(name, rel), null)
                 ?.use { if (it.moveToFirst()) ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, it.getLong(0)) else null }

@@ -48,7 +48,25 @@ object Storage {
     fun requestIntent(ctx: Context): Intent =
         Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:" + ctx.packageName))
 
-    fun status(): String = if (allFilesAccess) "Folder: /$REL (all files access on: imports and exports both use it)"
+    fun status(): String = if (allFilesAccess) "Folder: /$REL (all files access on: imports and exports both use it). " +
+            "Put models and keys in ${StorageLayout.INPUT}; the app saves in ${StorageLayout.OUTPUT} and ${StorageLayout.RECORDINGS}."
         else "Folder: /$REL needs \"All files access\" to save into it. Until then the app reads the folder you choose " +
             "below and saves its own files in $FALLBACK_REL."
+
+    // ---- the three folders inside (owner, 2026-11-14; core.StorageLayout) ----
+
+    /** Download-fallback folders the app reads: the folder itself (files saved by older versions), Input, Output. */
+    fun readableDownloadRels(): List<String> =
+        listOf("", StorageLayout.INPUT, StorageLayout.OUTPUT).map { downloadsRel(it) + "/" }
+
+    /** "RELATIVE_PATH IN (?,?,?)" for [rels], for a MediaStore query. */
+    fun relIn(rels: List<String>): String =
+        android.provider.MediaStore.Downloads.RELATIVE_PATH + " IN (" + rels.joinToString(",") { "?" } + ")"
+
+    /**
+     * Sorts the top of the folder into Input / Output / Recordings (needs All files access; a no-op
+     * without it). Moves only what it recognises, never overwrites a file already in place, and leaves
+     * everything else where it is. Returns what it moved, for the log. Safe to run on every start.
+     */
+    @Synchronized fun organize(): List<String> = dir()?.let { StorageLayout.organizeIn(it) } ?: emptyList()
 }

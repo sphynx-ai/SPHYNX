@@ -107,7 +107,7 @@ object BuildLab {
 
     fun generate(hero: String, done: (String) -> Unit) {
         if (busy.isNotEmpty()) { done("Already working on $busy"); return }
-        if (!GroqClient.anyKey) { done("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage folder"); return }
+        if (!GroqClient.anyKey) { done("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage/Input folder"); return }
         busy = hero
         AiRuntime.scope.launch {
             val msg = try { generateNow(hero) } catch (e: Exception) {

@@ -1240,7 +1240,7 @@ class MainActivity : Activity() {
             val h = GameStateTracker.ownHero()
             when {
                 h == null -> toast("Pick a hero first")
-                !com.example.mlbbresearch.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage folder")
+                !com.example.mlbbresearch.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage/Input folder")
                 else -> {
                     toast("Learning $h (skills, then the guide)…")
                     com.example.mlbbresearch.game.SkillBook.fetch(h) { m1 ->
@@ -1880,14 +1880,14 @@ class MainActivity : Activity() {
         }
         val st = text("", 13f, color = T.MUTED)
         upd {
-            st.text = (if (!com.example.mlbbresearch.ai.GroqClient.anyKey) "No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage folder." else "${gq.calls} answers this session" +
+            st.text = (if (!com.example.mlbbresearch.ai.GroqClient.anyKey) "No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage/Input folder." else "${gq.calls} answers this session" +
                 (if (gq.tokensLeft >= 0) " · ${gq.tokensLeft} tokens left this minute" else "")) +
                 (if (ma.busy.isNotEmpty()) "\nWorking: ${ma.busy}…" else "") +
                 (if (ma.lastMessage.isNotEmpty()) "\n${ma.lastMessage}" else "")
         }
         val upd1 = btn("Update the patch meta") {
             leaveHooks.forEach { it() }
-            if (!com.example.mlbbresearch.ai.GroqClient.anyKey) toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage folder") else {
+            if (!com.example.mlbbresearch.ai.GroqClient.anyKey) toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage/Input folder") else {
                 toast("Asking Groq (10-30 s)…")
                 ma.updateGeneral { msg -> runOnUiThread { toast(msg) } }
             }
@@ -1898,7 +1898,7 @@ class MainActivity : Activity() {
             leaveHooks.forEach { it() }
             val h = HeroDb.match(heroBox.text.toString()) ?: GameStateTracker.ownHero() ?: HeroDb.match(Cfg.myHero)
             when {
-                !com.example.mlbbresearch.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage folder")
+                !com.example.mlbbresearch.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage/Input folder")
                 h == null -> toast("Type a hero name")
                 else -> { toast("Asking Groq about $h (10-30 s)…"); ma.updateHero(h) { msg -> runOnUiThread { toast(msg) } } }
             }
@@ -2310,7 +2310,7 @@ class MainActivity : Activity() {
 
     private fun modelPage() {
         title("FILES")
-        text("Put files in the Sphynx-Storage folder (top of the phone's storage, next to Download); the app loads them by itself:\n• Gemma 4 E2B (.litertlm) – strategy\n• Gemma 3 270M (.litertlm) – fight advice (optional)\n• mlbb_policies.zip – tactical networks\n• detectors (.tflite + labels) – minimap and screen\n• groq_key.txt – online meta", 13f)
+        text("Put files in Sphynx-Storage/Input (Sphynx-Storage is at the top of the phone's storage, next to Download; the app saves what it makes in Output and Recordings); the app loads them by itself:\n• Gemma 4 E2B (.litertlm) – strategy\n• Gemma 3 270M (.litertlm) – fight advice (optional)\n• mlbb_policies.zip – tactical networks\n• detectors (.tflite + labels) – minimap and screen\n• groq_key.txt – online meta", 13f)
         val mcard = card()
         val st = cardText(mcard, 14f, true)
         upd {
@@ -2539,8 +2539,8 @@ class MainActivity : Activity() {
         upd {
             ctChip.text = if (ct.ready()) "key set" else "no key"
             ctChip.setTextColor(c(if (ct.ready()) T.GREEN else T.RED))
-            ctNote.text = if (ct.ready()) "Tap a training: inputs upload from Download/Sphynx-Storage, it trains on Kaggle, results download back and load by themselves."
-                else "Put kaggle.json in the Sphynx-Storage folder (kaggle.com > Settings > API > Create New Token), then Scan the folder on the Model page."
+            ctNote.text = if (ct.ready()) "Tap a training: inputs upload from Sphynx-Storage, it trains on Kaggle, results download back and load by themselves."
+                else "Put kaggle.json in the Sphynx-Storage/Input folder (kaggle.com > Settings > API > Create New Token), then Scan the folder on the Model page."
         }
         for (j in com.example.mlbbresearch.learning.CloudTrain.Job.values()) {
             val jc = card()
@@ -2732,7 +2732,7 @@ class MainActivity : Activity() {
         title("SESSION RECORDER - for bug reports")
         text("Records what the AI saw and decided (about 10 times a second, every aimed skill, the log) into a data file, " +
             "and a video of the AI's view with its targets and aim drawn on top. Start it before a match, stop it after; " +
-            "everything is saved in Sphynx-Storage/recordings and uploaded from this page. Screen capture must be on for the video.", 12f, color = T.MUTED)
+            "everything is saved in Sphynx-Storage/Recordings and uploaded from this page. Screen capture must be on for the video.", 12f, color = T.MUTED)
         val recInfo = text("", 12f)
         val recBtn = btn("") {
             val r = com.example.mlbbresearch.core.SessionRecorder
