@@ -3,6 +3,8 @@
 #   name | intent | move x,y | casts | target label hp | reason
 # A change here is a change of MLBB behaviour: only on purpose, in the same PR, with the reason in the PR.
 # v37.27 (PR #17): TacticalEngine.reset() now forgets the whole match; scenarios no longer see the one before.
+#   Changed on purpose: turtle_low_with_ally casts only attack (s2,s1 came from the jungle_creep fight state before it);
+#   enemy_tower_on_minimap falls back (it no longer holds at the Turtle of the scenario before).
 nothing_around | PUSH | move 0.00,0.00 | casts - | target - -1.00 | Mid lane (fast wave clear, 1-3-1 semi-roam, objective control): at Mid lane clash point: waiting for minion wave (farm)
 enemy_minion_wave | LANE_CLEAR | move 0.99,-0.17 | casts s2,s1 | target 3 minions 0.30 | pushing the wave (3), hitting one at 30%
 weak_enemy_in_reach | ENGAGE | move 0.99,-0.17 | casts attack,s1,s2,ult | target enemy #1 0.12 | finishing enemy at 12% HP
@@ -12,8 +14,8 @@ even_duel_with_ally | ENGAGE | move 0.99,-0.14 | casts s1,s2,ult | target enemy 
 marksman_poke_range | PUSH | move 0.00,0.00 | casts - | target - -1.00 | Mid lane (fast wave clear, 1-3-1 semi-roam, objective control): at Mid lane clash point: waiting for minion wave (fight)
 enemy_dashing_at_me | RETREAT | move -0.83,0.56 | casts - | target away -1.00 | HP 60%, survival 17
 jungle_creep | JUNGLE | move 0.96,-0.27 | casts attack | target monster 0.80 | Molten Fiend (orange buff) HP 80%
-turtle_low_with_ally | OBJECTIVE | move 0.94,-0.35 | casts attack,s2,s1 | target objective 0.30 | turtle HP 30%, with 1 allies
-enemy_tower_on_minimap | JUNGLE | move 0.60,0.80 | casts attack,s2,s1 | target monster 0.30 | holding position at monster (last seen at 30% HP) (keeping out of enemy tower range)
+turtle_low_with_ally | OBJECTIVE | move 0.94,-0.35 | casts attack | target objective 0.30 | turtle HP 30%, with 1 allies
+enemy_tower_on_minimap | PUSH | move -0.71,0.71 | casts - | target - -1.00 | alone deep in the enemy half: falling back
 before_ultimate_level_2 | GROUP | move -0.81,0.58 | casts - | target enemy #7 0.90 | positioning: engage 29 is not enough, keeping distance
 retreat_plan_enemy_far | PUSH | move 0.00,0.00 | casts - | target - -1.00 | Mid lane (fast wave clear, 1-3-1 semi-roam, objective control): at Mid lane clash point: waiting for minion wave (retreat)
 dead | IDLE | move 0.00,0.00 | casts - | target - -1.00 | waiting
