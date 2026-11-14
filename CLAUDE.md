@@ -217,10 +217,12 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
   its permissions again (calibration comes back from the `Output` backups).
 - Brand (owner, 2026-11-14): the symbol, wordmark, colours and usage rules are in `docs/brand/`. Icons on the
   floating panel are drawn (`controller/PanelIcons.kt`), never text symbols or emoji: a phone's font may lack them.
-- Descriptions under buttons and switches are hidden and show only while the small "?" circle in the header is held
-  (`app/HelpHold.kt`). A static `text(...)` line on a page is a description automatically; pass `describe = false`
-  for information that must stay visible (field labels, the app version), and wrap card notes that explain a button
-  in `asDescription(...)`.
+- Help next to each control (owner, 2026-11-14, like the game's own settings): descriptions of buttons and switches
+  are not on the page; a small "?" sits at the end of the control a description belongs to, a tap shows the
+  description in a bubble next to it, a tap elsewhere closes it (`app/HelpHold.kt`, `MainActivity.attachHelp`). A
+  static `text(...)` line written right after a control is its description automatically; pass `describe = false`
+  for information that must stay visible (field labels, the app version), and wrap card notes that explain a
+  button in `asDescription(...)`.
 - Every feature switch is OFF by default on a new install; safety guards keep their safe position (Dry run ON).
   The GPU switch is ON by default (a speed setting, not a feature).
 - No learning at all in Solo practice vs Computer (calibration only): no recorded moments, benchmark, training

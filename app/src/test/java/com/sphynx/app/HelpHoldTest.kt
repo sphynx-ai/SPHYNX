@@ -1,5 +1,6 @@
 package com.sphynx.app
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -24,5 +25,19 @@ class HelpHoldTest {
     @Test fun aRewrittenLineIsALiveLine() {
         assertTrue(HelpHold.staysDescription("Tap a training.", "Tap a training."))
         assertFalse(HelpHold.staysDescription("Loading...", "Gemma loaded on the GPU"))
+    }
+
+    @Test fun aControlsLinesMakeOneBubble() {
+        assertEquals("Shows boxes on the game.\n\nOnly while capturing.",
+            HelpHold.bubbleText(listOf("  Shows boxes on the game. ", "", "Only while capturing.")))
+        assertEquals("", HelpHold.bubbleText(emptyList()))
+    }
+
+    @Test fun theScreenReaderHearsTheFirstSentence() {
+        assertEquals("Help: Buys only when no enemy is close.",
+            HelpHold.spokenLabel(listOf("Buys only when no enemy is close. Calibrate the buttons on Setup.")))
+        val long = "x".repeat(120)
+        assertTrue(HelpHold.spokenLabel(listOf(long)).endsWith("…"))
+        assertTrue(HelpHold.spokenLabel(listOf(long)).length <= 6 + 80)
     }
 }

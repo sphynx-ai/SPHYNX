@@ -87,9 +87,14 @@ class MainActivity : Activity() {
     private val ui = Handler(Looper.getMainLooper())
     private var headerStatus: TextView? = null
     private var navScroll: HorizontalScrollView? = null
-    // hold-for-help (owner, 2026-11-14): the descriptions on the current page, shown only while "?" is held
+    // help next to each control (owner, 2026-11-14): the descriptions on the current page, each behind the "?"
+    // of the control it explains (HelpHold)
     private val descriptions = ArrayList<TextView>()
-    private var helpHeld = false
+    private class HelpGroup(val icon: TextView, val lines: MutableList<TextView> = ArrayList())
+    private val helpOf = HashMap<View, HelpGroup>()          // a description, or a control's row -> its "?"
+    private var bubble: android.widget.PopupWindow? = null
+    private var bubbleFor: HelpGroup? = null
+    private var bubbleClosedAt = 0L
 
     private val pages = listOf("home", "news", "player", "draft", "build", "meta", "library", "model", "learn", "practice", "speed", "logs", "debug", "setup")
     private val labels = mapOf(
@@ -155,26 +160,7 @@ class MainActivity : Activity() {
         headerStatus = TextView(this).apply { textSize = 12f; setTextColor(Color.parseColor(T.MUTED)) }
         names.addView(headerStatus)
         header.addView(names, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        // hold for help: a small "?" circle. The descriptions under the buttons show only while it is
-        // pressed and held, and hide again when it is let go (owner, 2026-11-14).
-        val helpBtn = TextView(this).apply {
-            text = "?"
-            textSize = 13f
-            gravity = Gravity.CENTER
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(c(T.TEXT))
-            background = shape(T.SURF2, 12, T.MUTED)
-            contentDescription = "Hold to see the descriptions"
-            setOnTouchListener { v, e ->
-                when (e.actionMasked) {
-                    android.view.MotionEvent.ACTION_DOWN -> { setHelp(true); true }
-                    android.view.MotionEvent.ACTION_UP -> { setHelp(false); v.performClick(); true }
-                    android.view.MotionEvent.ACTION_CANCEL -> { setHelp(false); true }
-                    else -> true
-                }
-            }
-        }
-        header.addView(helpBtn, LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginEnd = dp(10) })
+        // (the help "?" is next to each control now - owner, 2026-11-14 - not in the header)
         // the one emergency stop in the app (also: the floating icon and the notification)
         val stopTop = Button(this).apply {
             text = "■  STOP"
@@ -366,28 +352,102 @@ class MainActivity : Activity() {
         return v
     }
 
-    // a description: hidden unless "?" is held. If the page rewrites its text later it is a live line
-    // after all (a status), so it is shown for good.
+    // a description: not on the page; it goes behind a "?" at the end of the control just before it (attached
+    // once the page has placed it). If the page rewrites its text later it is a live line after all (a status),
+    // so it is shown for good and leaves the "?".
     private fun asDescription(v: TextView) {
         val atCreation = v.text.toString()
         descriptions.add(v)
-        v.visibility = if (helpHeld) View.VISIBLE else View.GONE
+        v.visibility = View.GONE
+        v.post { if (v in descriptions) attachHelp(v) }
         v.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, n: Int) {}
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, n: Int) {}
             override fun afterTextChanged(s: android.text.Editable?) {
                 if (v in descriptions && !HelpHold.staysDescription(atCreation, s ?: "")) {
                     descriptions.remove(v)
+                    helpOf.remove(v)?.let { g -> g.lines.remove(v); refreshHelp(g) }
                     v.visibility = View.VISIBLE
                 }
             }
         })
     }
 
-    private fun setHelp(on: Boolean) {
-        helpHeld = on
-        for (d in descriptions) d.visibility = if (on) View.VISIBLE else View.GONE
+    // puts description d behind the "?" of the control placed before it (several lines -> one bubble)
+    private fun attachHelp(d: TextView) {
+        val parent = d.parent as? LinearLayout
+        if (parent == null) { descriptions.remove(d); d.visibility = View.VISIBLE; return }
+        var i = parent.indexOfChild(d) - 1
+        while (i >= 0 && parent.getChildAt(i).let { it in descriptions || it.visibility == View.GONE }) i--
+        val prev = if (i >= 0) parent.getChildAt(i) else null
+        if (prev == null) { descriptions.remove(d); d.visibility = View.VISIBLE; return }   // nothing to explain: keep the line
+        val g = helpOf[prev] ?: run {
+            // the control goes into a row with its "?" at the end
+            val lp: ViewGroup.LayoutParams = prev.layoutParams
+                ?: LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            parent.removeViewAt(i)
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            val h = lp.height.takeIf { it > 0 } ?: LinearLayout.LayoutParams.WRAP_CONTENT
+            row.addView(prev, LinearLayout.LayoutParams(0, h, 1f))
+            val grp = HelpGroup(helpIcon())
+            grp.icon.setOnClickListener { toggleBubble(grp) }
+            row.addView(grp.icon, LinearLayout.LayoutParams(dp(44), dp(44)))
+            parent.addView(row, i, lp)
+            helpOf[row] = grp
+            grp
+        }
+        g.lines.add(d)
+        helpOf[d] = g
+        refreshHelp(g)
     }
+
+    // the small "?" circle: 22dp drawn, 44dp to tap
+    private fun helpIcon(): TextView = TextView(this).apply {
+        text = "?"
+        textSize = 12f
+        gravity = Gravity.CENTER
+        setTypeface(null, Typeface.BOLD)
+        setTextColor(c(T.MUTED))
+        background = android.graphics.drawable.InsetDrawable(GradientDrawable().apply {
+            shape = GradientDrawable.OVAL; setColor(c(T.SURF2)); setStroke(dp(1), c(T.MUTED))
+        }, dp(11))
+    }
+
+    private fun refreshHelp(g: HelpGroup) {
+        g.icon.visibility = if (g.lines.isEmpty()) View.GONE else View.VISIBLE
+        g.icon.contentDescription = HelpHold.spokenLabel(g.lines.map { it.text })
+    }
+
+    // tap "?": the bubble next to it; tap anywhere else (or the same "?" again): closed
+    private fun toggleBubble(g: HelpGroup) {
+        val open = bubble
+        if (open != null && open.isShowing) { open.dismiss(); if (bubbleFor === g) return }
+        if (bubbleFor === g && System.currentTimeMillis() - bubbleClosedAt < 300) return   // this tap just closed it
+        val text = HelpHold.bubbleText(g.lines.map { it.text })
+        if (text.isEmpty()) return
+        val maxW = (resources.displayMetrics.widthPixels - dp(32)).coerceAtMost(dp(320))
+        val tv = TextView(this).apply {
+            this.text = text
+            textSize = 14f
+            setTextColor(c(T.TEXT))
+            setLineSpacing(0f, 1.15f)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            maxWidth = maxW
+            background = shape("#F20B0E14", 10, T.STROKE)
+        }
+        tv.measure(View.MeasureSpec.makeMeasureSpec(maxW, View.MeasureSpec.AT_MOST), View.MeasureSpec.UNSPECIFIED)
+        val pw = android.widget.PopupWindow(tv, tv.measuredWidth, ViewGroup.LayoutParams.WRAP_CONTENT, false).apply {
+            isOutsideTouchable = true
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+            elevation = dp(6).toFloat()
+            setOnDismissListener { bubbleClosedAt = System.currentTimeMillis(); bubble = null }
+        }
+        bubble = pw; bubbleFor = g
+        // to the left of the "?", just below it (Android keeps it on the screen)
+        pw.showAsDropDown(g.icon, g.icon.width - tv.measuredWidth, -dp(6))
+    }
+
+    private fun closeBubble() { bubble?.dismiss(); bubble = null; bubbleFor = null }
 
     // a section header: accent bar + small capitals
     private fun title(t: String): TextView {
@@ -557,6 +617,8 @@ class MainActivity : Activity() {
         leaveHooks.clear()
         updaters.clear()
         descriptions.clear()
+        helpOf.clear()
+        closeBubble()
         content.removeAllViews()
         page = p
         when (p) {
