@@ -2,7 +2,7 @@
 
 ## Install into Code on the Go
 
-1. Use your Sphynx project (app id `com.sphynx.autopilot` since v37.19; code package `com.example.mlbbresearch`).
+1. Use your Sphynx project (app id `com.sphynx` since v37.23, `com.sphynx.autopilot` before; code package `com.example.mlbbresearch`).
    In `app/src/main/java/com/example/mlbbresearch/`, DELETE the old `MainActivity.kt`
    (and any other old `.kt` files there). The new code lives in sub-folders.
 2. Copy this zip's `app/src/main` folder over your project's `app/src/main`
@@ -497,7 +497,7 @@ Pictures are taken from the 800-px capture, so tiny far-away things are hard.
 4. From then on, every time the app starts (or when you tap *Scan the folder now*), it copies what is new or changed,
    loads the Gemma model, the detector and the tactical network, and applies the class names and the Groq key.
    Big files are only copied again when they changed. The Model page shows what the last scan did.
-- From a computer you can also copy the files to `Android/data/com.sphynx.autopilot/files/Sphynx-Storage`
+- From a computer you can also copy the files to `Android/data/com.sphynx/files/Sphynx-Storage`
   (the app reads that folder without choosing it; many phone file managers cannot open it).
 - The Groq key in a text file can be read by other apps that may read your Downloads; delete `groq_key.txt` after the
   first scan if you prefer (the key stays saved in the app).

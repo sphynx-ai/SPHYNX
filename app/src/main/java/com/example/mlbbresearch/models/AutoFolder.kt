@@ -16,7 +16,7 @@ import java.io.InputStream
 // reads it directly, nothing to choose. Without it you choose the folder once on the Model page
 // (Android then lets the app read it for good). Also read: the app's own files in
 // Download/Sphynx-Storage (exports and Kaggle results saved without the permission), and the
-// app's own folder Android/data/com.sphynx.autopilot/files/Sphynx-Storage (no choosing needed,
+// app's own folder Android/data/com.sphynx/files/Sphynx-Storage (no choosing needed,
 // e.g. when copying from a computer).
 // THE OLD MLBB-Research FOLDERS ARE IGNORED (owner, 2026-11-11), even for reading: Download/MLBB-Research,
 // .../files/MLBB-Research, and Download/MLBB-Research chosen as the folder by an older version (the Model
