@@ -40,8 +40,8 @@ A layer may depend only on the layers **below** it: **L3 → L2 → L1 → L0**.
 
 | Cycle or upward link | Cut by |
 |---|---|
-| `core` services that use `ai`, `game`, `vision`, `learning` (`SessionRecorder`, `Speed`, `TouchSpeed`, `VideoRecorder`, `GitHubUpload`, `PhoneState`) | Reclassify as L3 and move to an app-services package. The code is unchanged, only its package |
-| `core/Settings` storing MLBB `Lane` | Store the adapter's lane id as a string; the MLBB adapter converts it |
+| `core` services that use `ai`, `game`, `vision`, `learning` (`SessionRecorder`, `Speed`, `TouchSpeed`, `VideoRecorder`, `GitHubUpload`, `PhoneState`) | ~~Reclassify as L3 and move to an app-services package~~ (corrected 2026-11-14: the lower layers call these services, so a move would only turn the arrows round). The service stays in L0 and reads what it needs from the layers above through `core/Probes`, which the app layer fills at start (`app/ProbesWiring`). **Done for `Speed`, `TouchSpeed`, `PhoneState`, `VideoRecorder`, `GitHubUpload` (step B1, v37.28)**; `SessionRecorder` next (B2) |
+| `core/Settings` storing MLBB `Lane` | Store the adapter's lane id as a string; the MLBB adapter converts it. **Done (B1): `Lane.live()` in `game`** |
 | `game/GameStateTracker` reading `AiRuntime.playerOn`, and the `TacticalDecision` / `Intent` types | The tracker receives the flags it needs as input from L3. The decision types move to L1 (`universal/Decision` already exists) |
 | `vision` → `app/IconCache` (portraits) | Move the MLBB portrait cache into the MLBB adapter |
 | `models` → `ai`, `learning`, `vision` (`AutoFolder` applies what it finds) | `AutoFolder` lists and copies (L0) and reports each file to registered handlers. The handlers live with the code that loads the file |
@@ -58,7 +58,7 @@ A layer may depend only on the layers **below** it: **L3 → L2 → L1 → L0**.
 - `engines` uses `universal`, `core` and `inference`;
 - nothing but `app` uses `app`.
 
-The **31 existing violations** are listed in the test as a baseline that may only shrink:
+The **31 existing violations** (20 after step B1) are listed in the test as a baseline that may only shrink:
 - **a new violation fails the test;**
 - **a fixed violation that is still listed also fails,** so the list stays exact.
 

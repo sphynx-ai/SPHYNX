@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "Clean-up: the phone services no longer reach into the AI",
+            "Phase 2, first clean-up step: the speed pages, the screen-to-touch log, the phone state, the session video " +
+                "and the debug upload now get what they show (frame rates, model speeds, where the enemies are) from the " +
+                "app when it starts, instead of reaching into the AI and game code themselves. The build checks this " +
+                "direction from now on (11 of the 31 known exceptions gone). Nothing should look or work differently: " +
+                "please check the Speed page, a session video and the debug upload once.",
+            pr = 18, needsDeviceCheck = true, version = "37.28"),
         Entry("2026-11-14", Kind.FIXED, "Turning the AI off and on forgets the old fight",
             "When the AI was paused and started again, the Player's fast rules still remembered parts of what came " +
                 "before: the last jungle monster (it could stand still \"holding position\" at a monster that was gone), " +
