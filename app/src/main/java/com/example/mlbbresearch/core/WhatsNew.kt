@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "Development plan: the target design for the app's parts",
+            "Phase 2, step 2: a written decision (docs/adr/0001-layered-architecture.md) splits the app into four " +
+                "layers - phone services, the game-neutral core, one adapter per game (MLBB first) and the app " +
+                "screens - and says which may use which. A new check runs with every build and stops any change that " +
+                "adds a forbidden link; the 31 links that exist today are listed and will be removed step by step. " +
+                "No change to the app itself.",
+            pr = 11, version = "37.22"),
         Entry("2026-11-14", Kind.IMPROVED, "Development plan: Phase 2 has started (architecture map)",
             "Phase 2 of the development plan makes the app's core work for any MOBA, with MLBB as its first game. Its " +
                 "first step maps the app as it is today: which parts are game-neutral and which assume MLBB, how the " +
