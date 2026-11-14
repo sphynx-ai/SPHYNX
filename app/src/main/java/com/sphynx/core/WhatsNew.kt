@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "Clean-up: the session recorder no longer reaches into the AI",
+            "Phase 2, second clean-up step: what a session recording writes about the match (positions, enemies, " +
+                "the decision, the minimap...) is now put together by the AI loop and handed to the recorder, which only " +
+                "writes it. The recording format is the same. Also through the app: whether a match may be recorded by " +
+                "itself (5v5 only), the screen capture check, and the debug export's scenery picture. 6 more of the " +
+                "known exceptions gone (14 left). Please record one session and check it uploads as before.",
+            pr = 19, needsDeviceCheck = true, version = "37.29"),
         Entry("2026-11-14", Kind.IMPROVED, "Clean-up: the phone services no longer reach into the AI",
             "Phase 2, first clean-up step: the speed pages, the screen-to-touch log, the phone state, the session video " +
                 "and the debug upload now get what they show (frame rates, model speeds, where the enemies are) from the " +

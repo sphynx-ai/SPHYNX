@@ -341,7 +341,7 @@ object AiRuntime {
                     }
                     // think ahead: the next task is worked out while this one runs
                     TacticalEngine.planAhead(s, d, profile)
-                    com.sphynx.core.SessionRecorder.frame(s, d)
+                    SessionRows.frame(s, d)
                     benchMoving = d.moveX != 0f || d.moveY != 0f
                     // never into the enemy fountain, whatever the mode (owner, 2026-11-11) - applied last
                     d = FountainGuard.apply(s, d)

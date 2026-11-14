@@ -72,7 +72,7 @@ object SessionRecorder {
         if (!Cfg.autoRecord || on) return
         // only a 5v5 match is recorded by itself: Solo practice is for calibration (owner, 2026-11-13). When the
         // kind is not known yet, the recording starts as soon as it is (game.MatchKind.onFiveVFive)
-        if (!com.sphynx.learning.LearnGate.on()) return
+        if (!Probes.mayRecordMatch()) return
         begin(c, 0, true)
         Diag.info("Session recorder: started by itself at the start of the match")
     }
@@ -102,7 +102,7 @@ object SessionRecorder {
         // AT THE VIDEO'S SIZE LIMIT (owner, 2026-11-13): the recording ALWAYS continues in a new file, at once - the
         // full one is saved (and uploaded when that switch is on) in the background - so a whole match is covered.
         VideoRecorder.onLimit = { if (on) roll(app) }
-        if (com.sphynx.capture.ScreenCaptureService.running) {
+        if (Probes.screenCaptureRunning()) {
             VideoRecorder.start(File(ctx.applicationContext.cacheDir, name.removeSuffix(".jsonl") + ".mp4"))
         }
         Diag.info("Session recorder started ($name)" + if (VideoRecorder.on) " with video" else " (no video: screen capture is off)")
@@ -112,7 +112,7 @@ object SessionRecorder {
     private fun roll(app: Context) {
         val wasAuto = autoStarted
         // (a recording started by the match is not continued once that match is over)
-        if (wasAuto && com.sphynx.game.GameStateTracker.matchId == 0L) { stop(app) { msg -> lastExport = "auto-stopped: $msg" }; return }
+        if (wasAuto && !Probes.matchRunning()) { stop(app) { msg -> lastExport = "auto-stopped: $msg" }; return }
         val video = try { VideoRecorder.stop() } catch (e: Exception) { null }
         val f: File; val w: java.io.Writer?; val shots: List<File>
         synchronized(this) {
@@ -188,8 +188,8 @@ object SessionRecorder {
     // the research files (R5 comparison ab_log.json, R4 practice_moments.jsonl, readiness_report.txt) live in
     // the app's private storage; copies go next to the recording: <session>-ab_log.json etc.
     private fun exportResearch(c: Context, base: String): String {
-        try { com.sphynx.research.ResearchMode.saveMoments() } catch (e: Exception) { }
-        try { com.sphynx.ai.ModelSpeed.save(sync = true); TouchSpeed.save(sync = true) } catch (e: Exception) { }
+        for (save in Probes.beforeResearchExport) try { save() } catch (e: Exception) { }
+        try { TouchSpeed.save(sync = true) } catch (e: Exception) { }
         val dir = File(c.filesDir, "research")
         val files = dir.listFiles()?.filter { it.isFile && it.length() > 0 } ?: return ""
         if (files.isEmpty()) return ""
@@ -273,7 +273,7 @@ object SessionRecorder {
         put("$base-settings.json", "application/json") { it.writeText(settingsJson(Cfg.all()).toString(1)) }
         put("$base-diagnostics.log", "text/plain") { f -> Diag.logFile()?.takeIf { it.exists() }?.copyTo(f, overwrite = true) }
         put("$base-scenery.png", "image/png") { f ->
-            f.outputStream().use { com.sphynx.game.SceneryMap.renderPicture().compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            Probes.sceneryPicture()?.let { pic -> f.outputStream().use { pic.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) } }
         }
         return if (n > 0) "$n debug file(s) (settings, log, scenery picture)" else ""
     }
@@ -341,53 +341,18 @@ object SessionRecorder {
 
     // ---- what is recorded ----
 
-    @Volatile var lastDecision: com.sphynx.ai.TacticalDecision? = null; private set
-
-    fun frame(s: com.sphynx.game.GameState, d: com.sphynx.ai.TacticalDecision) {
-        if (!on) return
-        lastDecision = d
+    // A frame row (owner, 2026-11-12: everything the app saw). What goes in it is the game's and the AI's business:
+    // the AI loop builds it (ai.SessionRows, ADR 0001); here only the rate limit and the writing.
+    fun frame(row: (nowMs: Long) -> JSONObject) {
         if (!accept()) return
         val now = System.currentTimeMillis()
         if (now - lastFrameAt < FRAME_EVERY_MS) return
         lastFrameAt = now
-        try {
-            val o = JSONObject().put("k", "f").put("t", now).put("ms", s.matchSec).put("ph", s.phase.name)
-                .put("age", now - s.ts).put("hp", r3(s.selfHp)).put("lvl", s.level).put("lane", s.lane.name)
-            s.self?.let { o.put("me", JSONArray(listOf(r3(it.x), r3(it.y)))) }
-            s.minimapSelf?.let { o.put("mm", JSONArray(listOf(r3(it.first), r3(it.second)))) }
-            o.put("in", d.intent.name).put("why", d.reason.take(140))
-                .put("mv", JSONArray(listOf(r3(d.moveX), r3(d.moveY)))).put("cast", JSONArray(d.casts))
-            if (d.targetX >= 0f) o.put("tg", JSONArray(listOf(r3(d.targetX), r3(d.targetY), d.targetLabel, r3(d.targetHp), d.targetId)))
-            o.put("en", JSONArray(s.enemies.map { JSONArray(listOf(it.id, r3(it.x), r3(it.y), r3(it.hp), r3(it.vx), r3(it.vy), now - it.lastSeen)) }))
-            o.put("mon", JSONArray(s.monsters.map { JSONArray(listOf(r3(it.x), r3(it.y), r3(it.hp), if (it.hero) 1 else 0, it.species)) }))
-            o.put("map", JSONArray(com.sphynx.game.MapIntel.targets.map {
-                JSONArray(listOf(it.id, r3(it.x), r3(it.y), if (it.occluded) 1 else 0, it.sources.joinToString("+") { s2 -> s2.name.take(3) }))
-            }))
-            o.put("jg", com.sphynx.game.JungleNav.status.take(80))
-            // EVERYTHING THE APP SAW (owner, 2026-11-12): allies, minions, towers, the minimap reading, the gate,
-            // which lane is on top, the kind of match
-            fun pts(l: List<Pair<Float, Float>>) = JSONArray(l.take(12).map { JSONArray(listOf(r3(it.first), r3(it.second))) })
-            o.put("al", JSONArray(s.allies.take(6).map { JSONArray(listOf(r3(it.x), r3(it.y), r3(it.hp))) }))
-            o.put("emn", JSONArray(s.enemyMinions.take(8).map { JSONArray(listOf(r3(it.x), r3(it.y), r3(it.hp))) }))
-            o.put("amn", s.allyMinions.size)
-            o.put("tw", JSONArray(s.towers.take(12).map { JSONArray(listOf(r3(it.x), r3(it.y))) }))
-            if (s.towerRing.zone != com.sphynx.vision.TowerRing.Zone.NONE) o.put("ring", s.towerRing.zone.name)
-            o.put("mmE", pts(s.map.enemies)).put("mmA", pts(s.map.allies)).put("ew", pts(s.enemyWaves))
-            s.map.objective?.let { o.put("obj", JSONArray(listOf(r3(it.first), r3(it.second)))) }
-            o.put("gate", com.sphynx.ai.AiRuntime.playerGate?.name ?: "?")
-            o.put("side", when (com.sphynx.game.MapSide.goldTop) { true -> "GOLD_TOP"; false -> "EXP_TOP"; null -> "?" })
-            o.put("kind", com.sphynx.game.MatchKind.current().name)
-            o.put("lat", Speed.total().toInt())
-            // the buffs you hold, read from the emblems around your hero (vision.BuffEmblems)
-            com.sphynx.vision.BuffEmblems.held.takeIf { it.isNotEmpty() }?.let { b -> o.put("buf", JSONArray(b.map { it.name })) }
-            // research mode: rs = [verified practice?, arm (ARBITER / NORMAL)] - R3 / R5
-            if (com.sphynx.research.ResearchMode.on) o.put("rs", JSONArray(listOf(
-                com.sphynx.research.ResearchMode.allowsAutonomy(), com.sphynx.research.ResearchMode.arm().name)))
-            write(o)
-        } catch (e: Exception) { }
+        try { write(row(now)) } catch (e: Exception) { }
     }
 
-    fun aim(kind: String, slot: String, bx: Float, by: Float, ex: Float, ey: Float, d: com.sphynx.ai.TacticalDecision?,
+    // decision: the decision's fields for the row (in, tg, mv - ai.SessionRows.aimDecision), null = none
+    fun aim(kind: String, slot: String, bx: Float, by: Float, ex: Float, ey: Float, decision: JSONObject?,
             extra: JSONObject? = null) {
         if (!on) return
         val a = VideoRecorder.Aim(slot, bx, by, ex, ey, System.currentTimeMillis())
@@ -396,8 +361,7 @@ object SessionRecorder {
         try {
             val o = JSONObject().put("k", kind).put("t", System.currentTimeMillis()).put("slot", slot)
                 .put("btn", JSONArray(listOf(r3(bx), r3(by)))).put("end", JSONArray(listOf(r3(ex), r3(ey))))
-            if (d != null) o.put("in", d.intent.name).put("tg", JSONArray(listOf(r3(d.targetX), r3(d.targetY), d.targetLabel, d.targetId)))
-                .put("mv", JSONArray(listOf(r3(d.moveX), r3(d.moveY))))
+            decision?.let { dj -> dj.keys().forEach { o.put(it, dj.get(it)) } }
             extra?.let { e -> e.keys().forEach { o.put(it, e.get(it)) } }
             write(o)
         } catch (e: Exception) { }
