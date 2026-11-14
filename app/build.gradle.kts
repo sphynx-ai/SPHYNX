@@ -76,16 +76,17 @@ android {
 
     defaultConfig {
         buildConfigField("String", "GIT_COMMIT", "\"$gitCommit\"")
-        // v37.19: a new app id (the code package stays com.example.mlbbresearch). Android and Google Play treat
-        // it as a NEW app: it installs next to the old "MLBB Research" one, which can be uninstalled afterwards.
-        applicationId = "com.sphynx.autopilot"
+        // The app id (owner, 2026-11-14, v37.23: com.sphynx.autopilot -> com.sphynx; the code package stays
+        // com.example.mlbbresearch). Android treats a new id as a NEW app: it installs next to the old one, which
+        // can be uninstalled afterwards. Calibration and learned data come back from Sphynx-Storage/Output.
+        applicationId = "com.sphynx"
         minSdk = 30
         targetSdk = 36
         // THE APP VERSION (owner, 2026-11-14): one step up with EVERY merged pull request
         // (37.20 -> 37.21 -> ...; after 37.99 comes 38.00). Written only here: the version code follows
         // from it (37.20 -> 3720) and the app reads it through BuildConfig.VERSION_NAME (core.AppVersion).
         // The newest What's new entry carries the same version; a unit test checks they match.
-        val sphynxVersion = "37.22"
+        val sphynxVersion = "37.23"
         versionCode = sphynxVersion.split(".").let { it[0].toInt() * 100 + it[1].toInt() }
         versionName = sphynxVersion
 

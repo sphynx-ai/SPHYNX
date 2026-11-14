@@ -24,6 +24,14 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "New app id: com.sphynx",
+            "The app id is now com.sphynx (was com.sphynx.autopilot). Android sees it as a new app, so it installs " +
+                "next to the old one. Give the new one its permissions again (Accessibility, display over other apps, " +
+                "All files access, screen capture). Your button and minimap calibration, scenery sync, learned data and " +
+                "most settings come back by themselves from the backups in Sphynx-Storage/Output once All files access " +
+                "is on (restart the app once); models and keys are read from Sphynx-Storage/Input as before. Check " +
+                "the switches once. When the new app works, uninstall the old one.",
+            pr = 13, needsDeviceCheck = true, version = "37.23"),
         Entry("2026-11-14", Kind.IMPROVED, "Development plan: the target design for the app's parts",
             "Phase 2, step 2: a written decision (docs/adr/0001-layered-architecture.md) splits the app into four " +
                 "layers - phone services, the game-neutral core, one adapter per game (MLBB first) and the app " +
