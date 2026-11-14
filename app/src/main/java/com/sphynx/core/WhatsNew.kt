@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "Development plan: the new layout of the app (5 sections)",
+            "Phase 3: from your screenshots and your yes, the plan for the app's layout: five sections in a bar at the " +
+                "bottom - Play, Hero & match, Knowledge, AI & models, Settings & help - instead of 14 tabs; one place " +
+                "that shows what is running; the Player page split in two; every delete / reset asks first " +
+                "(docs/PHASE_3_INFORMATION_ARCHITECTURE.md). The audit now includes what your screenshots showed. The " +
+                "app itself does not change yet: the new layout is built in Phase 4.",
+            pr = 21, version = "37.31"),
         Entry("2026-11-14", Kind.IMPROVED, "Development plan: Phase 3 (the app's design) has started",
             "Phase 2 is paused for now (what is done and where it continues is written down). Phase 3 is about how the " +
                 "app looks and works: its first step is an audit of every page and the floating panel - what is on " +
