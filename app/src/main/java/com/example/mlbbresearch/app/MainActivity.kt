@@ -87,6 +87,9 @@ class MainActivity : Activity() {
     private val ui = Handler(Looper.getMainLooper())
     private var headerStatus: TextView? = null
     private var navScroll: HorizontalScrollView? = null
+    // hold-for-help (owner, 2026-11-14): the descriptions on the current page, shown only while "?" is held
+    private val descriptions = ArrayList<TextView>()
+    private var helpHeld = false
 
     private val pages = listOf("home", "news", "player", "draft", "build", "meta", "library", "model", "learn", "practice", "speed", "logs", "debug", "setup")
     private val labels = mapOf(
@@ -152,6 +155,26 @@ class MainActivity : Activity() {
         headerStatus = TextView(this).apply { textSize = 12f; setTextColor(Color.parseColor(T.MUTED)) }
         names.addView(headerStatus)
         header.addView(names, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        // hold for help: a small "?" circle. The descriptions under the buttons show only while it is
+        // pressed and held, and hide again when it is let go (owner, 2026-11-14).
+        val helpBtn = TextView(this).apply {
+            text = "?"
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(c(T.TEXT))
+            background = shape(T.SURF2, 12, T.MUTED)
+            contentDescription = "Hold to see the descriptions"
+            setOnTouchListener { v, e ->
+                when (e.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN -> { setHelp(true); true }
+                    android.view.MotionEvent.ACTION_UP -> { setHelp(false); v.performClick(); true }
+                    android.view.MotionEvent.ACTION_CANCEL -> { setHelp(false); true }
+                    else -> true
+                }
+            }
+        }
+        header.addView(helpBtn, LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginEnd = dp(10) })
         // the one emergency stop in the app (also: the floating icon and the notification)
         val stopTop = Button(this).apply {
             text = "■  STOP"
@@ -326,7 +349,8 @@ class MainActivity : Activity() {
         "#EF9A9A", "#F28B82" -> T.RED; "#66BB6A" -> T.GREEN; else -> hex
     }
 
-    private fun text(t: String, size: Float = 14f, bold: Boolean = false, color: String = T.TEXT): TextView {
+    // describe = false: a line that is information, not a description (field labels, the app version)
+    private fun text(t: String, size: Float = 14f, bold: Boolean = false, color: String = T.TEXT, describe: Boolean = true): TextView {
         val v = TextView(this).apply {
             text = t
             textSize = size
@@ -336,7 +360,31 @@ class MainActivity : Activity() {
             setPadding(0, dp(6), 0, dp(2))
         }
         content.addView(v)
+        if (HelpHold.isDescription(t, bold, describe)) asDescription(v)
         return v
+    }
+
+    // a description: hidden unless "?" is held. If the page rewrites its text later it is a live line
+    // after all (a status), so it is shown for good.
+    private fun asDescription(v: TextView) {
+        val atCreation = v.text.toString()
+        descriptions.add(v)
+        v.visibility = if (helpHeld) View.VISIBLE else View.GONE
+        v.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, n: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, n: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (v in descriptions && !HelpHold.staysDescription(atCreation, s ?: "")) {
+                    descriptions.remove(v)
+                    v.visibility = View.VISIBLE
+                }
+            }
+        })
+    }
+
+    private fun setHelp(on: Boolean) {
+        helpHeld = on
+        for (d in descriptions) d.visibility = if (on) View.VISIBLE else View.GONE
     }
 
     // a section header: accent bar + small capitals
@@ -391,7 +439,7 @@ class MainActivity : Activity() {
     }
 
     private fun field(hint: String, value: String, numeric: Boolean, save: (String) -> Unit): EditText {
-        text(hint, 12f, color = T.MUTED)
+        text(hint, 12f, color = T.MUTED, describe = false)
         val e = EditText(this).apply {
             inputType = if (numeric) InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL else InputType.TYPE_CLASS_TEXT
             setText(value)
@@ -506,6 +554,7 @@ class MainActivity : Activity() {
         for (h in leaveHooks.toList()) h()
         leaveHooks.clear()
         updaters.clear()
+        descriptions.clear()
         content.removeAllViews()
         page = p
         when (p) {
@@ -547,7 +596,7 @@ class MainActivity : Activity() {
     private fun startStage(stage: String) {
         if (AccessibilityController.instance == null) {
             pendingStage = stage
-            toast("Turn ON 'Sphynx Auto Pilot' in Accessibility, then come back")
+            toast("Turn ON 'Sphynx' in Accessibility, then come back")
             openAccessibility()
             return
         }
@@ -690,8 +739,8 @@ class MainActivity : Activity() {
         val wn = com.example.mlbbresearch.core.WhatsNew
         title("WHAT'S NEW")
         val n = wn.counts()
-        text("Sphynx Auto Pilot v${com.example.mlbbresearch.core.AppVersion.VERSION} · " +
-            com.example.mlbbresearch.core.WhatsNew.Kind.values().joinToString(" · ") { "${n[it] ?: 0} ${it.label.lowercase()}" }, 12f, color = T.MUTED)
+        text("Sphynx v${com.example.mlbbresearch.core.AppVersion.VERSION} · " +
+            com.example.mlbbresearch.core.WhatsNew.Kind.values().joinToString(" · ") { "${n[it] ?: 0} ${it.label.lowercase()}" }, 12f, color = T.MUTED, describe = false)
         for ((date, entries) in wn.byDate()) {
             val cd = card()
             cardHeader(cd, date)
@@ -704,8 +753,8 @@ class MainActivity : Activity() {
     private fun homePage() {
         // the app version (and the installed build, if the package says something else)
         val installed = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { null }
-        text("Sphynx Auto Pilot v${com.example.mlbbresearch.core.AppVersion.VERSION}" +
-            (if (installed != null && installed != com.example.mlbbresearch.core.AppVersion.VERSION) " · build $installed" else ""), 12f, color = T.MUTED)
+        text("Sphynx v${com.example.mlbbresearch.core.AppVersion.VERSION}" +
+            (if (installed != null && installed != com.example.mlbbresearch.core.AppVersion.VERSION) " · build $installed" else ""), 12f, color = T.MUTED, describe = false)
         whatsNewPreview()
         val c1 = card()
         val status = cardHeader(c1, "", "", T.GREEN)
@@ -1189,7 +1238,7 @@ class MainActivity : Activity() {
             val h = GameStateTracker.ownHero()
             when {
                 h == null -> toast("Pick a hero first")
-                !com.example.mlbbresearch.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Auto-Pilot-Storage folder")
+                !com.example.mlbbresearch.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage folder")
                 else -> {
                     toast("Learning $h (skills, then the guide)…")
                     com.example.mlbbresearch.game.SkillBook.fetch(h) { m1 ->
@@ -1326,8 +1375,8 @@ class MainActivity : Activity() {
             val hero = GameStateTracker.ownHero() ?: HeroDb.match(Cfg.manualHero) ?: HeroDb.match(Cfg.myHero)
             val xc = card()
             cardHeader(xc, "Experimental builds", hero ?: "no hero", T.GOLD)
-            cardText(xc, 12f).text = "Builds that try something different from the meta, made from ${hero ?: "your hero"}'s real skills and passive, its kit, " +
-                "how it plays, the original server's patch and meta, and what the Library knows about each item. Real items and spells only."
+            asDescription(cardText(xc, 12f).apply { text = "Builds that try something different from the meta, made from ${hero ?: "your hero"}'s real skills and passive, its kit, " +
+                "how it plays, the original server's patch and meta, and what the Library knows about each item. Real items and spells only." })
             val xs = lab.builds(hero)
             if (xs.isEmpty()) cardText(xc, 12.5f).text = if (hero == null) "Choose your hero on the Player page first." else "None made yet."
             else cardText(xc, 11.5f).text = "Made for patch ${lab.madeFor(hero).ifBlank { "?" }}" + (lab.chosen(hero)?.let { " · in use: ${it.name}" } ?: "")
@@ -1829,14 +1878,14 @@ class MainActivity : Activity() {
         }
         val st = text("", 13f, color = T.MUTED)
         upd {
-            st.text = (if (!com.example.mlbbresearch.ai.GroqClient.anyKey) "No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Auto-Pilot-Storage folder." else "${gq.calls} answers this session" +
+            st.text = (if (!com.example.mlbbresearch.ai.GroqClient.anyKey) "No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage folder." else "${gq.calls} answers this session" +
                 (if (gq.tokensLeft >= 0) " · ${gq.tokensLeft} tokens left this minute" else "")) +
                 (if (ma.busy.isNotEmpty()) "\nWorking: ${ma.busy}…" else "") +
                 (if (ma.lastMessage.isNotEmpty()) "\n${ma.lastMessage}" else "")
         }
         val upd1 = btn("Update the patch meta") {
             leaveHooks.forEach { it() }
-            if (!com.example.mlbbresearch.ai.GroqClient.anyKey) toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Auto-Pilot-Storage folder") else {
+            if (!com.example.mlbbresearch.ai.GroqClient.anyKey) toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage folder") else {
                 toast("Asking Groq (10-30 s)…")
                 ma.updateGeneral { msg -> runOnUiThread { toast(msg) } }
             }
@@ -1847,7 +1896,7 @@ class MainActivity : Activity() {
             leaveHooks.forEach { it() }
             val h = HeroDb.match(heroBox.text.toString()) ?: GameStateTracker.ownHero() ?: HeroDb.match(Cfg.myHero)
             when {
-                !com.example.mlbbresearch.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Auto-Pilot-Storage folder")
+                !com.example.mlbbresearch.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage folder")
                 h == null -> toast("Type a hero name")
                 else -> { toast("Asking Groq about $h (10-30 s)…"); ma.updateHero(h) { msg -> runOnUiThread { toast(msg) } } }
             }
@@ -2259,7 +2308,7 @@ class MainActivity : Activity() {
 
     private fun modelPage() {
         title("FILES")
-        text("Put files in the Sphynx-Auto-Pilot-Storage folder (top of the phone's storage, next to Download); the app loads them by itself:\n• Gemma 4 E2B (.litertlm) – strategy\n• Gemma 3 270M (.litertlm) – fight advice (optional)\n• mlbb_policies.zip – tactical networks\n• detectors (.tflite + labels) – minimap and screen\n• groq_key.txt – online meta", 13f)
+        text("Put files in the Sphynx-Storage folder (top of the phone's storage, next to Download); the app loads them by itself:\n• Gemma 4 E2B (.litertlm) – strategy\n• Gemma 3 270M (.litertlm) – fight advice (optional)\n• mlbb_policies.zip – tactical networks\n• detectors (.tflite + labels) – minimap and screen\n• groq_key.txt – online meta", 13f)
         val mcard = card()
         val st = cardText(mcard, 14f, true)
         upd {
@@ -2307,18 +2356,18 @@ class MainActivity : Activity() {
             sb.append("\n\nMinimap: " + com.example.mlbbresearch.game.MapIntel.status)
             st.text = sb
         }
-        // v37.19: the app's folder /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage (imports and exports)
+        // v37.19: the app's folder /CodeOnTheGoProjects/Sphynx-Storage (imports and exports)
         val storageInfo = text("", 12f, color = T.MUTED)
         val allowBtn = btn("") {
             if (com.example.mlbbresearch.core.Storage.allFilesAccess) com.example.mlbbresearch.models.AutoFolder.scan(this) { msg -> runOnUiThread { toast(msg.take(150)) } }
             else try { startActivity(com.example.mlbbresearch.core.Storage.requestIntent(this)) }
-                catch (e: Exception) { toast("Open Settings > Apps > Special app access > All files access > Sphynx Auto Pilot") }
+                catch (e: Exception) { toast("Open Settings > Apps > Special app access > All files access > Sphynx") }
         }
         upd {
             val on = com.example.mlbbresearch.core.Storage.allFilesAccess
             storageInfo.text = com.example.mlbbresearch.core.Storage.status()
             storageInfo.setTextColor(c(if (on) T.MUTED else T.GOLD))
-            allowBtn.text = if (on) "All files access is on - scan the folder" else "Allow all files access (for /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage)"
+            allowBtn.text = if (on) "All files access is on - scan the folder" else "Allow all files access (for /CodeOnTheGoProjects/Sphynx-Storage)"
         }
         val folderInfo = text("", 12f, color = T.MUTED)
         upd {
@@ -2339,7 +2388,7 @@ class MainActivity : Activity() {
         btn("Get Gemma 4 E2B (2.6 GB)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.MODEL_PAGE))) }
         btn("Get Gemma 3 270M") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.SMALL_MODEL_PAGE))) }
         btn("Training notebooks (GitHub)") {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/georgenaval1-blip/Sphynx-Auto-Pilot/tree/main/notebooks")))
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/sphynx-ai/SPHYNX/tree/main/notebooks")))
         }
         btn("Groq API key (free)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) }
 
@@ -2401,7 +2450,7 @@ class MainActivity : Activity() {
         val tr = com.example.mlbbresearch.learning.TrainingResults
         Thread { try { tr.refresh(this) } catch (e: Exception) { } }.start()
         val trc = card()
-        cardNote(trc, "Each circle: how much better (green) or worse (red) the last training is than the one before it.")
+        asDescription(cardNote(trc, "Each circle: how much better (green) or worse (red) the last training is than the one before it."))
         for (k in com.example.mlbbresearch.learning.TrainingResults.Kind.values()) {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(4)) }
             val ring = ProgressRing(this)
@@ -2441,8 +2490,8 @@ class MainActivity : Activity() {
         upd {
             ctChip.text = if (ct.ready()) "key set" else "no key"
             ctChip.setTextColor(c(if (ct.ready()) T.GREEN else T.RED))
-            ctNote.text = if (ct.ready()) "Tap a training: inputs upload from Download/Sphynx-Auto-Pilot-Storage, it trains on Kaggle, results download back and load by themselves."
-                else "Put kaggle.json in the Sphynx-Auto-Pilot-Storage folder (kaggle.com > Settings > API > Create New Token), then Scan the folder on the Model page."
+            ctNote.text = if (ct.ready()) "Tap a training: inputs upload from Download/Sphynx-Storage, it trains on Kaggle, results download back and load by themselves."
+                else "Put kaggle.json in the Sphynx-Storage folder (kaggle.com > Settings > API > Create New Token), then Scan the folder on the Model page."
         }
         for (j in com.example.mlbbresearch.learning.CloudTrain.Job.values()) {
             val jc = card()
@@ -2634,7 +2683,7 @@ class MainActivity : Activity() {
         title("SESSION RECORDER - for bug reports")
         text("Records what the AI saw and decided (about 10 times a second, every aimed skill, the log) into a data file, " +
             "and a video of the AI's view with its targets and aim drawn on top. Start it before a match, stop it after; " +
-            "everything is saved in Sphynx-Auto-Pilot-Storage/recordings and uploaded from this page. Screen capture must be on for the video.", 12f, color = T.MUTED)
+            "everything is saved in Sphynx-Storage/recordings and uploaded from this page. Screen capture must be on for the video.", 12f, color = T.MUTED)
         val recInfo = text("", 12f)
         val recBtn = btn("") {
             val r = com.example.mlbbresearch.core.SessionRecorder
@@ -2768,7 +2817,7 @@ class MainActivity : Activity() {
     // the main switches (all off on a new install), scenery calibration and skill button calibration.
     // It can be opened again from the Setup page.
     private fun welcomePage() {
-        title("WELCOME TO SPHYNX AUTO PILOT")
+        title("WELCOME TO SPHYNX")
         text("Six short steps get the app ready. Each turns green when it is done. Every switch starts OFF: turn on only " +
             "what you want. You can do any step later from the Model, Learn and Setup pages.", 13f, color = T.MUTED)
 
@@ -2793,7 +2842,7 @@ class MainActivity : Activity() {
         }
         val fa = inCard(p1, "All files access (the app's folder)") {
             try { startActivity(com.example.mlbbresearch.core.Storage.requestIntent(this)) }
-            catch (e: Exception) { toast("Open Settings > Apps > Special app access > All files access > Sphynx Auto Pilot") }
+            catch (e: Exception) { toast("Open Settings > Apps > Special app access > All files access > Sphynx") }
         }
         cardNote(p1, "POCO / Xiaomi: also allow 'pop-up windows while running in the background' and turn off 'Manage app if unused'.")
         upd {
@@ -2987,7 +3036,7 @@ class MainActivity : Activity() {
         btn("Clear the samples of this icon type") { com.example.mlbbresearch.vision.MinimapColors.clear(kinds[kindIdx]); toast("Cleared") }
 
         title("SCENERY CALIBRATION & MINIMAP SYNCHRONIZATION")
-        text("Synchronizes 3D screen scenery (towers, monster pits, bushes, walls) with the 2D minimap on every frame. Saved persistently on your phone (mlbb-scenery-sync.json in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage, or Download/Sphynx-Auto-Pilot-Storage without all files access) across app uninstall/reinstall — only deleted when you press Clear saved map scenery or Reset minimap sync offsets.", 12f, color = "#9AA0A6")
+        text("Synchronizes 3D screen scenery (towers, monster pits, bushes, walls) with the 2D minimap on every frame. Saved persistently on your phone (mlbb-scenery-sync.json in /CodeOnTheGoProjects/Sphynx-Storage, or Download/Sphynx-Storage without all files access) across app uninstall/reinstall — only deleted when you press Clear saved map scenery or Reset minimap sync offsets.", 12f, color = "#9AA0A6")
         switch("Auto-sync 3D screen scenery with minimap landmarks", Cfg.sceneryAutoSync) { Cfg.sceneryAutoSync = it }
         val sceneryInfo = text("", 13f)
         val camPresetBtn = btn("") {

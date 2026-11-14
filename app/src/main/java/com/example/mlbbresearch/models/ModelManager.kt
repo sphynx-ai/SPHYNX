@@ -8,7 +8,7 @@ import com.example.mlbbresearch.core.Cfg
 import kotlinx.coroutines.launch
 import java.io.File
 
-// The two language-model slots and their .litertlm files (copied in from the Sphynx-Auto-Pilot
+// The two language-model slots and their .litertlm files (copied in from the Sphynx
 // folder by AutoFolder):
 //   STRATEGIC: Gemma 4 E2B (recommended) or Gemma 3n E2B - big, GPU first, asked now and then
 //   TACTICAL:  a small Gemma (Gemma 3 270M, or 1B) - CPU, text only, asked ~3 times a second
@@ -69,7 +69,7 @@ object ModelManager {
 
     fun load(ctx: Context, done: (String?) -> Unit) {
         val f = modelFile(ctx)
-        if (!f.exists()) { done("No model file yet (put the .litertlm file in the Sphynx-Auto-Pilot-Storage folder)"); return }
+        if (!f.exists()) { done("No model file yet (put the .litertlm file in the Sphynx-Storage folder)"); return }
         if (GemmaEngine.loading) return
         AiRuntime.scope.launch {
             val err = GemmaEngine.load(ctx.applicationContext, f.absolutePath, Cfg.useGpu)
@@ -80,7 +80,7 @@ object ModelManager {
     // the small tactical model: CPU, text only (the GPU is left to the game and the big model)
     fun loadTactical(ctx: Context, done: (String?) -> Unit) {
         val f = tacticalFile(ctx)
-        if (!f.exists()) { done("No small model file yet (put e.g. the Gemma 3 270M .litertlm file in the Sphynx-Auto-Pilot-Storage folder)"); return }
+        if (!f.exists()) { done("No small model file yet (put e.g. the Gemma 3 270M .litertlm file in the Sphynx-Storage folder)"); return }
         if (TacticalLlmEngine.loading || TacticalLlmEngine.ready) { done(null); return }
         AiRuntime.scope.launch {
             val err = TacticalLlmEngine.load(ctx.applicationContext, f.absolutePath, preferGpu = false, textOnly = true)

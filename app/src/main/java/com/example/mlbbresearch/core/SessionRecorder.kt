@@ -16,7 +16,7 @@ import java.util.concurrent.Executors
 // SESSION RECORDER (for bug reports, owner request): while it is on, it writes what the AI saw and
 // decided, about 10 times a second, plus every aimed skill and every log line, to one file:
 //   sphynx-session-<date>.jsonl   (one JSON object per line)
-// in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/recordings (or Download/Sphynx-Auto-Pilot-Storage/recordings
+// in /CodeOnTheGoProjects/Sphynx-Storage/recordings (or Download/Sphynx-Storage/recordings
 // without all files access). Record the screen at the same time: every row has the wall-clock time
 // ("t", ms) and the in-game match timer ("ms" = match seconds), so file and video line up.
 // Row types ("k"):

@@ -23,7 +23,7 @@ import java.net.URL
 // Uses GitHub's Git Data API: blobs -> tree -> commit -> move the branch.
 object GitHubUpload {
 
-    const val REPO = "georgenaval1-blip/Sphynx-Auto-Pilot"
+    const val REPO = "sphynx-ai/SPHYNX"
     const val BRANCH = "recordings-for-debugging"
     const val TOKEN_FILE = "github_token.txt"
     const val API = "https://api.github.com"
@@ -186,7 +186,7 @@ object GitHubUpload {
         c.setRequestProperty("Authorization", "Bearer $token")
         c.setRequestProperty("Accept", "application/vnd.github+json")
         c.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
-        c.setRequestProperty("User-Agent", "sphynx-auto-pilot")
+        c.setRequestProperty("User-Agent", "sphynx")
         c.setRequestProperty("Content-Type", "application/json")
         return c
     }

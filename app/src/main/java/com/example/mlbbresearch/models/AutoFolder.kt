@@ -12,11 +12,11 @@ import java.io.InputStream
 // ONE FOLDER FOR EVERYTHING: put the downloaded files in it and the app finds, copies, loads
 // and applies them by itself (when it starts, and when you tap "Scan the folder now").
 //
-// Folder: /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage (core.Storage). With "All files access" the app
+// Folder: /CodeOnTheGoProjects/Sphynx-Storage (core.Storage). With "All files access" the app
 // reads it directly, nothing to choose. Without it you choose the folder once on the Model page
 // (Android then lets the app read it for good). Also read: the app's own files in
-// Download/Sphynx-Auto-Pilot-Storage (exports and Kaggle results saved without the permission), and the
-// app's own folder Android/data/com.sphynx.autopilot/files/Sphynx-Auto-Pilot-Storage (no choosing needed,
+// Download/Sphynx-Storage (exports and Kaggle results saved without the permission), and the
+// app's own folder Android/data/com.sphynx.autopilot/files/Sphynx-Storage (no choosing needed,
 // e.g. when copying from a computer).
 // THE OLD MLBB-Research FOLDERS ARE IGNORED (owner, 2026-11-11), even for reading: Download/MLBB-Research,
 // .../files/MLBB-Research, and Download/MLBB-Research chosen as the folder by an older version (the Model
@@ -42,7 +42,7 @@ import java.io.InputStream
 // on every start.
 object AutoFolder {
 
-    const val FOLDER = "Sphynx-Auto-Pilot-Storage"
+    const val FOLDER = "Sphynx-Storage"
     const val FOLDER_PATH = com.example.mlbbresearch.core.Storage.REL
     const val LEGACY_FOLDER = "MLBB-Research"         // the import folder before v37.19: ignored now
     @Volatile var status = "folder not chosen yet"
@@ -57,7 +57,7 @@ object AutoFolder {
     fun localDir(ctx: Context): File? =
         ctx.applicationContext.getExternalFilesDir(null)?.let { File(it, FOLDER).apply { mkdirs() } }
 
-    // the chosen folder as a path, e.g. "CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage" or "Download/MLBB-Research" (null = none)
+    // the chosen folder as a path, e.g. "CodeOnTheGoProjects/Sphynx-Storage" or "Download/MLBB-Research" (null = none)
     fun chosenPath(): String? = storedTree?.let { u ->
         try { DocumentsContract.getTreeDocumentId(u).substringAfter(':') } catch (e: Exception) { null }
     }
@@ -73,7 +73,7 @@ object AutoFolder {
         else -> "Reading /${chosenPath() ?: FOLDER_PATH}"
     }
 
-    // the folder picker, opening at /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage when possible
+    // the folder picker, opening at /CodeOnTheGoProjects/Sphynx-Storage when possible
     fun pickIntent(): Intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
         val initial = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:$FOLDER_PATH")
         putExtra(DocumentsContract.EXTRA_INITIAL_URI, initial)
@@ -119,7 +119,7 @@ object AutoFolder {
         for (dir in listOfNotNull(com.example.mlbbresearch.core.Storage.dir(), localDir(ctx)))
             dir.listFiles()?.forEach { f -> if (f.isFile && out.none { it.name == f.name }) out.add(Entry(f.name, f.length(), f.lastModified()) { f.inputStream() }) }
         // the app's own files saved in Download without the permission (exports, Kaggle results): the app's
-        // Download/Sphynx-Auto-Pilot-Storage
+        // Download/Sphynx-Storage
         try {
             val rel = com.example.mlbbresearch.core.Storage.downloadsRel() + "/"
             cr.query(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI,

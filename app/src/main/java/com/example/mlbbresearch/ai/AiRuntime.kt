@@ -82,7 +82,7 @@ object AiRuntime {
         val svc = AccessibilityController.instance
         // research mode (R2) only reads the scoreboard: it needs no touches either
         if (svc == null && stage != "learn" && stage != "research") return "Turn on the accessibility service first (Setup page)"
-        if (needsGemma(stage) && !GemmaEngine.ready) return "The Gemma model is not loaded (put the .litertlm file in the Sphynx-Auto-Pilot-Storage folder)"
+        if (needsGemma(stage) && !GemmaEngine.ready) return "The Gemma model is not loaded (put the .litertlm file in the Sphynx-Storage folder)"
         when (stage) {
             "player" -> {
                 playerOn = true

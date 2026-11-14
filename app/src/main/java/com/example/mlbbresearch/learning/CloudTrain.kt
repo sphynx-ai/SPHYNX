@@ -21,14 +21,14 @@ import java.util.concurrent.Executors
 
 // ONE-TAP TRAINING IN THE CLOUD (Kaggle Notebooks: free GPU, about 30 h a week).
 // Google Colab cannot be started by another app; Kaggle can, through its API. A Train button:
-//  1. gathers the inputs from Download/Sphynx-Auto-Pilot-Storage (fresh CSV exports are made first)
+//  1. gathers the inputs from Download/Sphynx-Storage (fresh CSV exports are made first)
 //  2. uploads them to private Kaggle datasets (picture zips once each; the rest as a new version)
 //  3. starts the training notebook from the app's GitHub repository on Kaggle (GPU where needed)
 //  4. checks it every minute (also after the app restarts)
-//  5. downloads the results straight into Download/Sphynx-Auto-Pilot-Storage, and the folder scan loads them
+//  5. downloads the results straight into Download/Sphynx-Storage, and the folder scan loads them
 // The notebooks run unattended there (their Kaggle mode) and keep what they learned: the last
 // detector / networks go back up with the next run.
-// Needs kaggle.json (kaggle.com > Settings > API > Create New Token) in the Sphynx-Auto-Pilot-Storage folder;
+// Needs kaggle.json (kaggle.com > Settings > API > Create New Token) in the Sphynx-Storage folder;
 // for the small model, accept the Gemma licence on kaggle.com once.
 object CloudTrain {
 
@@ -46,8 +46,8 @@ object CloudTrain {
 
     @Volatile internal var API = "https://api.kaggle.com/v1"        // (overridable for tests)
     // where the notebooks are read from on GitHub when the app's own copy cannot be read (the phone's test branch first)
-    private val REPO_REFS = listOf("test/owner-2026-11-10", "main")
-    @Volatile internal var REPO = "https://raw.githubusercontent.com/georgenaval1-blip/Sphynx-Auto-Pilot"
+    private val REPO_REFS = listOf("sphynx-test-branch", "main")
+    @Volatile internal var REPO = "https://raw.githubusercontent.com/sphynx-ai/SPHYNX"
     private const val MIN_PLAY = 300      // recorded moments before the tactical networks are worth training
     const val LLM_TRAINABLE = "tactical_llm_trainable.zip"   // the small model's trainable copy (~550 MB)
     private const val MIN_FIGHTS = 150    // fight moments before the small model is worth training
@@ -72,7 +72,7 @@ object CloudTrain {
     private fun inputs(ctx: Context): List<Input> {
         val byName = LinkedHashMap<String, Input>()
         try { for (e in AutoFolder.files(ctx)) byName[e.name] = Input(e.name, e.size, e.open) } catch (e: Exception) { }
-        // the app's own files in Download/Sphynx-Auto-Pilot-Storage (exports, zips, results)
+        // the app's own files in Download/Sphynx-Storage (exports, zips, results)
         val base = com.example.mlbbresearch.core.Storage.downloadsRel() + "/"
         try {
             ctx.contentResolver.query(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
@@ -196,7 +196,7 @@ object CloudTrain {
     // ---------------- the button ----------------
 
     fun start(ctx: Context, j: Job, done: (String) -> Unit) {
-        if (!ready()) { done("Put kaggle.json in the Sphynx-Auto-Pilot-Storage folder first (kaggle.com > Settings > API > Create New Token)"); return }
+        if (!ready()) { done("Put kaggle.json in the Sphynx-Storage folder first (kaggle.com > Settings > API > Create New Token)"); return }
         synchronized(busy) { if (j in busy || Cfg.raw("ct_run_${j.key}") != null) { done("${j.label}: already training"); return }; busy.add(j) }
         val c = ctx.applicationContext
         done("${j.label}: preparing…")
@@ -383,7 +383,7 @@ object CloudTrain {
         return err.removePrefix("SystemExit:").trim()
     }
 
-    // the results, straight into Download/Sphynx-Auto-Pilot-Storage; then the folder scan loads them
+    // the results, straight into Download/Sphynx-Storage; then the folder scan loads them
     private fun fetch(c: Context, j: Job) {
         setStatus(j, "downloading the results…")
         val r = call("kernels.KernelsApiService", "ListKernelSessionOutput",

@@ -19,9 +19,9 @@ import kotlin.math.hypot
 // colour (your icon, red enemy portraits, blue ally portraits, towers) - and from the detector
 // itself when one is loaded. YOLO format, same class names as the detector (labels.txt), so it
 // can be mixed with the Roboflow dataset:
-//   Download/Sphynx-Auto-Pilot-Storage/dataset/images/mm_<time>.png
-//   Download/Sphynx-Auto-Pilot-Storage/dataset/labels/mm_<time>.txt      (class  x  y  w  h, 0..1)
-//   Download/Sphynx-Auto-Pilot-Storage/dataset/classes.txt
+//   Download/Sphynx-Storage/dataset/images/mm_<time>.png
+//   Download/Sphynx-Storage/dataset/labels/mm_<time>.txt      (class  x  y  w  h, 0..1)
+//   Download/Sphynx-Storage/dataset/classes.txt
 // Upload the folder to Roboflow to check / fix the boxes (much faster than drawing them), or
 // zip it and give it straight to notebooks/train_mlbb_detector.ipynb.
 // At most one picture every 6 s (zipped at 1500, see DatasetZipper), only in a match with your hero on screen.

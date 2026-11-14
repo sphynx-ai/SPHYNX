@@ -9,7 +9,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// Export or delete the learning data. Exports go to Download/Sphynx-Auto-Pilot-Storage as CSV,
+// Export or delete the learning data. Exports go to Download/Sphynx-Storage as CSV,
 // ready for training a policy model later.
 object DatasetManager {
 

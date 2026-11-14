@@ -10,7 +10,7 @@ All statements are VERIFIED by reading the code, the build files or the built AP
 
 | Item | Value |
 |---|---|
-| Repository | https://github.com/georgenaval1-blip/Sphynx-Auto-Pilot |
+| Repository | https://github.com/sphynx-ai/SPHYNX |
 | Authoritative branch / commit | `main` = `716af662b0239d567826c174a313696aa04defff` |
 | Working tree | clean |
 | Local branch | `docs/universal-compatibility-audit` (Stage 1 docs plus this file; not pushed) |

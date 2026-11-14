@@ -1,4 +1,4 @@
-# Sphynx-Auto-Pilot — Master Development Plan
+# Sphynx — Master Development Plan
 
 **Canonical roadmap:** This is the authoritative 16-phase product-development roadmap. Product features, architecture initiatives, research work packages, and planned integrations belong here. GitHub Issues should primarily track defects, regressions, reliability problems, security problems, compatibility failures, and concrete engineering work requiring correction.
 
@@ -28,7 +28,7 @@ Approval or migration into this roadmap does not mean implementation is complete
 
 ## 2. Product vision and non-negotiable principles
 
-Sphynx-Auto-Pilot is intended to become a reliable, offline-first Universal MOBA Companion—not an MLBB-only application and not merely a chatbot.
+Sphynx is intended to become a reliable, offline-first Universal MOBA Companion—not an MLBB-only application and not merely a chatbot.
 
 The product direction includes:
 1. Multiple MOBA game integrations through isolated game adapters.
@@ -57,7 +57,7 @@ Controls include action allowlists and limits, state validation, timeouts, cance
 
 ## 3. Approved 16-phase development roadmap
 
-The phase sequence below is controlling. Issue #1 and Issue #37 have been placed in the phases where their work belongs; their detailed requirements are in Sections 4 and 5.
+The phase sequence below is controlling. Issue #1, Issue #37, and the MLBB-specific combat-perception scope from the historical Issue #2 have been placed in the phases where their work belongs; their detailed requirements are in Sections 4 and 5.
 
 | Phase | Name | Primary outcome | Planning status |
 |---:|---|---|---|
@@ -72,8 +72,8 @@ The phase sequence below is controlling. Issue #1 and Issue #37 have been placed
 | 9 | Model Lab and Model Management | Deliver model registry, metadata, role assignment, configuration profiles, loading status, and management | **APPROVED / PLANNED** |
 | 10 | Model Benchmarking and Evaluation | Establish repeatable Strategic and Tactical evaluations for quality, latency, reliability, memory, thermal behavior, and battery impact | **APPROVED / PLANNED** |
 | 11 | Model-Pairing and Device-Aware Recommendations | Compare model pairs and recommend configurations based on device, backend, workload, quality, and resource trade-offs | **APPROVED / PLANNED** |
-| 12 | Strategic/Tactical Intelligence and Coordination | Deliver coordinated reasoning, shared context, task arbitration, confidence handling, and staged tactical-autonomy readiness | **APPROVED / PLANNED** |
-| 13 | MLBB Companion and Game-Specific Intelligence | Complete MLBB integration and companion capabilities; incorporates Issue #37 | **APPROVED / PLANNED; EXISTING WORK REQUIRES AUDIT** |
+| 12 | Strategic/Tactical Intelligence and Coordination | Deliver coordinated reasoning, shared context, task arbitration, confidence handling, and staged tactical-autonomy readiness; includes reusable target-state, tracking, and combat-decision logic from Issue #2 | **APPROVED / PLANNED** |
+| 13 | MLBB Companion and Game-Specific Intelligence | Complete MLBB integration and companion capabilities; incorporates Issue #37 and the MLBB-specific combat-perception integration from historical Issue #2 | **APPROVED / PLANNED; EXISTING WORK REQUIRES AUDIT** |
 | 14 | Universal MOBA Expansion and Additional Game Adapters | Prove adapter contract beyond MLBB and add further game integrations incrementally | **APPROVED / PLANNED** |
 | 15 | Advanced Game Intelligence | Expand visual, spatial, temporal, contextual, predictive, adaptive, and evidence-driven intelligence | **APPROVED / PLANNED** |
 | 16 | Optimization, Validation, and Production Readiness | Complete compatibility, reliability, security, privacy, performance, usability, documentation, and release gates | **APPROVED / PLANNED** |
@@ -269,7 +269,7 @@ At the beginning of every phase, the agent must: (1) state the assigned primary 
 
 ## 4. Phase 2 work package — Universal MOBA Companion Architecture (migrated from Issue #1)
 
-**Original tracking record:** [Issue #1 — Establish the Universal MOBA Companion architecture](https://github.com/georgenaval1-blip/Sphynx-Auto-Pilot/issues/1)
+**Original tracking record:** Issue #1 — Establish the Universal MOBA Companion architecture (in the original repository, before the move to sphynx-ai/SPHYNX)
 
 **Purpose:** Evolve the current MLBB implementation toward a Universal MOBA Companion while retaining MLBB as the first supported game.
 
@@ -301,7 +301,7 @@ At the beginning of every phase, the agent must: (1) state the assigned primary 
 
 ## 5. Phase 13 work package — MLBB Intelligence and Professional Match Hub (migrated from Issue #37)
 
-**Original tracking record:** [Issue #37 — Add MLBB Emblem Sets, Data-Driven Meta Updates, and Pro Match Hub](https://github.com/georgenaval1-blip/Sphynx-Auto-Pilot/issues/37)
+**Original tracking record:** Issue #37 — Add MLBB Emblem Sets, Data-Driven Meta Updates, and Pro Match Hub (in the original repository, before the move to sphynx-ai/SPHYNX)
 
 **Purpose:** Build an integrated, patch-aware MLBB intelligence system connecting emblem knowledge, official meta data, team compositions, team rotations, and professional-match evidence.
 
@@ -434,6 +434,44 @@ Additional acceptance criteria:
 - [ ] Every recommended emblem configuration is supported exclusively by the specified Wiki page.
 - [ ] Missing Wiki-supported recommendations are explicitly marked unavailable rather than fabricated.
 
+### 13.12 Combat perception, minimap/gameplay synchronization, and reliable target engagement
+
+**Historical source record:** Issue #2 — Improve minimap and gameplay-screen synchronization for reliable combat targeting (in the original repository, before the move to sphynx-ai/SPHYNX)
+
+**Purpose:** Resolve target-visibility and combat-range failures caused by relying too heavily on minimap markers. Build a synchronized, confidence-aware target representation from minimap and gameplay-screen evidence, then use it consistently for targeting, movement, skill aiming, and engage/continue/disengage decisions.
+
+**Phase placement and ownership:**
+- **Phase 5 — Android foundation:** provide reliable, permission-compliant gameplay-screen capture/observation, lifecycle handling, supported-device compatibility, and resource-aware operation. Do not assume capture/overlay APIs are already available or universally supported.
+- **Phase 12 — Universal intelligence:** define game-agnostic target identity, observation fusion, temporal tracking, confidence/uncertainty, combat-state inputs, and decision contracts. Keep perception outputs separate from action authorization.
+- **Phase 13 — MLBB adapter:** implement MLBB-specific minimap marker interpretation, hero/creep/monster recognition, monster aggro and hero attack-range semantics, skill-targeting integration, and combat validation.
+- **Phase 15 — Advanced intelligence:** advance visual recognition, health-bar/HP-signal analysis, screen-space tracking, occlusion handling, spatial estimation, temporal association, and measured perception quality. Reusable components remain game-agnostic; MLBB mechanics remain in the MLBB adapter.
+
+#### Submilestones
+
+1. Audit the existing minimap workaround and trace how minimap detections currently influence target identity, movement, attack range, and skill aiming. Preserve working behavior and identify the source of the movement regression before changing it.
+2. Detect relevant targets directly from the gameplay screen where feasible, including enemy heroes, creeps, and jungle monsters. Evaluate health bars and HP changes as corroborating signals; do not treat them as reliable identifiers unless validated.
+3. Fuse minimap and gameplay-screen observations into a consistent target representation with stable identity, position/coordinate space, timestamp, source observations, confidence, and explicit unknown/occluded/stale states.
+4. Track targets across frames and tolerate partial/full temporary occlusion. Avoid abrupt target switching, phantom targets, and treating the player's green ring as an enemy/creep marker.
+5. Maintain target association when minimap markers overlap or are obscured by the player's green ring by using independent gameplay-screen evidence and temporal continuity where reliable.
+6. Estimate relevant combat distances/ranges from calibrated screen/game-state evidence. Respect monster aggro boundaries and the hero's effective attack range; account for uncertainty and do not issue movement based on an untrusted range estimate.
+7. Integrate the fused target state into skill aiming and engage, continue-fighting, reposition, and disengage decisions. Preserve deterministic safety fallbacks when perception confidence is low.
+8. Add replayable fixtures and tests for marker overlap, occlusion, identity continuity, health-bar/HP signals, range boundaries, and target switching. Validate with approved gameplay scenarios on representative devices.
+
+#### Acceptance criteria
+
+- [ ] Enemy heroes and creeps remain trackable when their minimap markers overlapped by the player's green ring.
+- [ ] Gameplay-screen evidence can contribute to enemy hero, creep, and monster detection; health bars/HP changes are used only where reliability is demonstrated.
+- [ ] Minimap and gameplay-screen observations are synchronized into a consistent, timestamped target representation with confidence and uncertainty.
+- [ ] Target identity persists through temporary marker overlap or occlusion without phantom enemies or abrupt unsupported target switching.
+- [ ] The AI does not move outside the relevant monster aggro range or its own hero attack range because of the minimap workaround.
+- [ ] Skill targeting remains stable when minimap markers or identifiers are obscured.
+- [ ] Engage, continue-fighting, reposition, and disengage decisions use the best available target and range information.
+- [ ] Low-confidence, stale, or conflicting observations trigger safe fallback behavior rather than unsupported movement or attacks.
+- [ ] Tests cover marker overlap, temporary occlusion, target tracking/identity, health-bar signal handling, and combat-range boundaries.
+- [ ] Gameplay validation confirms that the previous workaround's movement regression is resolved on representative supported devices.
+
+**Implementation and safety constraints:** Start with a read-only audit of the current perception and combat architecture. Do not simply extend the existing minimap workaround without diagnosing its movement side effects. Keep reusable target-observation and tracking contracts in the universal core; keep MLBB marker semantics, monster aggro rules, and hero attack-range mechanics in the MLBB adapter. Do not infer precise world coordinates or ranges from pixels without calibration and validation. When observations disagree or confidence is insufficient, preserve the last defensible target state only within a bounded freshness window, then fall back safely. Any future autonomous input remains subject to Phase 12's policy/permission validation and staged-autonomy gates.
+
 ## 6. Five approved gaming-AI technology work packages
 
 **Status: OWNER-APPROVED / PLANNED FOR IMPLEMENTATION — all five work packages.**
@@ -481,7 +519,7 @@ The owner has authorized implementation of all five work packages. They are comm
 
 UI/UX is a core workstream and product-quality requirement throughout the roadmap:
 - Conduct a full application-wide UI/UX and information-architecture audit.
-- Establish original Sphynx Auto Pilot visual identity and reusable design system: color, typography, spacing, iconography, components, navigation, data visualization, and interaction patterns.
+- Establish original Sphynx visual identity and reusable design system: color, typography, spacing, iconography, components, navigation, data visualization, and interaction patterns.
 - Redesign screens consistently, including onboarding, setup, home/command center, game center, live companion, AI intelligence, Model Lab, knowledge/library, performance, analytics, research, and settings as validated by the audit.
 - Cover loading, empty, error, recovery, permission, confirmation, progress, and notification states.
 - Include accessibility, readable contrast, touch targets, responsive layouts, and performance-conscious motion.
@@ -529,8 +567,8 @@ Product feature requests, architecture initiatives, research projects, and plann
 
 ### Migrated source records
 
-- [Issue #1 — Universal MOBA Companion architecture](https://github.com/georgenaval1-blip/Sphynx-Auto-Pilot/issues/1) → Phase 2, Section 4.
-- [Issue #37 — MLBB Emblem Sets, Data-Driven Meta Updates, and Pro Match Hub](https://github.com/georgenaval1-blip/Sphynx-Auto-Pilot/issues/37) → Phase 13, Section 5.
+- Issue #1 — Universal MOBA Companion architecture (in the original repository, before the move to sphynx-ai/SPHYNX) → Phase 2, Section 4.
+- Issue #37 — MLBB Emblem Sets, Data-Driven Meta Updates, and Pro Match Hub (in the original repository, before the move to sphynx-ai/SPHYNX) → Phase 13, Section 5.
 
 The original GitHub records are historical traceability references. Their closure means requirements were transferred into this roadmap, **not** that architecture or MLBB features have been implemented.
 

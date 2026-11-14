@@ -1,4 +1,4 @@
-# Sphynx-Auto-Pilot — Claude Code Project Instructions
+# Sphynx — Claude Code Project Instructions
 
 These instructions apply to Claude Code whenever it is launched in this repository. Treat this file as the persistent project-level engineering operating standard. Follow it together with the repository's current architecture, `docs/MASTER_DEVELOPMENT_PLAN.md`, other applicable project documentation, and the user's latest instructions.
 
@@ -67,7 +67,7 @@ Do not assume repository state based on previous conversations or agent reports.
 
 ## 5. Product Vision and Architectural Guardrails
 
-Sphynx-Auto-Pilot is an **offline-first, modular Universal MOBA Companion for Android**. MLBB is the initial supported game, not the limit of the product.
+Sphynx is an **offline-first, modular Universal MOBA Companion for Android**. MLBB is the initial supported game, not the limit of the product.
 
 Preserve these principles:
 - One reusable, game-agnostic companion/intelligence core with isolated game-specific adapters.
@@ -184,7 +184,7 @@ Clearly distinguish implemented, partially implemented, experimental, unverified
 
 For every development-related message in this repository, understand the user's natural-language intent and apply this engineering workflow automatically. The user should not need to restate roles, investigation steps, implementation expectations, architectural constraints, testing requirements, or reporting format.
 
-**Do not merely explain how to develop Sphynx-Auto-Pilot when implementation is requested. Work as its autonomous engineering implementation agent within the scope, permissions, and safety boundaries above.**
+**Do not merely explain how to develop Sphynx when implementation is requested. Work as its autonomous engineering implementation agent within the scope, permissions, and safety boundaries above.**
 
 ## 14. Owner standing rules (test-branch workflow)
 
@@ -192,7 +192,7 @@ Android app (Kotlin, package `com.example.mlbbresearch`, app id `com.sphynx.auto
 `docs/MASTER_DEVELOPMENT_PLAN.md`; the current phase and its evidence are in its section 9.
 
 ### Workflow
-- The owner builds on the phone (Code on the Go) from `test/owner-2026-11-10`. Work goes in draft PRs into that branch.
+- The owner builds on the phone (Code on the Go) from `sphynx-test-branch`. Work goes in draft PRs into that branch.
 - Merge a PR as soon as CI ("Android build") passes; then start the next PR in the queue.
 - After the queue is merged, post the phone steps (`git pull`, rebuild) and a device-test checklist.
 - There is no Android SDK in the cloud container: CI is the build check. Add unit tests for pure logic.
@@ -209,6 +209,13 @@ Any future change that needs data for debugging or for checking its results MUST
 Training inputs (picture dataset zips, CSV exports) stay until a successful training used them.
 
 ### App rules
+- The app is called **Sphynx** (owner, 2026-11-14): never use the old name anywhere (code, text, folders, docs).
+  The folder is `/CodeOnTheGoProjects/Sphynx-Storage`. The app id `com.sphynx.autopilot` stays as it is: changing it
+  would install a separate app without the owner's calibration and permissions.
+- Descriptions under buttons and switches are hidden and show only while the small "?" circle in the header is held
+  (`app/HelpHold.kt`). A static `text(...)` line on a page is a description automatically; pass `describe = false`
+  for information that must stay visible (field labels, the app version), and wrap card notes that explain a button
+  in `asDescription(...)`.
 - Every feature switch is OFF by default on a new install; safety guards keep their safe position (Dry run ON).
   The GPU switch is ON by default (a speed setting, not a feature).
 - No learning at all in Solo practice vs Computer (calibration only): no recorded moments, benchmark, training
@@ -216,6 +223,6 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
 - All calibration (buttons, minimap icons, scenery & minimap synchronization) is on the Setup page.
 - Never show or upload the Kaggle account name or any key / token.
 - Notebooks: `notebooks/` and `app/src/main/assets/notebooks/` must stay identical (the app trains from the
-  built-in copy; GitHub `Sphynx-Auto-Pilot` is only the fallback).
-- Storage: `/CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage` (or `Download/Sphynx-Auto-Pilot-Storage`); the old
+  built-in copy; GitHub `Sphynx` is only the fallback).
+- Storage: `/CodeOnTheGoProjects/Sphynx-Storage` (or `Download/Sphynx-Storage`); the old
   MLBB-Research folder is ignored completely.
