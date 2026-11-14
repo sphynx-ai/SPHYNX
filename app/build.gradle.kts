@@ -124,6 +124,15 @@ android {
     // throwing, so plain Kotlin logic can be tested without a device.
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // a failing test prints its whole message in the CI log (not only "FAILED"), so CI failures can be read
+        // without downloading the test report
+        unitTests.all {
+            it.testLogging {
+                events("failed")
+                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+                showStandardStreams = false
+            }
+        }
     }
 
     buildFeatures {
