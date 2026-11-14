@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.FIXED, "Turning the AI off and on forgets the old fight",
+            "When the AI was paused and started again, the Player's fast rules still remembered parts of what came " +
+                "before: the last jungle monster (it could stand still \"holding position\" at a monster that was gone), " +
+                "a Turtle / Lord rotation it had given up on (blocked for 60 s), the decision it was committed to, the " +
+                "invade and travel timers. Starting again now begins clean. Found by the new MLBB safety net.",
+            pr = 17, needsDeviceCheck = true, version = "37.27"),
         Entry("2026-11-14", Kind.IMPROVED, "A safety net for how the Player plays MLBB",
             "Phase 2: 16 fixed MLBB situations (a minion wave, a weak enemy in reach, low HP alone, outnumbered, an " +
                 "enemy dashing at you, a jungle camp, the Turtle, an enemy tower, before the ultimate, dead, shop open...) " +

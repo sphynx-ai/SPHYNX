@@ -2,8 +2,7 @@
 # One line per scenario of TacticalEngineGoldenTest, in its fixed order:
 #   name | intent | move x,y | casts | target label hp | reason
 # A change here is a change of MLBB behaviour: only on purpose, in the same PR, with the reason in the PR.
-# Known (recorded as is, not fixed here): some engine memory survives TacticalEngine.reset() between scenarios -
-# enemy_tower_on_minimap still "holds position at monster (last seen at 30% HP)" from the Turtle scenario before it.
+# v37.27 (PR #17): TacticalEngine.reset() now forgets the whole match; scenarios no longer see the one before.
 nothing_around | PUSH | move 0.00,0.00 | casts - | target - -1.00 | Mid lane (fast wave clear, 1-3-1 semi-roam, objective control): at Mid lane clash point: waiting for minion wave (farm)
 enemy_minion_wave | LANE_CLEAR | move 0.99,-0.17 | casts s2,s1 | target 3 minions 0.30 | pushing the wave (3), hitting one at 30%
 weak_enemy_in_reach | ENGAGE | move 0.99,-0.17 | casts attack,s1,s2,ult | target enemy #1 0.12 | finishing enemy at 12% HP
