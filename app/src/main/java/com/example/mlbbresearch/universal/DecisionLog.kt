@@ -14,7 +14,8 @@ class DecisionLog(private val capacity: Int = 500) {
         val arbiterChoice: DecisionKind?,
         val played: DecisionKind?,
         val rejected: List<Pair<EngineSource, String>>,
-        val advisoryOnly: List<EngineSource>
+        val advisoryOnly: List<EngineSource>,
+        val schemaVersion: Int = UniversalMatchState.SCHEMA_VERSION   // of the state the advice was judged on
     ) {
         val agrees: Boolean? get() = if (arbiterChoice == null || played == null) null else arbiterChoice == played
     }
@@ -30,7 +31,8 @@ class DecisionLog(private val capacity: Int = 500) {
     fun record(state: UniversalMatchState, advice: List<Decision>, played: DecisionKind?, nowMs: Long): Entry {
         val r = DecisionArbiter.resolve(advice, state, nowMs)
         val e = Entry(nowMs, state.gameId, advice, r.chosen?.kind, played,
-            r.rejected.map { (d, why) -> d.source to why.joinToString("; ") }, r.advisory.map { it.source })
+            r.rejected.map { (d, why) -> d.source to why.joinToString("; ") }, r.advisory.map { it.source },
+            state.schemaVersion)
         if (entries.size >= capacity) entries.removeFirst()
         entries.addLast(e)
         total++

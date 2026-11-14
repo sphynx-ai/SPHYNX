@@ -1,6 +1,9 @@
 package com.example.mlbbresearch.universal
 
 // THE UNIVERSAL MOBA MODEL (Stage 2, step 1 of docs/ARCHITECTURE_AUDIT.md).
+// THE CONTRACT (Phase 2 submilestone 3): docs/contracts/UNIVERSAL_MATCH_STATE.md, schema version
+// [UniversalMatchState.SCHEMA_VERSION], checked by [StateContract]. Changing a field here means changing the
+// document, the version and StateContractTest together.
 // A game-independent description of a match situation. Every game adapter translates its own
 // readings into this, so the strategic / tactical engines can reason without knowing which game
 // it is. Rules:
@@ -65,8 +68,14 @@ data class UniversalMatchState(
     val allyCharacters: List<String> = emptyList(),
     val enemyCharacters: List<String> = emptyList(),
     val gameSpecific: Map<String, String> = emptyMap(),
-    val capabilities: CapabilitySet = CapabilitySet.NONE
+    val capabilities: CapabilitySet = CapabilitySet.NONE,
+    val schemaVersion: Int = SCHEMA_VERSION        // the contract version this state was made under
 ) {
+    companion object {
+        /** Raise when a field is added, removed or changes meaning (docs/contracts/UNIVERSAL_MATCH_STATE.md). */
+        const val SCHEMA_VERSION = 1
+    }
+
     fun units(side: Side, kind: UnitKind? = null): List<UnitState> =
         units.filter { it.side == side && (kind == null || it.kind == kind) }
 
