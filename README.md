@@ -1,6 +1,6 @@
-# Sphynx Auto Pilot — Universal MOBA Companion
+# Sphynx — Universal MOBA Companion
 
-An Android-based AI companion for MOBA players. Sphynx Auto Pilot is being developed around a **Universal MOBA Companion** vision: reusable game understanding, strategic reasoning, tactical decision support, learning, and player assistance that can expand beyond a single title.
+Sphynx is an Android-based AI companion for MOBA players, built around a **Universal MOBA Companion** vision: reusable game understanding, strategic reasoning, tactical decision support, learning, and player assistance that can expand beyond a single title.
 
 **Mobile Legends: Bang Bang (MLBB) is the current supported implementation and development target.** The wider multi-MOBA vision is the product direction, not a claim that every MOBA is already supported.
 
