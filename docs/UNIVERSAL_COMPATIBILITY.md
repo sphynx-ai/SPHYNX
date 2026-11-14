@@ -1,4 +1,4 @@
-# Sphynx Auto-Pilot — Universal Device Compatibility & Adaptive Intelligence
+# Sphynx — Universal Device Compatibility & Adaptive Intelligence
 
 **Phase A report (read-only audit) and roadmap integration.** Written by Claude Code on 2026-11-09, at `origin/main` = `716af66`.
 

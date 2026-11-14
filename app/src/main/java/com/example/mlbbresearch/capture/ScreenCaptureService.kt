@@ -215,7 +215,7 @@ class ScreenCaptureService : Service() {
             PendingIntent.getActivity(this, 2, it, PendingIntent.FLAG_IMMUTABLE)
         }
         return Notification.Builder(this, CHANNEL)
-            .setContentTitle("Sphynx Auto Pilot is watching the screen")
+            .setContentTitle("Sphynx is watching the screen")
             .setContentText("Tap STOP AI to stop everything")
             .setSmallIcon(android.R.drawable.ic_menu_view)
             .setOngoing(true)

@@ -1,10 +1,10 @@
-# Sphynx Auto Pilot — Phase One Architecture Audit
+# Sphynx — Phase One Architecture Audit
 
 | | |
 |---|---|
 | **Date** | 2026-11-07 |
 | **Auditor** | Claude Code (Slot 1, primary developer) |
-| **Repository** | `georgenaval1-blip/Sphynx-Auto-Pilot`, `main` @ `d818477` |
+| **Repository** | `sphynx-ai/SPHYNX`, `main` @ `d818477` |
 | **Purpose** | Establish what exists today, measured against the Universal MOBA Companion vision, before any architectural change. |
 
 ## How to read this

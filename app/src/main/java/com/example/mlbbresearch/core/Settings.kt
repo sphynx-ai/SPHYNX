@@ -217,7 +217,7 @@ object Cfg {
     fun heroDash(hero: String): String = s("dash_" + hero.lowercase(), "auto")
     fun setHeroDash(hero: String, v: String) = put("dash_" + hero.lowercase(), v)
 
-    // save minimap pictures with pre-drawn boxes to train the detector (Download/Sphynx-Auto-Pilot-Storage/dataset)
+    // save minimap pictures with pre-drawn boxes to train the detector (Download/Sphynx-Storage/dataset)
     var collectDataset: Boolean get() = b("collect_ds", false); set(v) = put("collect_ds", v)          // minimap pictures
     var collectScreenDataset: Boolean get() = b("collect_sds", false); set(v) = put("collect_sds", v)  // whole-screen pictures
 

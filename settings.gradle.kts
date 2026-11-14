@@ -14,6 +14,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Sphynx-Auto-Pilot"
+rootProject.name = "Sphynx"
 
 include(":app")

@@ -19,8 +19,8 @@ import java.util.zip.ZipOutputStream
 // zip holds them, the phone keeps its space), and that collector's switch turns OFF. Turn it on
 // again (Learn page) and it collects the next batch. "Zip now" on the Learn page zips early.
 // A zip holds the folders the notebooks read: images/, labels/, classes.txt.
-//   Download/Sphynx-Auto-Pilot-Storage/mlbb-minimap-dataset-<date>.zip   (train_mlbb_detector.ipynb)
-//   Download/Sphynx-Auto-Pilot-Storage/mlbb-screen-dataset-<date>.zip    (train_screen_detector.ipynb)
+//   Download/Sphynx-Storage/mlbb-minimap-dataset-<date>.zip   (train_mlbb_detector.ipynb)
+//   Download/Sphynx-Storage/mlbb-screen-dataset-<date>.zip    (train_screen_detector.ipynb)
 object DatasetZipper {
 
     enum class Kind(val folder: String, val prefix: String, val zipName: String, val key: String, val capacity: Int, val label: String) {
@@ -50,8 +50,8 @@ object DatasetZipper {
     // a saved picture / label: rel is its folder ("…/<folder>/images"), open / delete work on either store
     private class Item(val name: String, val rel: String, val open: () -> java.io.InputStream?, val delete: () -> Boolean)
 
-    // the app's own files: in /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage/<folder>/... (all files access)
-    // and in Download/Sphynx-Auto-Pilot-Storage/<folder>/... (saved without it)
+    // the app's own files: in /CodeOnTheGoProjects/Sphynx-Storage/<folder>/... (all files access)
+    // and in Download/Sphynx-Storage/<folder>/... (saved without it)
     private fun list(c: Context, kind: Kind): List<Item> {
         val out = ArrayList<Item>()
         com.example.mlbbresearch.core.Storage.dir(kind.folder)?.let { top ->

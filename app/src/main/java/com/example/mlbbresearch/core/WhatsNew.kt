@@ -23,6 +23,15 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "The app is called Sphynx; descriptions show only while you hold \"?\"",
+            "The app's new name is Sphynx: the launcher, the header, the notifications and the pages. Its folder is now " +
+                "/CodeOnTheGoProjects/Sphynx-Storage (Download/Sphynx-Storage without All files access), the debug uploads " +
+                "and the training notebooks come from the sphynx-ai/SPHYNX repository, and the test branch is " +
+                "sphynx-test-branch. The app id stays the same, so the app updates in place and keeps its calibration and " +
+                "permissions. The descriptions under the buttons and switches are now hidden (the names stay): press and " +
+                "hold the small \"?\" circle next to STOP to see them, and they hide again when you let go. Lines that " +
+                "show a live reading stay visible.",
+            pr = 4, needsDeviceCheck = true),
         Entry("2026-11-13", Kind.NEW, "The app reads which buff you hold",
             "While you hold a jungle buff, emblems of its colour circle your hero: orange for the orange buff, purple for " +
                 "the purple buff (you can hold both). The app now reads them: the floating panel shows \"Buffs held\", the " +
@@ -104,8 +113,8 @@ object WhatsNew {
                 "pictures and Delete all screen pictures (Learn page).",
             pr = 74, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.NEW, "New app icon and logo",
-            "A sphynx cat head (big ears, amber eyes) with an autopilot arrow for a nose and an AI spark, on the dark " +
-                "background - Sphynx Auto Pilot. It is the launcher icon (also the one-colour themed icon on Android 13+) and " +
+            "A sphynx cat head (big ears, amber eyes) with an arrow for a nose and an AI spark, on the dark " +
+                "background - Sphynx. It is the launcher icon (also the one-colour themed icon on Android 13+) and " +
                 "the logo at the top of the app.",
             pr = 73, needsDeviceCheck = true),
         Entry("2026-11-12", Kind.IMPROVED, "Every switch starts off on a new install",
@@ -199,12 +208,12 @@ object WhatsNew {
                 "(your own badge next to it no longer counts) AND an enemy hero icon near you on the minimap; while a camp is being " +
                 "fought, a bar where the monster was just seen stays the monster unless its level number can be read.",
             pr = 53, needsDeviceCheck = true),
-        Entry("2026-11-11", Kind.IMPROVED, "Without All files access, files go to Download/Sphynx-Auto-Pilot-Storage",
+        Entry("2026-11-11", Kind.IMPROVED, "Without All files access, files go to Download/Sphynx-Storage",
             "Recordings (\u25cf REC), CSV exports, training pictures and zips, cloud-training results and backups are saved in " +
-                "Download/Sphynx-Auto-Pilot-Storage when the app has no All files access. The old Download/MLBB-Research folder is " +
+                "Download/Sphynx-Storage when the app has no All files access. The old Download/MLBB-Research folder is " +
                 "ignored completely - not written and not read (backups there no longer restore); delete it yourself once you " +
                 "have moved anything you want to keep. With All files access nothing changes: " +
-                "/CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage.",
+                "/CodeOnTheGoProjects/Sphynx-Storage.",
             pr = 52),
         Entry("2026-11-11", Kind.FIXED, "Solo calibration no longer waits for lane marks",
             "Solo practice never shows the \"$\" / \"E\" lane marks (only 5v5 does), so the calibration tour waited forever. In " +
@@ -327,7 +336,7 @@ object WhatsNew {
         Entry("2026-11-08", Kind.NEW, "Session recorder: data file + video for bug reports",
             "Logs page > Start recording. It saves what the AI saw and decided (about 10 times a second, every aimed skill " +
                 "as planned and as released, the log) and a video of the AI's view with its targets, joystick and aim drawn on " +
-                "top, both stamped with the clock and match timer. Files go to Sphynx-Auto-Pilot-Storage/recordings. " +
+                "top, both stamped with the clock and match timer. Files go to Sphynx-Storage/recordings. " +
                 "It stops and saves by itself when the video reaches 25 MB (a GitHub website upload) or 95 MB (git). " +
                 "Also on the floating window: ● REC starts, ■ REC stops and saves; the round icon gets a red ring while recording. " +
                 "Research mode is recorded too (verified practice, the arbiter / normal group, each arbiter choice and scored fight), " +
@@ -337,12 +346,12 @@ object WhatsNew {
             "From your device test: the hero no longer walks to the next camp while the monster still has HP (hidden HP bars " +
                 "no longer count as a kill), stands still and attacks when a big monster's body stops it, and a jungle monster's " +
                 "red HP bar is no longer taken for an enemy hero on the map.", pr = 26, issue = 2),
-        Entry("2026-11-08", Kind.NEW, "Sphynx Auto Pilot is its own app now",
+        Entry("2026-11-08", Kind.NEW, "Sphynx is its own app now",
             "New app name everywhere (launcher, header, Accessibility list, notification) and a new app id, " +
                 "com.sphynx.autopilot: it installs next to the old MLBB Research app. Give it its permissions again; " +
                 "with All files access on it also finds the old app's exports, results and backups in Download/MLBB-Research.",
             pr = 25),
-        Entry("2026-11-08", Kind.IMPROVED, "One app folder: /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage (v37.19)",
+        Entry("2026-11-08", Kind.IMPROVED, "One app folder: /CodeOnTheGoProjects/Sphynx-Storage (v37.19)",
             "Models, detectors, networks and keys are read from it, and CSV exports, training pictures and zips, Kaggle results " +
                 "and backups are saved in it. Turn on \"All files access\" once on the Model page. Until then everything works " +
                 "as before (the folder you choose, and Download/MLBB-Research for the app's own files).",

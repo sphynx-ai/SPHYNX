@@ -1,8 +1,8 @@
-# Sphynx-Auto-Pilot — Master Development Status & Agent Coordination
+# Sphynx — Master Development Status & Agent Coordination
 
 | | |
 |---|---|
-| **Repository** | `georgenaval1-blip/Sphynx-Auto-Pilot` |
+| **Repository** | `sphynx-ai/SPHYNX` |
 | **Initialized** | 2026-11-07 |
 | **Owner** | Human Project Owner (final authority) |
 | **Source** | Converted from the owner's Word document *SPHYNX_AUTO_PILOT_MASTER_DEVELOPMENT_STATUS.docx* (2026-11-07). Content is preserved; sections marked *Added at conversion* are new and are labelled as such. |
@@ -25,7 +25,7 @@ An agent's report is not, by itself, proof that implementation or testing is com
 
 ## 1. Project Identity
 
-**Vision: Universal MOBA Companion.** Sphynx-Auto-Pilot is intended to become a modular Android companion supporting multiple MOBA games through dedicated game adapters and a unified AI architecture. Mobile Legends: Bang Bang is an initial target, not the conceptual limit of the product.
+**Vision: Universal MOBA Companion.** Sphynx is intended to become a modular Android companion supporting multiple MOBA games through dedicated game adapters and a unified AI architecture. Mobile Legends: Bang Bang is an initial target, not the conceptual limit of the product.
 
 **Core objectives:**
 
@@ -72,7 +72,7 @@ The following is historical information from Claude's baseline report, as suppli
 
 | Item | Recorded baseline | Re-check on 2026-11-07 (Claude Code) |
 |---|---|---|
-| Repository | georgenaval1-blip/Sphynx-Auto-Pilot | VERIFIED |
+| Repository | sphynx-ai/SPHYNX | VERIFIED |
 | Baseline branch | main | VERIFIED |
 | Baseline commit | a3ccf6e (reported) | VERIFIED — `origin/main` is still at `a3ccf6e` |
 | Baseline working tree | Clean (reported) | REPORTED (not re-checked from the baseline session) |
@@ -191,7 +191,7 @@ Old → new commit hashes for every hash this document mentions:
 
 ## 6. Development and Git Safety Rules
 
-1. Repository scope is exclusively Sphynx-Auto-Pilot.
+1. Repository scope is exclusively Sphynx.
 2. Never overwrite another agent's unfinished work.
 3. Inspect the current branch, working tree, recent commits, and diffs before implementation.
 4. Preserve all uncommitted and untracked work; do not silently discard changes.
@@ -446,7 +446,7 @@ Next recommended task:
 | Strategic AI | Gemma 4 E2B |
 | Tactical AI | Gemma 3 270M |
 | Tactical AI status | Gemma 3 270M is no longer Experimental (owner, 2026-11-09): its advice may be used like the other engines', always after the Kotlin checks and the validator |
-| Repository scope | Sphynx-Auto-Pilot only |
+| Repository scope | Sphynx only |
 
 For each new decision, record its date, rationale, implementation impact, and owner approval where required.
 

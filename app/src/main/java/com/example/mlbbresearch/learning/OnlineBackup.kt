@@ -147,8 +147,8 @@ object OnlineBackup {
     // even before the user has re-selected the import folder!
     private fun restoreFromPhoneStorageOnStartup(c: Context) {
         try {
-            // 1. Direct file paths: the app's folder /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage first (v37.19),
-            // then Download/Sphynx-Auto-Pilot-Storage (without all files access). The old MLBB-Research folders
+            // 1. Direct file paths: the app's folder /CodeOnTheGoProjects/Sphynx-Storage first (v37.19),
+            // then Download/Sphynx-Storage (without all files access). The old MLBB-Research folders
             // are not read (owner, 2026-11-11)
             val dirs = listOfNotNull(
                 try { com.example.mlbbresearch.core.Storage.root() } catch (e: Exception) { null },
@@ -167,7 +167,7 @@ object OnlineBackup {
             }
 
             // 2. MediaStore.Downloads query (reads the app's mlbb-scenery-sync.json etc. in
-            // Download/Sphynx-Auto-Pilot-Storage across reinstalls - only there)
+            // Download/Sphynx-Storage across reinstalls - only there)
             val cr = c.contentResolver
             for (base in listOf(SCENERY_SYNC, LEARNED, META, SKILLS)) {
                 try {
@@ -347,7 +347,7 @@ object OnlineBackup {
         } catch (e: Exception) { }
     }
 
-    // v37.19: straight into /CodeOnTheGoProjects/Sphynx-Auto-Pilot-Storage when all files access is on
+    // v37.19: straight into /CodeOnTheGoProjects/Sphynx-Storage when all files access is on
     private fun writeDirect(name: String, text: String): Boolean = try {
         com.example.mlbbresearch.core.Storage.dir()?.let { d -> File(d, name).writeText(text, Charsets.UTF_8); true } ?: false
     } catch (e: Exception) { Diag.error("Writing $name in the app's folder", e); false }
