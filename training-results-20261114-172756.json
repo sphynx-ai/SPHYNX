@@ -1,0 +1,121 @@
+{
+ "kinds": {
+  "minimap": {
+   "label": "Minimap detector",
+   "measure": "boxes found (mAP50)",
+   "improvement_pct": null,
+   "history": [
+    {
+     "at": 1794648476755,
+     "score": 0.5567536515007353,
+     "n": 0,
+     "sig": "1418575901"
+    }
+   ],
+   "result_file": {
+    "map50": 0.5567536515007353,
+    "map50_95": 0.42826038255878174,
+    "precision": 0.9522292977011603,
+    "recall": 0.3437737015401584
+   }
+  },
+  "screen": {
+   "label": "Screen detector",
+   "measure": "boxes found (mAP50)",
+   "improvement_pct": null,
+   "history": [
+    {
+     "at": 1794648476781,
+     "score": 0.2186587743148487,
+     "n": 0,
+     "sig": "-888849548"
+    }
+   ],
+   "result_file": {
+    "map50": 0.2186587743148487,
+    "map50_95": 0.13377265052073328,
+    "precision": 0.3766033635296919,
+    "recall": 0.212615815556992
+   }
+  },
+  "policy": {
+   "label": "Tactical networks",
+   "measure": "moves right (balanced)",
+   "improvement_pct": null,
+   "history": [
+    {
+     "at": 1794648476801,
+     "score": 0.22964857155591212,
+     "n": 351,
+     "sig": "1214471860"
+    }
+   ],
+   "result_file": {
+    "hero": "",
+    "hero_type_inputs": true,
+    "inputs": 51,
+    "outputs": 15,
+    "examples": 2708,
+    "move_balanced": 0.22964857155591212,
+    "move_checked": 351,
+    "move_fewest": 1,
+    "buttons": {
+     "attack": {
+      "checked": 161,
+      "right": 0.7682119205298014,
+      "found": 0.7204968944099379
+     },
+     "s1": {
+      "checked": 42,
+      "right": 0.27631578947368424,
+      "found": 0.5
+     },
+     "s2": {
+      "checked": 53,
+      "right": 0.2198952879581152,
+      "found": 0.7924528301886793
+     },
+     "ult": {
+      "checked": 12,
+      "right": 0.2857142857142857,
+      "found": 0.5
+     }
+    },
+    "press_lines": [
+     0.7000000000000001,
+     0.7500000000000001,
+     0.6000000000000001,
+     0.8500000000000001,
+     0.6000000238418579,
+     0.8500000238418579
+    ],
+    "live_weight": 1,
+    "died_weight": 0.3
+   }
+  },
+  "llm": {
+   "label": "Small tactical model",
+   "measure": "answers right (balanced)",
+   "improvement_pct": null,
+   "history": [],
+   "result_file": null
+  },
+  "engine": {
+   "label": "Tactical engine (the AI's fights)",
+   "measure": "fights that went well",
+   "improvement_pct": null,
+   "history": [],
+   "result_file": null
+  },
+  "you": {
+   "label": "Your own fights (learned from)",
+   "measure": "fights that went well",
+   "improvement_pct": null,
+   "history": [],
+   "result_file": null
+  }
+ },
+ "fight_choice_info": null,
+ "app_version": "37.19",
+ "exported_at": 1794648476898
+}
