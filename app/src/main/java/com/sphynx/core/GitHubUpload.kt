@@ -63,8 +63,7 @@ object GitHubUpload {
     // the token: github_token.txt in the app's folder (first line)
     fun token(ctx: Context): String? = try {
         (listOfNotNull(Storage.dir(StorageLayout.INPUT), Storage.dir()).map { File(it, TOKEN_FILE) }.firstOrNull { it.isFile }?.readText()
-            ?: com.sphynx.models.AutoFolder.files(ctx).firstOrNull { it.name.equals(TOKEN_FILE, ignoreCase = true) }
-                ?.open?.invoke()?.use { it.readBytes().toString(Charsets.UTF_8) })
+            ?: Probes.tokenFromFolder(ctx, TOKEN_FILE))
             ?.lineSequence()?.firstOrNull()?.trim()?.takeIf { it.length >= 20 }
     } catch (e: Exception) { null }
 
@@ -112,10 +111,7 @@ object GitHubUpload {
             "in $TOKEN_FILE in the app's folder"
         // the training results and the new training pictures go up with the debug data (owner, 2026-11-12)
         status = "preparing the training results and pictures…"
-        val prepared = listOf(
-            try { com.sphynx.learning.TrainingResults.refresh(ctx); com.sphynx.learning.TrainingResults.export(ctx) }
-                catch (e: Exception) { "training results failed: ${e.message?.take(80)}" },
-            try { com.sphynx.learning.PictureExport.export(ctx) } catch (e: Exception) { "pictures failed: ${e.message?.take(80)}" })
+        val prepared = Probes.beforeUpload.map { step -> step(ctx) }
         val all = files(ctx)
         val tooBig = all.filter { it.size > MAX_FILE }.map { it.name }.toSet()
         val commits = plan(all.map { it.name }.filter { it !in tooBig }, uploaded(), if (SessionRecorder.on) SessionRecorder.currentName() else null)

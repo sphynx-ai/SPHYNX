@@ -2662,7 +2662,7 @@ class MainActivity : Activity() {
         switch("Learn from live matches", Cfg.liveLearn) { Cfg.liveLearn = it }
         val liveWho = text("", 13f)
         upd { liveWho.text = "Watching: ${Cfg.liveHero.ifBlank { "read from the screen when a live match starts" }}" +
-            (if (Cfg.liveHero.isNotBlank()) " · role ${Cfg.liveLane.label}" else "") + " (found by itself)\nSkill icons: " +
+            (if (Cfg.liveHero.isNotBlank()) " · role ${com.sphynx.game.Lane.live().label}" else "") + " (found by itself)\nSkill icons: " +
             com.sphynx.vision.HeroVerifier.liveStatus + " · looks learned: ${com.sphynx.vision.HeroVerifier.learnedLiveCount()}" }
         val liveInfo = text("", 12f, color = "#9AA0A6")
         upd {

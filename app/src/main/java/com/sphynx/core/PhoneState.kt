@@ -18,7 +18,7 @@ object PhoneState {
         val now = System.currentTimeMillis()
         if (now - at < 10_000) return last
         at = now
-        val c: Context = com.sphynx.vision.HeroVerifier.appContext() ?: return last
+        val c: Context = Probes.appContext() ?: return last
         // Android thermal status: 0 none, 1 light, 2 moderate, 3 severe, 4 critical, 5 emergency, 6 shutdown
         val thermal = try { (c.getSystemService(Context.POWER_SERVICE) as PowerManager).currentThermalStatus } catch (e: Exception) { null }
         val batt = try {

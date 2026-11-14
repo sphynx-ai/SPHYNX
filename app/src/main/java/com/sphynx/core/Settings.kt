@@ -229,11 +229,7 @@ object Cfg {
     var liveHero: String get() = s("live_hero", ""); set(v) = put("live_hero", v)
     // the watched player's role: exp | gold | mid | roam | jungle
     var liveLaneName: String get() = s("live_lane", "exp"); set(v) = put("live_lane", v)
-    val liveLane: com.sphynx.game.Lane get() = when (liveLaneName) {
-        "gold" -> com.sphynx.game.Lane.GOLD; "mid" -> com.sphynx.game.Lane.MID
-        "roam" -> com.sphynx.game.Lane.ROAM; "jungle" -> com.sphynx.game.Lane.JUNGLE
-        else -> com.sphynx.game.Lane.EXP
-    }
+    // (the Lane it names is the game's business: game.Lane.live(), ADR 0001)
 
     // ---- trained tactical network (policy.tflite) ----
     var policyOn: Boolean get() = b("policy_on", false); set(v) = put("policy_on", v)

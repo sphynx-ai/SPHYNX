@@ -178,39 +178,39 @@ object VideoRecorder {
 
     private fun draw(cv: Canvas, b: Bitmap, w: Int, h: Int) {
         cv.drawBitmap(b, Rect(0, 0, w, h), RectF(0f, 0f, vw.toFloat(), vh.toFloat()), null)
-        val s = com.sphynx.game.GameStateTracker.state
-        val d = SessionRecorder.lastDecision
+        // what to draw comes from the app layer (Probes.videoMarks: the game state and the last decision)
+        val m = Probes.videoMarks()
         fun X(x: Float) = x * vw
         fun Y(y: Float) = y * vh
         val aspect = vw.toFloat() / vh
-        s.self?.let { me ->
-            cv.drawCircle(X(me.x), Y(me.y), 26f, pSelf)
-            if (d != null && (d.moveX != 0f || d.moveY != 0f))   // joystick direction (x was multiplied by the aspect)
-                cv.drawLine(X(me.x), Y(me.y), X(me.x) + d.moveX / aspect * 0.12f * vw, Y(me.y) + d.moveY * 0.12f * vh, pJoy)
+        m.self?.let { (mx, my) ->
+            cv.drawCircle(X(mx), Y(my), 26f, pSelf)
+            if (m.moveX != 0f || m.moveY != 0f)   // joystick direction (x was multiplied by the aspect)
+                cv.drawLine(X(mx), Y(my), X(mx) + m.moveX / aspect * 0.12f * vw, Y(my) + m.moveY * 0.12f * vh, pJoy)
             // aimed skill: direction of the drag (end - button), drawn from your hero
             val now = System.currentTimeMillis()
             for ((a, p) in listOf(planned to pPlan, released to pRel)) if (a != null && now - a.at < 1500) {
                 val dx = (a.ex - a.bx) * vw; val dy = (a.ey - a.by) * vh
                 val l = kotlin.math.hypot(dx, dy).coerceAtLeast(1f)
-                cv.drawLine(X(me.x), Y(me.y), X(me.x) + dx / l * vh * 0.35f, Y(me.y) + dy / l * vh * 0.35f, p)
-                cv.drawText(a.slot, X(me.x) + dx / l * vh * 0.37f, Y(me.y) + dy / l * vh * 0.37f, pText)
+                cv.drawLine(X(mx), Y(my), X(mx) + dx / l * vh * 0.35f, Y(my) + dy / l * vh * 0.35f, p)
+                cv.drawText(a.slot, X(mx) + dx / l * vh * 0.37f, Y(my) + dy / l * vh * 0.37f, pText)
             }
         }
-        for (e in s.enemies) {
+        for (e in m.enemies) {
             cv.drawRect(X(e.x) - 24f, Y(e.y) - 40f, X(e.x) + 24f, Y(e.y) + 20f, pEnemy)
-            cv.drawText("#${e.id} ${(e.hp * 100).toInt()}%", X(e.x) - 24f, Y(e.y) - 46f, pText)
+            cv.drawText(e.label, X(e.x) - 24f, Y(e.y) - 46f, pText)
         }
-        for (m in s.monsters) {
-            cv.drawCircle(X(m.x), Y(m.y), 22f, pMon)
-            cv.drawText("${(m.hp * 100).toInt()}%", X(m.x) + 24f, Y(m.y), pText)
+        for (mo in m.monsters) {
+            cv.drawCircle(X(mo.x), Y(mo.y), 22f, pMon)
+            cv.drawText(mo.label, X(mo.x) + 24f, Y(mo.y), pText)
         }
-        if (d != null && d.targetX >= 0f) {
-            val tx = X(d.targetX); val ty = Y(d.targetY)
+        if (m.targetX >= 0f) {
+            val tx = X(m.targetX); val ty = Y(m.targetY)
             cv.drawLine(tx - 18f, ty, tx + 18f, ty, pTarget); cv.drawLine(tx, ty - 18f, tx, ty + 18f, pTarget)
         }
-        val ms = s.matchSec
+        val ms = m.matchSec
         val head = fmt.format(Date()) + "  match " + (if (ms >= 0) "%d:%02d".format(ms / 60, ms % 60) else "?") +
-            "  " + (d?.let { it.intent.name + ": " + it.reason.take(70) } ?: "")
+            "  " + m.decision
         // the banner at the BOTTOM (owner, 2026-11-12: at the top it covered the minimap's lane mark corner)
         cv.drawRect(0f, vh - 30f, vw.toFloat(), vh.toFloat(), pBar)
         cv.drawText(head, 6f, vh - 7f, pText)

@@ -52,14 +52,14 @@ object SpeedLog {
         Series("Waiting for the AI", "ms", 50f, "#F4C25B", "Play loop") { Speed.wait },
         Series("Deciding", "ms", 30f, "#9B7CFF", "Play loop") { Speed.decide },
         Series("Touch queue", "ms", 60f, "#FF8A5C", "Play loop") { Speed.touch },
-        Series("Screen capture", "fps", 15f, "#2FB3C9", "Frames", higherIsBetter = true) { com.sphynx.capture.FrameHub.fps },
-        Series("Frames read", "fps", 12f, "#3DD68C", "Frames", higherIsBetter = true) { com.sphynx.vision.FrameProcessor.processedFps },
-        Series("Tactical network", "ms", 5f, "#6D8BFF", "Trained models") { com.sphynx.learning.PolicyNet.lastMs },
-        Series("Minimap detector", "ms", 150f, "#2FB3C9", "Trained models") { com.sphynx.vision.ObjectDetector.lastMs.toFloat() },
-        Series("Screen detector", "ms", 200f, "#F4C25B", "Trained models") { com.sphynx.vision.ScreenDetector.lastMs.toFloat() },
-        Series("Small tactical model", "ms", 350f, "#9B7CFF", "Language models") { com.sphynx.ai.TacticalLlmEngine.lastLatencyMs.toFloat() },
-        Series("Strategic model (Gemma)", "s", 10f, "#FF8A5C", "Language models") { com.sphynx.ai.GemmaEngine.lastLatencyMs / 1000f },
-        Series("Online meta (Groq)", "s", 30f, "#FF5A6A", "Language models") { com.sphynx.ai.GroqClient.lastMs / 1000f }
+        Series("Screen capture", "fps", 15f, "#2FB3C9", "Frames", higherIsBetter = true) { Probes.captureFps() },
+        Series("Frames read", "fps", 12f, "#3DD68C", "Frames", higherIsBetter = true) { Probes.framesReadFps() },
+        Series("Tactical network", "ms", 5f, "#6D8BFF", "Trained models") { Probes.tacticalNetworkMs() },
+        Series("Minimap detector", "ms", 150f, "#2FB3C9", "Trained models") { Probes.minimapDetectorMs().toFloat() },
+        Series("Screen detector", "ms", 200f, "#F4C25B", "Trained models") { Probes.screenDetectorMs().toFloat() },
+        Series("Small tactical model", "ms", 350f, "#9B7CFF", "Language models") { Probes.tacticalModelMs().toFloat() },
+        Series("Strategic model (Gemma)", "s", 10f, "#FF8A5C", "Language models") { Probes.strategicModelMs() / 1000f },
+        Series("Online meta (Groq)", "s", 30f, "#FF5A6A", "Language models") { Probes.onlineMetaMs() / 1000f }
     )
 
     private var lastTick = 0L
