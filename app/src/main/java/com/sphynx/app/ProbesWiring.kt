@@ -20,7 +20,7 @@ object ProbesWiring {
 
         Probes.videoMarks = {
             val s = com.sphynx.game.GameStateTracker.state
-            val d = com.sphynx.core.SessionRecorder.lastDecision
+            val d = com.sphynx.ai.SessionRows.lastDecision
             Probes.Marks(
                 self = s.self?.let { it.x to it.y },
                 enemies = s.enemies.map { Probes.Mark(it.x, it.y, "#${it.id} ${(it.hp * 100).toInt()}%") },
@@ -31,6 +31,12 @@ object ProbesWiring {
                 decision = d?.let { it.intent.name + ": " + it.reason.take(70) } ?: ""
             )
         }
+
+        Probes.mayRecordMatch = { com.sphynx.learning.LearnGate.on() }
+        Probes.screenCaptureRunning = { com.sphynx.capture.ScreenCaptureService.running }
+        Probes.matchRunning = { com.sphynx.game.GameStateTracker.matchId != 0L }
+        Probes.beforeResearchExport = listOf({ com.sphynx.research.ResearchMode.saveMoments() }, { com.sphynx.ai.ModelSpeed.save(sync = true) })
+        Probes.sceneryPicture = { com.sphynx.game.SceneryMap.renderPicture() }
 
         // the training results and the new training pictures go up with the debug data (owner, 2026-11-12)
         Probes.beforeUpload = listOf(

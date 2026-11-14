@@ -39,6 +39,17 @@ object Probes {
     }
     @Volatile var videoMarks: () -> Marks = { Marks.NONE }
 
+    // ---- the session recorder (SessionRecorder) ----
+    /** May this match be recorded by itself (a 5v5: learning.LearnGate)? */
+    @Volatile var mayRecordMatch: () -> Boolean = { false }
+    @Volatile var screenCaptureRunning: () -> Boolean = { false }
+    /** Is a match on (the game's match id is set)? */
+    @Volatile var matchRunning: () -> Boolean = { false }
+    /** Saves to run before the research files are exported (practice moments, model speeds). */
+    @Volatile var beforeResearchExport: List<() -> Unit> = emptyList()
+    /** The learned map scenery as a picture, for the debug export (null = none). */
+    @Volatile var sceneryPicture: () -> android.graphics.Bitmap? = { null }
+
     /** Things to prepare before a debug upload (training results, pictures); each returns a status line. */
     @Volatile var beforeUpload: List<(Context) -> String> = emptyList()
 

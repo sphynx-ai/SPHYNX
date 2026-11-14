@@ -610,7 +610,7 @@ object ActionExecutor {
     // the session recorder's row for an aimed skill (planned = "aim", at release = "aim2")
     fun recordAim(kind: String, sa: Act.SkillAim, ex: Float, ey: Float) {
         if (!com.sphynx.core.SessionRecorder.on) return
-        com.sphynx.core.SessionRecorder.aim(kind, sa.slot, sa.x1, sa.y1, ex, ey, latestDecision,
+        com.sphynx.core.SessionRecorder.aim(kind, sa.slot, sa.x1, sa.y1, ex, ey, com.sphynx.ai.SessionRows.aimDecision(latestDecision),
             (lastAimInfo ?: org.json.JSONObject()).put("fixed", sa.fixedEnd).put("hold", sa.aimHoldMs))
     }
 

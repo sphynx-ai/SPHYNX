@@ -25,11 +25,9 @@ class ArchitectureRulesTest {
 
     // the violations on 2026-11-14 (ADR 0001): remove an entry when its step is done
     // (step B1, v37.28: Speed, TouchSpeed, PhoneState, VideoRecorder, GitHubUpload, Settings read the layers
-    // above through core.Probes - 11 entries gone)
+    // above through core.Probes - 11 entries gone; step B2, v37.29: SessionRecorder too - 6 more)
     private val baseline = setOf(
         "capture/ScreenCaptureService.kt -> ai", "capture/ScreenCaptureService.kt -> game",
-        "core/SessionRecorder.kt -> ai", "core/SessionRecorder.kt -> capture", "core/SessionRecorder.kt -> game",
-        "core/SessionRecorder.kt -> learning", "core/SessionRecorder.kt -> research", "core/SessionRecorder.kt -> vision",
         "engines/DecisionBridge.kt -> ai", "engines/DecisionBridge.kt -> learning",
         "engines/DecisionLogging.kt -> adapters", "engines/DecisionLogging.kt -> ai",
         "engines/DecisionLogging.kt -> game", "engines/DecisionLogging.kt -> learning",
