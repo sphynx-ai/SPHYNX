@@ -43,7 +43,7 @@ object CombatRange {
         private var contactUntil = 0L
         private var watching = false
 
-        fun reset() { watching = false; contactUntil = 0L }
+        fun reset() { startAt = 0L; startD = 0f; lastAt = 0L; contactUntil = 0L; watching = false }
 
         // d: the current gap; approaching: this decision walks toward the target
         fun inContact(nowMs: Long, d: Float, approaching: Boolean): Boolean {

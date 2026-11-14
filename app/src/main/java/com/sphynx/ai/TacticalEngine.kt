@@ -58,11 +58,35 @@ object TacticalEngine {
     private var regenUntil = 0L
     private var ambushSince = 0L
 
+    // Everything the engine remembers about the current match goes back to its start value (fixed 2026-11-14:
+    // before, only the held intent and the recall / regen timers were reset, so a restart of the AI soon after a
+    // stop could act on a monster, objective commitment or decision from before - the Phase 2 regression net
+    // showed it). A new remembered field must be added here; TacticalEngineResetTest checks it.
     fun reset() {
         held = Intent.IDLE
         heldSince = 0L
         recallUntil = 0L
         regenUntil = 0L
+        ambushSince = 0L
+        nextPlan = "-"
+        lastTargetId = -1
+        lastBushCheck = 0L
+        committed = null
+        commitUntil = 0L
+        lastTravelDash = 0L
+        travelSince = 0L
+        pendingHop = false
+        movingSince = 0L
+        invadeAt = null
+        invadeArrived = 0L
+        invadeSkip.clear()
+        invadeStatus = "-"
+        lastMonX = -1f; lastMonY = -1f; lastMonHp = 1f; lastMonAt = 0L
+        lastMonSpecies = ""; lastMonBoss = false
+        objCommit.reset()
+        hitWatch.reset()
+        monComboStartedAt = 0L
+        monsterContact.reset()
         JungleNav.reset()
         com.sphynx.game.MapIntel.reset()
     }

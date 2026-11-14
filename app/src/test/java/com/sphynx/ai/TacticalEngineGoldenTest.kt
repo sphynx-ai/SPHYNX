@@ -61,13 +61,13 @@ class TacticalEngineGoldenTest {
         minimapSelf = minimapSelf, towers = towers, bossHp = bossHp, level = level
     )
 
-    private class Scenario(val name: String, val hero: HeroProfile, val plan: StrategyPlan, val state: GameState)
+    internal class Scenario(val name: String, val hero: HeroProfile, val plan: StrategyPlan, val state: GameState)
 
     private val farm = StrategyPlan.DEFAULT
     private val fight = StrategyPlan("fight", 0.8f, "weakest", "test: fight", 0L)
     private val retreat = StrategyPlan("retreat", 0.2f, "nearest", "test: retreat", 0L)
 
-    private fun scenarios(): List<Scenario> {
+    internal fun scenarios(): List<Scenario> {
         var t = 100_000L
         fun next(): Long { t += 1_000L; return t }
         return listOf(
@@ -103,7 +103,7 @@ class TacticalEngineGoldenTest {
         )
     }
 
-    private fun resetAll() {
+    internal fun resetAll() {
         TacticalEngine.reset()          // also JungleNav and MapIntel
         CooldownTracker.reset()
         GameMemory.reset()
