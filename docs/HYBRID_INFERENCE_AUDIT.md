@@ -14,7 +14,7 @@ All statements are VERIFIED by reading the code, the build files or the built AP
 | Authoritative branch / commit | `main` = `716af662b0239d567826c174a313696aa04defff` |
 | Working tree | clean |
 | Local branch | `docs/universal-compatibility-audit` (Stage 1 docs plus this file; not pushed) |
-| Version | 37.19, versionCode 3719, applicationId `com.sphynx.autopilot`, namespace `com.example.mlbbresearch` |
+| Version | 37.19, versionCode 3719, applicationId `com.sphynx.autopilot`, namespace `com.sphynx` |
 | Toolchain | AGP 9.3.1, Kotlin 2.3.21 (via kotlin-gradle-plugin; AGP compiles Kotlin), Gradle 9.6.1, JDK 21 (CI), compileSdk / targetSdk 36, minSdk 30, JVM target 17 |
 | Build and test baseline | `./gradlew testDebugUnitTest assembleDebug` → **168 tests, 0 failures, 0 skipped**; APK built |
 | CI | `.github/workflows/android-build.yml`: assembleDebug + testDebugUnitTest; uploads test reports only, **not the APK** |

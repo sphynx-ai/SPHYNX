@@ -37,13 +37,13 @@ static jbyteArray toBytes(JNIEnv * env, const std::string & s) {
 static SphynxLlama * handle(jlong h) { return reinterpret_cast<SphynxLlama *>(h); }
 
 extern "C" JNIEXPORT jbyteArray JNICALL
-Java_com_example_mlbbresearch_inference_LlamaJni_nativeInfo(JNIEnv * env, jobject) {
+Java_com_sphynx_inference_LlamaJni_nativeInfo(JNIEnv * env, jobject) {
     sphynx_llama_init(logToAndroid);
     return toBytes(env, sphynx_llama_info());
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_example_mlbbresearch_inference_LlamaJni_nativeLoad(JNIEnv * env, jobject, jstring jpath, jint nCtx, jint threads) {
+Java_com_sphynx_inference_LlamaJni_nativeLoad(JNIEnv * env, jobject, jstring jpath, jint nCtx, jint threads) {
     sphynx_llama_init(logToAndroid);
     std::string err;
     SphynxLlama * h = sphynx_llama_load(jstr(env, jpath), nCtx, threads, err);
@@ -52,20 +52,20 @@ Java_com_example_mlbbresearch_inference_LlamaJni_nativeLoad(JNIEnv * env, jobjec
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL
-Java_com_example_mlbbresearch_inference_LlamaJni_nativeLoadError(JNIEnv * env, jobject) {
+Java_com_sphynx_inference_LlamaJni_nativeLoadError(JNIEnv * env, jobject) {
     std::lock_guard<std::mutex> l(g_errMutex);
     return toBytes(env, g_loadError);
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL
-Java_com_example_mlbbresearch_inference_LlamaJni_nativeDescribe(JNIEnv * env, jobject, jlong h) {
+Java_com_sphynx_inference_LlamaJni_nativeDescribe(JNIEnv * env, jobject, jlong h) {
     return toBytes(env, sphynx_llama_describe(handle(h)));
 }
 
 struct SinkCall { JNIEnv * env; jobject sink; jmethodID onPiece; };
 
 extern "C" JNIEXPORT jbyteArray JNICALL
-Java_com_example_mlbbresearch_inference_LlamaJni_nativeGenerate(JNIEnv * env, jobject, jlong h, jbyteArray jprompt,
+Java_com_sphynx_inference_LlamaJni_nativeGenerate(JNIEnv * env, jobject, jlong h, jbyteArray jprompt,
                                                                 jint maxTokens, jfloat temperature, jint seed, jobject sink) {
     SinkCall call{env, sink, nullptr};
     if (sink) {
@@ -89,11 +89,11 @@ Java_com_example_mlbbresearch_inference_LlamaJni_nativeGenerate(JNIEnv * env, jo
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_example_mlbbresearch_inference_LlamaJni_nativeCancel(JNIEnv *, jobject, jlong h) {
+Java_com_sphynx_inference_LlamaJni_nativeCancel(JNIEnv *, jobject, jlong h) {
     sphynx_llama_cancel(handle(h));
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_example_mlbbresearch_inference_LlamaJni_nativeFree(JNIEnv *, jobject, jlong h) {
+Java_com_sphynx_inference_LlamaJni_nativeFree(JNIEnv *, jobject, jlong h) {
     sphynx_llama_free(handle(h));
 }

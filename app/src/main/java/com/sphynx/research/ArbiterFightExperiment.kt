@@ -1,0 +1,80 @@
+package com.sphynx.research
+
+import com.sphynx.learning.FightOption
+import com.sphynx.universal.Decision
+import com.sphynx.universal.DecisionArbiter
+import com.sphynx.universal.DecisionKind
+import com.sphynx.universal.UniversalMatchState
+
+// Research mode, phase R3, the first experiment (pure logic, unit tested): in a VERIFIED PRACTICE
+// match only, the DecisionArbiter settles the engines' advice and picks the fight option, instead of
+// the app's normal order (fight network, then the small model, then the learning brain).
+// Fail-closed, in this order:
+//  - not allowed (research off, practice not verified, a human seen) -> the normal choice, untouched;
+//  - no fight choice this moment (no enemy nearby) -> nothing to decide;
+//  - the arbiter picks nothing, or a kind that is not a fight option (push, defend, ...) -> normal;
+//  - the arbiter's option fails the app's own Kotlin checks (TacticalAdvisor.check) -> normal.
+// Engines whose capability is Experimental stay advisory (the validator never lets them win). Since the owner's
+// decision of 2026-11-09 the small tactical model is not Experimental for MLBB, so it competes like the others.
+// This decides WHICH fight option is played; it adds no new kind of action.
+// SAFETY FIRST (owner, 2026-11-12 - the 2026-11-11 recording: 82 changes, all to FARM from the strategic plan's
+// generic "farm", 19 of them over a RETREAT and 30 over an ALL_IN): it never turns a retreat into anything else,
+// and an all-in is not turned into farming by the strategic plan alone (safetyKeeps).
+class ArbiterFightExperiment(private val maxLog: Int = 30) {
+
+    data class Outcome(val option: FightOption?, val changed: Boolean, val note: String)
+
+    var choices = 0; private set               // moments the arbiter decided
+    var changed = 0; private set               // ... where it played something other than the normal choice
+    var keptByCheck = 0; private set           // ... where its pick failed the Kotlin checks
+    var keptBySafety = 0; private set          // ... where safety first kept the normal choice
+    private val log = ArrayDeque<String>()
+
+    fun toOption(k: DecisionKind): FightOption? = when (k) {
+        DecisionKind.ENGAGE -> FightOption.ALL_IN
+        DecisionKind.POKE -> FightOption.POKE
+        DecisionKind.FARM -> FightOption.FARM
+        DecisionKind.RETREAT -> FightOption.RETREAT
+        DecisionKind.GROUP -> FightOption.GROUP
+        else -> null                            // not a fight option: the normal choice stands
+    }
+
+    @Synchronized fun choose(
+        allowed: Boolean, normal: FightOption?, advice: List<Decision>, u: UniversalMatchState, nowMs: Long,
+        kotlinCheck: (FightOption) -> String?
+    ): Outcome {
+        if (!allowed) return Outcome(normal, false, "not allowed")
+        if (normal == null) return Outcome(null, false, "no fight choice")
+        val r = DecisionArbiter.resolve(advice, u, nowMs)
+        val pick = r.chosen?.let { toOption(it.kind) } ?: return Outcome(normal, false, "arbiter: ${r.note}")
+        choices++
+        if (pick == normal) return Outcome(normal, false, "arbiter agrees (${r.note})")
+        safetyKeeps(normal, pick, r.chosen?.source)?.let { why ->
+            keptBySafety++
+            add("$nowMs kept ${normal.name}: ${pick.name} refused ($why)")
+            return Outcome(normal, false, "safety first: $why")
+        }
+        kotlinCheck(pick)?.let { why ->
+            keptByCheck++
+            add("$nowMs kept ${normal.name}: arbiter's ${pick.name} failed the checks ($why)")
+            return Outcome(normal, false, "arbiter's ${pick.name} failed the checks")
+        }
+        changed++
+        add("$nowMs ${normal.name} -> ${pick.name} (${r.chosen?.source?.name?.lowercase()}, ${r.note})")
+        return Outcome(pick, true, r.note)
+    }
+
+    // why the normal choice must stand (null = the arbiter's pick may be played)
+    fun safetyKeeps(normal: FightOption, pick: FightOption, source: com.sphynx.universal.EngineSource?): String? = when {
+        normal == FightOption.RETREAT && pick != FightOption.RETREAT -> "a retreat is never overridden"
+        normal == FightOption.ALL_IN && pick == FightOption.FARM && source == com.sphynx.universal.EngineSource.STRATEGIC ->
+            "a generic farm plan does not override an all-in"
+        else -> null
+    }
+
+    @Synchronized fun summary(): String = "$choices arbiter choices, $changed changed, $keptByCheck kept by checks, $keptBySafety kept by safety"
+    @Synchronized fun recent(): List<String> = log.toList()
+    @Synchronized fun reset() { choices = 0; changed = 0; keptByCheck = 0; keptBySafety = 0; log.clear() }
+
+    private fun add(s: String) { if (log.size >= maxLog) log.removeFirst(); log.addLast(s) }
+}

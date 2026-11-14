@@ -27,7 +27,7 @@ val hasValidSigningProps = keystorePropsFile.exists().also { exists ->
 
 
 android {
-    namespace = "com.example.mlbbresearch"
+    namespace = "com.sphynx"
     compileSdk = 36
 
     // PHASE 8 (GGUF backend): llama.cpp built from source (app/src/main/cpp). The NDK and CMake versions are
@@ -76,9 +76,10 @@ android {
 
     defaultConfig {
         buildConfigField("String", "GIT_COMMIT", "\"$gitCommit\"")
-        // The app id (owner, 2026-11-14, v37.23: com.sphynx.autopilot -> com.sphynx; the code package stays
-        // com.example.mlbbresearch). Android treats a new id as a NEW app: it installs next to the old one, which
-        // can be uninstalled afterwards. Calibration and learned data come back from Sphynx-Storage/Output.
+        // The app id (owner, 2026-11-14, v37.23: com.sphynx.autopilot -> com.sphynx; the code package, the
+        // namespace above, is com.sphynx too since v37.25). Android treats a new id as a NEW app: it installs
+        // next to the old one, which can be uninstalled afterwards. Calibration and learned data come back
+        // from Sphynx-Storage/Output.
         applicationId = "com.sphynx"
         minSdk = 30
         targetSdk = 36
@@ -86,7 +87,7 @@ android {
         // (37.20 -> 37.21 -> ...; after 37.99 comes 38.00). Written only here: the version code follows
         // from it (37.20 -> 3720) and the app reads it through BuildConfig.VERSION_NAME (core.AppVersion).
         // The newest What's new entry carries the same version; a unit test checks they match.
-        val sphynxVersion = "37.24"
+        val sphynxVersion = "37.25"
         versionCode = sphynxVersion.split(".").let { it[0].toInt() * 100 + it[1].toInt() }
         versionName = sphynxVersion
 

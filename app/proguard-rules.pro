@@ -21,6 +21,6 @@
 #-renamesourcefileattribute SourceFile
 # GGUF backend (Phase 8): llama_jni.cpp finds these by name - the native methods of LlamaJni, and
 # the onPiece(byte[]) method it calls with each piece of an answer.
--keep class com.example.mlbbresearch.inference.LlamaJni { native <methods>; }
--keep interface com.example.mlbbresearch.inference.LlamaJni$PieceSink { *; }
--keep class * implements com.example.mlbbresearch.inference.LlamaJni$PieceSink { public void onPiece(byte[]); }
+-keep class com.sphynx.inference.LlamaJni { native <methods>; }
+-keep interface com.sphynx.inference.LlamaJni$PieceSink { *; }
+-keep class * implements com.sphynx.inference.LlamaJni$PieceSink { public void onPiece(byte[]); }
