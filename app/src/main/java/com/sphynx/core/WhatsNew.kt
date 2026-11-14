@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "Development plan: Phase 3 (the app's design) has started",
+            "Phase 2 is paused for now (what is done and where it continues is written down). Phase 3 is about how the " +
+                "app looks and works: its first step is an audit of every page and the floating panel - what is on " +
+                "them, what is hard to find, which texts are too small or low in contrast, which actions have no " +
+                "confirmation (docs/PHASE_3_UX_AUDIT.md). The new design comes next, for your approval. No change to " +
+                "the app itself.",
+            pr = 20, version = "37.30"),
         Entry("2026-11-14", Kind.IMPROVED, "Clean-up: the session recorder no longer reaches into the AI",
             "Phase 2, second clean-up step: what a session recording writes about the match (positions, enemies, " +
                 "the decision, the minimap...) is now put together by the AI loop and handed to the recorder, which only " +
