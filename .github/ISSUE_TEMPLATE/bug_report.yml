@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible problem in Sphynx Auto Pilot.
+description: Report a reproducible problem in Sphynx.
 title: "[Bug]: "
 body:
   - type: markdown

@@ -1,4 +1,4 @@
-# Sphynx-Auto-Pilot — Master Development Plan
+# Sphynx — Master Development Plan
 
 **Canonical roadmap:** This is the authoritative 16-phase product-development roadmap. Product features, architecture initiatives, research work packages, and planned integrations belong here. GitHub Issues should primarily track defects, regressions, reliability problems, security problems, compatibility failures, and concrete engineering work requiring correction.
 
@@ -28,7 +28,7 @@ Approval or migration into this roadmap does not mean implementation is complete
 
 ## 2. Product vision and non-negotiable principles
 
-Sphynx-Auto-Pilot is intended to become a reliable, offline-first Universal MOBA Companion—not an MLBB-only application and not merely a chatbot.
+Sphynx is intended to become a reliable, offline-first Universal MOBA Companion—not an MLBB-only application and not merely a chatbot.
 
 The product direction includes:
 1. Multiple MOBA game integrations through isolated game adapters.
@@ -269,7 +269,7 @@ At the beginning of every phase, the agent must: (1) state the assigned primary 
 
 ## 4. Phase 2 work package — Universal MOBA Companion Architecture (migrated from Issue #1)
 
-**Original tracking record:** [Issue #1 — Establish the Universal MOBA Companion architecture](https://github.com/georgenaval1-blip/Sphynx-Auto-Pilot/issues/1)
+**Original tracking record:** Issue #1 — Establish the Universal MOBA Companion architecture (in the original repository, before the move to sphynx-ai/SPHYNX)
 
 **Purpose:** Evolve the current MLBB implementation toward a Universal MOBA Companion while retaining MLBB as the first supported game.
 
@@ -301,7 +301,7 @@ At the beginning of every phase, the agent must: (1) state the assigned primary 
 
 ## 5. Phase 13 work package — MLBB Intelligence and Professional Match Hub (migrated from Issue #37)
 
-**Original tracking record:** [Issue #37 — Add MLBB Emblem Sets, Data-Driven Meta Updates, and Pro Match Hub](https://github.com/georgenaval1-blip/Sphynx-Auto-Pilot/issues/37)
+**Original tracking record:** Issue #37 — Add MLBB Emblem Sets, Data-Driven Meta Updates, and Pro Match Hub (in the original repository, before the move to sphynx-ai/SPHYNX)
 
 **Purpose:** Build an integrated, patch-aware MLBB intelligence system connecting emblem knowledge, official meta data, team compositions, team rotations, and professional-match evidence.
 
@@ -436,7 +436,7 @@ Additional acceptance criteria:
 
 ### 13.12 Combat perception, minimap/gameplay synchronization, and reliable target engagement
 
-**Historical source record:** [Issue #2 — Improve minimap and gameplay-screen synchronization for reliable combat targeting](https://github.com/georgenaval1-blip/Sphynx-Auto-Pilot/issues/2)
+**Historical source record:** Issue #2 — Improve minimap and gameplay-screen synchronization for reliable combat targeting (in the original repository, before the move to sphynx-ai/SPHYNX)
 
 **Purpose:** Resolve target-visibility and combat-range failures caused by relying too heavily on minimap markers. Build a synchronized, confidence-aware target representation from minimap and gameplay-screen evidence, then use it consistently for targeting, movement, skill aiming, and engage/continue/disengage decisions.
 
@@ -519,7 +519,7 @@ The owner has authorized implementation of all five work packages. They are comm
 
 UI/UX is a core workstream and product-quality requirement throughout the roadmap:
 - Conduct a full application-wide UI/UX and information-architecture audit.
-- Establish original Sphynx Auto Pilot visual identity and reusable design system: color, typography, spacing, iconography, components, navigation, data visualization, and interaction patterns.
+- Establish original Sphynx visual identity and reusable design system: color, typography, spacing, iconography, components, navigation, data visualization, and interaction patterns.
 - Redesign screens consistently, including onboarding, setup, home/command center, game center, live companion, AI intelligence, Model Lab, knowledge/library, performance, analytics, research, and settings as validated by the audit.
 - Cover loading, empty, error, recovery, permission, confirmation, progress, and notification states.
 - Include accessibility, readable contrast, touch targets, responsive layouts, and performance-conscious motion.
@@ -567,8 +567,8 @@ Product feature requests, architecture initiatives, research projects, and plann
 
 ### Migrated source records
 
-- [Issue #1 — Universal MOBA Companion architecture](https://github.com/georgenaval1-blip/Sphynx-Auto-Pilot/issues/1) → Phase 2, Section 4.
-- [Issue #37 — MLBB Emblem Sets, Data-Driven Meta Updates, and Pro Match Hub](https://github.com/georgenaval1-blip/Sphynx-Auto-Pilot/issues/37) → Phase 13, Section 5.
+- Issue #1 — Universal MOBA Companion architecture (in the original repository, before the move to sphynx-ai/SPHYNX) → Phase 2, Section 4.
+- Issue #37 — MLBB Emblem Sets, Data-Driven Meta Updates, and Pro Match Hub (in the original repository, before the move to sphynx-ai/SPHYNX) → Phase 13, Section 5.
 
 The original GitHub records are historical traceability references. Their closure means requirements were transferred into this roadmap, **not** that architecture or MLBB features have been implemented.
 

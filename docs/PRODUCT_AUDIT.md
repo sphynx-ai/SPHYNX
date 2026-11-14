@@ -1,4 +1,4 @@
-# Sphynx Auto Pilot — Phase 0 and Phase 1: Repository Verification and Complete Product Audit
+# Sphynx — Phase 0 and Phase 1: Repository Verification and Complete Product Audit
 
 **Directive:** owner's Master Project Development and Evolution Directive (2026-11-10).
 **Author:** Claude Code.
@@ -18,7 +18,7 @@
 
 | Item | State |
 |---|---|
-| Repository | `georgenaval1-blip/Sphynx-Auto-Pilot` (only target) |
+| Repository | `sphynx-ai/SPHYNX` (only target) |
 | `main` | `716af66`, version 37.19 / 3719, app id `com.sphynx.autopilot`. Builds and installs with Code on the Go (DEVICE-CONFIRMED 2026-11-09) |
 | Open PR | #29 "small tactical model no longer Experimental": CI green, waiting for the owner's merge decision |
 | Local only | `docs/universal-compatibility-audit`: Stage 1 compatibility audit, hybrid-inference Phase Zero audit, this file. Not pushed (owner instruction) |
@@ -50,7 +50,7 @@
   - 12 top tabs on a horizontally scrolling bar, plus swipe between pages: Home, What's new, Player, Draft, Build, Meta, Library, Model, Learn, Speed, Logs, Setup.
   - A floating overlay (`OverlayManager`) for use inside the game.
 - **Theme:** a dark palette in code (`T.BG`, `SURF`, `ACCENT` …), with card, chip and header helpers. There is no design-system document.
-- **Identity:** the launcher icon resource is still named `ic_mlbb`. The app is called Sphynx Auto Pilot (PR #25).
+- **Identity:** the launcher icon resource is still named `ic_mlbb`. The app is called Sphynx (PR #25).
 
 ## 2. Feature inventory with real status
 

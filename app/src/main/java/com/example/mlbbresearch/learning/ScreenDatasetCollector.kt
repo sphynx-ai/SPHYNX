@@ -27,7 +27,7 @@ import java.util.concurrent.Executors
 //     horned_lizard by colour; other small ones as jungle_creep (rename them in Roboflow)
 //   enemy towers (tower_enemy_plated before 5:00)             - the range circle around them
 //   bushes and walls                                           - the bush / wall finder's cells
-// in Download/Sphynx-Auto-Pilot-Storage/screen_dataset (images/*.jpg, labels/*.txt, classes.txt), YOLO format.
+// in Download/Sphynx-Storage/screen_dataset (images/*.jpg, labels/*.txt, classes.txt), YOLO format.
 // These boxes are the app's guesses: checking / fixing them in Roboflow is what makes the trained
 // detector better than the colour vision (it then also learns units WITHOUT HP bars, e.g. a
 // monster nobody has hit yet, or a hero standing in a bush).
