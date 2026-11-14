@@ -1,0 +1,12 @@
+11-15 04:18:06 [INFO] Folder: nothing to read yet: allow all files access, or choose the /CodeOnTheGoProjects/Sphynx-Storage folder (Model page)
+11-15 04:18:33 [INFO] Accessibility service connected
+11-15 04:19:09 [INFO] Folder sorted into Input / Output / Recordings: gemma-4-E2B-it.litertlm -> Input/; gemini_key.txt -> Input/; cerebras_key.txt -> Input/; roboflow_key.txt -> Input/; groq_key.txt -> Input/; kaggle.json -> Input/; github_token.txt -> Input/; qwen2.5-0.5b-instruct-q4_k_m.gguf -> Input/; Llama-3.2-1B-Instruct-Q4_K_M.gguf -> Input/; gemma3-270m-it-q8.litertlm -> Input/
+11-15 04:19:14 [INFO] Folder: last scan: online data restored (7 from mlbb-learned.json), Gemma 4 E2B copied, Gemma loading, Gemini API key, Cerebras API key, Groq API key, Kaggle key, small tactical model copied (Gemma 3 270M)
+11-15 04:19:59 [INFO] gemma model loaded on GPU
+11-15 04:19:59 [INFO] Gemma loaded from the folder
+11-15 04:21:44 [INFO] GGUF: Added Llama-3.2-1B-Instruct-Q4_K_M.gguf (770 MB)
+11-15 04:22:04 [INFO] GGUF: Loaded Llama-3.2-1B-Instruct-Q4_K_M.gguf in 1.7 s (llama 1B Q4_K - Medium)
+11-15 04:22:15 [INFO] GGUF answer (Llama-3.2-1B-Instruct-Q4_K_M.gguf): Prompt: 32 tokens (94.4 tok/s) · Answer: 66 tokens (23.9 tok/s) · first word after 0.3 s · total 3.1 s · In the first two minutes of a MOBA match, a jungler should focus on ganking (surprise attacking) lanes and taking objectives to deny gold and experience to enem
+11-15 04:23:52 [INFO] Folder: last scan: Gemma loading
+11-15 04:23:57 [INFO] gemma model loaded on GPU
+11-15 04:23:57 [INFO] Gemma loaded from the folder

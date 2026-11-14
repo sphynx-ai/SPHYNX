@@ -1,0 +1,49 @@
+{
+ "kinds": {
+  "minimap": {
+   "label": "Minimap detector",
+   "measure": "boxes found (mAP50)",
+   "improvement_pct": null,
+   "history": [],
+   "result_file": null
+  },
+  "screen": {
+   "label": "Screen detector",
+   "measure": "boxes found (mAP50)",
+   "improvement_pct": null,
+   "history": [],
+   "result_file": null
+  },
+  "policy": {
+   "label": "Tactical networks",
+   "measure": "moves right (balanced)",
+   "improvement_pct": null,
+   "history": [],
+   "result_file": null
+  },
+  "llm": {
+   "label": "Small tactical model",
+   "measure": "answers right (balanced)",
+   "improvement_pct": null,
+   "history": [],
+   "result_file": null
+  },
+  "engine": {
+   "label": "Tactical engine (the AI's fights)",
+   "measure": "fights that went well",
+   "improvement_pct": null,
+   "history": [],
+   "result_file": null
+  },
+  "you": {
+   "label": "Your own fights (learned from)",
+   "measure": "fights that went well",
+   "improvement_pct": null,
+   "history": [],
+   "result_file": null
+  }
+ },
+ "fight_choice_info": null,
+ "app_version": "37.25",
+ "exported_at": 1794687849265
+}
