@@ -1,5 +1,5 @@
-# PHASE 3a SPIKE (owner-approved order: One -> 3a -> Two). Builds llama.cpp (pinned, CPU only,
-# arm64-v8a) into one JNI library, libsphynx_llama.so. Same NDK (29.0.14206865) and CMake (3.22.1)
+# PHASE 8: the GGUF backend. Builds llama.cpp (pinned, CPU only, arm64-v8a) and the app's engine
+# (llama_engine.cpp + llama_jni.cpp) into one JNI library, libsphynx_llama.so. Same NDK (29.0.14206865) and CMake (3.22.1)
 # as the owner's Code on the Go, so the phone can build it from source.
 cmake_minimum_required(VERSION 3.18)
 project(sphynx_llama C CXX)
@@ -35,14 +35,14 @@ set(GGML_LLAMAFILE        ON  CACHE BOOL "" FORCE)
 set(GGML_BUILD_TESTS      OFF CACHE BOOL "" FORCE)
 set(GGML_BUILD_EXAMPLES   OFF CACHE BOOL "" FORCE)
 # ARMv8.2 with dot product and fp16: every arm64 phone core since Cortex-A55 / A75 (2017).
-# Older cores (Cortex-A53/A73) would stop with an illegal instruction - acceptable for the spike;
-# 3b decides between this, several variants, or a runtime check.
+# Older cores (Cortex-A53/A73) would stop with an illegal instruction, so the app checks the CPU
+# (LlamaCpu, /proc/cpuinfo) before it loads this library at all.
 set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod+fp16" CACHE STRING "" FORCE)
 
 add_subdirectory(${LLAMA_DIR}/ggml ggml)
 add_subdirectory(${LLAMA_DIR}/src  llama)
 
-add_library(sphynx_llama SHARED llama_jni.cpp llama_spike.cpp)
+add_library(sphynx_llama SHARED llama_jni.cpp llama_engine.cpp)
 target_compile_definitions(sphynx_llama PRIVATE LLAMA_PIN_TAG="${LLAMA_PIN_TAG}" LLAMA_PIN_COMMIT="${LLAMA_PIN_COMMIT}")
 target_link_libraries(sphynx_llama PRIVATE llama ggml log android)
 # smaller library: drop unused code; 16 KB pages (Android 15+ devices)

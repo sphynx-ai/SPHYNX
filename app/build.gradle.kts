@@ -30,7 +30,7 @@ android {
     namespace = "com.example.mlbbresearch"
     compileSdk = 36
 
-    // PHASE 3a SPIKE: llama.cpp built from source (app/src/main/cpp). The NDK and CMake versions are
+    // PHASE 8 (GGUF backend): llama.cpp built from source (app/src/main/cpp). The NDK and CMake versions are
     // exactly the ones Code on the Go has on the owner's phone (NDK Installer plugin), so the phone
     // can build it; CI installs the same versions.
     ndkVersion = "29.0.14206865"

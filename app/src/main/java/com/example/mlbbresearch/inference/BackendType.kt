@@ -3,14 +3,15 @@ package com.example.mlbbresearch.inference
 // HYBRID INFERENCE, Phase One (owner-authorized 2026-11-10): the contracts every model runtime
 // follows. Pure Kotlin, no Android and no runtime library types, unit tested. Nothing in the app
 // uses this package yet - Phase Two wraps today's LiteRT-LM slot behind these contracts with
-// identical behaviour. See docs/HYBRID_INFERENCE_AUDIT.md.
+// identical behaviour. See docs/HYBRID_INFERENCE_AUDIT.md. Phase 8: LlamaCppBackend is the first
+// runtime built on these contracts.
 
 /** The model runtimes the app knows. A model file belongs to exactly one. */
 enum class BackendType(val label: String, val extensions: List<String>, val shippedNative: Boolean) {
     /** Google LiteRT-LM (.litertlm, older .task bundles). Ships today, native libs from the AAR. */
     LITERT_LM("LiteRT-LM", listOf("litertlm", "task"), shippedNative = true),
-    /** llama.cpp GGUF models. Native library not shipped yet (Phase 3a spike, prebuilt .so). */
-    LLAMA_CPP("llama.cpp (GGUF)", listOf("gguf"), shippedNative = false);
+    /** llama.cpp GGUF models. Native library built from app/src/main/cpp (arm64-v8a, CPU), Phase 8. */
+    LLAMA_CPP("llama.cpp (GGUF)", listOf("gguf"), shippedNative = true);
 
     companion object {
         /** The runtime for a file name by its extension, or null when no runtime reads it. */
