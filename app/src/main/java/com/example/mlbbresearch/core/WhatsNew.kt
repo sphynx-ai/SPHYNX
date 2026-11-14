@@ -23,6 +23,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "Development plan: Phase 1 baseline report",
+            "Phase 1 of the Master Development Plan has started: docs/PHASE_1_BASELINE.md records the project as it is " +
+                "today (branches, builds, 373 unit tests, code inventory, what each of the 16 phases already has, the " +
+                "risks found, and what is left to test on the phone). No change to the app itself.",
+            pr = 8),
         Entry("2026-11-14", Kind.FIXED, "The Home page no longer shows an empty box for the power symbol",
             "The Home page line about the floating icon used the power symbol as text, and your phone's font has no " +
                 "power symbol, so it showed an empty box. It now says \"the power button on the floating icon\".",
