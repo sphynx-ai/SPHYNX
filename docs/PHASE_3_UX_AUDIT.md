@@ -9,7 +9,7 @@
 
 ## 1. What the app is made of today
 
-**Main screen:** a header, then a sideways-scrolling row of **14 page tabs**, then the page content: a vertical list of cards.
+**Main screen:** a header (the mark, "Sphynx", the AI status, the hold-"?" help and a big red STOP), the page content (a vertical list of cards), and a sideways-scrolling row of **14 page tabs at the bottom**.
 
 | Tab (order) | Page | Lines | Buttons | Switches | Fields | Text lines | Sections |
 |---|---|---:|---:|---:|---:|---:|---|
@@ -98,6 +98,32 @@ Severity: **H** = blocks or confuses a core task, **M** = slows down or risks mi
 ### Visual system
 19. **M — Two palettes.** The main app uses `T` (blue accent) and the panel uses the brand palette (ice, titanium, obsidian). The brand in `docs/brand/` should become the one source, with semantic tokens (surface, text, accent, success, warning, danger, status levels).
 20. **L — The components are local helpers inside one 3,000-line `MainActivity`.** That's fine for now. Phase 4 will need them as reusable components (the design-system implementation).
+
+## 2a. Phone evidence (owner's screenshots, 2026-11-14)
+
+The owner sent screenshots of every page and of the floating panel, opened and minimized. The phone was on v37.25. They confirm findings 1, 2, 6, 13 and 14. They also settle the *(phone check)* points and add these:
+
+21. **M — The font.** All text uses a pixel-style monospace font. Headings and values read well. Long muted descriptions read poorly at 12–13sp, for example on What's new, Meta and Setup. *Resolves finding 15:* the type scale must raise body and description text, or use a more readable face for running text (design system decision).
+22. **H — Primary buttons are confirmed hard to read:** white on light blue. Examples are "Start screen capture", "Update the patch meta", "Make experimental builds" and "Learn the whole database online" (finding 13).
+23. **M — Labels are cut or wrapped mid-word:**
+    - Library chips: "Equipmen / t".
+    - Build item names: "Immortalit / y", "Brute Force Bre…".
+
+    Chips and item labels need ellipsis rules or wider cells.
+24. **M — Permission state is shown by colour only.** On Setup, granted permissions turn green and missing ones stay grey, with no "granted" / "missing" text or icon. That doesn't work for colour-blind users or in a bright room.
+25. **M — Each feature page has its own on/off switch at the top:** "Research player running", "Drafter running", "Builder running". It's the same pattern as the Home RUN switches, with no single place that shows what is running. *(Supports finding 7: one "Running now" view.)*
+26. **L — Team / Solo are two switches that act as one choice.** They should be a segmented choice (Draft page).
+27. **L — Home repeats What's new** (a "What's new" card on Home and a tab). The navigation decision removes the duplication.
+28. **L — Practice is almost empty** when nothing has been recorded. It's better as a section of "AI & models" than as a tab.
+29. **Keep:**
+    - the Performance page (device name, the memory ring, the storage bar);
+    - the Model page's status list (dot + text);
+    - the Logs "No active errors" line;
+    - the floating panel (5 drawn icon buttons, status lines, and a minimized bubble with close and power).
+
+The "⊠" box seen in one older Home screenshot is already fixed in the current code. It now reads "the power button on the floating icon".
+
+**Owner decision (2026-11-14):** the 14 tabs are grouped into 5 sections: Play / Hero & match / Knowledge / AI & models / Settings & help. The details are in `docs/PHASE_3_INFORMATION_ARCHITECTURE.md`.
 
 ## 3. What already works well (keep)
 - **Card layout:** a consistent dark card layout with section headers and status chips.
