@@ -2,8 +2,8 @@
 
 ## Install into Code on the Go
 
-1. Use your Sphynx project (app id `com.sphynx` since v37.23, `com.sphynx.autopilot` before; code package `com.example.mlbbresearch`).
-   In `app/src/main/java/com/example/mlbbresearch/`, DELETE the old `MainActivity.kt`
+1. Use your Sphynx project (app id `com.sphynx` since v37.23, `com.sphynx.autopilot` before; code package `com.sphynx`).
+   In `app/src/main/java/com/sphynx/`, DELETE the old `MainActivity.kt`
    (and any other old `.kt` files there). The new code lives in sub-folders.
 2. Copy this zip's `app/src/main` folder over your project's `app/src/main`
    (replace files when asked). Delete `res/xml/accessibility_service_config.xml` if it is still there.

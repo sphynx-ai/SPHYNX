@@ -1,0 +1,36 @@
+package com.sphynx.research
+
+import com.sphynx.research.PlayerGate.Verdict
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class PlayerGateTest {
+
+    @Test fun playsOnlyInTheVerifiedPracticeMatch() {
+        assertEquals(Verdict.PLAY, PlayerGate.verdict(100L, 100L, PracticeGate.State.VERIFIED))
+        // a verification belongs to its match only
+        assertEquals(Verdict.WAIT, PlayerGate.verdict(101L, 100L, PracticeGate.State.VERIFIED))
+    }
+
+    @Test fun waitsUntilVerified() {
+        assertEquals(Verdict.WAIT, PlayerGate.verdict(100L, 100L, PracticeGate.State.UNVERIFIED))
+    }
+
+    @Test fun realPlayerLocksTheMatch() {
+        assertEquals(Verdict.LOCKED, PlayerGate.verdict(100L, 100L, PracticeGate.State.REVOKED))
+    }
+
+    @Test fun unidentifiedMatchNeverPlays() {
+        assertEquals(Verdict.UNKNOWN, PlayerGate.verdict(0L, 0L, PracticeGate.State.VERIFIED))
+    }
+
+    @Test fun builderPressesItemActivesUnlessThePlayerPlays() {
+        val V = PlayerGate.Verdict.values()
+        for (v in V) org.junit.Assert.assertTrue(PlayerGate.builderPressesActives(true, false, v))
+        org.junit.Assert.assertTrue(PlayerGate.builderPressesActives(true, true, null))
+        org.junit.Assert.assertTrue(PlayerGate.builderPressesActives(true, true, PlayerGate.Verdict.WAIT))
+        org.junit.Assert.assertTrue(PlayerGate.builderPressesActives(true, true, PlayerGate.Verdict.LOCKED))
+        org.junit.Assert.assertFalse(PlayerGate.builderPressesActives(true, true, PlayerGate.Verdict.PLAY))
+        org.junit.Assert.assertFalse(PlayerGate.builderPressesActives(false, false, PlayerGate.Verdict.WAIT))
+    }
+}

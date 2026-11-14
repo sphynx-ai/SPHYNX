@@ -24,7 +24,7 @@ Implementation statuses use the owner's scale: **Operational**, **Partially Oper
 | Item | State | Evidence |
 |---|---|---|
 | Language / platform | Kotlin, Android (minSdk 30, target/compile 36), AGP 9.3.1, Gradle 9.6.1, JDK 21 | Code |
-| Size | 27,389 lines of Kotlin in one module (`app`), one package `com.example.mlbbresearch` | Code |
+| Size | 27,389 lines of Kotlin in one module (`app`), one package `com.sphynx` | Code |
 | Build | `assembleDebug` succeeds (APK ≈ 89 MB, mostly on-device ML runtimes) | Built + CI |
 | Tests | 48 JVM unit tests on synthetic data (vision rules, name matching, wiki parsing, spell logic). No instrumented or device tests | Built + CI |
 | CI | GitHub Actions "Android build" builds the APK and runs the tests on every PR and every push to `main` | CI |

@@ -41,7 +41,7 @@ Output of `git status`, `git log --oneline -1` and `git remote -v`, run by the o
 |---|---|---|
 | Build system | Gradle 9.6.1 (wrapper), Android Gradle Plugin 9.3.1, Kotlin 2.3.21, Java 17 | VERIFIED (build files) |
 | Android levels | `compileSdk 36`, `targetSdk 36`, `minSdk 30` (Android 11) | VERIFIED (build file) |
-| App identity | app id `com.sphynx.autopilot`, code package `com.example.mlbbresearch`, **version 37.19 (code 3719)** | VERIFIED; the version has not changed since 2026-11-08 (risk 3) |
+| App identity | app id `com.sphynx.autopilot`, code package `com.sphynx`, **version 37.19 (code 3719)** | VERIFIED; the version has not changed since 2026-11-08 (risk 3) |
 | Native build | NDK 29.0.14206865, CMake 3.22.1, `arm64-v8a` only; llama.cpp b11900 vendored, CPU only | VERIFIED (build file, `app/src/main/cpp/README.md`) |
 | Inference libraries | LiteRT-LM `0.19.1`, LiteRT `1.4.2`, TensorFlow Lite `2.17.0`, llama.cpp b11900 | VERIFIED (build file) |
 | CI | `.github/workflows/android-build.yml`: debug APK including the native build, then all JVM unit tests, on every pull request and every push to `main` | VERIFIED |

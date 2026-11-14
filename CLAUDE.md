@@ -188,7 +188,7 @@ For every development-related message in this repository, understand the user's 
 
 ## 14. Owner standing rules (test-branch workflow)
 
-Android app (Kotlin, package `com.example.mlbbresearch`, app id `com.sphynx`). The canonical roadmap is
+Android app (Kotlin, package `com.sphynx`, app id `com.sphynx`). The canonical roadmap is
 `docs/MASTER_DEVELOPMENT_PLAN.md`; the current phase and its evidence are in its section 9.
 
 ### Workflow
