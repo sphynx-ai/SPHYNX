@@ -23,6 +23,10 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.FIXED, "The Home page no longer shows an empty box for the power symbol",
+            "The Home page line about the floating icon used the power symbol as text, and your phone's font has no " +
+                "power symbol, so it showed an empty box. It now says \"the power button on the floating icon\".",
+            pr = 7, needsDeviceCheck = true),
         Entry("2026-11-14", Kind.IMPROVED, "New Sphynx icon; the floating panel has drawn icons and a new look",
             "The app has its new symbol: two interlocking halves around one point of focus (launcher icon, themed " +
                 "icon, the header). On the floating panel the AI button had no icon: the panel used text symbols, and " +

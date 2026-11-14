@@ -816,7 +816,7 @@ class MainActivity : Activity() {
         switch("Autonomous Drafter + Builder", Cfg.autonomous) { Cfg.autonomous = it }
         switch("Dry run: only show where it would tap", Cfg.dryRun) { Cfg.dryRun = it }
         val mode = text("", 12f, color = T.MUTED)
-        upd { mode.text = "Match: ${if (Cfg.ranked) "Ranked" else "Standard"} (detected by itself) · ⏻ on the floating icon toggles the AI in game" }
+        upd { mode.text = "Match: ${if (Cfg.ranked) "Ranked" else "Standard"} (detected by itself) · the power button on the floating icon turns the AI on or off in game" }
 
         title("WHAT THE AI SEES")
         val preview = PreviewView(this)
