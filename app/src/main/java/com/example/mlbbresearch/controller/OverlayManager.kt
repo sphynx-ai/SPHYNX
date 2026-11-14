@@ -101,17 +101,38 @@ class OverlayManager(private val ctx: Context) {
     private var recBtn: TextView? = null
     private var stopBtn: TextView? = null
     private var roamBtnV: TextView? = null
+    private var chip: TextView? = null
+    private var lastBadge = ""
+    private var lastPowerOn: Boolean? = null
+    // what each button shows now: a button is redrawn only when this changes (the panel refreshes 4x a second)
+    private val btnKeys = HashMap<TextView, String>()
+    private fun col(hex: String) = Color.parseColor(hex)
+    // icon + label in one centred line; icons are drawn (PanelIcons), never text symbols
+    private fun setBtn(tv: TextView?, look: PanelButtons.Look, cmp: Boolean) {
+        tv ?: return
+        val key = look.key(cmp)
+        if (btnKeys[tv] == key) return
+        btnKeys[tv] = key
+        val ic = PanelIcons.icon(look.icon, col(look.ink), dp(13))
+        val sp = android.text.SpannableString(if (cmp) "i" else "i  " + look.text(cmp))
+        sp.setSpan(android.text.style.ImageSpan(ic, android.text.style.ImageSpan.ALIGN_CENTER), 0, 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        tv.text = sp
+        tv.contentDescription = look.label
+        tv.setTextColor(col(look.ink))
+        tv.background = PanelIcons.rounded(col(look.fill), dp(10).toFloat(), look.stroke?.let { col(it) }, dp(1))
+    }
     // the panel's bottom buttons all get the same width and height and one line of text; under
     // COMPACT_DP of panel width they show icons only (owner: buttons broke into vertical letters)
     private val COMPACT_DP = 380
     private fun panelBtn(tv: TextView) = tv.apply {
         setSingleLine(true); maxLines = 1; ellipsize = null
         textSize = 10f; setTypeface(null, Typeface.BOLD); setTextColor(Color.WHITE)
+        letterSpacing = 0.04f
         gravity = Gravity.CENTER
         setPadding(dp(2), 0, dp(2), 0)
         includeFontPadding = false
     }
-    private fun btnLp(first: Boolean = false) = LinearLayout.LayoutParams(0, dp(28), 1f).apply { if (!first) leftMargin = dp(3) }
+    private fun btnLp(first: Boolean = false) = LinearLayout.LayoutParams(0, dp(34), 1f).apply { if (!first) leftMargin = dp(5) }
     private val compact: Boolean get() = (panelLp?.width ?: dp(300)) < dp(COMPACT_DP)
     private var calib: FrameLayout? = null
 
@@ -168,6 +189,8 @@ class OverlayManager(private val ctx: Context) {
             if (v != null) try { wm.removeView(v) } catch (e: Exception) { }
         }
         icon = null; panel = null; pointer = null; badge = null; panelLines = null; power = null; panelPower = null; comboBtn = null; recBtn = null
+        // the next build makes new views: forget what the old ones showed
+        chip = null; btnKeys.clear(); lastBadge = ""; lastPowerOn = null
         stopBtn = null; roamBtnV = null
         ScreenMasks.overlay = emptyList()
     }
@@ -232,32 +255,33 @@ class OverlayManager(private val ctx: Context) {
         pointer = pv
 
         // 2) round icon with an X (X = hide the icon, the AI keeps running; tap icon = open window;
-        //    drag = move; ⏻ = AI on / off)
+        //    drag = move; the power button = AI on / off)
         val ic = FrameLayout(ctx)
+        // the Sphynx symbol with the status word under it, on a graphite disc (the ring shows the status)
         val b = TextView(ctx).apply {
             gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            textSize = 12f
+            setTextColor(col(PanelIcons.ICE))
+            textSize = 8.5f
+            letterSpacing = 0.06f
             typeface = Typeface.DEFAULT_BOLD
+            includeFontPadding = false
+            setPadding(0, dp(8), 0, dp(6))
+            compoundDrawablePadding = dp(1)
+            setCompoundDrawables(null, PanelIcons.icon(PanelIcons.Kind.MARK, col(PanelIcons.ICE), dp(24)), null, null)
         }
         ic.addView(b, FrameLayout.LayoutParams(dp(52), dp(52), Gravity.BOTTOM or Gravity.START).apply {
             setMargins(0, dp(10), dp(10), 0)
         })
-        val close = TextView(ctx).apply {
-            text = "✕"
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            textSize = 11f
-            background = circle(Color.parseColor("#5F6368")).apply { setStroke(dp(1), Color.WHITE) }
+        val close = View(ctx).apply {
+            contentDescription = "Hide the floating icon"
+            background = PanelIcons.on(PanelIcons.circle(col(PanelIcons.GRAPHITE), col(PanelIcons.SLATE), dp(1)),
+                PanelIcons.Kind.CLOSE, col(PanelIcons.TITANIUM), dp(6))
             setOnClickListener { hideByUser() }
         }
         ic.addView(close, FrameLayout.LayoutParams(dp(24), dp(24), Gravity.TOP or Gravity.END))
         // power button: AI on / off without opening the app
         val pw = TextView(ctx).apply {
-            text = "⏻"
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            textSize = 12f
+            contentDescription = "AI on or off"
             setOnClickListener { toggleAi() }
         }
         ic.addView(pw, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.BOTTOM or Gravity.END))
@@ -271,33 +295,46 @@ class OverlayManager(private val ctx: Context) {
         val pn = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#EE15171C"))
-                cornerRadius = dp(12).toFloat()
-                setStroke(dp(1), Color.parseColor("#5F6368"))
+                setColor(Color.parseColor("#F00B0D10"))
+                cornerRadius = dp(16).toFloat()
+                setStroke(dp(1), col(PanelIcons.SLATE))
             }
-            setPadding(dp(8), dp(6), dp(8), dp(4))
+            setPadding(dp(10), dp(8), dp(10), dp(8))
             visibility = View.GONE
         }
         val header = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        header.addView(View(ctx).apply { background = PanelIcons.icon(PanelIcons.Kind.MARK, col(PanelIcons.ICE), dp(18)) },
+            LinearLayout.LayoutParams(dp(18), dp(18)))
         header.addView(TextView(ctx).apply {
-            text = "SPHYNX AI  (drag me)"
-            setTextColor(Color.WHITE); textSize = 11.5f; setTypeface(null, Typeface.BOLD)
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        header.addView(TextView(ctx).apply {
-            text = "—"; textSize = 16f; setTextColor(Color.WHITE)
-            setPadding(dp(12), 0, dp(6), 0)
-            setOnClickListener { collapse() }
+            text = "SPHYNX"
+            setTextColor(col(PanelIcons.ICE)); textSize = 12f; setTypeface(null, Typeface.BOLD); letterSpacing = 0.18f
+            setPadding(dp(8), 0, dp(8), 0)
         })
+        // the status word (ON / DRY / ERR / OFF) in its colour
+        val ch = TextView(ctx).apply {
+            textSize = 9.5f; setTypeface(null, Typeface.BOLD); letterSpacing = 0.06f; includeFontPadding = false
+            setPadding(dp(7), dp(2), dp(7), dp(2))
+        }
+        chip = ch
+        header.addView(ch)
+        header.addView(View(ctx), LinearLayout.LayoutParams(0, dp(1), 1f))
+        header.addView(View(ctx).apply {
+            contentDescription = "Shrink to the round icon"
+            background = PanelIcons.on(PanelIcons.rounded(col(PanelIcons.GRAPHITE), dp(8).toFloat(), col(PanelIcons.SLATE), dp(1)),
+                PanelIcons.Kind.MINIMIZE, col(PanelIcons.TITANIUM), dp(6))
+            setOnClickListener { collapse() }
+        }, LinearLayout.LayoutParams(dp(30), dp(26)))
         pn.addView(header)
+        pn.addView(View(ctx).apply { setBackgroundColor(col(PanelIcons.GRAPHITE)) },
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply { topMargin = dp(7); bottomMargin = dp(5) })
         val body = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
         pn.addView(ScrollView(ctx).apply {
             isSmoothScrollingEnabled = true; isVerticalScrollBarEnabled = true
             overScrollMode = View.OVER_SCROLL_NEVER; isFillViewport = true
             addView(body, android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
-        val bottom = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val bottom = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(6), 0, 0) }
         val sBtn = panelBtn(TextView(ctx)).apply {
-            background = GradientDrawable().apply { setColor(Color.parseColor("#C62828")); cornerRadius = dp(6).toFloat() }
             setOnClickListener { AiRuntime.emergencyStop("status window") }
         }
         stopBtn = sBtn
@@ -322,7 +359,6 @@ class OverlayManager(private val ctx: Context) {
         bottom.addView(rBtn, btnLp())
         // TEST COMBO: your hero's combo once, in bursts (disabled when Player is on - v37.01)
         val cBtn = panelBtn(TextView(ctx)).apply {
-            background = GradientDrawable().apply { setColor(Color.parseColor("#3949AB")); cornerRadius = dp(6).toFloat() }
             setOnClickListener {
                 if (AiRuntime.playerOn) {
                     android.widget.Toast.makeText(ctx, "Test combo is disabled while Player is on", android.widget.Toast.LENGTH_SHORT).show()
@@ -335,7 +371,6 @@ class OverlayManager(private val ctx: Context) {
         comboBtn = cBtn
         bottom.addView(cBtn, btnLp())
         val roamBtn = panelBtn(TextView(ctx)).apply {
-            background = GradientDrawable().apply { setColor(Color.parseColor("#00695C")); cornerRadius = dp(6).toFloat() }
             setOnClickListener {
                 val msg = com.example.mlbbresearch.game.SceneryMap.toggleRoam()
                 android.widget.Toast.makeText(ctx, msg, android.widget.Toast.LENGTH_SHORT).show()
@@ -347,11 +382,11 @@ class OverlayManager(private val ctx: Context) {
             setOnClickListener { toggleAi() }
         }
         bottom.addView(ppw, btnLp())
-        val handle = TextView(ctx).apply {
-            text = "◢"; textSize = 16f; setTextColor(Color.parseColor("#9AA0A6"))
-            setPadding(dp(8), 0, 0, 0)
+        val handle = View(ctx).apply {
+            contentDescription = "Drag to resize"
+            background = PanelIcons.icon(PanelIcons.Kind.RESIZE, col(PanelIcons.MIST), dp(22))
         }
-        bottom.addView(handle)
+        bottom.addView(handle, LinearLayout.LayoutParams(dp(22), dp(34)).apply { leftMargin = dp(6) })
         pn.addView(bottom)
         val plp = WindowManager.LayoutParams(
             dp(300), dp(280), WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, flagsTouch, PixelFormat.TRANSLUCENT
@@ -413,7 +448,8 @@ class OverlayManager(private val ctx: Context) {
         val box = panelLines ?: return
         val lines = text.split('\n')
         while (box.childCount < lines.size) box.addView(TextView(box.context).apply {
-            setTextColor(Color.WHITE); textSize = 11.5f; maxLines = 1; isSingleLine = true
+            setTextColor(col(PanelIcons.TITANIUM)); textSize = 11.5f; maxLines = 1; isSingleLine = true
+            setPadding(0, dp(1), 0, dp(1))
             ellipsize = android.text.TextUtils.TruncateAt.END
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         for (i in 0 until box.childCount) {
@@ -437,41 +473,41 @@ class OverlayManager(private val ctx: Context) {
         if (quiet.update(lv?.hint, lv?.ts ?: 0L, System.currentTimeMillis())) applyQuiet()
         val cmp = compact
         val running = AiRuntime.anyOn()
-        badge?.let {
-            val err = AiRuntime.lastError.isNotEmpty() && !running
-            it.text = when { running && Cfg.dryRun && Cfg.autonomous -> "DRY"; running -> "ON"; err -> "ERR"; else -> "OFF" }
-            it.background = circle(Color.parseColor(if (running) "#2E7D32" else if (err) "#C62828" else "#616161")).apply {
-                // a red ring around the round icon while the session recorder runs
-                if (com.example.mlbbresearch.core.SessionRecorder.on) setStroke(dp(3), Color.parseColor("#FF1744"))
+        val rec = com.example.mlbbresearch.core.SessionRecorder.on
+        val err = AiRuntime.lastError.isNotEmpty() && !running
+        val (word, ring) = PanelButtons.badge(running, Cfg.dryRun && Cfg.autonomous, err)
+        val badgeKey = "$word|$rec"
+        if (lastBadge != badgeKey) {
+            lastBadge = badgeKey
+            badge?.let {
+                it.text = word
+                // the ring shows the status; a thicker red ring while the session recorder runs
+                it.background = PanelIcons.circle(col(PanelIcons.GRAPHITE), col(if (rec) PanelIcons.RED else ring), dp(if (rec) 3 else 2))
+            }
+            chip?.let {
+                it.text = word
+                it.setTextColor(col(ring).let { c -> if (word == "OFF") col(PanelIcons.MIST) else c })
+                it.background = PanelIcons.rounded(col(PanelIcons.GRAPHITE), dp(9).toFloat(), col(ring), dp(1))
             }
         }
-        val rec = com.example.mlbbresearch.core.SessionRecorder.on
         val recMb = com.example.mlbbresearch.core.VideoRecorder.bytesWritten / (1024 * 1024)
-        recBtn?.text = if (rec) (if (cmp) "■$recMb" else "■ REC ${recMb}MB") else (if (cmp) "●" else "● REC")
-        recBtn?.background = GradientDrawable().apply {
-            setColor(Color.parseColor(if (rec) "#D50000" else "#6D4C41")); cornerRadius = dp(6).toFloat()
-        }
+        setBtn(recBtn, PanelButtons.record(rec, recMb), cmp)
         val on = running
-        power?.background = circle(Color.parseColor(if (on) "#43A047" else "#455A64")).apply { setStroke(dp(1), Color.WHITE) }
-        stopBtn?.text = if (cmp) "■" else "■ STOP ALL"
+        if (lastPowerOn != on) {
+            lastPowerOn = on
+            power?.background = PanelIcons.on(
+                PanelIcons.circle(col(if (on) PanelIcons.SIGNAL else PanelIcons.GRAPHITE), col(if (on) PanelIcons.SIGNAL else PanelIcons.SLATE), dp(1)),
+                PanelIcons.Kind.POWER, col(if (on) PanelIcons.OBSIDIAN else PanelIcons.TITANIUM), dp(6))
+        }
+        setBtn(stopBtn, PanelButtons.stop(), cmp)
         // scenery calibration from the floating window (owner, 2026-11-11): the button shows whether it runs
-        val calibrating = com.example.mlbbresearch.game.SceneryMap.roamActive
-        roamBtnV?.text = if (cmp) (if (calibrating) "■🗺" else "🗺") else if (calibrating) "■ STOP CALIB" else "🗺 CALIBRATE"
-        roamBtnV?.background = GradientDrawable().apply {
-            setColor(Color.parseColor(if (calibrating) "#BF360C" else "#00695C")); cornerRadius = dp(6).toFloat()
-        }
-        panelPower?.text = if (cmp) "⏻" else if (on) "⏻ AI OFF" else "⏻ AI ON"
-        panelPower?.background = GradientDrawable().apply {
-            setColor(Color.parseColor(if (on) "#455A64" else "#2E7D32")); cornerRadius = dp(8).toFloat()
-        }
+        setBtn(roamBtnV, PanelButtons.calibrate(com.example.mlbbresearch.game.SceneryMap.roamActive), cmp)
+        setBtn(panelPower, PanelButtons.ai(on), cmp)
         // Disable Test combo button in the floating window whenever Player is on (v37.01)
         val comboAllowed = !AiRuntime.playerOn
         comboBtn?.isEnabled = comboAllowed
-        comboBtn?.alpha = if (comboAllowed) 1f else 0.42f
-        comboBtn?.text = if (cmp) "⚔" else if (comboAllowed) "⚔ COMBO" else "⚔ OFF"
-        comboBtn?.background = GradientDrawable().apply {
-            setColor(Color.parseColor(if (comboAllowed) "#3949AB" else "#455A64")); cornerRadius = dp(6).toFloat()
-        }
+        comboBtn?.alpha = if (comboAllowed) 1f else 0.5f
+        setBtn(comboBtn, PanelButtons.combo(comboAllowed), cmp)
         if (panel?.visibility == View.VISIBLE) setLines(AiRuntime.panelText())
         pointer?.invalidate()
         // tell vision where our own windows are, so it ignores them

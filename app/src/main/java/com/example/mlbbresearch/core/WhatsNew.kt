@@ -23,6 +23,14 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "New Sphynx icon; the floating panel has drawn icons and a new look",
+            "The app has its new symbol: two interlocking halves around one point of focus (launcher icon, themed " +
+                "icon, the header). On the floating panel the AI button had no icon: the panel used text symbols, and " +
+                "your phone's font has no power symbol. Every icon on the panel and the round floating icon is now " +
+                "drawn, so it looks the same on every phone. The panel is restyled to match: the symbol and a status " +
+                "word in the title, evenly sized buttons, and the AI button filled teal while the AI is on. The round " +
+                "icon shows the symbol with ON / DRY / ERR / OFF under it and a ring in the status colour.",
+            pr = 6, needsDeviceCheck = true),
         Entry("2026-11-14", Kind.NEW, "GGUF models: add, load and ask them on the Model page",
             "The GGUF engine (llama.cpp) is now a real part of the app instead of a one-off test. On the Model page, " +
                 "add a .gguf model (it is copied into the app), load it, and ask the test question: the answer streams " +
