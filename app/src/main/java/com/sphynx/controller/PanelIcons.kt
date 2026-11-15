@@ -20,17 +20,27 @@ object PanelIcons {
 
     enum class Kind { POWER, STOP, RECORD, COMBO, CALIBRATE, CLOSE, MINIMIZE, RESIZE, MARK }
 
-    // the brand palette
-    const val OBSIDIAN = "#0B0D10"
-    const val GRAPHITE = "#1B1F26"
-    const val SLATE = "#3A414D"
-    const val MIST = "#9AA3AF"
-    const val TITANIUM = "#C9CED6"
-    const val ICE = "#F4F6F8"
+    // the panel's palette: the brand's (Signal) until the app hands it the chosen theme's colours with usePalette
+    // (backlog item 12: the panel on the same tokens as the app). This layer does not read the app's theme itself.
     const val SIGNAL = "#35C2B0"
+    @Volatile var OBSIDIAN = "#0B0D10"; private set     // ground / ink on a filled accent
+    @Volatile var GRAPHITE = "#1B1F26"; private set     // panel and button surface
+    @Volatile var SLATE = "#3A414D"; private set        // borders
+    @Volatile var MIST = "#9AA3AF"; private set         // muted ink
+    @Volatile var TITANIUM = "#C9CED6"; private set     // body ink
+    @Volatile var ICE = "#F4F6F8"; private set          // strong ink
     /** The symbol's focus colour (the diamond) and the "on" colour of the panel: the app sets it to its theme's
      *  colour (owner, 2026-11-15: the logo follows the chosen theme; the default is Signal). */
     @Volatile var accentHex: String = SIGNAL
+    /** The ink on a button filled with [accentHex]. */
+    @Volatile var onAccentHex: String = "#0B0D10"
+
+    /** The chosen theme's colours, from the app (MainApplication / MainActivity). */
+    fun usePalette(bg: String, surface: String, stroke: String, muted: String, text: String, strong: String,
+                   accent: String, onAccent: String) {
+        OBSIDIAN = bg; GRAPHITE = surface; SLATE = stroke; MIST = muted; TITANIUM = text; ICE = strong
+        accentHex = accent; onAccentHex = onAccent
+    }
     const val RED = "#E5484D"
     const val AMBER = "#F4C25B"
     const val GREEN = "#3DD68C"
@@ -171,9 +181,9 @@ object PanelButtons {
         if (running) Look("STOP CALIB", PanelIcons.Kind.STOP, PanelIcons.AMBER, PanelIcons.OBSIDIAN, null)
         else Look("CALIBRATE", PanelIcons.Kind.CALIBRATE, PanelIcons.GRAPHITE, PanelIcons.ICE)
 
-    /** The AI switch shows the state: filled teal while the AI is on. */
+    /** The AI switch shows the state: filled with the theme's colour while the AI is on. */
     fun ai(on: Boolean) =
-        if (on) Look("AI ON", PanelIcons.Kind.POWER, PanelIcons.SIGNAL, PanelIcons.OBSIDIAN, null)
+        if (on) Look("AI ON", PanelIcons.Kind.POWER, PanelIcons.accentHex, PanelIcons.onAccentHex, null)
         else Look("AI OFF", PanelIcons.Kind.POWER, PanelIcons.GRAPHITE, PanelIcons.MIST)
 
     /** The round icon's short status word and ring colour. */

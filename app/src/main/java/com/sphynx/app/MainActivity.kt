@@ -144,7 +144,7 @@ class MainActivity : Activity() {
         actionBar?.hide()
         // the chosen theme (Settings > Setup > Theme): its colours, the logo's colour, the system bars
         Theme.use(Cfg.theme)
-        com.sphynx.controller.PanelIcons.accentHex = T.LOGO
+        PanelTheme.apply()
         window.statusBarColor = c(T.BG)
         window.navigationBarColor = c(T.SURF)
         window.decorView.setBackgroundColor(c(T.BG))
