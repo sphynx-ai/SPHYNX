@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sphynx Play style</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Pixelify+Sans:wght@400;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#7FA2FF}a:hover{color:#A9C0FF}
+</style>
+</helmet>
+<div style="width: 390px; height: 1180px; box-sizing: border-box; background: #0B0D10; color: #C9CED6; font-family: Inter, sans-serif; display: flex; flex-direction: column; position: relative;">
+  <header style="height: 64px; padding: 0 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #3A414D;">
+    <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true"><rect width="36" height="36" rx="8" fill="#1B1F26"/><path d="M18 6 L30 18 L18 30 L6 18 Z" fill="none" stroke="#F4F6F8" stroke-width="3"/><path d="M18 14 L22 18 L18 22 L14 18 Z" fill="#35C2B0"/></svg>
+    <div style="flex-grow: 1; display: flex; flex-direction: column;">
+      <span style="font-family: 'Pixelify Sans', monospace; font-size: 20px; color: #F4F6F8;">Sphynx</span>
+      <span style="font-size: 13px; color: #9AA3AF;">AI off</span>
+    </div>
+    <button style="height: 44px; padding: 0 18px; border: 0; border-radius: 22px; background: #C8303F; color: #FFFFFF; font: 600 15px Inter, sans-serif; display: flex; align-items: center; gap: 8px;"><svg width="12" height="12" aria-hidden="true"><rect width="12" height="12" rx="2" fill="#FFFFFF"/></svg>STOP</button>
+  </header>
+
+  <div role="tablist" aria-label="Hero and match" style="margin: 12px 16px 0; padding: 4px; background: #1B1F26; border: 1px solid #3A414D; border-radius: 14px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px;">
+    <a href="Hero.dc.html" style="min-height: 44px; border-radius: 10px; color: #C9CED6; text-decoration: none; display: flex; align-items: center; justify-content: center; font: 500 14px Inter, sans-serif;">Hero</a>
+    <a href="PlayStyle.dc.html" style="min-height: 44px; border-radius: 10px; background: #F4F6F8; color: #0B0D10; text-decoration: none; display: flex; align-items: center; justify-content: center; font: 600 14px Inter, sans-serif;">Play style</a>
+    <a href="#" style="min-height: 44px; border-radius: 10px; color: #C9CED6; text-decoration: none; display: flex; align-items: center; justify-content: center; font: 500 14px Inter, sans-serif;">Draft</a>
+    <a href="#" style="min-height: 44px; border-radius: 10px; color: #C9CED6; text-decoration: none; display: flex; align-items: center; justify-content: center; font: 500 14px Inter, sans-serif;">Build</a>
+  </div>
+
+  <main style="flex-grow: 1; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px; overflow: hidden;">
+    <section style="background: #1B1F26; border: 1px solid #3A414D; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+      <h2 style="margin: 0; font-family: 'Pixelify Sans', monospace; font-size: 17px; font-weight: 600; color: #F4F6F8;">Skill combos</h2>
+      <div role="radiogroup" aria-label="Combo" style="padding: 4px; background: #252B35; border-radius: 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;">
+        <button style="min-height: 44px; border: 0; border-radius: 9px; background: #F4F6F8; color: #0B0D10; font: 600 14px Inter, sans-serif;">Built-in</button>
+        <button style="min-height: 44px; border: 0; border-radius: 9px; background: transparent; color: #C9CED6; font: 500 14px Inter, sans-serif;">Manual</button>
+      </div>
+      <span style="font-size: 14px;">s1 → s2 → ult → attack</span>
+      <button style="height: 48px; border-radius: 12px; border: 1px solid #737B88; background: #252B35; color: #C9CED6; font: 500 15px Inter, sans-serif;">Test combo now</button>
+    </section>
+
+    <section style="background: #1B1F26; border: 1px solid #3A414D; border-radius: 16px; padding: 16px; display: flex; flex-direction: column;">
+      <h2 style="margin: 0 0 4px; font-family: 'Pixelify Sans', monospace; font-size: 17px; font-weight: 600; color: #F4F6F8;">Behaviour</h2>
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+        <div style="min-height: 52px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #252B35;">
+          <span style="flex-grow: 1; font-size: 15px;">{{r.name}}</span>
+          <input type="checkbox" checked="{{r.on}}" aria-label="{{r.name}}" style="width: 40px; height: 24px; accent-color: #F4F6F8;">
+          <button aria-label="Help: {{r.name}}" style="width: 44px; height: 44px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center;"><span style="width: 22px; height: 22px; border-radius: 11px; border: 1px solid #9AA3AF; color: #9AA3AF; font: 600 12px Inter, sans-serif; display: flex; align-items: center; justify-content: center;">?</span></button>
+        </div>
+      </sc-for>
+    </section>
+
+    <div role="tooltip" style="align-self: flex-end; margin: -10px 16px 0 0; max-width: 300px; background: rgba(11,14,20,0.96); border: 1px solid #3A414D; border-radius: 10px; padding: 10px 14px; font-size: 14px; line-height: 1.4; color: #C9CED6;">Retreat early: the Player backs off at higher HP and avoids even fights. Turn off for a braver play style.</div>
+
+    <section style="background: #1B1F26; border: 1px solid #3A414D; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+      <h2 style="margin: 0; font-family: 'Pixelify Sans', monospace; font-size: 17px; font-weight: 600; color: #F4F6F8;">Objectives · Level &amp; items · Regen &amp; recall</h2>
+      <span style="font-size: 14px; color: #9AA3AF;">Today's Jungle / Turtle / Lord, Hero level, Skills &amp; items, Kills / towers / gold and Regen &amp; recall settings, each in its own card (not drawn here).</span>
+    </section>
+
+    <section style="background: #1B1F26; border: 1px solid #3A414D; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+      <h2 style="margin: 0; font-family: 'Pixelify Sans', monospace; font-size: 17px; font-weight: 600; color: #F4F6F8;">Data &amp; resets</h2>
+      <span style="font-size: 13px; color: #9AA3AF;">Each asks before it deletes.</span>
+      <sc-for list="{{resets}}" as="x" hint-placeholder-count="5">
+        <button style="min-height: 48px; border-radius: 12px; border: 1px solid #FF6B78; background: #252B35; color: #FF6B78; font: 500 14px Inter, sans-serif; text-align: left; padding: 0 14px;">{{x}}</button>
+      </sc-for>
+    </section>
+  </main>
+
+  <nav aria-label="Main" style="height: 64px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 6px 8px; background: #1B1F26; border-top: 1px solid #3A414D; box-sizing: border-box;">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+      <a href="{{t.href}}" style="border-radius: 20px; background: {{t.bg}}; color: {{t.fg}}; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: 'Pixelify Sans', monospace; font-size: 11px; min-height: 48px;">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="{{t.icon}}" fill="none" stroke="{{t.fg}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>{{t.label}}</span>
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const tabs = [
+      { label: 'Play', href: 'Main.dc.html', icon: 'M6 4l10 6-10 6z' },
+      { label: 'Hero & match', href: 'Hero.dc.html', icon: 'M10 3l7 3v5c0 4-3 6-7 7-4-1-7-3-7-7V6z' },
+      { label: 'Knowledge', href: '#', icon: 'M4 4h5a3 3 0 013 3v10a2 2 0 00-2-2H4zM16 4h-1a3 3 0 00-3 3' },
+      { label: 'AI & models', href: '#', icon: 'M6 6h8v8H6zM10 2v4M10 14v4M2 10h4M14 10h4' },
+      { label: 'Settings', href: '#', icon: 'M10 7a3 3 0 100 6 3 3 0 000-6zM10 2v3M10 15v3M2 10h3M15 10h3' }
+    ].map((t, i) => ({ ...t, bg: i === 1 ? '#F4F6F8' : 'transparent', fg: i === 1 ? '#0B0D10' : '#9AA3AF' }));
+    return {
+      tabs,
+      rows: [
+        { name: 'Retreat early', on: true },
+        { name: 'Chase low-HP enemies', on: false },
+        { name: 'Use the ultimate in team fights', on: true },
+        { name: 'Avoid enemy tower range', on: true }
+      ],
+      resets: [
+        'Clear manual combo',
+        'Forget the remembered level badges',
+        'Forget what Coach learned for this hero',
+        'Reset learned aggression',
+        'Delete my recorded play'
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

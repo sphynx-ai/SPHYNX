@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-14", Kind.IMPROVED, "Development plan: first screens of the new design (Play, Hero & match)",
+            "Phase 3: how the Play and Hero & match sections will look, card by card (docs/PHASE_3_SCREEN_SPECS.md), " +
+                "with mockups of Play, Hero and Play style for your review: one card that shows what is running, a " +
+                "ready check that lists only what is missing, the lane as one choice, the help \"?\" next to each " +
+                "setting, and all resets in one card that asks first. They are drafts until you approve them. The app " +
+                "itself does not change yet (Phase 4).",
+            pr = 25, version = "37.35"),
         Entry("2026-11-14", Kind.IMPROVED, "Development plan: what every screen shows when loading, empty or failing",
             "Phase 3: one way for each situation, used everywhere (docs/PHASE_3_STATE_MATRIX.md) - loading and progress " +
                 "(with Stop where it can stop), empty pages with one next step, errors with Try again, missing " +
