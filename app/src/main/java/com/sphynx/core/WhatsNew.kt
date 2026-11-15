@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.IMPROVED, "Meta: when it was updated and where it came from",
+            "On Knowledge > Meta, the patch meta and the hero meta now start with one line: \"Updated <date> (<days> " +
+                "ago) from <sources>\", so you can see at once how old the downloaded meta is and where it was read. " +
+                "It replaces the Sources line at the bottom of each card.",
+            pr = 41, needsDeviceCheck = true, version = "37.51"),
         Entry("2026-11-15", Kind.IMPROVED, "Hero: battle spell in one tap, enemy team as five portraits",
             "On Hero & match > Hero, the battle spell is no longer a button you tap through one spell at a time: all of " +
                 "them are shown as buttons (Detect and the twelve spells) and one tap picks yours. The enemy team shows " +

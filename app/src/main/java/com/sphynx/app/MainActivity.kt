@@ -2402,13 +2402,14 @@ class MainActivity : Activity() {
                         LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                     head.addView(chip(age(g.updatedAt), if (mg.ageDays(g.updatedAt) > 14) T.GOLD else T.GREEN))
                     cd.addView(head)
+                    // how fresh it is and where it came from (backlog item 9, audit finding 8)
+                    cardNote(cd, Freshness.line(g.updatedAt, g.sources))
                     if (g.bans.isNotEmpty()) { sub(cd, "Top bans"); IconGrid(cd, true, 44).set(g.bans) }
                     for ((r, l) in g.picks) if (l.isNotEmpty()) {
                         sub(cd, "Best " + r.name.lowercase() + " picks")
                         IconGrid(cd, true, 44).set(l)
                     }
                     if (g.notes.isNotBlank()) cardNote(cd, g.notes)
-                    if (g.sources.isNotEmpty()) cardNote(cd, "Sources: " + g.sources.joinToString())
                 }
             }
             // ---- hero meta ----
@@ -2434,6 +2435,7 @@ class MainActivity : Activity() {
                 if (m == null) {
                     cardNote(cd, "Tap Update this hero.")
                 } else {
+                    cardNote(cd, Freshness.line(m.updatedAt, m.sources))
                     if (m.build.isNotEmpty()) { sub(cd, "Build"); IconGrid(cd, false, 42).set(m.build) }
                     sub(cd, "Setup")
                     pair(cd, "Emblem", m.emblem); pair(cd, "Spell", m.spell); pair(cd, "Lane", m.lane?.label)
@@ -2444,7 +2446,6 @@ class MainActivity : Activity() {
                     if (m.rotation.isNotEmpty()) { sub(cd, "Rotations"); bullets(cd, m.rotation) }
                     if (m.counters.isNotEmpty()) { sub(cd, "Countered by"); IconGrid(cd, true, 40).set(m.counters) }
                     if (m.changes.isNotBlank()) { sub(cd, "Recent changes"); cardNote(cd, m.changes) }
-                    if (m.sources.isNotEmpty()) cardNote(cd, "Sources: " + m.sources.joinToString())
                 }
             }
         }
