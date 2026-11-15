@@ -5,7 +5,7 @@
 | **Phase** | 3 — UI/UX Audit and Product Design Blueprint (design-system deliverable) |
 | **Based on** | `docs/brand/README.md` (palette, rules); `docs/PHASE_3_UX_AUDIT.md` findings 13–17, 19, 21–24; `docs/PHASE_3_INFORMATION_ARCHITECTURE.md` |
 | **Owner decisions** | 2026-11-14: **fonts: a pixel-style font for headings and numbers, Inter for running text and buttons.** The app bundles both, so every phone shows the same thing; today it shows the phone's own font |
-| **Status** | Proposed for owner review. Implemented in Phase 4. Contrast values are computed (WCAG 2.x) |
+| **Status** | **Approved by the owner on 2026-11-15** with the mockups that use them. One decision is open: which pixel font (phone sample in Phase 4). Contrast values are computed (WCAG 2.x) |
 
 ## 1. Colour
 

@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.IMPROVED, "Development plan: Phase 3 (the new design) is complete",
+            "You approved the design for all five sections: Play, Hero & match, Knowledge, AI & models, Settings & help. " +
+                "The plan and mockups for the last three are written down (docs/PHASE_3_SCREEN_SPECS.md), with the list " +
+                "of what gets built (docs/PHASE_3_DESIGN_BACKLOG.md). Your order: the new look first (colours, sizes, " +
+                "fonts), then the bottom bar with five sections, a question before every delete, and one place that " +
+                "shows what is running. The app itself does not change in this step: that is Phase 4.",
+            pr = 27, version = "37.37"),
         Entry("2026-11-15", Kind.IMPROVED, "Long information texts go behind the \"?\" too",
             "From your screenshots: the long texts the app keeps updating (the practice moments and readiness test on " +
                 "Home, the match timeline and jungle facts on Player, and others) were still on the page. Any such text " +
