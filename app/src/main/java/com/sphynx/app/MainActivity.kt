@@ -93,6 +93,8 @@ class MainActivity : Activity() {
     // of the control it explains (HelpHold)
     private val descriptions = ArrayList<TextView>()
     private class HelpGroup(val icon: TextView, val lines: MutableList<TextView> = ArrayList())
+    private val titleRows = HashSet<View>()                  // section headers (a "?" can sit at their end)
+    private val groupSwitches = HashSet<View>()              // switches of a one-of-several group
     private val helpPadded = HashSet<View>()                 // buttons and fields with the "?" inside their end
     private val helpOf = HashMap<View, HelpGroup>()          // a description, or a control's row -> its "?"
     private var bubble: android.widget.PopupWindow? = null
@@ -438,15 +440,25 @@ class MainActivity : Activity() {
         if (parent == null) { descriptions.remove(d); d.visibility = View.VISIBLE; return }
         var i = parent.indexOfChild(d) - 1
         while (i >= 0 && parent.getChildAt(i).let { it in descriptions || it.visibility == View.GONE }) i--
-        val prev = if (i >= 0) parent.getChildAt(i) else null
+        var prev = if (i >= 0) parent.getChildAt(i) else null
         if (prev == null) { descriptions.remove(d); d.visibility = View.VISIBLE; return }   // nothing to explain: keep the line
-        val g = helpOf[prev] ?: run {
-            val lp: ViewGroup.LayoutParams = prev.layoutParams
+        // a line after a group of switches (theme, lane, font...) explains the whole group: its "?" goes on the
+        // group's header, not on the last switch (owner, 2026-11-15)
+        if (prev in groupSwitches) {
+            var j = i
+            while (j >= 0 && parent.getChildAt(j).let { it in groupSwitches || it in descriptions || it.visibility == View.GONE }) j--
+            val head = if (j >= 0) parent.getChildAt(j) else null
+            if (head != null && head in titleRows) { i = j; prev = head }
+        }
+        val ctl: View = prev
+        val g = helpOf[ctl] ?: run {
+            val lp: ViewGroup.LayoutParams = ctl.layoutParams
                 ?: LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             parent.removeViewAt(i)
             val grp = HelpGroup(helpIcon())
             grp.icon.setOnClickListener { toggleBubble(grp) }
-            val holder = helpHolder(prev, grp.icon, lp)
+            val holder = helpHolder(ctl, grp.icon, lp)
+            if (ctl in titleRows) titleRows.add(holder)
             parent.addView(holder, i, lp)
             helpOf[holder] = grp
             grp
@@ -563,6 +575,7 @@ class MainActivity : Activity() {
             setTextColor(c(T.STRONG)); typeface = display(); setPadding(dp(8), 0, 0, 0)
         }
         row.addView(v)
+        titleRows.add(row)
         content.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
             topMargin = dp(22); bottomMargin = dp(4)
         })
@@ -739,6 +752,8 @@ class MainActivity : Activity() {
         descriptions.clear()
         helpOf.clear()
         helpPadded.clear()
+        titleRows.clear()
+        groupSwitches.clear()
         noAnchor.clear()
         closeBubble()
         content.removeAllViews()
@@ -870,6 +885,7 @@ class MainActivity : Activity() {
                 }
             }
             all.add(sw)
+            groupSwitches.add(sw)
         }
     }
 
@@ -892,6 +908,7 @@ class MainActivity : Activity() {
                 syncing = false
             }
         }
+        groupSwitches.add(swA); groupSwitches.add(swB)
     }
 
     // =====================================================================
@@ -1275,15 +1292,25 @@ class MainActivity : Activity() {
             manualComboBox.setText(next)
             manualComboBox.setSelection(next.length)
         }
-        val quickRow1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(4), 0, 0) }
-        for ((lbl, tok) in listOf("+ S1" to "s1", "+ S2" to "s2", "+ S3" to "s3", "+ Ult" to "ult", "+ BA (a)" to "a", "+ Spell" to "spell")) {
-            quickRow1.addView(Button(this).apply {
-                text = lbl; isAllCaps = false; textSize = 11.5f; styleButton(this)
-                setPadding(dp(6), dp(4), dp(6), dp(4))
-                setOnClickListener { appendComboToken(tok) }
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
+        // the combo pieces: two rows of three equal buttons, each label on one line (owner, 2026-11-15)
+        val pieces = listOf("+ S1" to "s1", "+ S2" to "s2", "+ S3" to "s3", "+ Ult" to "ult", "+ Basic (a)" to "a", "+ Spell" to "spell")
+        for (rowPieces in pieces.chunked(3)) {
+            val quickRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            for ((n, piece) in rowPieces.withIndex()) {
+                val (lbl, tok) = piece
+                quickRow.addView(Button(this).apply {
+                    text = lbl; styleButton(this)
+                    maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+                    setPadding(dp(6), dp(4), dp(6), dp(4))
+                    setOnClickListener { appendComboToken(tok) }
+                }, LinearLayout.LayoutParams(0, dp(48), 1f).apply {
+                    marginStart = if (n == 0) 0 else dp(4); marginEnd = if (n == rowPieces.lastIndex) 0 else dp(4)
+                })
+            }
+            content.addView(quickRow, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(6)
+            })
         }
-        content.addView(quickRow1)
 
         btn("Save manual combo for this hero") { saveManualComboForHero(manualComboBox.text.toString()) }
         btn("Clear manual combo (use Built-In)") {
@@ -1557,6 +1584,7 @@ class MainActivity : Activity() {
                 syncing = false
             }
         }
+        groupSwitches.add(swTeam); groupSwitches.add(swSolo)
         title("Ban & pick")
         val dcard = card()
         cardHeader(dcard, "Pick")
