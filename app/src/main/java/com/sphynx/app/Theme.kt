@@ -86,6 +86,7 @@ object Theme {
     const val GOLD = "#F4C25B"        // warning: needs attention, partial
     const val RED = "#FF6B78"         // danger: error, missing, destructive
     const val EXPERIMENTAL = "#C3A6FF"
+    const val INFO = "#7FA2FF"        // neutral information, "needs internet"
 
     // ---- contrast (WCAG 2.x) ----
     private fun channel(v: Int): Double { val c = v / 255.0; return if (c <= 0.03928) c / 12.92 else Math.pow((c + 0.055) / 1.055, 2.4) }
