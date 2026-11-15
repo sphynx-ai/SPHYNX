@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.FIXED, "Switches line up and buttons are the same width again",
+            "A control with a \"?\" used to give up room for it, so its switch sat further left than the others and its " +
+                "button was narrower. Now every switch sits at the right edge, with the \"?\" between its name and the " +
+                "switch, and a button keeps its full width with the \"?\" inside its right end. Tapping a switch's name " +
+                "still turns it on or off.",
+            pr = 31, needsDeviceCheck = true, version = "37.41"),
         Entry("2026-11-15", Kind.NEW, "Three colour themes to choose from, with icons and a banner",
             "You said the grey look felt dead. The app now has three themes, chosen on Settings > Setup > Theme: " +
                 "Signal (the brand's teal, the default), Arcane (violet with cyan) and Ember (amber). Each one gives a " +
