@@ -671,6 +671,13 @@ class MainActivity : Activity() {
         return v
     }
 
+    // a permission (or other done / not done) button: the colour AND a word, never colour alone (backlog item 7)
+    private fun markWord(b: Button, on: Boolean, onWord: String = StatusWords.GRANTED, offWord: String = StatusWords.MISSING) {
+        mark(b, on)
+        val t = StatusWords.withWord(StatusWords.base(b.text.toString()), if (on) onWord else offWord)
+        if (b.text.toString() != t) b.text = t
+    }
+
     private fun mark(b: Button, on: Boolean, color: String = T.GREEN) {
         if (on) {
             b.background = ripple(color, 12)
@@ -2576,10 +2583,12 @@ class MainActivity : Activity() {
             fun line(state: Int, t: String) {
                 if (sb.isNotEmpty()) sb.append("\n")
                 val st0 = sb.length
-                sb.append("●  ")
-                sb.setSpan(android.text.style.ForegroundColorSpan(c(when (state) { 2 -> T.GREEN; 1 -> T.GOLD; else -> T.RED })),
-                    st0, st0 + 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                sb.setSpan(android.text.style.RelativeSizeSpan(1.25f), st0, st0 + 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                // a dot whose shape and word say the state too, not only its colour (backlog item 7)
+                val badge = StatusWords.levelDot(state) + " " + StatusWords.levelWord(state)
+                sb.append(badge).append("  ")
+                val col = c(when (state) { 2 -> T.GREEN; 1 -> T.GOLD; else -> T.RED })
+                sb.setSpan(android.text.style.ForegroundColorSpan(col), st0, st0 + badge.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                sb.setSpan(android.text.style.StyleSpan(Typeface.BOLD), st0, st0 + badge.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                 sb.append(t)
             }
             fun sub(t: String) { sb.append("\n     ").append(t) }
@@ -3157,7 +3166,7 @@ class MainActivity : Activity() {
             val o = Settings.canDrawOverlays(this)
             val n = Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
             val f = com.sphynx.core.Storage.allFilesAccess
-            mark(acc, a); mark(ov, o); mark(nt, n); mark(fa, f)
+            markWord(acc, a); markWord(ov, o); markWord(nt, n); markWord(fa, f)
             val ok = listOf(a, o, n, f).count { it }
             p1Chip.text = if (ok == 4) "done" else "$ok of 4"; p1Chip.setTextColor(c(if (ok == 4) T.GREEN else T.GOLD))
         }
@@ -3199,7 +3208,7 @@ class MainActivity : Activity() {
             val ready = GemmaEngine.ready
             p3Note.text = "Strategic model: " + ModelManager.status(this) + (if (ready) " - loaded" else if (GemmaEngine.loading) " - loading…" else "") +
                 "\nSmall tactical model: " + ModelManager.tacticalStatus(this)
-            mark(load, ready)
+            markWord(load, ready, "Loaded", if (GemmaEngine.loading) "Loading" else "Not loaded")
             p3Chip.text = if (ready) "done" else "to do"; p3Chip.setTextColor(c(if (ready) T.GREEN else T.GOLD))
         }
 
@@ -3284,7 +3293,7 @@ class MainActivity : Activity() {
             "the app redraws at once.")
         title("PERMISSIONS")
         val acc = btn("1. Accessibility service (touches)") { openAccessibility() }
-        upd { mark(acc, AccessibilityController.instance != null) }
+        upd { markWord(acc, AccessibilityController.instance != null) }
         btn("Switch greyed out? Allow restricted settings") {
             toast("Tap ⋮ (top-right), then 'Allow restricted settings'")
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
@@ -3292,12 +3301,12 @@ class MainActivity : Activity() {
         val ov = btn("2. Display over other apps (floating icon)") {
             startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         }
-        upd { mark(ov, Settings.canDrawOverlays(this)) }
+        upd { markWord(ov, Settings.canDrawOverlays(this)) }
         val nt = btn("3. Notifications") {
             if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), reqNotify)
         }
         upd {
-            mark(nt, Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+            markWord(nt, Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
         }
         // (screen capture: started on the Home page only - v36.86)
         text("POCO/Xiaomi: also allow 'pop-up windows while running in the background' and turn off 'Manage app if unused'.", 12f, color = "#9AA0A6")
