@@ -581,9 +581,20 @@ class MainActivity : Activity() {
         b.setPadding(side, dp(8), side, dp(8))
     }
 
+    // asks before an action that deletes or resets something (Phase 3 backlog item 2)
+    private fun confirm(question: String, action: String, run: () -> Unit) {
+        AlertDialog.Builder(this).setMessage(question)
+            .setPositiveButton(action) { _, _ -> run() }
+            .setNegativeButton("Cancel", null).show()
+    }
+
     private fun btn(t: String, onClick: () -> Unit): Button {
         val b = Button(this).apply { text = t; setOnClickListener { onClick() } }
         styleButton(b)
+        if (Destructive.isLabel(t)) {   // Delete / Clear / Forget / Reset / Remove: red text and outline
+            b.setTextColor(c(T.RED))
+            b.background = ripple(T.SURF2, 12, T.RED)
+        }
         content.addView(b, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
             topMargin = dp(6)
         })
@@ -1277,9 +1288,11 @@ class MainActivity : Activity() {
         btn("Save manual combo for this hero") { saveManualComboForHero(manualComboBox.text.toString()) }
         btn("Clear manual combo (use Built-In)") {
             val h = selectedComboHero()
-            if (h != null) Cfg.setManualCombo(h, null)
-            manualComboBox.setText("")
-            toast("${h ?: "Hero"}: using Built-In optimized combos")
+            confirm("Clear the manual combo of ${h ?: "this hero"}? The built-in combo is used instead.", "Clear") {
+                if (h != null) Cfg.setManualCombo(h, null)
+                manualComboBox.setText("")
+                toast("${h ?: "Hero"}: using Built-In optimized combos")
+            }
         }
         btn("Copy next Built-In combo variant into box") {
             val h = selectedComboHero()
@@ -1322,7 +1335,11 @@ class MainActivity : Activity() {
         text("Level is read from the badge by your HP bar. Before 4: farm. At 4, 8, 12 or ahead: fight more. 2+ behind: avoid even fights.", 13f)
         val lvInfo = text("", 13f)
         upd { lvInfo.text = "Badges remembered: ${com.sphynx.vision.LevelReader.templatesKnown} of 15 (levels 1, 2, 9 and 12 are built in)" }
-        btn("Forget the remembered level badges") { com.sphynx.vision.LevelReader.forgetTemplates(); toast("Forgotten") }
+        btn("Forget the remembered level badges") {
+            confirm("Forget the remembered level badges? They are learned again in the next matches.", "Forget") {
+                com.sphynx.vision.LevelReader.forgetTemplates(); toast("Forgotten")
+            }
+        }
         title("TURTLE & LORD")
         text("Retribution: Turtle / Lord at ${Cfg.retriBossPct}%, buffs at ${Cfg.retriCreepPct}% (from your rulebook).", 12f, color = "#9AA0A6")
         val objInfo = text("", 13f)
@@ -1391,7 +1408,10 @@ class MainActivity : Activity() {
                 "\nLearned: " + com.sphynx.learning.Coach.summary(GameStateTracker.ownHero())
         }
         btn("Forget what Coach learned for this hero") {
-            com.sphynx.learning.Coach.forget(GameStateTracker.ownHero()); toast("Forgotten")
+            val hero = GameStateTracker.ownHero()
+            confirm("Forget what Coach learned for ${hero ?: "this hero"}?", "Forget") {
+                com.sphynx.learning.Coach.forget(hero); toast("Forgotten")
+            }
         }
 
         title("Game knowledge")
@@ -1490,8 +1510,11 @@ class MainActivity : Activity() {
 
         // (Vision tuning moved to the Home page - v36.93)
         btn("Reset learned aggression for this hero") {
-            Cfg.setLearnedBias(GameStateTracker.ownHero() ?: "unknown", 0f)
-            toast("Reset")
+            val hero = GameStateTracker.ownHero() ?: "unknown"
+            confirm("Reset the learned aggression for $hero to neutral?", "Reset") {
+                Cfg.setLearnedBias(hero, 0f)
+                toast("Reset")
+            }
         }
     }
 
@@ -2619,7 +2642,9 @@ class MainActivity : Activity() {
         val abText = cardText(ab, 13f)
         upd { abText.text = com.sphynx.learning.ABCompare.summary() }
         text("Counts matches the AI plays with the small model on (loaded) or off for the WHOLE match. Same hero and lane both ways gives the fairest numbers.", 12f, color = T.MUTED)
-        btn("Clear the comparison") { com.sphynx.learning.ABCompare.clear(); toast("Cleared") }
+        btn("Clear the comparison") {
+            confirm("Clear the trained vs built-in comparison?", "Clear") { com.sphynx.learning.ABCompare.clear(); toast("Cleared") }
+        }
         // the detector and the tactical network are used together: one switch
         switch("Use the trained models", Cfg.detectorOn && Cfg.policyOn) {
             Cfg.detectorOn = it; Cfg.policyOn = it
@@ -2667,12 +2692,12 @@ class MainActivity : Activity() {
                 }
             }
             upd { loadBtn.text = if (lib.loadedFile(this) == f) "Unload ${f.name}" else "Load ${f.name}" }
-            btn("Remove ${f.name}") {
+            btn("Remove ${f.name}") { confirm("Remove ${f.name} from the phone? You would have to download or copy it again.", "Remove") {
                 Thread {
                     val ok = lib.remove(this, f)
                     runOnUiThread { toast(if (ok) "Removed ${f.name}" else "Could not remove ${f.name}"); if (page == "model") show("model") }
                 }.start()
-            }
+            } }
         }
 
         val tc = card()
@@ -2888,7 +2913,9 @@ class MainActivity : Activity() {
         text("Every match: hero, role, K/D/A, result.", 13f)
         val ml = text("", 12f)
         upd { ml.text = com.sphynx.game.MatchLog.summary() }
-        btn("Clear the match log") { com.sphynx.game.MatchLog.clear(); toast("Cleared") }
+        btn("Clear the match log") {
+            confirm("Clear the match log?", "Clear") { com.sphynx.game.MatchLog.clear(); toast("Cleared") }
+        }
 
         title("DETECTOR TRAINING PICTURES")
         text("Saves labelled pictures while you play (minimap 300, screen 300 per batch). Train zips them by itself; at capacity they are zipped and the switch turns off.", 13f)
@@ -3301,7 +3328,12 @@ class MainActivity : Activity() {
                 }
             }, 5000)
         }
-        btn("Clear the samples of this icon type") { com.sphynx.vision.MinimapColors.clear(kinds[kindIdx]); toast("Cleared") }
+        btn("Clear the samples of this icon type") {
+            val kind = kinds[kindIdx]
+            confirm("Clear the saved samples of this icon type? It has to be calibrated again.", "Clear") {
+                com.sphynx.vision.MinimapColors.clear(kind); toast("Cleared")
+            }
+        }
 
         title("SCENERY CALIBRATION & MINIMAP SYNCHRONIZATION")
         text("Synchronizes 3D screen scenery (towers, monster pits, bushes, walls) with the 2D minimap on every frame. Saved persistently on your phone (mlbb-scenery-sync.json in /CodeOnTheGoProjects/Sphynx-Storage, or Download/Sphynx-Storage without all files access) across app uninstall/reinstall — only deleted when you press Clear saved map scenery or Reset minimap sync offsets.", 12f, color = "#9AA0A6")
@@ -3320,11 +3352,13 @@ class MainActivity : Activity() {
             toast(msg)
         }
         btn("Reset scenery-minimap sync offsets") {
-            toast(com.sphynx.game.SceneryMap.resetSyncCalibration())
+            confirm("Reset the scenery-minimap sync offsets?", "Reset") { toast(com.sphynx.game.SceneryMap.resetSyncCalibration()) }
         }
         btn("Clear saved map scenery") {
-            com.sphynx.game.SceneryMap.clear()
-            toast("Scenery map cleared")
+            confirm("Clear the saved map scenery? It is learned again while you play.", "Clear") {
+                com.sphynx.game.SceneryMap.clear()
+                toast("Scenery map cleared")
+            }
         }
         // the places the hero got stuck at, remembered across matches (owner, 2026-11-13)
         val stuckInfo = text("", 12f, color = T.MUTED)
@@ -3410,8 +3444,10 @@ class MainActivity : Activity() {
             }
         }
         btn("Reset all positions to defaults") {
-            for (ctl in Layout.defaults) Layout.reset(ctl.key)
-            show("setup")
+            confirm("Reset every button position to the defaults? Your calibrated positions are lost.", "Reset") {
+                for (ctl in Layout.defaults) Layout.reset(ctl.key)
+                show("setup")
+            }
         }
     }
 }

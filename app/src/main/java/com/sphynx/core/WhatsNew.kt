@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.IMPROVED, "Buttons that delete or reset ask first, and are red",
+            "Every button that deletes, clears, forgets, resets or removes something now has red text and a red outline, " +
+                "and asks before it acts. Eleven of them used to act at once: Clear manual combo, Forget the level badges, " +
+                "Forget what Coach learned, Reset learned aggression, Clear the comparison, Remove a model file, Clear the " +
+                "match log, Clear the icon samples, Reset the sync offsets, Clear the map scenery and Reset all positions.",
+            pr = 32, needsDeviceCheck = true, version = "37.42"),
         Entry("2026-11-15", Kind.FIXED, "Switches line up and buttons are the same width again",
             "A control with a \"?\" used to give up room for it, so its switch sat further left than the others and its " +
                 "button was narrower. Now every switch sits at the right edge, with the \"?\" between its name and the " +
