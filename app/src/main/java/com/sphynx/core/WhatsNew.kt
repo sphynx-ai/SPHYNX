@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.IMPROVED, "The floating panel takes the app's theme",
+            "The floating panel in the game now uses the colours of the theme chosen on Settings > Setup > Theme: its " +
+                "ground, buttons, borders and text, and the AI ON button filled with the theme's colour (teal in Signal, " +
+                "cyan in Arcane, amber in Ember). Red STOP and the status colours stay the same in every theme. A panel " +
+                "that is already open takes a new theme the next time it opens.",
+            pr = 43, needsDeviceCheck = true, version = "37.53"),
         Entry("2026-11-15", Kind.IMPROVED, "Play is shorter: research tests on Practice, What's new under Settings",
             "The research tests (test the small model on the practice moments, clear the arbiter comparison, delete the " +
                 "practice moments) moved from Play to AI & models > Practice, under Research tests. The What's new card " +

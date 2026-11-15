@@ -295,7 +295,7 @@ class OverlayManager(private val ctx: Context) {
         val pn = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#F00B0D10"))
+                setColor(Color.parseColor("#F0" + PanelIcons.OBSIDIAN.removePrefix("#")))
                 cornerRadius = dp(16).toFloat()
                 setStroke(dp(1), col(PanelIcons.SLATE))
             }
@@ -497,7 +497,7 @@ class OverlayManager(private val ctx: Context) {
             lastPowerOn = on
             power?.background = PanelIcons.on(
                 PanelIcons.circle(col(if (on) PanelIcons.accentHex else PanelIcons.GRAPHITE), col(if (on) PanelIcons.accentHex else PanelIcons.SLATE), dp(1)),
-                PanelIcons.Kind.POWER, col(if (on) PanelIcons.OBSIDIAN else PanelIcons.TITANIUM), dp(6))
+                PanelIcons.Kind.POWER, col(if (on) PanelIcons.onAccentHex else PanelIcons.TITANIUM), dp(6))
         }
         setBtn(stopBtn, PanelButtons.stop(), cmp)
         // scenery calibration from the floating window (owner, 2026-11-11): the button shows whether it runs

@@ -14,7 +14,7 @@ class MainApplication : Application() {
         Cfg.init(this)
         // the chosen theme, before any screen or the floating panel draws (the panel's symbol takes its colour)
         Theme.use(Cfg.theme)
-        com.sphynx.controller.PanelIcons.accentHex = Theme.LOGO
+        PanelTheme.apply()
         com.sphynx.core.SessionRecorder.init(this)
         com.sphynx.vision.HeroVerifier.init(this)
         // your rule change: Retribution on buffs at 20% (was 35%) - an old saved 35 moves too
