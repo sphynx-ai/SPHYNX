@@ -24,17 +24,23 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.IMPROVED, "Play is shorter: research tests on Practice, What's new under Settings",
+            "The research tests (test the small model on the practice moments, clear the arbiter comparison, delete the " +
+                "practice moments) moved from Play to AI & models > Practice, under Research tests. The What's new card " +
+                "left Play too: the full list is on Settings > What's new. Play now shows what runs, what is missing, " +
+                "what the AI sees and its recent actions.",
+            pr = 42, needsDeviceCheck = true, version = "37.52"),
         Entry("2026-11-15", Kind.IMPROVED, "Meta: when it was updated and where it came from",
             "On Knowledge > Meta, the patch meta and the hero meta now start with one line: \"Updated <date> (<days> " +
                 "ago) from <sources>\", so you can see at once how old the downloaded meta is and where it was read. " +
                 "It replaces the Sources line at the bottom of each card.",
-            pr = 41, needsDeviceCheck = true, version = "37.51"),
+            pr = 41, version = "37.51"),
         Entry("2026-11-15", Kind.IMPROVED, "Hero: battle spell in one tap, enemy team as five portraits",
             "On Hero & match > Hero, the battle spell is no longer a button you tap through one spell at a time: all of " +
                 "them are shown as buttons (Detect and the twelve spells) and one tap picks yours. The enemy team shows " +
                 "five slots, each with the hero's portrait and name once it is read on the loading screen or the " +
                 "scoreboard, and a question mark until then.",
-            pr = 40, needsDeviceCheck = true, version = "37.50"),
+            pr = 40, version = "37.50"),
         Entry("2026-11-15", Kind.IMPROVED, "Player is split into Hero and Play style; lane and Team / Solo are one-tap choices",
             "Hero & match now has four pages: Hero, Play style, Draft and Build. Hero holds your hero, player name, battle " +
                 "spell, lane, the enemy team and what the app knows about the hero (game knowledge, how to play it, its " +
