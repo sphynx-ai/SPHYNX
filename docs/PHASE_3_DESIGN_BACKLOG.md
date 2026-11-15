@@ -30,7 +30,7 @@ Each item is its own PR, with a version step and a phone test.
 
 | # | Pri | Item | Findings | Done when |
 |---|---|---|---|---|
-| 1 | P1 | **Bottom bar and five destinations**: move today's cards into Play / Hero & match / Knowledge / AI & models / Settings & help, with the sub-page rows. No redesign of the cards yet | 1, 3, 4, 27, 28 | All 14 tabs' content reachable in the 5 sections; no sideways tab scroll; nothing lost |
+| 1 | P1 | *(implemented v37.39, phone test pending: `app/Sections.kt`; text labels, drawn icons to follow; Player not yet split, Debug data and Logs not yet merged)* **Bottom bar and five destinations**: move today's cards into Play / Hero & match / Knowledge / AI & models / Settings & help, with the sub-page rows. No redesign of the cards yet | 1, 3, 4, 27, 28 | All 14 tabs' content reachable in the 5 sections; no sideways tab scroll; nothing lost |
 | 2 | P1 | **Confirm every destructive action** (the 11 listed in the state matrix) and group them in "Data & resets" cards | 10 | All 26 ask first |
 | 3 | P1 | **Play: Running now + Ready check** (one switch per engine; missing permissions with Fix; the per-page "running" switches removed) | 7, 11, 25 | One place shows what runs; starting without a permission leads to Fix, not a toast |
 | 4 | P1 | **Split Player** into Hero and Play style; lane and Team / Solo as segmented controls | 2, 26 | Player content on two sub-pages |
