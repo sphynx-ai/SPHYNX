@@ -1324,14 +1324,6 @@ class MainActivity : Activity() {
         }
 
         btn("Save manual combo for this hero") { saveManualComboForHero(manualComboBox.text.toString()) }
-        btn("Clear manual combo (use Built-In)") {
-            val h = selectedComboHero()
-            confirm("Clear the manual combo of ${h ?: "this hero"}? The built-in combo is used instead.", "Clear") {
-                if (h != null) Cfg.setManualCombo(h, null)
-                manualComboBox.setText("")
-                toast("${h ?: "Hero"}: using Built-In optimized combos")
-            }
-        }
         btn("Copy next Built-In combo variant into box") {
             val h = selectedComboHero()
             val vars = ComboBook.allVariants(h)
@@ -1373,11 +1365,6 @@ class MainActivity : Activity() {
         text("Level is read from the badge by your HP bar. Before 4: farm. At 4, 8, 12 or ahead: fight more. 2+ behind: avoid even fights.", 13f)
         val lvInfo = text("", 13f)
         upd { lvInfo.text = "Badges remembered: ${com.sphynx.vision.LevelReader.templatesKnown} of 15 (levels 1, 2, 9 and 12 are built in)" }
-        btn("Forget the remembered level badges") {
-            confirm("Forget the remembered level badges? They are learned again in the next matches.", "Forget") {
-                com.sphynx.vision.LevelReader.forgetTemplates(); toast("Forgotten")
-            }
-        }
         title("TURTLE & LORD")
         text("Retribution: Turtle / Lord at ${Cfg.retriBossPct}%, buffs at ${Cfg.retriCreepPct}% (from your rulebook).", 12f, color = "#9AA0A6")
         val objInfo = text("", 13f)
@@ -1444,12 +1431,6 @@ class MainActivity : Activity() {
             coachInfo.text = (if (AiRuntime.learnOn) "Recording you: ON" + (if (AiRuntime.playerOn) " (while you help the AI)" else " (Player off: everything you do is recorded)")
                 else "Recording you: starts with screen capture or the Player") +
                 "\nLearned: " + com.sphynx.learning.Coach.summary(GameStateTracker.ownHero())
-        }
-        btn("Forget what Coach learned for this hero") {
-            val hero = GameStateTracker.ownHero()
-            confirm("Forget what Coach learned for ${hero ?: "this hero"}?", "Forget") {
-                com.sphynx.learning.Coach.forget(hero); toast("Forgotten")
-            }
         }
 
         title("Game knowledge")
@@ -1537,16 +1518,37 @@ class MainActivity : Activity() {
                 "Last seen from you: ${DemoRecorder.lastAction}\nYour moves: ${ImitationPolicy.status}" +
                 (if (Cfg.coachMode && ImitationPolicy.size > 0) ", similarity now ${(ImitationPolicy.lastMatch * 100).toInt()}%" else "")
         }
-        btn("Delete my recorded play") {
-            AlertDialog.Builder(this).setTitle("Delete all recorded play?")
-                .setPositiveButton("Delete") { _, _ -> DemoRecorder.clear { runOnUiThread { toast("Deleted") } } }
-                .setNegativeButton("Cancel", null).show()
-        }
         val cdInfo = text("", 12f, color = "#9AA0A6")
         upd { cdInfo.text = "Buttons now: " + com.sphynx.game.CooldownTracker.screenState() }
         switch("Send a screenshot with plan questions (slower)", Cfg.strategyWithImage) { Cfg.strategyWithImage = it }
 
         // (Vision tuning moved to the Home page - v36.93)
+        // everything on this page that deletes or resets, together at the end (Phase 3 screen specs, "Data & resets")
+        title("DATA & RESETS")
+        btn("Clear manual combo (use Built-In)") {
+            val h = selectedComboHero()
+            confirm("Clear the manual combo of ${h ?: "this hero"}? The built-in combo is used instead.", "Clear") {
+                if (h != null) Cfg.setManualCombo(h, null)
+                manualComboBox.setText("")
+                toast("${h ?: "Hero"}: using Built-In optimized combos")
+            }
+        }
+        btn("Forget the remembered level badges") {
+            confirm("Forget the remembered level badges? They are learned again in the next matches.", "Forget") {
+                com.sphynx.vision.LevelReader.forgetTemplates(); toast("Forgotten")
+            }
+        }
+        btn("Forget what Coach learned for this hero") {
+            val hero = GameStateTracker.ownHero()
+            confirm("Forget what Coach learned for ${hero ?: "this hero"}?", "Forget") {
+                com.sphynx.learning.Coach.forget(hero); toast("Forgotten")
+            }
+        }
+        btn("Delete my recorded play") {
+            AlertDialog.Builder(this).setTitle("Delete all recorded play?")
+                .setPositiveButton("Delete") { _, _ -> DemoRecorder.clear { runOnUiThread { toast("Deleted") } } }
+                .setNegativeButton("Cancel", null).show()
+        }
         btn("Reset learned aggression for this hero") {
             val hero = GameStateTracker.ownHero() ?: "unknown"
             confirm("Reset the learned aggression for $hero to neutral?", "Reset") {

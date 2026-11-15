@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.IMPROVED, "Player: all the reset buttons together under Data & resets",
+            "The five buttons on Player that delete or reset something were spread over the page. They are now together " +
+                "in one section at its end, Data & resets: Clear manual combo, Forget the remembered level badges, Forget " +
+                "what Coach learned, Delete my recorded play and Reset learned aggression. Each still asks first.",
+            pr = 37, needsDeviceCheck = true, version = "37.47"),
         Entry("2026-11-15", Kind.NEW, "Badges on features that are experimental or need the internet",
             "A section that is not fully working yet, or needs a connection, now says so with a small word badge at the " +
                 "end of its header: Experimental on Autonomous ranked draft (Draft) and GGUF models (AI & models), Needs " +
