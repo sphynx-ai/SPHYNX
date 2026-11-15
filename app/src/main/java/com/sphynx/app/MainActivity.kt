@@ -879,6 +879,16 @@ class MainActivity : Activity() {
         return sw
     }
 
+    // where a page used to have its own "running" switch: one line saying whether it runs, and where to turn it on
+    private fun runningLine(name: String, isOn: () -> Boolean) {
+        val v = text("", 14f, describe = false)
+        upd {
+            val on = isOn()
+            v.text = "$name: ${if (on) "running" else "off"} · turn it on or off on Play › Running now"
+            v.setTextColor(c(if (on) T.ACCENT else T.MUTED))
+        }
+    }
+
     // Several switches where exactly one is on (e.g. the lanes)
     private fun radioSwitches(options: List<Pair<String, String>>, current: String, onPick: (String) -> Unit) {
         var syncing = false
@@ -987,6 +997,132 @@ class MainActivity : Activity() {
             "and unit tested but has not been confirmed in a real match yet.", 12f, color = T.MUTED)
     }
 
+    // ---- Play: "Running now" (one switch per engine) and "Ready check" (what is missing, with Fix) ----
+    // Phase 3 screen specs, Play cards 1-2; backlog item 3. The per-page "running" switches are gone: this is the one place.
+
+    // a row inside a card: name, a state word under it, a switch at the right edge
+    private fun cardSwitchRow(cd: LinearLayout, name: String, initial: Boolean, onChange: (Boolean) -> Unit): Pair<Switch, TextView> {
+        val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; minimumHeight = dp(52) }
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        col.addView(TextView(this).apply { text = name; textSize = 16f; setTextColor(c(T.STRONG)) })
+        val word = TextView(this).apply { textSize = 13f; setTextColor(c(T.MUTED)) }
+        col.addView(word)
+        row.addView(col, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        val sw = Switch(this).apply {
+            isChecked = initial
+            thumbTintList = ColorStateList(states, intArrayOf(c(T.STRONG), c(T.MUTED)))
+            trackTintList = ColorStateList(states, intArrayOf(c(T.TRACK), c(T.STROKE)))
+            contentDescription = name
+            setOnCheckedChangeListener { _, on -> onChange(on) }
+        }
+        row.addView(sw)
+        col.setOnClickListener { sw.toggle() }
+        cd.addView(row)
+        return sw to word
+    }
+
+    private fun runningNowCard() {
+        val cd = card()
+        val head = cardHeader(cd, "Running now", "", T.ACCENT)
+        val badge = (head.parent as LinearLayout).getChildAt(1) as TextView
+        // name, stage, is it on, does it touch the screen
+        val engines = listOf(
+            Triple("Player", "player", { AiRuntime.playerOn }),
+            Triple("Drafter", "draft", { AiRuntime.drafterOn }),
+            Triple("Builder", "build", { AiRuntime.builderOn }),
+            Triple("Learning", "learn", { AiRuntime.learnOn })
+        )
+        for ((name, stage, isOn) in engines) {
+            var syncing = false
+            val (sw, word) = cardSwitchRow(cd, name, isOn()) { on ->
+                if (!syncing) {
+                    if (!on) AiRuntime.stop(stage)
+                    else if (stage == "learn") {
+                        val err = AiRuntime.start("learn")
+                        if (err != null) toast(err) else if (!ScreenCaptureService.running) askScreenCapture()
+                    } else startStage(stage)
+                }
+            }
+            upd {
+                val on = isOn()
+                if (sw.isChecked != on) { syncing = true; sw.isChecked = on; syncing = false }
+                word.text = PlayStatus.engineWord(on, Cfg.dryRun, touches = stage != "learn")
+                word.setTextColor(c(if (on) T.ACCENT else T.MUTED))
+            }
+        }
+        cardSwitchRow(cd, "Dry run: only show where it would tap", Cfg.dryRun) { Cfg.dryRun = it }.second.text = "A safety guard: on by default"
+        cardSwitchRow(cd, "Autonomous Drafter + Builder", Cfg.autonomous) { Cfg.autonomous = it }.second.text = "Picks, bans and buys by itself"
+        val mode = cardNote(cd)
+        upd {
+            val b = PlayStatus.runningBadge(AiRuntime.anyOn(), Cfg.dryRun)
+            badge.text = b
+            badge.setTextColor(c(when (b) { "Live" -> T.GREEN; "Dry run" -> T.GOLD; else -> T.MUTED }))
+            mode.text = "Match: ${if (Cfg.ranked) "Ranked" else "Standard"} (detected by itself) · the power button on the floating icon turns the AI on or off in game"
+        }
+    }
+
+    private fun readyCheckCard() {
+        val cd = card()
+        val head = cardHeader(cd, "Ready check", "", T.GREEN)
+        val badge = (head.parent as LinearLayout).getChildAt(1) as TextView
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        cd.addView(list)
+        var shown: List<Pair<String, Boolean>>? = null
+        fun items(): List<PlayStatus.Item> = listOf(
+            PlayStatus.Item("access", "Accessibility service (touches)", AccessibilityController.instance != null, "Granted", "Missing"),
+            PlayStatus.Item("overlay", "Display over other apps", Settings.canDrawOverlays(this), "Granted", "Missing"),
+            PlayStatus.Item("notify", "Notifications", Build.VERSION.SDK_INT < 33 ||
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED, "Granted", "Missing"),
+            PlayStatus.Item("files", "All files access (the app's folder)", com.sphynx.core.Storage.allFilesAccess, "Granted", "Missing"),
+            PlayStatus.Item("capture", "Screen capture", ScreenCaptureService.running, "Running", "Off", needed = false),
+            PlayStatus.Item("model", "Strategic model (Gemma)", GemmaEngine.ready, "Loaded", if (GemmaEngine.loading) "Loading" else "Not loaded", needed = false)
+        )
+        fun fix(key: String) {
+            when (key) {
+                "access" -> openAccessibility()
+                "overlay" -> startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+                "notify" -> if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), reqNotify)
+                "files" -> try { startActivity(com.sphynx.core.Storage.requestIntent(this)) }
+                    catch (e: Exception) { toast("Open Settings > Apps > Special app access > All files access > Sphynx") }
+                "capture" -> askScreenCapture()
+                "model" -> show("model")
+            }
+        }
+        upd {
+            val all = items()
+            val summary = PlayStatus.readySummary(all)
+            badge.text = summary
+            badge.setTextColor(c(if (PlayStatus.allNeededOk(all)) T.GREEN else T.GOLD))
+            val key = all.map { it.key + it.word to it.ok }
+            if (key == shown) return@upd
+            shown = key
+            list.removeAllViews()
+            for (item in all) {
+                val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; minimumHeight = dp(48) }
+                val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                col.addView(TextView(this).apply { text = item.label; textSize = 15f; setTextColor(c(T.TEXT)) })
+                col.addView(TextView(this).apply {
+                    // a word and a dot shape, never colour alone
+                    text = (if (item.ok) "● " else "○ ") + item.word + (if (!item.needed && !item.ok) " (optional)" else "")
+                    textSize = 13f; setTextColor(c(when { item.ok -> T.GREEN; item.needed -> T.RED; else -> T.GOLD }))
+                })
+                row.addView(col, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                if (item.needsFix) {
+                    val k = item.key
+                    row.addView(Button(this).apply {
+                        text = if (k == "capture") "Start" else if (k == "model") "Open" else "Fix"
+                        styleButton(this, primary = item.needed)
+                        minWidth = dp(72)
+                        contentDescription = "${text}: ${item.label}"
+                        setOnClickListener { fix(k) }
+                    }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(44)))
+                }
+                list.addView(row)
+            }
+        }
+    }
+
     private fun homePage() {
         // the app version (and the installed build, if the package says something else)
         val installed = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { null }
@@ -1032,11 +1168,10 @@ class MainActivity : Activity() {
         switch("Show what the AI sees (boxes on the game)", Cfg.showDetections) { Cfg.showDetections = it }
         switch("Show where the AI touches", Cfg.showTouches) { Cfg.showTouches = it }
 
-        title("RUN")
-        // ONE SWITCH (owner, 2026-11-10): the Player and research mode are one button
-        stageSwitch("Research player (plays in practice vs Computer; advises in other matches)", "player") { AiRuntime.playerOn }
-        stageSwitch("Drafter (ban & pick)", "draft") { AiRuntime.drafterOn }
-        stageSwitch("Builder (items)", "build") { AiRuntime.builderOn }
+        runningNowCard()
+        readyCheckCard()
+
+        title("PRACTICE RESEARCH")
         val resInfo = text("", 12f, color = T.MUTED)
         upd { resInfo.text = com.sphynx.research.ResearchMode.momentsText() + "\n" + com.sphynx.research.ReadinessRun.status() +
             "\n" + com.sphynx.research.ResearchMode.abText() }
@@ -1055,11 +1190,6 @@ class MainActivity : Activity() {
                 .setPositiveButton("Delete") { _, _ -> com.sphynx.research.ResearchMode.clearMoments(); toast("Deleted") }
                 .setNegativeButton("Cancel", null).show()
         }
-        switch("Autonomous Drafter + Builder", Cfg.autonomous) { Cfg.autonomous = it }
-        switch("Dry run: only show where it would tap", Cfg.dryRun) { Cfg.dryRun = it }
-        val mode = text("", 12f, color = T.MUTED)
-        upd { mode.text = "Match: ${if (Cfg.ranked) "Ranked" else "Standard"} (detected by itself) · the power button on the floating icon turns the AI on or off in game" }
-
         title("WHAT THE AI SEES")
         val preview = PreviewView(this)
         content.addView(preview, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(190)))
@@ -1146,7 +1276,7 @@ class MainActivity : Activity() {
     // =====================================================================
 
     private fun playerPage() {
-        stageSwitch("Research player running", "player") { AiRuntime.playerOn }
+        runningLine("Player") { AiRuntime.playerOn }
         val info = text("", 13f)
         upd {
             info.text = if (GemmaEngine.ready) "Fast rules play; Gemma adjusts the plan every ${Cfg.strategyEverySec}s or when a fight starts."
@@ -1563,7 +1693,7 @@ class MainActivity : Activity() {
     // =====================================================================
 
     private fun draftPage() {
-        stageSwitch("Drafter running", "draft") { AiRuntime.drafterOn }
+        runningLine("Drafter") { AiRuntime.drafterOn }
         title("MATCH TYPE")
         val phase = text("", 13f, color = "#9AA0A6")
         upd { phase.text = "Detected by itself on the hero-select screen (a ban stage = ranked): now ${if (Cfg.ranked) "RANKED" else "STANDARD"}" +
@@ -1630,7 +1760,7 @@ class MainActivity : Activity() {
     // =====================================================================
 
     private fun buildPage() {
-        stageSwitch("Builder running", "build") { AiRuntime.builderOn }
+        runningLine("Builder") { AiRuntime.builderOn }
 
         // ---- your build ----
         val bc = card()

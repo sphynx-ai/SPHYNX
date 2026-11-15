@@ -24,6 +24,15 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.NEW, "Play: Running now and Ready check",
+            "Play now has one place that shows and switches what runs: the Running now card, with a switch for the " +
+                "Player, the Drafter, the Builder and Learning, each with its state in words (On, On · Dry run, Off), and " +
+                "the Dry run and Autonomous switches. Its badge says All off, Dry run or Live. Below it, the Ready check " +
+                "lists the permissions (Granted or Missing, with a Fix button), screen capture (Start) and the strategic " +
+                "model (Open), and says Ready or how many things are left to fix. The running switches on Player, Draft " +
+                "and Build are replaced by a line saying whether each one runs. The research tests stay on Play under " +
+                "Practice research for now.",
+            pr = 38, needsDeviceCheck = true, version = "37.48"),
         Entry("2026-11-15", Kind.IMPROVED, "Player: all the reset buttons together under Data & resets",
             "The five buttons on Player that delete or reset something were spread over the page. They are now together " +
                 "in one section at its end, Data & resets: Clear manual combo, Forget the remembered level badges, Forget " +
