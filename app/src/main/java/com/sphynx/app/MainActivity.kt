@@ -3446,40 +3446,7 @@ class MainActivity : Activity() {
             content.addView(row)
         }
 
-        title("TYPE POSITIONS BY HAND")
-        text("x,y in % of the screen. 'Show markers' draws them on the game.", 12f, color = "#9AA0A6")
-        switch("Show markers on the game", AccessibilityController.instance?.overlay?.markersOn == true) { on ->
-            val o = AccessibilityController.instance?.overlay
-            if (o == null) toast("Turn on the accessibility service first") else {
-                o.markersOn = on
-                if (on) o.show()
-            }
-        }
-        fun groupTitle(g: String) = when (g) {
-            "skills2" -> "2-skill buttons"
-            "skills3" -> "3-skill buttons"
-            "skills4" -> "4-skill buttons"
-            "large" -> "In-game buttons (large HUD)"
-            "shop" -> "Shop screen"
-            "select" -> "Hero select"
-            else -> "In-game HUD (joystick / attack / spell)"
-        }
-        val groupOrder = listOf("skills2", "skills3", "skills4", "game", "large", "shop", "select")
-        for (grp in groupOrder) {
-            val ctls = Layout.defaults.filter { it.group == grp }
-            if (ctls.isEmpty()) continue
-            text(groupTitle(grp), 13f, true)
-            for (ctl in ctls) {
-                field(ctl.label, Layout.text(ctl.key), false) { v -> if (v != Layout.text(ctl.key)) Layout.set(ctl.key, v) }
-            }
-            if (grp in listOf("skills2", "skills3", "skills4")) {
-                val label = groupTitle(grp)
-                btn("Save $label") {
-                    Layout.saveGroup(grp)
-                    toast("Saved $label")
-                }
-            }
-        }
+        // typing positions by hand was removed (owner, 2026-11-15): the in-game calibration moves the buttons
         btn("Reset all positions to defaults") {
             confirm("Reset every button position to the defaults? Your calibrated positions are lost.", "Reset") {
                 for (ctl in Layout.defaults) Layout.reset(ctl.key)
