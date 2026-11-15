@@ -139,6 +139,12 @@ class MainActivity : Activity() {
         Cfg.init(this)
         Diag.init(this)
         actionBar?.hide()
+        // the chosen theme (Settings > Setup > Theme): its colours, the logo's colour, the system bars
+        Theme.use(Cfg.theme)
+        com.sphynx.controller.PanelIcons.accentHex = T.LOGO
+        window.statusBarColor = c(T.BG)
+        window.navigationBarColor = c(T.SURF)
+        window.decorView.setBackgroundColor(c(T.BG))
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -151,7 +157,12 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), dp(10), dp(16), dp(6))
         }
-        header.addView(ImageView(this).apply { setImageResource(R.mipmap.ic_sphynx) }, LinearLayout.LayoutParams(dp(40), dp(40)))
+        // the symbol, drawn: its diamond takes the theme's colour
+        header.addView(View(this).apply {
+            background = com.sphynx.controller.PanelIcons.on(shape(T.SURF, 10, T.STROKE),
+                com.sphynx.controller.PanelIcons.Kind.MARK, c(T.STRONG), dp(7))
+            contentDescription = getString(R.string.app_name)
+        }, LinearLayout.LayoutParams(dp(40), dp(40)))
         val names = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
         names.addView(TextView(this).apply {
             text = getString(R.string.app_name)
@@ -208,14 +219,16 @@ class MainActivity : Activity() {
                 maxLines = 2
                 gravity = Gravity.CENTER
                 minHeight = 0; minimumHeight = 0; minWidth = 0; minimumWidth = 0
-                setPadding(dp(2), 0, dp(2), 0)
+                maxLines = 1
+                setPadding(dp(2), dp(7), dp(2), dp(4))
+                compoundDrawablePadding = dp(2)
                 // the label shrinks to fit its fifth of the bar instead of breaking inside a word
-                setAutoSizeTextTypeUniformWithConfiguration(9, 13, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+                setAutoSizeTextTypeUniformWithConfiguration(8, 12, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
                 contentDescription = sec.label
                 setOnClickListener { go(Sections.open(sec, lastSeen)) }
             }
             navButtons[sec.key] = b
-            nav.addView(b, LinearLayout.LayoutParams(0, dp(52), 1f).apply { leftMargin = dp(2); rightMargin = dp(2) })
+            nav.addView(b, LinearLayout.LayoutParams(0, dp(58), 1f).apply { leftMargin = dp(2); rightMargin = dp(2) })
         }
         root.addView(View(this).apply { setBackgroundColor(Color.parseColor(T.STROKE)) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)))
         root.addView(nav)
@@ -497,7 +510,7 @@ class MainActivity : Activity() {
     // a section header: accent bar + small capitals
     private fun title(t: String): TextView {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        row.addView(View(this).apply { background = shape(T.STRONG, 2) }, LinearLayout.LayoutParams(dp(3), dp(16)))
+        row.addView(View(this).apply { background = shape(T.ACCENT, 2) }, LinearLayout.LayoutParams(dp(3), dp(16)))
         val v = TextView(this).apply {
             text = t.uppercase(); textSize = 15f; letterSpacing = 0.08f
             setTextColor(c(T.STRONG)); typeface = display(); setPadding(dp(8), 0, 0, 0)
@@ -538,7 +551,7 @@ class MainActivity : Activity() {
             setTextColor(c(T.TEXT))
             isChecked = initial
             thumbTintList = ColorStateList(states, intArrayOf(c(T.STRONG), c(T.MUTED)))
-            trackTintList = ColorStateList(states, intArrayOf(c(T.ACCENT), c(T.STROKE)))
+            trackTintList = ColorStateList(states, intArrayOf(c(T.TRACK), c(T.STROKE)))
             minHeight = dp(48)
             setPadding(0, dp(10), 0, dp(10))
             setOnCheckedChangeListener { _, on -> onChange(on) }
@@ -589,7 +602,7 @@ class MainActivity : Activity() {
     private fun mark(b: Button, on: Boolean, color: String = T.GREEN) {
         if (on) {
             b.background = ripple(color, 12)
-            b.setTextColor(c(T.ON_PRIMARY))       // dark text on the coloured fill (white was about 2:1)
+            b.setTextColor(c(T.ON_FILL))          // dark text on the coloured fill (white was about 2:1)
         } else {
             b.background = ripple(T.SURF2, 12, T.STROKE)
             b.setTextColor(c(T.TEXT))
@@ -692,8 +705,10 @@ class MainActivity : Activity() {
         if (sec != null) lastSeen[sec.key] = p
         for ((k, b) in navButtons) {
             val on = k == sec?.key
-            b.background = if (on) ripple(T.PRIMARY, 22) else ripple(T.SURF, 22)
-            b.setTextColor(Color.parseColor(if (on) T.ON_PRIMARY else T.MUTED))
+            val ink = c(if (on) T.ACCENT else T.MUTED)
+            b.background = if (on) ripple(T.TILE, 16) else ripple(T.SURF, 16)
+            b.setTextColor(ink)
+            b.setCompoundDrawables(null, NavIcons.icon(k, ink, dp(22)).apply { setBounds(0, 0, dp(22), dp(22)) }, null, null)
             b.isSelected = on
         }
         subRow.removeAllViews()
@@ -891,15 +906,22 @@ class MainActivity : Activity() {
             (if (installed != null && installed != com.sphynx.core.AppVersion.VERSION) " · build $installed" else ""), 12f, color = T.MUTED, describe = false)
         whatsNewPreview()
         val c1 = card()
+        // the state banner, in the theme's colour
+        c1.background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(c(T.BANNER), c(T.BANNER_END))).apply {
+            cornerRadius = dp(18).toFloat(); setStroke(dp(1), c(T.ACCENT))
+        }
+        c1.setPadding(dp(16), dp(16), dp(16), dp(16))
         val status = cardHeader(c1, "", "", T.GREEN)
+        status.setTextColor(c(T.ON_BANNER)); status.textSize = 22f
         val sChip = (status.parent as LinearLayout).getChildAt(1) as TextView
-        val gemma = cardNote(c1)
-        val capture = cardNote(c1)
+        sChip.background = shape("#33" + T.ON_BANNER.removePrefix("#"), 20, null)
+        val gemma = cardNote(c1).apply { setTextColor(c(T.ON_BANNER)) }
+        val capture = cardNote(c1).apply { setTextColor(c(T.ON_BANNER)) }
         upd {
             val on = AiRuntime.anyOn()
             status.text = if (on) AiRuntime.statusLine() else "AI is off"
             sChip.text = if (on) "running" else "stopped"
-            sChip.setTextColor(c(if (on) T.GREEN else T.MUTED))
+            sChip.setTextColor(c(T.ON_BANNER))
             gemma.text = "Strategy: " + ModelManager.strategicName() + " – " + GemmaEngine.state +
                 (if (GemmaEngine.calls > 0) " (${GemmaEngine.lastLatencyMs / 100 / 10.0} s)" else "") +
                 (if (Cfg.tacticalLlmOn) "\nFights: " + ModelManager.tacticalName() + " – " + TacticalLlmEngine.state +
@@ -2709,7 +2731,7 @@ class MainActivity : Activity() {
                 go.isEnabled = can
                 go.text = when { run -> "Training…"; !ct.ready() -> "Needs kaggle.json"; rd.ok -> "Train"; else -> "Not enough yet" }
                 go.background = ripple(when { run -> T.GOLD; can -> T.GREEN; else -> T.RED }, 12)
-                go.setTextColor(c(T.ON_PRIMARY))
+                go.setTextColor(c(T.ON_FILL))
                 go.alpha = if (can || run) 1f else 0.75f
                 ready0.text = rd.text
             }
@@ -3140,6 +3162,14 @@ class MainActivity : Activity() {
 
     private fun setupPage() {
         btn("Open the first-run setup") { show("welcome") }
+        // the colour theme (owner, 2026-11-15): three to choose from, Signal by default
+        title("THEME")
+        radioSwitches(Theme.ALL.map { it.key to it.label }, Theme.byKey(Cfg.theme).key) { pick ->
+            Cfg.theme = pick
+            content.post { recreate() }       // every colour, the logo and the system bars take the new theme
+        }
+        text("The app's colours: what is selected or switched on, the main buttons, the banner on Play and the logo's " +
+            "diamond. Text sizes and the red STOP are the same in every theme.")
         // the heading font: the owner picks between the two pixel fonts (design tokens, Phase 4)
         title("HEADING FONT")
         radioSwitches(Fonts.CHOICES, Fonts.choice(Cfg.headFont)) { pick ->

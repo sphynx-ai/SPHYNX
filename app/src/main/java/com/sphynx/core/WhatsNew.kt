@@ -24,6 +24,14 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.NEW, "Three colour themes to choose from, with icons and a banner",
+            "You said the grey look felt dead. The app now has three themes, chosen on Settings > Setup > Theme: " +
+                "Signal (the brand's teal, the default), Arcane (violet with cyan) and Ember (amber). Each one gives a " +
+                "colour to what is selected or switched on, the main buttons and the switches; the logo's diamond takes " +
+                "the theme's colour too, in the app and on the floating panel. The bottom bar has a drawn icon for each " +
+                "section, and the top card on Play is a banner in the theme's colour. Text sizes and the red STOP are " +
+                "the same in every theme. The app icon on your phone's home screen stays teal for now.",
+            pr = 30, needsDeviceCheck = true, version = "37.40"),
         Entry("2026-11-15", Kind.IMPROVED, "Five sections in a bar at the bottom instead of 14 tabs",
             "The 14 tabs you had to scroll sideways are now five sections, always visible at the bottom: Play, " +
                 "Hero & match, Knowledge, AI & models and Settings. A section with several pages shows them in a row " +
@@ -31,7 +39,7 @@ object WhatsNew {
                 "has Models, Learning, Practice and Performance; Settings has Setup, Debug data, Logs and What's new. " +
                 "Each section opens where you left it, and swiping left or right still walks through the pages. Nothing " +
                 "was removed; the pages themselves are unchanged for now.",
-            pr = 29, needsDeviceCheck = true, version = "37.39"),
+            pr = 29, version = "37.39"),
         Entry("2026-11-15", Kind.IMPROVED, "The new look: brand colours, the app's own fonts, bigger text",
             "Phase 4 has started, with the redesign first as you asked. The main screen now uses the brand colours " +
                 "(one set, checked for contrast by a test); main buttons are light with dark text and STOP is a deeper " +
@@ -40,7 +48,7 @@ object WhatsNew {
                 "longer depends on your phone's font. Choose between two pixel fonts on Setup (Heading font). Text is " +
                 "at least 13, tabs, buttons and switches are at least 48 high. The pages are still the same 14: the " +
                 "five sections come next.",
-            pr = 28, needsDeviceCheck = true, version = "37.38"),
+            pr = 28, version = "37.38"),
         Entry("2026-11-15", Kind.IMPROVED, "Development plan: Phase 3 (the new design) is complete",
             "You approved the design for all five sections: Play, Hero & match, Knowledge, AI & models, Settings & help. " +
                 "The plan and mockups for the last three are written down (docs/PHASE_3_SCREEN_SPECS.md), with the list " +
@@ -53,7 +61,7 @@ object WhatsNew {
                 "Home, the match timeline and jungle facts on Player, and others) were still on the page. Any such text " +
                 "longer than 140 letters or 3 lines now sits behind the \"?\" of the row above it; the bubble shows " +
                 "what it says at that moment. Short status lines (AI off, fps) stay on the page.",
-            pr = 26, needsDeviceCheck = true, version = "37.36"),
+            pr = 26, version = "37.36"),
         Entry("2026-11-14", Kind.IMPROVED, "Development plan: first screens of the new design (Play, Hero & match)",
             "Phase 3: how the Play and Hero & match sections will look, card by card (docs/PHASE_3_SCREEN_SPECS.md), " +
                 "with mockups of Play, Hero and Play style for your review: one card that shows what is running, a " +
@@ -71,7 +79,7 @@ object WhatsNew {
             "As in the game's own settings: a small \"?\" now sits at the end of each button or switch that has an " +
                 "explanation. Tap it and the explanation opens in a bubble next to it; tap anywhere else to close it. " +
                 "The \"?\" in the header (hold to see every description of the page) is gone.",
-            pr = 23, needsDeviceCheck = true, version = "37.33"),
+            pr = 23, version = "37.33"),
         Entry("2026-11-14", Kind.IMPROVED, "Development plan: the new look (colours, fonts, sizes)",
             "Phase 3: the design rules for the new look (docs/PHASE_3_DESIGN_TOKENS.md): one set of brand colours for the " +
                 "app and the floating panel; your choice of fonts - a pixel-style font for headings and numbers and Inter " +

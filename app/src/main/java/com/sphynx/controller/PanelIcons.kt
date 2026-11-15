@@ -28,17 +28,20 @@ object PanelIcons {
     const val TITANIUM = "#C9CED6"
     const val ICE = "#F4F6F8"
     const val SIGNAL = "#35C2B0"
+    /** The symbol's focus colour (the diamond) and the "on" colour of the panel: the app sets it to its theme's
+     *  colour (owner, 2026-11-15: the logo follows the chosen theme; the default is Signal). */
+    @Volatile var accentHex: String = SIGNAL
     const val RED = "#E5484D"
     const val AMBER = "#F4C25B"
     const val GREEN = "#3DD68C"
 
     /** One icon, [sizePx] square, its bounds already set. [accent] is the second colour of MARK. */
-    fun icon(kind: Kind, color: Int, sizePx: Int, accent: Int = Color.parseColor(SIGNAL)): Drawable =
+    fun icon(kind: Kind, color: Int, sizePx: Int, accent: Int = Color.parseColor(accentHex)): Drawable =
         IconDrawable(kind, color, accent).apply { setBounds(0, 0, sizePx, sizePx) }
 
     /** An icon centred on a round or rounded background, [insetPx] in from its edge. */
     fun on(background: Drawable, kind: Kind, color: Int, insetPx: Int): Drawable =
-        LayerDrawable(arrayOf(background, InsetDrawable(IconDrawable(kind, color, Color.parseColor(SIGNAL)), insetPx)))
+        LayerDrawable(arrayOf(background, InsetDrawable(IconDrawable(kind, color, Color.parseColor(accentHex)), insetPx)))
 
     fun circle(fill: Int, stroke: Int? = null, strokePx: Int = 0) = GradientDrawable().apply {
         shape = GradientDrawable.OVAL
