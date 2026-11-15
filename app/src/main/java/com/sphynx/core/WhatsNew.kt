@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.IMPROVED, "Every state says it in words, not only in colour",
+            "The permission buttons on Setup and in the first-run setup now end with Granted or Missing, and the model " +
+                "button with Loaded, Loading or Not loaded, besides turning green. On AI & models, each line of the files " +
+                "card starts with a dot and a word in its colour: Ready (full dot), Partial (half dot: loading, or loaded but " +
+                "switched off) or Missing (empty dot).",
+            pr = 34, needsDeviceCheck = true, version = "37.44"),
         Entry("2026-11-15", Kind.IMPROVED, "Help for a group of switches sits on its header; even combo buttons",
             "The \"?\" that explains a group of switches (Theme, Heading font, Lane, Draft Team / Solo and the other " +
                 "one-of-several choices) now sits at the end of the group's header instead of next to its last switch. " +
