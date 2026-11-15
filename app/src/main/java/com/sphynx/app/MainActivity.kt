@@ -89,7 +89,6 @@ class MainActivity : Activity() {
     private var pendingStage: String? = null
     private val ui = Handler(Looper.getMainLooper())
     private var headerStatus: TextView? = null
-    private var navScroll: HorizontalScrollView? = null
     // help next to each control (owner, 2026-11-14): the descriptions on the current page, each behind the "?"
     // of the control it explains (HelpHold)
     private val descriptions = ArrayList<TextView>()
@@ -99,11 +98,11 @@ class MainActivity : Activity() {
     private var bubbleFor: HelpGroup? = null
     private var bubbleClosedAt = 0L
 
-    private val pages = listOf("home", "news", "player", "draft", "build", "meta", "library", "model", "learn", "practice", "speed", "logs", "debug", "setup")
-    private val labels = mapOf(
-        "home" to "Home", "news" to "What's new", "player" to "Player", "draft" to "Draft", "build" to "Build", "meta" to "Meta", "library" to "Library",
-        "model" to "Model", "learn" to "Learn", "practice" to "Practice", "speed" to "Performance", "logs" to "Logs", "debug" to "Debug data", "setup" to "Setup"
-    )
+    // the five sections of the bottom bar and their pages (app/Sections.kt)
+    private val pages = Sections.PAGES
+    private val labels = Sections.PAGE_LABELS
+    private val lastSeen = HashMap<String, String>()          // section -> the page last open in it
+    private lateinit var subRow: LinearLayout                // the sub-pages of the open section, under the header
 
     private val reqCapture = 42
     private val reqNotify = 43
@@ -179,29 +178,47 @@ class MainActivity : Activity() {
         header.addView(stopTop, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(48)))
         root.addView(header)
 
+        // the sub-pages of the open section (hidden when the section has one page)
+        subRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = shape(T.SURF, 14, T.STROKE)
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+            visibility = View.GONE
+        }
+        root.addView(subRow, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            leftMargin = dp(16); rightMargin = dp(16); topMargin = dp(4); bottomMargin = dp(4)
+        })
+
         content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(24)) }
         scroll = ScrollView(this).apply { addView(content) }
         root.addView(scroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
-        // page tabs (scroll sideways if they do not fit)
-        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(8), dp(8), dp(8), dp(10)) }
-        for (k in pages) {
+        // THE BOTTOM BAR: five sections, always visible (no sideways scrolling)
+        val nav = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            setBackgroundColor(Color.parseColor(T.SURF))
+        }
+        for (sec in Sections.ALL) {
             val b = Button(this).apply {
-                text = labels[k]
-                textSize = 14f
+                text = sec.label
                 typeface = display()
                 isAllCaps = false
                 stateListAnimator = null
+                maxLines = 2
+                gravity = Gravity.CENTER
                 minHeight = 0; minimumHeight = 0; minWidth = 0; minimumWidth = 0
-                setPadding(dp(16), 0, dp(16), 0)
-                setOnClickListener { go(k) }
+                setPadding(dp(2), 0, dp(2), 0)
+                // the label shrinks to fit its fifth of the bar instead of breaking inside a word
+                setAutoSizeTextTypeUniformWithConfiguration(9, 13, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+                contentDescription = sec.label
+                setOnClickListener { go(Sections.open(sec, lastSeen)) }
             }
-            navButtons[k] = b
-            nav.addView(b, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(48)).apply { marginEnd = dp(6) })
+            navButtons[sec.key] = b
+            nav.addView(b, LinearLayout.LayoutParams(0, dp(52), 1f).apply { leftMargin = dp(2); rightMargin = dp(2) })
         }
         root.addView(View(this).apply { setBackgroundColor(Color.parseColor(T.STROKE)) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)))
-        root.addView(HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(nav); setBackgroundColor(Color.parseColor(T.SURF)) })
-        navScroll = root.getChildAt(root.childCount - 1) as HorizontalScrollView
+        root.addView(nav)
 
         // keep everything clear of the status bar and the phone's own Home/Back/Recent buttons
         root.setOnApplyWindowInsetsListener { v, insets ->
@@ -210,7 +227,7 @@ class MainActivity : Activity() {
             insets
         }
         setContentView(root)
-        defaultText = navButtons["home"]?.textColors
+        defaultText = navButtons["play"]?.textColors
 
         show(if (Cfg.firstRunPending) "welcome" else "home")
     }
@@ -670,12 +687,33 @@ class MainActivity : Activity() {
             "setup" -> setupPage()
             "welcome" -> welcomePage()
         }
+        // the bottom bar marks the page's section; the sub-page row lists that section's pages
+        val sec = Sections.of(p)
+        if (sec != null) lastSeen[sec.key] = p
         for ((k, b) in navButtons) {
+            val on = k == sec?.key
+            b.background = if (on) ripple(T.PRIMARY, 22) else ripple(T.SURF, 22)
+            b.setTextColor(Color.parseColor(if (on) T.ON_PRIMARY else T.MUTED))
+            b.isSelected = on
+        }
+        subRow.removeAllViews()
+        subRow.visibility = if (sec != null && sec.pages.size > 1) View.VISIBLE else View.GONE
+        if (sec != null && sec.pages.size > 1) for (k in sec.pages) {
             val on = k == p
-            b.background = if (on) ripple(T.PRIMARY, 24) else ripple(T.SURF2, 24)
-            b.setTextColor(Color.parseColor(if (on) T.ON_PRIMARY else T.TEXT))
-            b.typeface = display()
-            if (on) b.post { navScroll?.smoothScrollTo((b.left - dp(40)).coerceAtLeast(0), 0) }
+            subRow.addView(Button(this).apply {
+                text = labels[k]
+                isAllCaps = false
+                stateListAnimator = null
+                maxLines = 1
+                minHeight = 0; minimumHeight = 0; minWidth = 0; minimumWidth = 0
+                setPadding(dp(2), 0, dp(2), 0)
+                setAutoSizeTextTypeUniformWithConfiguration(10, 14, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+                setTypeface(Typeface.create(typeface, if (on) 700 else 500, false))
+                background = if (on) ripple(T.PRIMARY, 10) else ripple(T.SURF, 10)
+                setTextColor(Color.parseColor(if (on) T.ON_PRIMARY else T.TEXT))
+                isSelected = on
+                setOnClickListener { go(k) }
+            }, LinearLayout.LayoutParams(0, dp(44), 1f))
         }
         scroll.scrollTo(0, 0)
         if (dir != 0) {

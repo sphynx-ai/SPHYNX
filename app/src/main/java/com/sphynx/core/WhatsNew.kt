@@ -24,6 +24,14 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.IMPROVED, "Five sections in a bar at the bottom instead of 14 tabs",
+            "The 14 tabs you had to scroll sideways are now five sections, always visible at the bottom: Play, " +
+                "Hero & match, Knowledge, AI & models and Settings. A section with several pages shows them in a row " +
+                "under the header: Hero & match has Player, Draft and Build; Knowledge has Library and Meta; AI & models " +
+                "has Models, Learning, Practice and Performance; Settings has Setup, Debug data, Logs and What's new. " +
+                "Each section opens where you left it, and swiping left or right still walks through the pages. Nothing " +
+                "was removed; the pages themselves are unchanged for now.",
+            pr = 29, needsDeviceCheck = true, version = "37.39"),
         Entry("2026-11-15", Kind.IMPROVED, "The new look: brand colours, the app's own fonts, bigger text",
             "Phase 4 has started, with the redesign first as you asked. The main screen now uses the brand colours " +
                 "(one set, checked for contrast by a test); main buttons are light with dark text and STOP is a deeper " +
