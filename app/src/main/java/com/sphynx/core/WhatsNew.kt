@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.IMPROVED, "Setup is shorter: no more typing button positions by hand",
+            "The long \"Type positions by hand\" list at the end of Setup (an x,y field for every button, shop item " +
+                "and hero-select spot) is gone, with its \"Show markers\" switch. Every one of those positions is set " +
+                "in the in-game calibration from the floating panel, which covers all the same groups. Presets and " +
+                "\"Reset all positions to defaults\" stay.",
+            pr = 35, needsDeviceCheck = true, version = "37.45"),
         Entry("2026-11-15", Kind.IMPROVED, "Every state says it in words, not only in colour",
             "The permission buttons on Setup and in the first-run setup now end with Granted or Missing, and the model " +
                 "button with Loaded, Loading or Not loaded, besides turning green. On AI & models, each line of the files " +

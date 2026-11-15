@@ -74,7 +74,7 @@ Its job: *set up once, and fix problems.* Sub-pages: **Setup · Help & data · W
 
 | Sub-page | Content | From |
 |---|---|---|
-| **Setup** | Permissions (each with a state word: granted / missing, finding 24), screen, all calibration (buttons, minimap icons, scenery & minimap sync, presets, positions by hand: owner rule, calibration stays on Setup), "open the first-run guide" | Setup |
+| **Setup** | Permissions (each with a state word: granted / missing, finding 24), screen, all calibration (buttons, minimap icons, scenery & minimap sync, presets (positions by hand removed in v37.45, owner 2026-11-15: the in-game calibration moves every button): owner rule, calibration stays on Setup), "open the first-run guide" | Setup |
 | **Help & data** | Debug data (session recorder, exports, GitHub upload) and Logs (diagnostics, history) | Debug data, Logs |
 | **What's new** | The full list; the app version | What's new |
 

@@ -136,7 +136,7 @@ Sub-pages: **Setup · Help & data · What's new**.
 | 2 | **Calibrate buttons** | State per layout: "2-skill: calibrated" / "not calibrated" (warning). One button per layout + shop |
 | 3 | **Minimap icons** | Samples per icon type, Clear (confirmed) |
 | 4 | **Scenery & minimap sync** | Sync now (primary), Reset offsets / Clear scenery / Forget stuck places (confirmed) |
-| 5 | **Presets & positions** | Save preset, positions by hand, Reset all positions (confirmed) |
+| 5 | **Presets & positions** | Save preset, Reset all positions (confirmed). Positions by hand removed in v37.45 (owner, 2026-11-15) |
 | 6 | **Screen** | Today's screen-size facts, behind the card's "?" |
 | 7 | **First-run guide** | "Open the first-run guide" |
 
