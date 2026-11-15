@@ -37,7 +37,7 @@ Sora Semibold for titles; Inter for advice, labels and buttons; JetBrains Mono f
 
 - Clear space: one bar width (a quarter of the symbol) on every side.
 - Smallest symbol: 16 px. Below 96 px wide, use the symbol alone.
-- Teal is for the focus point only: the diamond in the symbol and in the Y.
+- Teal is for the focus point only: the diamond in the symbol and in the Y. **Inside the app (owner, 2026-11-15)** the user chooses a colour theme (Signal = this teal, the default; Arcane; Ember: `app/Theme.kt`), and the theme's colour is also the accent for what is selected or on, and the colour of the diamond in the in-app symbol. Outside the app (launcher icon, lockups, documents) the brand colours above stay as they are.
 - Do not turn, stretch, outline or recolour the halves, or add gradients, glows or shadows.
 
 ## Not done yet

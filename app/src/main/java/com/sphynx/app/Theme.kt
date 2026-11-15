@@ -1,31 +1,90 @@
 package com.sphynx.app
 
-// THE APP'S COLOURS (Phase 4; docs/PHASE_3_DESIGN_TOKENS.md, approved by the owner 2026-11-15): one palette,
-// from the brand (docs/brand). Pages use these names, never their own hex values. ThemeTest checks the
-// contrast of every pair that carries text. Teal (the brand's Signal) is for the focus point of the symbol
-// only, so it is not here. Pure Kotlin: unit tested.
+// THE APP'S COLOURS (Phase 4). Three themes the user chooses between in Settings (owner, 2026-11-15: the grey
+// theme "looks and feels dead" - every theme now has an accent colour for what is selected or on; the default
+// is A, Signal):
+//   A  Signal  the brand's teal on near-black
+//   B  Arcane  violet with cyan on a blue-black ground
+//   C  Ember   amber on a warm dark ground
+// Pages use the names below, never their own hex values; the names read from the theme in use. ThemeTest checks
+// the contrast of every pair that carries text, in all three themes. Pure Kotlin: unit tested.
 object Theme {
-    // ground and text
-    const val BG = "#0B0D10"          // Obsidian: the app ground
-    const val SURF = "#1B1F26"        // Graphite: cards, bars
-    const val SURF2 = "#252B35"       // fields, secondary buttons, rows inside cards
-    const val STROKE = "#3A414D"      // Slate: dividers and card borders (decorative)
-    const val OUTLINE = "#737B88"     // outlines of fields and controls (at least 3:1)
-    const val STRONG = "#F4F6F8"      // Ice: headings, values
-    const val TEXT = "#C9CED6"        // Titanium: body text
-    const val MUTED = "#9AA3AF"       // Mist: descriptions, metadata
 
-    // actions
-    const val PRIMARY = "#F4F6F8"     // the main button of a card, the selected tab: Ice ...
-    const val ON_PRIMARY = "#0B0D10"  // ... with Obsidian text
+    class Palette(
+        val key: String, val label: String,
+        val bg: String,            // the app ground
+        val surf: String,          // cards, bars
+        val surf2: String,         // fields, secondary buttons, rows inside cards
+        val stroke: String,        // dividers and card borders (decorative)
+        val outline: String,       // outlines of fields and controls (at least 3:1)
+        val strong: String,        // headings, values
+        val text: String,          // body text
+        val muted: String,         // descriptions, metadata
+        val accent: String,        // the theme's colour as text / icon: selected, on, links
+        val primary: String,       // the main button of a card ...
+        val onPrimary: String,     // ... and its text
+        val tile: String,          // the accent's dark tint: behind what is selected
+        val track: String,         // a switch that is on
+        val banner: String,        // the state banner on Play (gradient start) ...
+        val bannerEnd: String,     // ... its end ...
+        val onBanner: String       // ... and its text
+    )
+
+    val SIGNAL = Palette("signal", "Signal (teal)",
+        bg = "#0B0D10", surf = "#1B1F26", surf2 = "#252B35", stroke = "#3A414D", outline = "#737B88",
+        strong = "#F4F6F8", text = "#C9CED6", muted = "#9AA3AF",
+        accent = "#35C2B0", primary = "#35C2B0", onPrimary = "#0B0D10", tile = "#12332F", track = "#35C2B0",
+        banner = "#0F7F73", bannerEnd = "#14433F", onBanner = "#FFFFFF")
+
+    val ARCANE = Palette("arcane", "Arcane (violet)",
+        bg = "#0A0B14", surf = "#1A1C2C", surf2 = "#262A42", stroke = "#343857", outline = "#8188AD",
+        strong = "#F4F6F8", text = "#CBCFE0", muted = "#A3A9C4",
+        accent = "#A99BFF", primary = "#4CC9F0", onPrimary = "#0A0B14", tile = "#2A2470", track = "#7C5CFF",
+        banner = "#5B3FE0", bannerEnd = "#2A2470", onBanner = "#FFFFFF")
+
+    val EMBER = Palette("ember", "Ember (amber)",
+        bg = "#100C0A", surf = "#231C18", surf2 = "#33291F", stroke = "#4A3B31", outline = "#8F8072",
+        strong = "#F8F4EE", text = "#D6CEC6", muted = "#ADA298",
+        accent = "#F4A93B", primary = "#F4A93B", onPrimary = "#100C0A", tile = "#4A2A12", track = "#D9822B",
+        banner = "#A34A18", bannerEnd = "#5A2E16", onBanner = "#FFFFFF")
+
+    val ALL: List<Palette> = listOf(SIGNAL, ARCANE, EMBER)
+
+    /** The saved choice, or the default (Signal) for anything unknown. */
+    fun byKey(key: String?): Palette = ALL.firstOrNull { it.key == key } ?: SIGNAL
+
+    @Volatile var current: Palette = SIGNAL
+        private set
+
+    fun use(key: String?) { current = byKey(key) }
+
+    // ---- the names the pages use ----
+    val BG: String get() = current.bg
+    val SURF: String get() = current.surf
+    val SURF2: String get() = current.surf2
+    val STROKE: String get() = current.stroke
+    val OUTLINE: String get() = current.outline
+    val STRONG: String get() = current.strong
+    val TEXT: String get() = current.text
+    val MUTED: String get() = current.muted
+    val ACCENT: String get() = current.accent
+    val PRIMARY: String get() = current.primary
+    val ON_PRIMARY: String get() = current.onPrimary
+    val TILE: String get() = current.tile
+    val TRACK: String get() = current.track
+    val BANNER: String get() = current.banner
+    val BANNER_END: String get() = current.bannerEnd
+    val ON_BANNER: String get() = current.onBanner
+    /** The logo's focus point (the diamond): the theme's colour. */
+    val LOGO: String get() = current.primary
+
+    // the same in every theme
     const val STOP = "#C8303F"        // STOP, with white text
     const val ON_STOP = "#FFFFFF"
-
-    // meaning (always with a word or an icon too)
-    const val GREEN = "#3DD68C"       // success: ready, granted, on
+    const val ON_FILL = "#0B0D10"     // dark text on the green / amber / red fills
+    const val GREEN = "#3DD68C"       // success: ready, granted, on (always with a word or an icon too)
     const val GOLD = "#F4C25B"        // warning: needs attention, partial
     const val RED = "#FF6B78"         // danger: error, missing, destructive
-    const val ACCENT = "#7FA2FF"      // info: links, neutral highlights
     const val EXPERIMENTAL = "#C3A6FF"
 
     // ---- contrast (WCAG 2.x) ----

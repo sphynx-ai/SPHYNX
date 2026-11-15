@@ -496,7 +496,7 @@ class OverlayManager(private val ctx: Context) {
         if (lastPowerOn != on) {
             lastPowerOn = on
             power?.background = PanelIcons.on(
-                PanelIcons.circle(col(if (on) PanelIcons.SIGNAL else PanelIcons.GRAPHITE), col(if (on) PanelIcons.SIGNAL else PanelIcons.SLATE), dp(1)),
+                PanelIcons.circle(col(if (on) PanelIcons.accentHex else PanelIcons.GRAPHITE), col(if (on) PanelIcons.accentHex else PanelIcons.SLATE), dp(1)),
                 PanelIcons.Kind.POWER, col(if (on) PanelIcons.OBSIDIAN else PanelIcons.TITANIUM), dp(6))
         }
         setBtn(stopBtn, PanelButtons.stop(), cmp)

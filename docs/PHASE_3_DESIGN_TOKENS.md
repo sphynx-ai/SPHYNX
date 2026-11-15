@@ -9,6 +9,8 @@
 
 ## 1. Colour
 
+> **Update, owner 2026-11-15 (v37.40):** the grey-only palette below felt lifeless on the phone. The app now ships three themes the user chooses in Settings (Signal, the default, plus Arcane and Ember), each with an accent colour for selected and on states, main buttons and the logo's diamond. The values and their contrast tests are in `app/Theme.kt` and `ThemeTest`; the structure of the tokens below (grounds, text levels, status colours, STOP) is unchanged.
+
 One palette for the main app **and** the floating panel, taken from the brand. The brand rule stays: **teal (Signal) is only for the focus point** (the diamond in the symbol and the Y), so it is never a button or selection colour.
 
 ### Ground and text
