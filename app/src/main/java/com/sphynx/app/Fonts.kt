@@ -26,8 +26,8 @@ object Fonts {
         val which = choice(Cfg.headFont)
         cached?.let { if (cachedFor == which) return it }
         val tf = try {
-            if (which == SILKSCREEN) ctx.resources.getFont(R.font.silkscreen)
-            else Typeface.Builder(ctx.resources, R.font.pixelify_sans).setFontVariationSettings("'wght' 600").build()
+            // (res/font/pixelify.xml sets the semi-bold weight of the variable file)
+            ctx.resources.getFont(if (which == SILKSCREEN) R.font.silkscreen else R.font.pixelify)
         } catch (e: Throwable) { null } ?: Typeface.DEFAULT_BOLD
         cached = tf; cachedFor = which
         return tf
