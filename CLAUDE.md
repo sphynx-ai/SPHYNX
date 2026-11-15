@@ -222,7 +222,8 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
   description in a bubble next to it, a tap elsewhere closes it (`app/HelpHold.kt`, `MainActivity.attachHelp`). A
   static `text(...)` line written right after a control is its description automatically; pass `describe = false`
   for information that must stay visible (field labels, the app version), and wrap card notes that explain a
-  button in `asDescription(...)`.
+  button in `asDescription(...)`. A line the page keeps rewriting (a status) stays on the page while short; once it is
+  long (`HelpHold.isLongInfo`: over 140 characters or 3+ lines) it goes behind a "?" too (owner, 2026-11-15).
 - Every feature switch is OFF by default on a new install; safety guards keep their safe position (Dry run ON).
   The GPU switch is ON by default (a speed setting, not a feature).
 - No learning at all in Solo practice vs Computer (calibration only): no recorded moments, benchmark, training

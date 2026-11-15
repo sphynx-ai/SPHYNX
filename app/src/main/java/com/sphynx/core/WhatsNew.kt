@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.IMPROVED, "Long information texts go behind the \"?\" too",
+            "From your screenshots: the long texts the app keeps updating (the practice moments and readiness test on " +
+                "Home, the match timeline and jungle facts on Player, and others) were still on the page. Any such text " +
+                "longer than 140 letters or 3 lines now sits behind the \"?\" of the row above it; the bubble shows " +
+                "what it says at that moment. Short status lines (AI off, fps) stay on the page.",
+            pr = 26, needsDeviceCheck = true, version = "37.36"),
         Entry("2026-11-14", Kind.IMPROVED, "Development plan: first screens of the new design (Play, Hero & match)",
             "Phase 3: how the Play and Hero & match sections will look, card by card (docs/PHASE_3_SCREEN_SPECS.md), " +
                 "with mockups of Play, Hero and Play style for your review: one card that shows what is running, a " +

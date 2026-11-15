@@ -40,4 +40,15 @@ class HelpHoldTest {
         assertTrue(HelpHold.spokenLabel(listOf(long)).endsWith("…"))
         assertTrue(HelpHold.spokenLabel(listOf(long)).length <= 6 + 80)
     }
+
+    // owner, 2026-11-15: the long live lines (practice stats, the match timeline) go behind a "?" too
+    @Test fun longInformationLinesGoBehindTheHelp() {
+        assertTrue(HelpHold.isLongInfo("x".repeat(HelpHold.LONG_CHARS + 1)))
+        assertTrue(HelpHold.isLongInfo("Practice moments: 0\nReadiness test: not run yet\nArbiter: no matches"))
+        assertFalse(HelpHold.isLongInfo("Screen: not captured · 0 fps · frame→touch 0 ms"))
+        assertFalse(HelpHold.isLongInfo("Match: Standard (detected by itself) · the power button on the floating icon turns the AI on or off in game"))
+        assertFalse(HelpHold.isLongInfo("two\nlines"))
+        assertFalse(HelpHold.isLongInfo(""))
+        assertFalse(HelpHold.isLongInfo(null))
+    }
 }
