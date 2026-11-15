@@ -1364,14 +1364,11 @@ class MainActivity : Activity() {
         }
 
         title("BATTLE SPELL")
-        val spells = listOf("auto") + SpellDb.names
-        val spellBtn = btn("") {
-            val i = spells.indexOf(Cfg.mySpell).coerceAtLeast(0)
-            Cfg.mySpell = spells[(i + 1) % spells.size]
-        }
+        // one tap picks it (screen specs 2.1, card 2): Detect, or one of the battle spells
+        segmented(listOf("auto" to "Detect") + SpellDb.names.map { it to it },
+            if (Cfg.mySpell in SpellDb.names) Cfg.mySpell else "auto", perRow = 3) { Cfg.mySpell = it }
         val spellInfo = text("", 13f)
         upd {
-            spellBtn.text = "My battle spell: ${if (Cfg.mySpell == "auto") "detect it" else Cfg.mySpell}  (tap to change)"
             spellInfo.text = "Using: ${GameStateTracker.spellDisplay() ?: GameStateTracker.spell() ?: "not known yet"} (${GameStateTracker.spellSource()}). " +
                 "Spells whose icon is learned: ${IconMemory.spellCount()}"
         }
@@ -1403,6 +1400,30 @@ class MainActivity : Activity() {
         upd { tuneInfo.text = "Learned by itself: base to lane ${Cfg.laneTravelSec} s, enemy tower range ${Cfg.towerRangePct}% of the minimap" }
 
         title("ENEMY TEAM")
+        // five slots: a portrait once a hero is read, "?" until then (screen specs 2.1, card 4)
+        val slots = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        content.addView(slots, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })
+        var slotsFor: List<String>? = null
+        upd {
+            val team = GameStateTracker.enemyTeam.take(5)
+            if (team == slotsFor) return@upd
+            slotsFor = team
+            slots.removeAllViews()
+            for (i in 0 until 5) {
+                val name = team.getOrNull(i)
+                val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
+                val px = dp(48)
+                col.addView(com.sphynx.app.IconCache.view(this, name ?: "?", true, px).apply {
+                    contentDescription = name ?: "Enemy ${i + 1}: not read yet"
+                }, LinearLayout.LayoutParams(px, px))
+                col.addView(TextView(this).apply {
+                    text = name ?: "?"; textSize = 13f; gravity = Gravity.CENTER; maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setTextColor(c(if (name != null) T.TEXT else T.MUTED))
+                })
+                slots.addView(col, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            }
+        }
         val enemyInfo = text("", 13f)
         upd { enemyInfo.text = com.sphynx.game.EnemyIntel.text() }
 
