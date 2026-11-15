@@ -348,7 +348,7 @@ class MainActivity : Activity() {
             setPadding(0, dp(6), 0, dp(2))
         }
         content.addView(v)
-        if (HelpHold.isDescription(t, bold, describe)) asDescription(v)
+        if (HelpHold.isDescription(t, bold, describe)) asDescription(v) else if (describe && !bold) watchLong(v)
         return v
     }
 
@@ -364,13 +364,40 @@ class MainActivity : Activity() {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, n: Int) {}
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, n: Int) {}
             override fun afterTextChanged(s: android.text.Editable?) {
-                if (v in descriptions && !HelpHold.staysDescription(atCreation, s ?: "")) {
+                // a rewritten line is live information: it comes back on the page unless it is long
+                if (v in descriptions && !HelpHold.staysDescription(atCreation, s ?: "") && !HelpHold.isLongInfo(s)) {
                     descriptions.remove(v)
                     helpOf.remove(v)?.let { g -> g.lines.remove(v); refreshHelp(g) }
                     v.visibility = View.VISIBLE
                 }
             }
         })
+    }
+
+    // a live line (status, counts, timeline): on the page while short; once long, behind the "?" of the row above
+    // it (owner, 2026-11-15). The bubble shows its text at the moment of the tap, so it stays current.
+    private val noAnchor = HashSet<View>()
+    private fun watchLong(v: TextView) {
+        fun check() {
+            if (v in descriptions || v in noAnchor || !HelpHold.isLongInfo(v.text)) return
+            descriptions.add(v)
+            v.visibility = View.GONE
+            v.post {
+                if (v in descriptions && helpOf[v] == null) {
+                    attachHelp(v)
+                    if (v !in descriptions) noAnchor.add(v)     // nothing above it to hang the "?" on: it stays a line
+                }
+            }
+        }
+        v.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, n: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, n: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                check()
+                helpOf[v]?.let { refreshHelp(it) }
+            }
+        })
+        v.post { check() }
     }
 
     // puts description d behind the "?" of the control placed before it (several lines -> one bubble)
@@ -605,6 +632,7 @@ class MainActivity : Activity() {
     private fun cardNote(cd: LinearLayout, t: String = ""): TextView = TextView(this).apply {
         text = t; textSize = 12f; setTextColor(c(T.MUTED)); setLineSpacing(0f, 1.1f); setPadding(0, dp(4), 0, dp(2))
         cd.addView(this)
+        watchLong(this)
     }
 
     private fun go(k: String) {
@@ -618,6 +646,7 @@ class MainActivity : Activity() {
         updaters.clear()
         descriptions.clear()
         helpOf.clear()
+        noAnchor.clear()
         closeBubble()
         content.removeAllViews()
         page = p
