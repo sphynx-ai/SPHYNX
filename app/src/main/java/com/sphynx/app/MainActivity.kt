@@ -995,18 +995,6 @@ class MainActivity : Activity() {
             (if (e.needsDeviceCheck) " · not yet checked on a phone" else ""))
     }
 
-    private fun whatsNewPreview() {
-        val cd = card()
-        cardHeader(cd, "What's new", "v${com.sphynx.core.AppVersion.VERSION}")
-        for (e in com.sphynx.core.WhatsNew.latest(3)) whatsNewRow(cd, e, false)
-        val more = Button(this).apply {
-            text = "See all changes"; isAllCaps = false; textSize = 13f; stateListAnimator = null
-            background = ripple(T.SURF2, 12, T.STROKE); setTextColor(c(T.TEXT))
-            setOnClickListener { go("news") }
-        }
-        cd.addView(more, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(40)).apply { topMargin = dp(8) })
-    }
-
     // PRACTICE BENCHMARK: how the AI does against Computer, match by match
     private fun practicePage() {
         val rm = com.sphynx.research.ResearchMode
@@ -1025,6 +1013,27 @@ class MainActivity : Activity() {
         btn("Clear the scorecards") {
             AlertDialog.Builder(this).setTitle("Delete all practice scorecards?")
                 .setPositiveButton("Delete") { _, _ -> rm.clearBench(); toast("Deleted") }
+                .setNegativeButton("Cancel", null).show()
+        }
+        // the research tests, moved here from Play (Phase 3 screen specs, Play: "The research test buttons ... move to
+        // AI & models > Practice"; backlog item 11)
+        title("RESEARCH TESTS")
+        val resInfo = text("", 12f, color = T.MUTED)
+        upd { resInfo.text = com.sphynx.research.ResearchMode.momentsText() + "\n" + com.sphynx.research.ReadinessRun.status() +
+            "\n" + com.sphynx.research.ResearchMode.abText() }
+        btn("Test the small model on the practice moments") {
+            val rr = com.sphynx.research.ReadinessRun
+            if (rr.running) { rr.stop(); toast("Stopping the test") }
+            else rr.start { msg -> runOnUiThread { toast(msg.take(150)) } }
+        }
+        btn("Clear the arbiter vs normal comparison") {
+            android.app.AlertDialog.Builder(this).setMessage("Clear the arbiter vs normal comparison?")
+                .setPositiveButton("Clear") { _, _ -> com.sphynx.research.ResearchMode.clearAb(); toast("Cleared") }
+                .setNegativeButton("Cancel", null).show()
+        }
+        btn("Delete the recorded practice moments") {
+            android.app.AlertDialog.Builder(this).setMessage("Delete all recorded practice moments?")
+                .setPositiveButton("Delete") { _, _ -> com.sphynx.research.ResearchMode.clearMoments(); toast("Deleted") }
                 .setNegativeButton("Cancel", null).show()
         }
     }
@@ -1175,7 +1184,6 @@ class MainActivity : Activity() {
         val installed = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { null }
         text("Sphynx v${com.sphynx.core.AppVersion.VERSION}" +
             (if (installed != null && installed != com.sphynx.core.AppVersion.VERSION) " · build $installed" else ""), 12f, color = T.MUTED, describe = false)
-        whatsNewPreview()
         val c1 = card()
         // the state banner, in the theme's colour
         c1.background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(c(T.BANNER), c(T.BANNER_END))).apply {
@@ -1218,25 +1226,6 @@ class MainActivity : Activity() {
         runningNowCard()
         readyCheckCard()
 
-        title("PRACTICE RESEARCH")
-        val resInfo = text("", 12f, color = T.MUTED)
-        upd { resInfo.text = com.sphynx.research.ResearchMode.momentsText() + "\n" + com.sphynx.research.ReadinessRun.status() +
-            "\n" + com.sphynx.research.ResearchMode.abText() }
-        btn("Test the small model on the practice moments") {
-            val rr = com.sphynx.research.ReadinessRun
-            if (rr.running) { rr.stop(); toast("Stopping the test") }
-            else rr.start { msg -> runOnUiThread { toast(msg.take(150)) } }
-        }
-        btn("Clear the arbiter vs normal comparison") {
-            android.app.AlertDialog.Builder(this).setMessage("Clear the arbiter vs normal comparison?")
-                .setPositiveButton("Clear") { _, _ -> com.sphynx.research.ResearchMode.clearAb(); toast("Cleared") }
-                .setNegativeButton("Cancel", null).show()
-        }
-        btn("Delete the recorded practice moments") {
-            android.app.AlertDialog.Builder(this).setMessage("Delete all recorded practice moments?")
-                .setPositiveButton("Delete") { _, _ -> com.sphynx.research.ResearchMode.clearMoments(); toast("Deleted") }
-                .setNegativeButton("Cancel", null).show()
-        }
         title("WHAT THE AI SEES")
         val preview = PreviewView(this)
         content.addView(preview, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(190)))
