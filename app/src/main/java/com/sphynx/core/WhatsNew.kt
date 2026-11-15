@@ -24,13 +24,19 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.IMPROVED, "Hero: battle spell in one tap, enemy team as five portraits",
+            "On Hero & match > Hero, the battle spell is no longer a button you tap through one spell at a time: all of " +
+                "them are shown as buttons (Detect and the twelve spells) and one tap picks yours. The enemy team shows " +
+                "five slots, each with the hero's portrait and name once it is read on the loading screen or the " +
+                "scoreboard, and a question mark until then.",
+            pr = 40, needsDeviceCheck = true, version = "37.50"),
         Entry("2026-11-15", Kind.IMPROVED, "Player is split into Hero and Play style; lane and Team / Solo are one-tap choices",
             "Hero & match now has four pages: Hero, Play style, Draft and Build. Hero holds your hero, player name, battle " +
                 "spell, lane, the enemy team and what the app knows about the hero (game knowledge, how to play it, its " +
                 "skills). Play style holds how the AI plays it: skill combos, behaviour, jungle, turtle and lord, level, " +
                 "items, regen and recall, Coach and Data & resets. The lane is now a choice of six buttons (Auto, EXP, " +
                 "Gold, Mid, Roam, Jungle) instead of six switches, and Draft's ranked Team / Solo is a two-button choice.",
-            pr = 39, needsDeviceCheck = true, version = "37.49"),
+            pr = 39, version = "37.49"),
         Entry("2026-11-15", Kind.NEW, "Play: Running now and Ready check",
             "Play now has one place that shows and switches what runs: the Running now card, with a switch for the " +
                 "Player, the Drafter, the Builder and Learning, each with its state in words (On, On · Dry run, Off), and " +
