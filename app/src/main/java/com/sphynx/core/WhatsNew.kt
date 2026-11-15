@@ -24,18 +24,24 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.IMPROVED, "Help for a group of switches sits on its header; even combo buttons",
+            "The \"?\" that explains a group of switches (Theme, Heading font, Lane, Draft Team / Solo and the other " +
+                "one-of-several choices) now sits at the end of the group's header instead of next to its last switch. " +
+                "On Player, the six combo buttons (+ S1 ... + Spell) are now two rows of three equal buttons, each label " +
+                "on one line.",
+            pr = 33, needsDeviceCheck = true, version = "37.43"),
         Entry("2026-11-15", Kind.IMPROVED, "Buttons that delete or reset ask first, and are red",
             "Every button that deletes, clears, forgets, resets or removes something now has red text and a red outline, " +
                 "and asks before it acts. Eleven of them used to act at once: Clear manual combo, Forget the level badges, " +
                 "Forget what Coach learned, Reset learned aggression, Clear the comparison, Remove a model file, Clear the " +
                 "match log, Clear the icon samples, Reset the sync offsets, Clear the map scenery and Reset all positions.",
-            pr = 32, needsDeviceCheck = true, version = "37.42"),
+            pr = 32, version = "37.42"),
         Entry("2026-11-15", Kind.FIXED, "Switches line up and buttons are the same width again",
             "A control with a \"?\" used to give up room for it, so its switch sat further left than the others and its " +
                 "button was narrower. Now every switch sits at the right edge, with the \"?\" between its name and the " +
                 "switch, and a button keeps its full width with the \"?\" inside its right end. Tapping a switch's name " +
                 "still turns it on or off.",
-            pr = 31, needsDeviceCheck = true, version = "37.41"),
+            pr = 31, version = "37.41"),
         Entry("2026-11-15", Kind.NEW, "Three colour themes to choose from, with icons and a banner",
             "You said the grey look felt dead. The app now has three themes, chosen on Settings > Setup > Theme: " +
                 "Signal (the brand's teal, the default), Arcane (violet with cyan) and Ember (amber). Each one gives a " +
@@ -43,7 +49,7 @@ object WhatsNew {
                 "the theme's colour too, in the app and on the floating panel. The bottom bar has a drawn icon for each " +
                 "section, and the top card on Play is a banner in the theme's colour. Text sizes and the red STOP are " +
                 "the same in every theme. The app icon on your phone's home screen stays teal for now.",
-            pr = 30, needsDeviceCheck = true, version = "37.40"),
+            pr = 30, version = "37.40"),
         Entry("2026-11-15", Kind.IMPROVED, "Five sections in a bar at the bottom instead of 14 tabs",
             "The 14 tabs you had to scroll sideways are now five sections, always visible at the bottom: Play, " +
                 "Hero & match, Knowledge, AI & models and Settings. A section with several pages shows them in a row " +
