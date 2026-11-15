@@ -773,6 +773,7 @@ class MainActivity : Activity() {
             "home" -> homePage()
             "news" -> newsPage()
             "player" -> playerPage()
+            "style" -> stylePage()
             "draft" -> draftPage()
             "build" -> buildPage()
             "meta" -> metaPage()
@@ -887,6 +888,52 @@ class MainActivity : Activity() {
             v.text = "$name: ${if (on) "running" else "off"} · turn it on or off on Play › Running now"
             v.setTextColor(c(if (on) T.ACCENT else T.MUTED))
         }
+    }
+
+    // A segmented control (design tokens, components): one of a few choices, the selected one filled. Long lists
+    // wrap into rows of perRow equal buttons. A description written after it explains the whole group, so its "?"
+    // goes on the section header (like a group of switches).
+    private fun segmented(options: List<Pair<String, String>>, current: String, perRow: Int = options.size,
+                          onPick: (String) -> Unit): LinearLayout {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = shape(T.SURF2, 14, T.OUTLINE)
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+        }
+        val buttons = ArrayList<Pair<String, TextView>>()
+        var selected = current
+        fun paint() {
+            for ((k, b) in buttons) {
+                val on = k == selected
+                b.background = if (on) shape(T.PRIMARY, 10) else null
+                b.setTextColor(c(if (on) T.ON_PRIMARY else T.TEXT))
+                b.setTypeface(Typeface.create(b.typeface, if (on) 700 else 500, false))
+                b.isSelected = on
+            }
+        }
+        for (rowOpts in options.chunked(perRow)) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            for ((k, label) in rowOpts) {
+                val b = TextView(this).apply {
+                    text = label; textSize = 15f; gravity = Gravity.CENTER; maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    contentDescription = label
+                    isClickable = true
+                    setOnClickListener { if (selected != k) { selected = k; paint(); onPick(k) } }
+                }
+                buttons.add(k to b)
+                row.addView(b, LinearLayout.LayoutParams(0, dp(44), 1f))
+            }
+            // a short last row keeps the same button width
+            repeat(perRow - rowOpts.size) { row.addView(View(this), LinearLayout.LayoutParams(0, dp(44), 1f)) }
+            box.addView(row)
+        }
+        paint()
+        content.addView(box, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(6); bottomMargin = dp(4)
+        })
+        groupSwitches.add(box)
+        return box
     }
 
     // Several switches where exactly one is on (e.g. the lanes)
@@ -1329,12 +1376,11 @@ class MainActivity : Activity() {
                 "Spells whose icon is learned: ${IconMemory.spellCount()}"
         }
 
-        title("LANE (only one can be on)")
-        radioSwitches(listOf(
-            "auto" to "Auto (Retribution = jungle, else from the hero's role)",
-            "exp" to "EXP lane (top)", "gold" to "Gold lane (bottom)", "mid" to "Mid lane",
-            "roam" to "Roam (stay with the team)", "jungle" to "Jungle"
-        ), Cfg.lane) { Cfg.lane = it }
+        title("LANE")
+        segmented(listOf("auto" to "Auto", "exp" to "EXP", "gold" to "Gold", "mid" to "Mid", "roam" to "Roam", "jungle" to "Jungle"),
+            Cfg.lane, perRow = 3) { Cfg.lane = it }
+        text("Auto: Retribution = jungle, else the lane comes from the hero's role. EXP is the top lane, Gold the bottom " +
+            "lane; Roam stays with the team.")
         val jungleInfo = text("", 13f)
         upd {
             val st = GameStateTracker.state
@@ -1360,6 +1406,89 @@ class MainActivity : Activity() {
         val enemyInfo = text("", 13f)
         upd { enemyInfo.text = com.sphynx.game.EnemyIntel.text() }
 
+        title("Game knowledge")
+        val know = text("", 12f)
+        upd {
+            val st = GameStateTracker.state
+            val hero = GameStateTracker.ownHero()
+            know.text = "Your hero ($hero) in the wiki's laning lists: ${com.sphynx.game.WikiLanes.describe(hero)}\n" +
+                "Timeline: " + com.sphynx.game.MatchEvents.ALL.joinToString("; ") { "%d:%02d %s".format(it.sec / 60, it.sec % 60, it.what) } + "\n" +
+                "Role tip now (${st.lane.label}): " + com.sphynx.game.RoleTips.of(st.lane, st.matchSec.coerceAtLeast(0), st.ownHero) + "\n" +
+                (st.spell?.let { sp -> "Battle spell $sp: ${com.sphynx.game.SpellInfo.effect[sp] ?: "-"} (cooldown ${com.sphynx.game.SpellInfo.cooldown[sp]?.toInt() ?: "?"} s)\n" } ?: "") +
+                "Jungle:\n" + com.sphynx.game.JungleDb.describe()
+        }
+
+        // ---- how to play the hero you are on (worked out from its skills + the online guide, and used in play) ----
+        title("How to play your hero")
+        val pc = card()
+        val pHead = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        pc.addView(pHead)
+        val pPlan = cardText(pc, 13f)
+        val pTips = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        pc.addView(pTips)
+        val pSrc = cardNote(pc)
+        var pKey = ""
+        upd {
+            val h = GameStateTracker.ownHero()
+            val pb = com.sphynx.game.HeroPlaybook.of(h)
+            val key = "$h|${pb.combo}|${pb.tips.size}|${pb.source}"
+            if (key == pKey) return@upd
+            pKey = key
+            pHead.removeAllViews()
+            pHead.addView(com.sphynx.app.IconCache.view(this, h ?: "?", true, dp(48)), LinearLayout.LayoutParams(dp(48), dp(48)))
+            val nm = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
+            nm.addView(TextView(this).apply { text = h ?: "No hero yet"; textSize = 17f; setTextColor(Color.WHITE); setTypeface(typeface, Typeface.BOLD) })
+            nm.addView(chip(pb.style, if (pb.learned) T.ACCENT else T.MUTED))
+            pHead.addView(nm, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            pPlan.text = "Combo: " + com.sphynx.game.ComboBook.text(h).first +
+                "\nOpener ${pb.opener ?: "-"} · CC ${pb.cc ?: "-"} · finisher ${pb.finisher ?: "-"}" +
+                "\nEscape ${pb.escape ?: "-"}${if (pb.keepEscape) " (kept)" else ""} · waves ${pb.waveClear ?: "-"}" +
+                (pb.sustain?.let { " · heal/shield $it" } ?: "") + (pb.buff?.let { " · buff $it" } ?: "")
+            pTips.removeAllViews()
+            for (t in pb.tips) pTips.addView(TextView(this).apply {
+                text = "•  $t"; textSize = 13f; setTextColor(c(T.TEXT)); setLineSpacing(0f, 1.1f); setPadding(0, dp(3), 0, dp(1))
+            })
+            pSrc.text = if (pb.learned) "Used in play: combo, escape, wave clear, ultimate timing. From ${pb.source}."
+                else "Only role defaults so far: tap Learn this hero to get its real skills and guide."
+        }
+        btn("Learn this hero (skills + online guide)") {
+            val h = GameStateTracker.ownHero()
+            when {
+                h == null -> toast("Pick a hero first")
+                !com.sphynx.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage/Input folder")
+                else -> {
+                    toast("Learning $h (skills, then the guide)…")
+                    com.sphynx.game.SkillBook.fetch(h) { m1 ->
+                        com.sphynx.ai.MetaAdvisor.updateHero(h) { m2 -> runOnUiThread { toast("$h learned. " + m2.take(80)) } }
+                        runOnUiThread { toast(m1.take(80)) }
+                    }
+                }
+            }
+        }
+
+        title("Skills & passive")
+        text("What each skill does (range, crowd control, dash, cast mode) is learned online. Skills that miss or fail are re-tried and re-aimed.", 13f)
+        val skInfo = text("", 13f)
+        upd {
+            val h = GameStateTracker.ownHero()
+            skInfo.text = (if (h == null) "Pick a hero first." else com.sphynx.game.SkillBook.describe(h)) +
+                "\nLast cast check: ${ActionExecutor.lastFeedback}" +
+                "\nAll heroes: ${com.sphynx.game.SkillBook.learnAllProgress.ifEmpty { "-" }}"
+        }
+        btn("Learn this hero's skills online") {
+            val h = GameStateTracker.ownHero()
+            if (h == null) toast("Pick a hero first") else com.sphynx.game.SkillBook.fetch(h) { m -> runOnUiThread { toast(m.take(120)) } }
+        }
+        btn("Learn all heroes' skills (background)") {
+            com.sphynx.game.SkillBook.learnAll { m -> runOnUiThread { toast(m) } }
+            toast("Started")
+        }
+        btn("Stop learning all heroes") { com.sphynx.game.SkillBook.stopLearnAll() }
+    }
+
+    // Hero & match › Play style (Phase 3 screen specs 2.2, backlog item 4): how the AI plays your hero,
+    // split off the old Player page, which keeps the hero itself (now "Hero")
+    private fun stylePage() {
         title("SKILL COMBOS (MANUAL OR BUILT-IN)")
         text("Uses your Manual Combo if set for the selected hero; if Manual Combo is empty, uses the Built-In Optimized Multi-Combo Library (online combo overrides are disabled).", 12f, color = "#9AA0A6")
         switch("Automatic situational combo selection (Burst / Chase / Poke / Pre-Lv4 / Retreat)", Cfg.autoSituationalCombo) {
@@ -1563,84 +1692,6 @@ class MainActivity : Activity() {
                 "\nLearned: " + com.sphynx.learning.Coach.summary(GameStateTracker.ownHero())
         }
 
-        title("Game knowledge")
-        val know = text("", 12f)
-        upd {
-            val st = GameStateTracker.state
-            val hero = GameStateTracker.ownHero()
-            know.text = "Your hero ($hero) in the wiki's laning lists: ${com.sphynx.game.WikiLanes.describe(hero)}\n" +
-                "Timeline: " + com.sphynx.game.MatchEvents.ALL.joinToString("; ") { "%d:%02d %s".format(it.sec / 60, it.sec % 60, it.what) } + "\n" +
-                "Role tip now (${st.lane.label}): " + com.sphynx.game.RoleTips.of(st.lane, st.matchSec.coerceAtLeast(0), st.ownHero) + "\n" +
-                (st.spell?.let { sp -> "Battle spell $sp: ${com.sphynx.game.SpellInfo.effect[sp] ?: "-"} (cooldown ${com.sphynx.game.SpellInfo.cooldown[sp]?.toInt() ?: "?"} s)\n" } ?: "") +
-                "Jungle:\n" + com.sphynx.game.JungleDb.describe()
-        }
-
-        // ---- how to play the hero you are on (worked out from its skills + the online guide, and used in play) ----
-        title("How to play your hero")
-        val pc = card()
-        val pHead = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        pc.addView(pHead)
-        val pPlan = cardText(pc, 13f)
-        val pTips = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        pc.addView(pTips)
-        val pSrc = cardNote(pc)
-        var pKey = ""
-        upd {
-            val h = GameStateTracker.ownHero()
-            val pb = com.sphynx.game.HeroPlaybook.of(h)
-            val key = "$h|${pb.combo}|${pb.tips.size}|${pb.source}"
-            if (key == pKey) return@upd
-            pKey = key
-            pHead.removeAllViews()
-            pHead.addView(com.sphynx.app.IconCache.view(this, h ?: "?", true, dp(48)), LinearLayout.LayoutParams(dp(48), dp(48)))
-            val nm = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
-            nm.addView(TextView(this).apply { text = h ?: "No hero yet"; textSize = 17f; setTextColor(Color.WHITE); setTypeface(typeface, Typeface.BOLD) })
-            nm.addView(chip(pb.style, if (pb.learned) T.ACCENT else T.MUTED))
-            pHead.addView(nm, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            pPlan.text = "Combo: " + com.sphynx.game.ComboBook.text(h).first +
-                "\nOpener ${pb.opener ?: "-"} · CC ${pb.cc ?: "-"} · finisher ${pb.finisher ?: "-"}" +
-                "\nEscape ${pb.escape ?: "-"}${if (pb.keepEscape) " (kept)" else ""} · waves ${pb.waveClear ?: "-"}" +
-                (pb.sustain?.let { " · heal/shield $it" } ?: "") + (pb.buff?.let { " · buff $it" } ?: "")
-            pTips.removeAllViews()
-            for (t in pb.tips) pTips.addView(TextView(this).apply {
-                text = "•  $t"; textSize = 13f; setTextColor(c(T.TEXT)); setLineSpacing(0f, 1.1f); setPadding(0, dp(3), 0, dp(1))
-            })
-            pSrc.text = if (pb.learned) "Used in play: combo, escape, wave clear, ultimate timing. From ${pb.source}."
-                else "Only role defaults so far: tap Learn this hero to get its real skills and guide."
-        }
-        btn("Learn this hero (skills + online guide)") {
-            val h = GameStateTracker.ownHero()
-            when {
-                h == null -> toast("Pick a hero first")
-                !com.sphynx.ai.GroqClient.anyKey -> toast("No online model key: put groq_key.txt, gemini_key.txt or cerebras_key.txt in the Sphynx-Storage/Input folder")
-                else -> {
-                    toast("Learning $h (skills, then the guide)…")
-                    com.sphynx.game.SkillBook.fetch(h) { m1 ->
-                        com.sphynx.ai.MetaAdvisor.updateHero(h) { m2 -> runOnUiThread { toast("$h learned. " + m2.take(80)) } }
-                        runOnUiThread { toast(m1.take(80)) }
-                    }
-                }
-            }
-        }
-
-        title("Skills & passive")
-        text("What each skill does (range, crowd control, dash, cast mode) is learned online. Skills that miss or fail are re-tried and re-aimed.", 13f)
-        val skInfo = text("", 13f)
-        upd {
-            val h = GameStateTracker.ownHero()
-            skInfo.text = (if (h == null) "Pick a hero first." else com.sphynx.game.SkillBook.describe(h)) +
-                "\nLast cast check: ${ActionExecutor.lastFeedback}" +
-                "\nAll heroes: ${com.sphynx.game.SkillBook.learnAllProgress.ifEmpty { "-" }}"
-        }
-        btn("Learn this hero's skills online") {
-            val h = GameStateTracker.ownHero()
-            if (h == null) toast("Pick a hero first") else com.sphynx.game.SkillBook.fetch(h) { m -> runOnUiThread { toast(m.take(120)) } }
-        }
-        btn("Learn all heroes' skills (background)") {
-            com.sphynx.game.SkillBook.learnAll { m -> runOnUiThread { toast(m) } }
-            toast("Started")
-        }
-        btn("Stop learning all heroes") { com.sphynx.game.SkillBook.stopLearnAll() }
         val learnInfo = text("", 13f)
         DemoRecorder.refreshTotal()
         upd {
@@ -1710,24 +1761,7 @@ class MainActivity : Activity() {
         }
 
         title("Ranked: team or solo")
-        var syncing = false
-        lateinit var swTeam: Switch
-        lateinit var swSolo: Switch
-        swTeam = switch("Team", !Cfg.draftSolo) { on ->
-            if (!syncing) {
-                syncing = true
-                if (on) { Cfg.draftSolo = false; swSolo.isChecked = false } else swTeam.isChecked = true
-                syncing = false
-            }
-        }
-        swSolo = switch("Solo", Cfg.draftSolo) { on ->
-            if (!syncing) {
-                syncing = true
-                if (on) { Cfg.draftSolo = true; swTeam.isChecked = false } else swSolo.isChecked = true
-                syncing = false
-            }
-        }
-        groupSwitches.add(swTeam); groupSwitches.add(swSolo)
+        segmented(listOf("team" to "Team", "solo" to "Solo"), if (Cfg.draftSolo) "solo" else "team") { Cfg.draftSolo = it == "solo" }
         title("Ban & pick")
         val dcard = card()
         cardHeader(dcard, "Pick")
@@ -1777,7 +1811,7 @@ class MainActivity : Activity() {
             asDescription(cardText(xc, 12f).apply { text = "Builds that try something different from the meta, made from ${hero ?: "your hero"}'s real skills and passive, its kit, " +
                 "how it plays, the original server's patch and meta, and what the Library knows about each item. Real items and spells only." })
             val xs = lab.builds(hero)
-            if (xs.isEmpty()) cardText(xc, 12.5f).text = if (hero == null) "Choose your hero on the Player page first." else "None made yet."
+            if (xs.isEmpty()) cardText(xc, 12.5f).text = if (hero == null) "Choose your hero on Hero & match › Hero first." else "None made yet."
             else cardText(xc, 11.5f).text = "Made for patch ${lab.madeFor(hero).ifBlank { "?" }}" + (lab.chosen(hero)?.let { " · in use: ${it.name}" } ?: "")
             for ((i, b) in xs.withIndex()) {
                 xc.addView(TextView(this).apply { text = "${i + 1}. ${b.name}"; textSize = 14.5f; setTextColor(c(T.TEXT)); setTypeface(typeface, Typeface.BOLD); setPadding(0, dp(10), 0, dp(2)) })
@@ -1799,7 +1833,7 @@ class MainActivity : Activity() {
                 text = if (lab.busy.isNotEmpty()) "Working on ${lab.busy}…" else if (xs.isEmpty()) "Make experimental builds" else "Make new experimental builds"
                 isAllCaps = false
                 setOnClickListener {
-                    if (hero == null) { toast("Choose your hero on the Player page first"); return@setOnClickListener }
+                    if (hero == null) { toast("Choose your hero on Hero & match › Hero first"); return@setOnClickListener }
                     toast("Asking the online model (uses tokens)…")
                     lab.generate(hero) { m -> runOnUiThread { toast(m); show("build") } }
                 }
@@ -3039,7 +3073,7 @@ class MainActivity : Activity() {
             val hero = GameStateTracker.ownHero() ?: "unknown"
             t.text = "Decisions saved: ${ExperienceRecorder.count} (${PerformanceEvaluator.evaluated} scored this session)\n" +
                 "Aggression adjust for $hero: ${"%+.2f".format(Cfg.learnedBias(hero))}\n" +
-                "Your recorded play (Coach): ${DemoRecorder.total} moments - see the Player page"
+                "Your recorded play (Coach): ${DemoRecorder.total} moments - see Hero & match › Play style"
         }
         ExperienceRecorder.refreshFights()
         val fightInfo = text("", 12f, color = "#9AA0A6")

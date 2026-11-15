@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.IMPROVED, "Player is split into Hero and Play style; lane and Team / Solo are one-tap choices",
+            "Hero & match now has four pages: Hero, Play style, Draft and Build. Hero holds your hero, player name, battle " +
+                "spell, lane, the enemy team and what the app knows about the hero (game knowledge, how to play it, its " +
+                "skills). Play style holds how the AI plays it: skill combos, behaviour, jungle, turtle and lord, level, " +
+                "items, regen and recall, Coach and Data & resets. The lane is now a choice of six buttons (Auto, EXP, " +
+                "Gold, Mid, Roam, Jungle) instead of six switches, and Draft's ranked Team / Solo is a two-button choice.",
+            pr = 39, needsDeviceCheck = true, version = "37.49"),
         Entry("2026-11-15", Kind.NEW, "Play: Running now and Ready check",
             "Play now has one place that shows and switches what runs: the Running now card, with a switch for the " +
                 "Player, the Drafter, the Builder and Learning, each with its state in words (On, On · Dry run, Off), and " +
@@ -32,36 +39,36 @@ object WhatsNew {
                 "model (Open), and says Ready or how many things are left to fix. The running switches on Player, Draft " +
                 "and Build are replaced by a line saying whether each one runs. The research tests stay on Play under " +
                 "Practice research for now.",
-            pr = 38, needsDeviceCheck = true, version = "37.48"),
+            pr = 38, version = "37.48"),
         Entry("2026-11-15", Kind.IMPROVED, "Player: all the reset buttons together under Data & resets",
             "The five buttons on Player that delete or reset something were spread over the page. They are now together " +
                 "in one section at its end, Data & resets: Clear manual combo, Forget the remembered level badges, Forget " +
                 "what Coach learned, Delete my recorded play and Reset learned aggression. Each still asks first.",
-            pr = 37, needsDeviceCheck = true, version = "37.47"),
+            pr = 37, version = "37.47"),
         Entry("2026-11-15", Kind.NEW, "Badges on features that are experimental or need the internet",
             "A section that is not fully working yet, or needs a connection, now says so with a small word badge at the " +
                 "end of its header: Experimental on Autonomous ranked draft (Draft) and GGUF models (AI & models), Needs " +
                 "internet on Train in the cloud (Learning) and Upload to GitHub (Debug data). Everything else works " +
                 "offline and carries no badge.",
-            pr = 36, needsDeviceCheck = true, version = "37.46"),
+            pr = 36, version = "37.46"),
         Entry("2026-11-15", Kind.IMPROVED, "Setup is shorter: no more typing button positions by hand",
             "The long \"Type positions by hand\" list at the end of Setup (an x,y field for every button, shop item " +
                 "and hero-select spot) is gone, with its \"Show markers\" switch. Every one of those positions is set " +
                 "in the in-game calibration from the floating panel, which covers all the same groups. Presets and " +
                 "\"Reset all positions to defaults\" stay.",
-            pr = 35, needsDeviceCheck = true, version = "37.45"),
+            pr = 35, version = "37.45"),
         Entry("2026-11-15", Kind.IMPROVED, "Every state says it in words, not only in colour",
             "The permission buttons on Setup and in the first-run setup now end with Granted or Missing, and the model " +
                 "button with Loaded, Loading or Not loaded, besides turning green. On AI & models, each line of the files " +
                 "card starts with a dot and a word in its colour: Ready (full dot), Partial (half dot: loading, or loaded but " +
                 "switched off) or Missing (empty dot).",
-            pr = 34, needsDeviceCheck = true, version = "37.44"),
+            pr = 34, version = "37.44"),
         Entry("2026-11-15", Kind.IMPROVED, "Help for a group of switches sits on its header; even combo buttons",
             "The \"?\" that explains a group of switches (Theme, Heading font, Lane, Draft Team / Solo and the other " +
                 "one-of-several choices) now sits at the end of the group's header instead of next to its last switch. " +
                 "On Player, the six combo buttons (+ S1 ... + Spell) are now two rows of three equal buttons, each label " +
                 "on one line.",
-            pr = 33, needsDeviceCheck = true, version = "37.43"),
+            pr = 33, version = "37.43"),
         Entry("2026-11-15", Kind.IMPROVED, "Buttons that delete or reset ask first, and are red",
             "Every button that deletes, clears, forgets, resets or removes something now has red text and a red outline, " +
                 "and asks before it acts. Eleven of them used to act at once: Clear manual combo, Forget the level badges, " +
