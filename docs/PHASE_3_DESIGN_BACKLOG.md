@@ -40,7 +40,7 @@ Each item is its own PR, with a version step and a phone test.
 | 8 | P2 | **Standard states**: loading / progress with Stop, empty states, errors with Try again, "needs internet" | 9, 12 | Patterns of the state matrix on each sub-page |
 | 9 | P3 | *(v37.51, phone test pending: patch and hero meta show "Updated <date> (<n> days ago) from <sources>", `app/Freshness.kt`; Library keeps its "Last run" line, as the learner keeps no date)* **Freshness lines** on Knowledge ("Updated <date> from <source>") | 8 | Every Meta / Library card shows it |
 | 10 | P3 | **Labels never break mid-word**; item grid; TalkBack labels on all drawn icons | 17, 23 | No broken labels; icons announced |
-| 11 | P3 | **First-run guide reuses the Setup cards**; research tests moved to Practice | 5 | No duplicated setup content |
+| 11 | P3 | *(v37.52, phone test pending: the research tests moved to Practice and the What's new card left Play; the first-run guide reusing the Setup cards is still to do)* **First-run guide reuses the Setup cards**; research tests moved to Practice | 5 | No duplicated setup content |
 | 12 | P3 | **Floating panel on the shared tokens** (status chip at least 11sp) | 15, 19 | Panel uses the same palette and type |
 
 Already done ahead of Phase 4 (owner requests during Phase 3): the help "?" at each control (v37.33) and long information lines behind it (v37.36), finding 18.
