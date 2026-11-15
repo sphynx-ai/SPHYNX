@@ -567,14 +567,18 @@ class MainActivity : Activity() {
     private fun closeBubble() { bubble?.dismiss(); bubble = null; bubbleFor = null }
 
     // a section header: accent bar + small capitals
-    private fun title(t: String): TextView {
+    private fun title(t: String, capability: Capability? = null): TextView {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         row.addView(View(this).apply { background = shape(T.ACCENT, 2) }, LinearLayout.LayoutParams(dp(3), dp(16)))
         val v = TextView(this).apply {
             text = t.uppercase(); textSize = 15f; letterSpacing = 0.08f
             setTextColor(c(T.STRONG)); typeface = display(); setPadding(dp(8), 0, 0, 0)
         }
-        row.addView(v)
+        if (capability != null && capability.shown) {
+            // the capability badge: a word in its colour at the end of the header (backlog item 7)
+            row.addView(v, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(chip(capability.label, capability.color).apply { contentDescription = "Status: ${capability.label}" })
+        } else row.addView(v)
         titleRows.add(row)
         content.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
             topMargin = dp(22); bottomMargin = dp(4)
@@ -1613,7 +1617,7 @@ class MainActivity : Activity() {
             defT.text = if (en.isEmpty()) "Shown once the enemy heroes are known." else
                 en.joinToString { "$it (${HeroDb.damageText(it).substringBefore(" (")})" } + "\n" + (com.sphynx.game.ItemClass.defenseAgainst(en) ?: "")
         }
-        title("AUTONOMOUS RANKED DRAFT")
+        title("AUTONOMOUS RANKED DRAFT", Capability.EXPERIMENTAL)
         text("Ranked: taps the recommended hero and locks in. Keep Dry run on until the marker is right.", 13f)
         val err = text("", 12f, color = "#EF9A9A")
         upd { err.text = StrategicAdvisor.lastError }
@@ -2694,7 +2698,7 @@ class MainActivity : Activity() {
     private fun ggufSection() {
         val lib = com.sphynx.models.GgufLibrary
         val be = lib.backend(this)
-        title("GGUF MODELS (LLAMA.CPP)")
+        title("GGUF MODELS (LLAMA.CPP)", Capability.EXPERIMENTAL)
         text("Add a .gguf model: it is copied into the app. Load it, then ask the test question to see how fast this " +
             "phone answers. Runs on the CPU. Not used by the AI yet: the Strategic and Tactical engines still use " +
             "their LiteRT models.", 13f, color = T.MUTED)
@@ -2795,7 +2799,7 @@ class MainActivity : Activity() {
         }
 
         // ---- one-tap training in the cloud (Kaggle) ----
-        title("Train in the cloud")
+        title("Train in the cloud", Capability.NEEDS_INTERNET)
         val ctc = card()
         val ctHead = cardHeader(ctc, "Kaggle (free GPU)", "", T.GREEN)
         val ctChip = (ctHead.parent as LinearLayout).getChildAt(1) as TextView
@@ -3048,7 +3052,7 @@ class MainActivity : Activity() {
             }.start()
         }
 
-        title("UPLOAD TO GITHUB")
+        title("UPLOAD TO GITHUB", Capability.NEEDS_INTERNET)
         val gh = com.sphynx.core.GitHubUpload
         text("Uploads everything in the recordings folder that is not on GitHub yet to the branch " + gh.BRANCH + ": all files " +
             "that are not videos in one commit, each video in a commit of its own. It also sends the training results " +

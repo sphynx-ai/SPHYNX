@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.NEW, "Badges on features that are experimental or need the internet",
+            "A section that is not fully working yet, or needs a connection, now says so with a small word badge at the " +
+                "end of its header: Experimental on Autonomous ranked draft (Draft) and GGUF models (AI & models), Needs " +
+                "internet on Train in the cloud (Learning) and Upload to GitHub (Debug data). Everything else works " +
+                "offline and carries no badge.",
+            pr = 36, needsDeviceCheck = true, version = "37.46"),
         Entry("2026-11-15", Kind.IMPROVED, "Setup is shorter: no more typing button positions by hand",
             "The long \"Type positions by hand\" list at the end of Setup (an x,y field for every button, shop item " +
                 "and hero-select spot) is gone, with its \"Show markers\" switch. Every one of those positions is set " +
