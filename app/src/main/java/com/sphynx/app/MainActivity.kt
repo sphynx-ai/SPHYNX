@@ -93,6 +93,7 @@ class MainActivity : Activity() {
     // of the control it explains (HelpHold)
     private val descriptions = ArrayList<TextView>()
     private class HelpGroup(val icon: TextView, val lines: MutableList<TextView> = ArrayList())
+    private val helpPadded = HashSet<View>()                 // buttons and fields with the "?" inside their end
     private val helpOf = HashMap<View, HelpGroup>()          // a description, or a control's row -> its "?"
     private var bubble: android.widget.PopupWindow? = null
     private var bubbleFor: HelpGroup? = null
@@ -440,23 +441,69 @@ class MainActivity : Activity() {
         val prev = if (i >= 0) parent.getChildAt(i) else null
         if (prev == null) { descriptions.remove(d); d.visibility = View.VISIBLE; return }   // nothing to explain: keep the line
         val g = helpOf[prev] ?: run {
-            // the control goes into a row with its "?" at the end
             val lp: ViewGroup.LayoutParams = prev.layoutParams
                 ?: LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             parent.removeViewAt(i)
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-            val h = lp.height.takeIf { it > 0 } ?: LinearLayout.LayoutParams.WRAP_CONTENT
-            row.addView(prev, LinearLayout.LayoutParams(0, h, 1f))
             val grp = HelpGroup(helpIcon())
             grp.icon.setOnClickListener { toggleBubble(grp) }
-            row.addView(grp.icon, LinearLayout.LayoutParams(dp(44), dp(44)))
-            parent.addView(row, i, lp)
-            helpOf[row] = grp
+            val holder = helpHolder(prev, grp.icon, lp)
+            parent.addView(holder, i, lp)
+            helpOf[holder] = grp
             grp
         }
         g.lines.add(d)
         helpOf[d] = g
         refreshHelp(g)
+    }
+
+    // Where the "?" goes, so a control with help has the same size and place as one without (owner, 2026-11-15):
+    //  - a switch: label, then the "?", then the switch, which stays at the right edge like every other switch;
+    //  - a button or field: full width as before, the "?" inside its right end (text kept clear of it);
+    //  - anything else (a section header): a row with the "?" at its end.
+    private fun helpHolder(prev: View, icon: TextView, lp: ViewGroup.LayoutParams): View {
+        val wrapH = LinearLayout.LayoutParams.WRAP_CONTENT
+        if (prev is Switch) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; minimumHeight = dp(48)
+            }
+            val label = TextView(this).apply {
+                text = prev.text; textSize = 16f; setTextColor(prev.textColors); typeface = prev.typeface
+                setPadding(0, dp(10), dp(4), dp(10))
+                setOnClickListener { if (prev.isEnabled) prev.toggle() }
+            }
+            prev.text = ""
+            prev.contentDescription = label.text
+            // a label the page rewrites later still shows next to the switch
+            prev.addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, n: Int) {}
+                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, n: Int) {}
+                override fun afterTextChanged(e: android.text.Editable?) {
+                    if (!e.isNullOrEmpty()) { label.text = e.toString(); prev.contentDescription = label.text; prev.text = "" }
+                }
+            })
+            row.addView(label, LinearLayout.LayoutParams(0, wrapH, 1f))
+            row.addView(icon, LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginEnd = dp(4) })
+            row.addView(prev, LinearLayout.LayoutParams(wrapH, wrapH))
+            return row
+        }
+        if (prev is TextView) {   // Button, EditText, chooser buttons
+            val frame = android.widget.FrameLayout(this)
+            val h = lp.height.takeIf { it > 0 } ?: wrapH
+            val centred = prev is Button
+            helpPadded.add(prev)
+            prev.setPaddingRelative(if (centred) dp(46) else prev.paddingStart, prev.paddingTop, dp(46), prev.paddingBottom)
+            frame.addView(prev, android.widget.FrameLayout.LayoutParams(android.widget.FrameLayout.LayoutParams.MATCH_PARENT, h))
+            frame.addView(icon, android.widget.FrameLayout.LayoutParams(dp(44), dp(44), Gravity.END or Gravity.CENTER_VERTICAL).apply {
+                marginEnd = dp(2)
+            })
+            icon.elevation = dp(2).toFloat()
+            return frame
+        }
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val h = lp.height.takeIf { it > 0 } ?: wrapH
+        row.addView(prev, LinearLayout.LayoutParams(0, h, 1f))
+        row.addView(icon, LinearLayout.LayoutParams(dp(44), dp(44)))
+        return row
     }
 
     // the small "?" circle: 22dp drawn, 44dp to tap
@@ -530,7 +577,8 @@ class MainActivity : Activity() {
         b.setTextColor(c(if (primary) T.ON_PRIMARY else T.TEXT))
         b.setTypeface(Typeface.create(b.typeface, if (primary) 700 else 500, false))
         b.background = if (primary) ripple(T.PRIMARY, 12) else ripple(T.SURF2, 12, T.OUTLINE)
-        b.setPadding(dp(14), dp(8), dp(14), dp(8))
+        val side = if (b in helpPadded) dp(46) else dp(14)   // a button with its "?" inside keeps room for it
+        b.setPadding(side, dp(8), side, dp(8))
     }
 
     private fun btn(t: String, onClick: () -> Unit): Button {
@@ -679,6 +727,7 @@ class MainActivity : Activity() {
         updaters.clear()
         descriptions.clear()
         helpOf.clear()
+        helpPadded.clear()
         noAnchor.clear()
         closeBubble()
         content.removeAllViews()
