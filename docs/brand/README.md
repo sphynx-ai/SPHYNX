@@ -31,7 +31,7 @@ In the app: `res/drawable/ic_sphynx_fg.xml`, `ic_sphynx_bg.xml`, `ic_sphynx_mono
 
 Sora Semibold for titles; Inter for advice, labels and buttons; JetBrains Mono for numbers, timers and logs. (Not yet applied inside the app.)
 
-**Inside the app (owner, 2026-11-14):** a pixel-style font (bundled, open license; candidate Pixelify Sans, to be picked from a phone sample) for headings and numbers, and Inter for running text and buttons. See `docs/PHASE_3_DESIGN_TOKENS.md`.
+**Inside the app (owner, 2026-11-14):** a pixel-style font (bundled, open license; candidate Pixelify Sans, to be picked from a phone sample) for headings and numbers, and Inter for running text and buttons. See `docs/PHASE_3_DESIGN_TOKENS.md`. In the app since v37.38: `res/font` (Inter, Pixelify Sans, Silkscreen; SIL Open Font License texts in `docs/brand/fonts/` and in the app's `assets/licenses/`), colours in `app/Theme.kt`.
 
 ## Rules
 

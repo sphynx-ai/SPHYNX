@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The app's theme (Phase 4, design tokens): the phone's dark theme with Inter as the text font, so every
+         phone shows the same letters (before: the phone's own font). Headings use the pixel font (app/Fonts.kt). -->
+    <style name="Theme.Sphynx" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:windowBackground">@color/sphynx_bg</item>
+        <item name="android:statusBarColor">@color/sphynx_bg</item>
+        <item name="android:navigationBarColor">@color/sphynx_surface</item>
+    </style>
+    <color name="sphynx_bg">#0B0D10</color>
+    <color name="sphynx_surface">#1B1F26</color>
+</resources>

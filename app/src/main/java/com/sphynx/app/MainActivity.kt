@@ -69,6 +69,9 @@ import com.sphynx.vision.ObjectDetector
 import com.sphynx.vision.IconMemory
 import kotlin.math.abs
 
+// the colours: app/Theme.kt (the pages write T.BG, T.TEXT ...)
+private typealias T = Theme
+
 class MainActivity : Activity() {
 
     private lateinit var content: LinearLayout
@@ -153,11 +156,11 @@ class MainActivity : Activity() {
         val names = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
         names.addView(TextView(this).apply {
             text = getString(R.string.app_name)
-            textSize = 19f
-            setTextColor(Color.WHITE)
-            setTypeface(null, Typeface.BOLD)
+            textSize = 21f
+            setTextColor(c(T.STRONG))
+            typeface = display()
         })
-        headerStatus = TextView(this).apply { textSize = 12f; setTextColor(Color.parseColor(T.MUTED)) }
+        headerStatus = TextView(this).apply { textSize = 13f; setTextColor(Color.parseColor(T.MUTED)) }
         names.addView(headerStatus)
         header.addView(names, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         // (the help "?" is next to each control now - owner, 2026-11-14 - not in the header)
@@ -167,13 +170,13 @@ class MainActivity : Activity() {
             isAllCaps = false
             textSize = 14f
             stateListAnimator = null
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.WHITE)
-            background = ripple(T.RED, 22)
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(c(T.ON_STOP))
+            background = ripple(T.STOP, 24)
             setPadding(dp(18), 0, dp(18), 0)
             setOnClickListener { AiRuntime.emergencyStop("app header") }
         }
-        header.addView(stopTop, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(42)))
+        header.addView(stopTop, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(48)))
         root.addView(header)
 
         content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(24)) }
@@ -185,7 +188,8 @@ class MainActivity : Activity() {
         for (k in pages) {
             val b = Button(this).apply {
                 text = labels[k]
-                textSize = 13f
+                textSize = 14f
+                typeface = display()
                 isAllCaps = false
                 stateListAnimator = null
                 minHeight = 0; minimumHeight = 0; minWidth = 0; minimumWidth = 0
@@ -193,7 +197,7 @@ class MainActivity : Activity() {
                 setOnClickListener { go(k) }
             }
             navButtons[k] = b
-            nav.addView(b, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(38)).apply { marginEnd = dp(6) })
+            nav.addView(b, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(48)).apply { marginEnd = dp(6) })
         }
         root.addView(View(this).apply { setBackgroundColor(Color.parseColor(T.STROKE)) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)))
         root.addView(HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(nav); setBackgroundColor(Color.parseColor(T.SURF)) })
@@ -320,11 +324,8 @@ class MainActivity : Activity() {
     }
 
     // ---- look: one dark theme, used by every page ----
-    private object T {
-        const val BG = "#0B0E14"; const val SURF = "#151A24"; const val SURF2 = "#1E2533"; const val STROKE = "#283247"
-        const val TEXT = "#E9ECF2"; const val MUTED = "#8D96AA"; const val ACCENT = "#6D8BFF"; const val GOLD = "#F4C25B"
-        const val GREEN = "#3DD68C"; const val RED = "#FF5A6A"
-    }
+    // (the colours are in app/Theme.kt - the brand palette, contrast-tested; the fonts in app/Fonts.kt)
+    private fun display(): Typeface = Fonts.display(this)
     private fun c(hex: String) = Color.parseColor(hex)
     private fun shape(fill: String, radiusDp: Int, stroke: String? = null) = GradientDrawable().apply {
         setColor(c(fill)); cornerRadius = dp(radiusDp).toFloat(); if (stroke != null) setStroke(dp(1), c(stroke))
@@ -341,9 +342,9 @@ class MainActivity : Activity() {
     private fun text(t: String, size: Float = 14f, bold: Boolean = false, color: String = T.TEXT, describe: Boolean = true): TextView {
         val v = TextView(this).apply {
             text = t
-            textSize = size
+            textSize = maxOf(size, 13f)
             setTextColor(c(themed(color)))
-            if (bold) setTypeface(null, Typeface.BOLD)
+            if (bold) setTypeface(typeface, Typeface.BOLD)
             setLineSpacing(0f, 1.12f)
             setPadding(0, dp(6), 0, dp(2))
         }
@@ -431,9 +432,9 @@ class MainActivity : Activity() {
     // the small "?" circle: 22dp drawn, 44dp to tap
     private fun helpIcon(): TextView = TextView(this).apply {
         text = "?"
-        textSize = 12f
+        textSize = 13f
         gravity = Gravity.CENTER
-        setTypeface(null, Typeface.BOLD)
+        setTypeface(typeface, Typeface.BOLD)
         setTextColor(c(T.MUTED))
         background = android.graphics.drawable.InsetDrawable(GradientDrawable().apply {
             shape = GradientDrawable.OVAL; setColor(c(T.SURF2)); setStroke(dp(1), c(T.MUTED))
@@ -460,7 +461,7 @@ class MainActivity : Activity() {
             setLineSpacing(0f, 1.15f)
             setPadding(dp(14), dp(10), dp(14), dp(10))
             maxWidth = maxW
-            background = shape("#F20B0E14", 10, T.STROKE)
+            background = shape("#F2" + T.BG.removePrefix("#"), 10, T.OUTLINE)
         }
         tv.measure(View.MeasureSpec.makeMeasureSpec(maxW, View.MeasureSpec.AT_MOST), View.MeasureSpec.UNSPECIFIED)
         val pw = android.widget.PopupWindow(tv, tv.measuredWidth, ViewGroup.LayoutParams.WRAP_CONTENT, false).apply {
@@ -479,10 +480,10 @@ class MainActivity : Activity() {
     // a section header: accent bar + small capitals
     private fun title(t: String): TextView {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        row.addView(View(this).apply { background = shape(T.ACCENT, 2) }, LinearLayout.LayoutParams(dp(3), dp(14)))
+        row.addView(View(this).apply { background = shape(T.STRONG, 2) }, LinearLayout.LayoutParams(dp(3), dp(16)))
         val v = TextView(this).apply {
-            text = t.uppercase(); textSize = 12f; letterSpacing = 0.08f
-            setTextColor(c(T.MUTED)); setTypeface(null, Typeface.BOLD); setPadding(dp(8), 0, 0, 0)
+            text = t.uppercase(); textSize = 15f; letterSpacing = 0.08f
+            setTextColor(c(T.STRONG)); typeface = display(); setPadding(dp(8), 0, 0, 0)
         }
         row.addView(v)
         content.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
@@ -493,11 +494,12 @@ class MainActivity : Activity() {
 
     private fun styleButton(b: Button, primary: Boolean = false) {
         b.isAllCaps = false
-        b.textSize = 14f
+        b.textSize = 15f
         b.stateListAnimator = null
-        b.minHeight = dp(46)
-        b.setTextColor(c(if (primary) "#FFFFFF" else T.TEXT))
-        b.background = if (primary) ripple(T.ACCENT, 12) else ripple(T.SURF2, 12, T.STROKE)
+        b.minHeight = dp(48)
+        b.setTextColor(c(if (primary) T.ON_PRIMARY else T.TEXT))
+        b.setTypeface(Typeface.create(b.typeface, if (primary) 700 else 500, false))
+        b.background = if (primary) ripple(T.PRIMARY, 12) else ripple(T.SURF2, 12, T.OUTLINE)
         b.setPadding(dp(14), dp(8), dp(14), dp(8))
     }
 
@@ -515,11 +517,12 @@ class MainActivity : Activity() {
         val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
         val sw = Switch(this).apply {
             text = label
-            textSize = 15f
+            textSize = 16f
             setTextColor(c(T.TEXT))
             isChecked = initial
-            thumbTintList = ColorStateList(states, intArrayOf(c("#FFFFFF"), c("#AEB6C6")))
-            trackTintList = ColorStateList(states, intArrayOf(c(T.ACCENT), c("#3A4357")))
+            thumbTintList = ColorStateList(states, intArrayOf(c(T.STRONG), c(T.MUTED)))
+            trackTintList = ColorStateList(states, intArrayOf(c(T.ACCENT), c(T.STROKE)))
+            minHeight = dp(48)
             setPadding(0, dp(10), 0, dp(10))
             setOnCheckedChangeListener { _, on -> onChange(on) }
         }
@@ -558,7 +561,7 @@ class MainActivity : Activity() {
         val v = TextView(this).apply {
             textSize = size
             setTextColor(c(T.TEXT))
-            if (bold) setTypeface(null, Typeface.BOLD)
+            if (bold) setTypeface(typeface, Typeface.BOLD)
             setLineSpacing(0f, 1.12f)
             setPadding(0, dp(3), 0, dp(3))
         }
@@ -569,7 +572,7 @@ class MainActivity : Activity() {
     private fun mark(b: Button, on: Boolean, color: String = T.GREEN) {
         if (on) {
             b.background = ripple(color, 12)
-            b.setTextColor(Color.WHITE)
+            b.setTextColor(c(T.ON_PRIMARY))       // dark text on the coloured fill (white was about 2:1)
         } else {
             b.background = ripple(T.SURF2, 12, T.STROKE)
             b.setTextColor(c(T.TEXT))
@@ -580,7 +583,7 @@ class MainActivity : Activity() {
 
     // a small rounded label
     private fun chip(t: String, color: String = T.ACCENT): TextView = TextView(this).apply {
-        text = t; textSize = 11f; setTextColor(c(color)); setTypeface(null, Typeface.BOLD)
+        text = t; textSize = 13f; setTextColor(c(color)); setTypeface(typeface, Typeface.BOLD)
         background = shape("#1A" + color.removePrefix("#"), 20, null)
         setPadding(dp(9), dp(3), dp(9), dp(3))
     }
@@ -588,7 +591,7 @@ class MainActivity : Activity() {
     // a heading inside a card (with an optional chip on the right)
     private fun cardHeader(cd: LinearLayout, t: String, chipText: String? = null, chipColor: String = T.ACCENT): TextView {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        val tv = TextView(this).apply { text = t; textSize = 15f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD) }
+        val tv = TextView(this).apply { text = t; textSize = 17f; setTextColor(c(T.STRONG)); typeface = display() }
         row.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         if (chipText != null) row.addView(chip(chipText, chipColor))
         cd.addView(row)
@@ -630,7 +633,7 @@ class MainActivity : Activity() {
 
     // a small muted line inside a card
     private fun cardNote(cd: LinearLayout, t: String = ""): TextView = TextView(this).apply {
-        text = t; textSize = 12f; setTextColor(c(T.MUTED)); setLineSpacing(0f, 1.1f); setPadding(0, dp(4), 0, dp(2))
+        text = t; textSize = 13f; setTextColor(c(T.MUTED)); setLineSpacing(0f, 1.2f); setPadding(0, dp(4), 0, dp(2))
         cd.addView(this)
         watchLong(this)
     }
@@ -669,9 +672,9 @@ class MainActivity : Activity() {
         }
         for ((k, b) in navButtons) {
             val on = k == p
-            b.background = if (on) ripple(T.ACCENT, 19) else ripple(T.SURF2, 19)
-            b.setTextColor(Color.parseColor(if (on) "#FFFFFF" else T.MUTED))
-            b.setTypeface(null, if (on) Typeface.BOLD else Typeface.NORMAL)
+            b.background = if (on) ripple(T.PRIMARY, 24) else ripple(T.SURF2, 24)
+            b.setTextColor(Color.parseColor(if (on) T.ON_PRIMARY else T.TEXT))
+            b.typeface = display()
             if (on) b.post { navScroll?.smoothScrollTo((b.left - dp(40)).coerceAtLeast(0), 0) }
         }
         scroll.scrollTo(0, 0)
@@ -787,7 +790,7 @@ class MainActivity : Activity() {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(6), 0, dp(2)) }
         row.addView(chip(e.kind.label, e.kind.color))
         row.addView(TextView(this).apply {
-            text = e.title; textSize = 14f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD); setPadding(dp(8), 0, 0, 0)
+            text = e.title; textSize = 14f; setTextColor(c(T.TEXT)); setTypeface(typeface, Typeface.BOLD); setPadding(dp(8), 0, 0, 0)
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         cd.addView(row)
         if (details) cardNote(cd, e.details + "\n" + com.sphynx.core.WhatsNew.ref(e) +
@@ -927,7 +930,7 @@ class MainActivity : Activity() {
                 meIconFor = h
                 meRow.removeAllViews()
                 meRow.addView(com.sphynx.app.IconCache.view(this, h ?: "?", true, dp(44)), LinearLayout.LayoutParams(dp(44), dp(44)))
-                meRow.addView(TextView(this).apply { text = h ?: "Hero not known yet"; textSize = 17f; setTextColor(Color.WHITE); setTypeface(null, Typeface.BOLD); setPadding(dp(12), 0, 0, 0) })
+                meRow.addView(TextView(this).apply { text = h ?: "Hero not known yet"; textSize = 17f; setTextColor(Color.WHITE); setTypeface(typeface, Typeface.BOLD); setPadding(dp(12), 0, 0, 0) })
             }
         }
         upd {
@@ -961,7 +964,7 @@ class MainActivity : Activity() {
 
         title("Recent actions")
         val hc = card()
-        val hist = TextView(this).apply { textSize = 12f; typeface = Typeface.MONOSPACE; setTextColor(c(T.TEXT)); setLineSpacing(0f, 1.15f) }
+        val hist = TextView(this).apply { textSize = 13f; typeface = Typeface.MONOSPACE; setTextColor(c(T.TEXT)); setLineSpacing(0f, 1.15f) }
         hc.addView(hist)
         upd {
             val h = ActionExecutor.history(12)
@@ -1313,7 +1316,7 @@ class MainActivity : Activity() {
             pHead.removeAllViews()
             pHead.addView(com.sphynx.app.IconCache.view(this, h ?: "?", true, dp(48)), LinearLayout.LayoutParams(dp(48), dp(48)))
             val nm = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
-            nm.addView(TextView(this).apply { text = h ?: "No hero yet"; textSize = 17f; setTextColor(Color.WHITE); setTypeface(null, Typeface.BOLD) })
+            nm.addView(TextView(this).apply { text = h ?: "No hero yet"; textSize = 17f; setTextColor(Color.WHITE); setTypeface(typeface, Typeface.BOLD) })
             nm.addView(chip(pb.style, if (pb.learned) T.ACCENT else T.MUTED))
             pHead.addView(nm, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             pPlan.text = "Combo: " + com.sphynx.game.ComboBook.text(h).first +
@@ -1426,7 +1429,7 @@ class MainActivity : Activity() {
         val dcard = card()
         cardHeader(dcard, "Pick")
         val pickGrid = IconGrid(dcard, hero = true, sizeDp = 48)
-        dcard.addView(TextView(this).apply { text = "Ban"; textSize = 15f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD); setPadding(0, dp(10), 0, 0) })
+        dcard.addView(TextView(this).apply { text = "Ban"; textSize = 15f; setTextColor(c(T.TEXT)); setTypeface(typeface, Typeface.BOLD); setPadding(0, dp(10), 0, 0) })
         val banGrid = IconGrid(dcard, hero = true, sizeDp = 48)
         val t = cardNote(dcard)
         upd {
@@ -1474,7 +1477,7 @@ class MainActivity : Activity() {
             if (xs.isEmpty()) cardText(xc, 12.5f).text = if (hero == null) "Choose your hero on the Player page first." else "None made yet."
             else cardText(xc, 11.5f).text = "Made for patch ${lab.madeFor(hero).ifBlank { "?" }}" + (lab.chosen(hero)?.let { " · in use: ${it.name}" } ?: "")
             for ((i, b) in xs.withIndex()) {
-                xc.addView(TextView(this).apply { text = "${i + 1}. ${b.name}"; textSize = 14.5f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD); setPadding(0, dp(10), 0, dp(2)) })
+                xc.addView(TextView(this).apply { text = "${i + 1}. ${b.name}"; textSize = 14.5f; setTextColor(c(T.TEXT)); setTypeface(typeface, Typeface.BOLD); setPadding(0, dp(10), 0, dp(2)) })
                 IconGrid(xc, hero = false, sizeDp = 40).set(b.items)
                 cardText(xc, 12f).text = buildString {
                     append(b.idea)
@@ -1510,7 +1513,7 @@ class MainActivity : Activity() {
         val dc = card()
         val dSrc = cardHeader(dc, "Recommended picks")
         val pickGrid = IconGrid(dc, hero = true, sizeDp = 46)
-        dc.addView(TextView(this).apply { text = "Recommended bans"; textSize = 15f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD); setPadding(0, dp(10), 0, 0) })
+        dc.addView(TextView(this).apply { text = "Recommended bans"; textSize = 15f; setTextColor(c(T.TEXT)); setTypeface(typeface, Typeface.BOLD); setPadding(0, dp(10), 0, 0) })
         val banGrid = IconGrid(dc, hero = true, sizeDp = 46)
         val dNote = cardNote(dc)
         upd {
@@ -1640,8 +1643,8 @@ class MainActivity : Activity() {
         for ((k, label) in listOf("heroes" to "Heroes", "spells" to "Spells", "items" to "Equipment", "terms" to "Terms")) {
             tabs.addView(Button(this).apply {
                 text = label; isAllCaps = false; textSize = 13f
-                background = ripple(if (k == libTab) T.ACCENT else T.SURF2, 16)
-                setTextColor(Color.parseColor(if (k == libTab) "#FFFFFF" else T.TEXT))
+                background = ripple(if (k == libTab) T.PRIMARY else T.SURF2, 16)
+                setTextColor(Color.parseColor(if (k == libTab) T.ON_PRIMARY else T.TEXT))
                 setOnClickListener { libTab = k; show("library") }
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(3), dp(8), dp(3), dp(4)) })
         }
@@ -1663,8 +1666,8 @@ class MainActivity : Activity() {
             val px = dp(40)
             top.addView(com.sphynx.app.IconCache.view(this, name, hero, px, file), LinearLayout.LayoutParams(px, px))
             val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(10), 0, 0, 0) }
-            col.addView(TextView(this).apply { text = name; textSize = 15f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD) })
-            col.addView(TextView(this).apply { text = (if (ok) "● " else "○ ") + status; textSize = 12f; setTextColor(c(if (ok) T.GREEN else T.MUTED)) })
+            col.addView(TextView(this).apply { text = name; textSize = 15f; setTextColor(c(T.TEXT)); setTypeface(typeface, Typeface.BOLD) })
+            col.addView(TextView(this).apply { text = (if (ok) "● " else "○ ") + status; textSize = 13f; setTextColor(c(if (ok) T.GREEN else T.MUTED)) })
             top.addView(col, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             box.addView(top)
             // the hero's passive and skills as icons (the wiki's skill pictures), shown with the details
@@ -1826,8 +1829,8 @@ class MainActivity : Activity() {
                 val ic = com.sphynx.game.ItemClass
                 val rs = com.sphynx.game.ItemDb.retributions.filter { ok(it) }
                 if (rs.isNotEmpty()) {
-                    list.addView(TextView(this).apply { text = "Blessed Retribution"; textSize = 15f; setTextColor(c(T.ACCENT)); setTypeface(null, Typeface.BOLD); setPadding(dp(4), dp(14), 0, dp(2)) })
-                    list.addView(TextView(this).apply { text = ic.RETRI_INTRO; textSize = 12f; setTextColor(c(T.MUTED)); setPadding(dp(6), 0, 0, dp(2)) })
+                    list.addView(TextView(this).apply { text = "Blessed Retribution"; textSize = 15f; setTextColor(c(T.ACCENT)); setTypeface(typeface, Typeface.BOLD); setPadding(dp(4), dp(14), 0, dp(2)) })
+                    list.addView(TextView(this).apply { text = ic.RETRI_INTRO; textSize = 13f; setTextColor(c(T.MUTED)); setPadding(dp(6), 0, 0, dp(2)) })
                 }
                 for (sp in rs) {
                     val wiki = ic.retributionText(sp)
@@ -1847,15 +1850,15 @@ class MainActivity : Activity() {
                 for ((title, items) in listOf("Attribute Guide" to gt.attributes, "State Guide (crowd control and buffs)" to gt.states, "Common Terms" to gt.common)) {
                     val shown = items.filter { ok(it.name) || ok(it.text) }
                     if (shown.isEmpty()) continue
-                    list.addView(TextView(this).apply { text = title; textSize = 15f; setTextColor(c(T.ACCENT)); setTypeface(null, Typeface.BOLD); setPadding(dp(4), dp(14), 0, dp(2)) })
+                    list.addView(TextView(this).apply { text = title; textSize = 15f; setTextColor(c(T.ACCENT)); setTypeface(typeface, Typeface.BOLD); setPadding(dp(4), dp(14), 0, dp(2)) })
                     var group = ""
                     for (t in shown) {
                         if (t.group.isNotEmpty() && t.group != group) {
                             group = t.group
-                            list.addView(TextView(this).apply { text = group; textSize = 12f; setTextColor(c(T.MUTED)); setPadding(dp(6), dp(8), 0, 0) })
+                            list.addView(TextView(this).apply { text = group; textSize = 13f; setTextColor(c(T.MUTED)); setPadding(dp(6), dp(8), 0, 0) })
                         }
                         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = shape(T.SURF, 12, T.STROKE); setPadding(dp(10), dp(8), dp(10), dp(8)) }
-                        box.addView(TextView(this).apply { text = t.name; textSize = 14f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD) })
+                        box.addView(TextView(this).apply { text = t.name; textSize = 14f; setTextColor(c(T.TEXT)); setTypeface(typeface, Typeface.BOLD) })
                         box.addView(TextView(this).apply { text = t.text; textSize = 12.5f; setTextColor(c(T.TEXT)); setLineSpacing(0f, 1.15f) })
                         list.addView(box, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(5) })
                     }
@@ -1867,7 +1870,7 @@ class MainActivity : Activity() {
                 val idb = com.sphynx.game.ItemDb
                 val ic = com.sphynx.game.ItemClass
                 fun head(t: String, sub: Boolean = false) = list.addView(TextView(this).apply {
-                    text = t; textSize = if (sub) 13f else 15f; setTextColor(c(if (sub) T.MUTED else T.ACCENT)); setTypeface(null, Typeface.BOLD)
+                    text = t; textSize = if (sub) 13f else 15f; setTextColor(c(if (sub) T.MUTED else T.ACCENT)); setTypeface(typeface, Typeface.BOLD)
                     setPadding(dp(if (sub) 6 else 4), dp(if (sub) 8 else 14), 0, dp(2)) })
                 fun itemRow(n: String) {
                     val inf = ic.info(n)
@@ -1933,7 +1936,7 @@ class MainActivity : Activity() {
                 val bl = ic.blessings.filter { ok(it.name) || ok("blessing") || ok("roam") }
                 if (bl.isNotEmpty()) {
                     head("Roaming boots blessings (not equipment)")
-                    list.addView(TextView(this).apply { text = "No cost: you get one when you buy boots with a roaming blessing as a roamer."; textSize = 12f; setTextColor(c(T.MUTED)); setPadding(dp(6), 0, 0, dp(2)) })
+                    list.addView(TextView(this).apply { text = "No cost: you get one when you buy boots with a roaming blessing as a roamer."; textSize = 13f; setTextColor(c(T.MUTED)); setPadding(dp(6), 0, 0, dp(2)) })
                     for (b0 in bl) row(b0.name, false, b0.kind, true, file = b0.file) { b0.text }
                 }
             }
@@ -2002,7 +2005,7 @@ class MainActivity : Activity() {
         var patchKey = ""; var heroKey = ""
 
         fun sub(parent: LinearLayout, t: String) = parent.addView(TextView(this).apply {
-            text = t.uppercase(); textSize = 11f; letterSpacing = 0.08f; setTextColor(c(T.MUTED)); setTypeface(null, Typeface.BOLD); setPadding(0, dp(12), 0, dp(2))
+            text = t.uppercase(); textSize = 13f; letterSpacing = 0.08f; setTextColor(c(T.MUTED)); setTypeface(typeface, Typeface.BOLD); setPadding(0, dp(12), 0, dp(2))
         })
         fun box(): LinearLayout {
             val cd = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(12), dp(14), dp(12)); background = shape(T.SURF, 16, T.STROKE) }
@@ -2017,7 +2020,7 @@ class MainActivity : Activity() {
             if (v.isNullOrBlank()) return
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(3), 0, dp(3)) }
             row.addView(TextView(this).apply { text = k; textSize = 13f; setTextColor(c(T.MUTED)) }, LinearLayout.LayoutParams(dp(90), LinearLayout.LayoutParams.WRAP_CONTENT))
-            row.addView(TextView(this).apply { text = v; textSize = 13f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD) },
+            row.addView(TextView(this).apply { text = v; textSize = 13f; setTextColor(c(T.TEXT)); setTypeface(typeface, Typeface.BOLD) },
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             parent.addView(row)
         }
@@ -2037,7 +2040,7 @@ class MainActivity : Activity() {
                     cardNote(cd, "Not downloaded yet: tap Update the patch meta.")
                 } else {
                     val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-                    head.addView(TextView(this).apply { text = "Patch " + g.patch; textSize = 17f; setTextColor(Color.WHITE); setTypeface(null, Typeface.BOLD) },
+                    head.addView(TextView(this).apply { text = "Patch " + g.patch; textSize = 17f; setTextColor(Color.WHITE); setTypeface(typeface, Typeface.BOLD) },
                         LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                     head.addView(chip(age(g.updatedAt), if (mg.ageDays(g.updatedAt) > 14) T.GOLD else T.GREEN))
                     cd.addView(head)
@@ -2063,10 +2066,10 @@ class MainActivity : Activity() {
                 val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
                 if (h != null) head.addView(com.sphynx.app.IconCache.view(this, h, true, dp(58)), LinearLayout.LayoutParams(dp(58), dp(58)))
                 val names = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
-                names.addView(TextView(this).apply { text = h ?: "No hero"; textSize = 19f; setTextColor(Color.WHITE); setTypeface(null, Typeface.BOLD) })
+                names.addView(TextView(this).apply { text = h ?: "No hero"; textSize = 19f; setTextColor(Color.WHITE); setTypeface(typeface, Typeface.BOLD) })
                 names.addView(TextView(this).apply {
                     text = if (m == null) "not downloaded yet" else "${HeroDb.role(h).name.lowercase()} · ${m.patch} · ${age(m.updatedAt)}"
-                    textSize = 12f; setTextColor(c(T.MUTED))
+                    textSize = 13f; setTextColor(c(T.MUTED))
                 })
                 head.addView(names, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                 cd.addView(head)
@@ -2156,7 +2159,7 @@ class MainActivity : Activity() {
         memCol.addView(memBig); memCol.addView(memSub); memCol.addView(memTot)
         memRow.addView(memCol)
         mem.addView(memRow)
-        mem.addView(TextView(this).apply { text = "Available RAM · last 5 minutes"; textSize = 12f; setTextColor(c("#C8D2F0")); setPadding(0, dp(8), 0, 0) })
+        mem.addView(TextView(this).apply { text = "Available RAM · last 5 minutes"; textSize = 13f; setTextColor(c("#C8D2F0")); setPadding(0, dp(8), 0, 0) })
         val memSpark = com.sphynx.app.Sparkline(this)
         mem.addView(memSpark, LinearLayout.LayoutParams(MATCH, dp(44)).apply { topMargin = dp(4) })
         note(mem, "Available RAM includes memory Android can reclaim.").setTextColor(c("#C8D2F0"))
@@ -2190,7 +2193,7 @@ class MainActivity : Activity() {
             val t = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = shape(T.SURF2, 18); setPadding(dp(14), dp(12), dp(14), dp(12)) }
             t.addView(TextView(this).apply { text = "Core $i"; textSize = 14f; setTextColor(c(T.TEXT)) })
             val g = TextView(this).apply { textSize = 20f; setTextColor(Color.WHITE); setPadding(0, dp(4), 0, dp(2)) }
-            val mx = TextView(this).apply { textSize = 12f; setTextColor(c(T.MUTED)) }
+            val mx = TextView(this).apply { textSize = 13f; setTextColor(c(T.MUTED)) }
             t.addView(g); t.addView(mx)
             val b = com.sphynx.app.BudgetBar(this)
             t.addView(b, LinearLayout.LayoutParams(MATCH, dp(5)).apply { topMargin = dp(8) })
@@ -2271,7 +2274,7 @@ class MainActivity : Activity() {
             top.addView(View(this).apply { background = shape(sr.color, 5) }, LinearLayout.LayoutParams(dp(10), dp(10)))
             top.addView(TextView(this).apply { text = sr.name; textSize = 14f; setTextColor(c(T.TEXT)); setPadding(dp(10), 0, 0, 0) },
                 LinearLayout.LayoutParams(0, WRAP, 1f))
-            val value = TextView(this).apply { textSize = 16f; setTypeface(null, Typeface.BOLD) }
+            val value = TextView(this).apply { textSize = 16f; setTypeface(typeface, Typeface.BOLD) }
             top.addView(value)
             cd.addView(top)
             val b = bar(cd, 5, 6)
@@ -2596,8 +2599,8 @@ class MainActivity : Activity() {
             val ring = ProgressRing(this)
             row.addView(ring, LinearLayout.LayoutParams(dp(68), dp(68)).apply { marginEnd = dp(12) })
             val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            val name = TextView(this).apply { text = k.label; textSize = 14f; setTextColor(c(T.TEXT)); setTypeface(null, Typeface.BOLD) }
-            val detail = TextView(this).apply { textSize = 12f; setTextColor(c(T.MUTED)); setLineSpacing(0f, 1.1f) }
+            val name = TextView(this).apply { text = k.label; textSize = 14f; setTextColor(c(T.TEXT)); setTypeface(typeface, Typeface.BOLD) }
+            val detail = TextView(this).apply { textSize = 13f; setTextColor(c(T.MUTED)); setLineSpacing(0f, 1.1f) }
             texts.addView(name); texts.addView(detail)
             row.addView(texts, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             trc.addView(row)
@@ -2668,7 +2671,7 @@ class MainActivity : Activity() {
                 go.isEnabled = can
                 go.text = when { run -> "Training…"; !ct.ready() -> "Needs kaggle.json"; rd.ok -> "Train"; else -> "Not enough yet" }
                 go.background = ripple(when { run -> T.GOLD; can -> T.GREEN; else -> T.RED }, 12)
-                go.setTextColor(Color.WHITE)
+                go.setTextColor(c(T.ON_PRIMARY))
                 go.alpha = if (can || run) 1f else 0.75f
                 ready0.text = rd.text
             }
@@ -2684,7 +2687,7 @@ class MainActivity : Activity() {
 
         val c = card()
         val head = cardText(c, 15f, true)
-        val table = TextView(this).apply { typeface = Typeface.MONOSPACE; textSize = 12f; setTextColor(c(T.TEXT)) }
+        val table = TextView(this).apply { typeface = Typeface.MONOSPACE; textSize = 13f; setTextColor(c(T.TEXT)) }
         c.addView(table)
         val now = cardText(c, 13f)
         upd {
@@ -2704,7 +2707,7 @@ class MainActivity : Activity() {
         }
 
         title("RECENT LESSONS")
-        val lessons = TextView(this).apply { typeface = Typeface.MONOSPACE; textSize = 12f; setTextColor(c(T.TEXT)) }
+        val lessons = TextView(this).apply { typeface = Typeface.MONOSPACE; textSize = 13f; setTextColor(c(T.TEXT)) }
         content.addView(lessons)
         upd {
             val r = Brain.recent(12)
@@ -2922,7 +2925,7 @@ class MainActivity : Activity() {
         }
         title("HISTORY (newest first)")
         val log = TextView(this).apply {
-            typeface = Typeface.MONOSPACE; textSize = 11f; setTextIsSelectable(true); setTextColor(c(T.TEXT))
+            typeface = Typeface.MONOSPACE; textSize = 13f; setTextIsSelectable(true); setTextColor(c(T.TEXT))
         }
         content.addView(log)
         upd {
@@ -3099,6 +3102,14 @@ class MainActivity : Activity() {
 
     private fun setupPage() {
         btn("Open the first-run setup") { show("welcome") }
+        // the heading font: the owner picks between the two pixel fonts (design tokens, Phase 4)
+        title("HEADING FONT")
+        radioSwitches(Fonts.CHOICES, Fonts.choice(Cfg.headFont)) { pick ->
+            Cfg.headFont = pick
+            content.post { recreate() }       // the header, the tabs and every heading take the new font
+        }
+        text("The font of the headings, the tabs and the app name. Text and buttons use Inter. Pick the one you like; " +
+            "the app redraws at once.")
         title("PERMISSIONS")
         val acc = btn("1. Accessibility service (touches)") { openAccessibility() }
         upd { mark(acc, AccessibilityController.instance != null) }

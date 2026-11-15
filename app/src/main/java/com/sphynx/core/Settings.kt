@@ -226,6 +226,8 @@ object Cfg {
 
     // ---- learning from live matches (watching another player) ----
     var liveLearn: Boolean get() = b("live_learn", false); set(v) = put("live_learn", v)
+    // the heading font (app.Fonts): "pixelify" or "silkscreen" - the owner's pick on the Setup page
+    var headFont: String get() = s("head_font", "pixelify"); set(v) = put("head_font", v)
     var liveHero: String get() = s("live_hero", ""); set(v) = put("live_hero", v)
     // the watched player's role: exp | gold | mid | roam | jungle
     var liveLaneName: String get() = s("live_lane", "exp"); set(v) = put("live_lane", v)
