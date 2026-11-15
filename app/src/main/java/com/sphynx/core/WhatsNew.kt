@@ -24,6 +24,15 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-15", Kind.IMPROVED, "The new look: brand colours, the app's own fonts, bigger text",
+            "Phase 4 has started, with the redesign first as you asked. The main screen now uses the brand colours " +
+                "(one set, checked for contrast by a test); main buttons are light with dark text and STOP is a deeper " +
+                "red, both easy to read; green / amber / red buttons have dark text too. The app brings its own fonts: " +
+                "a pixel font for the app name, the tabs and the headings, and Inter for everything else, so it no " +
+                "longer depends on your phone's font. Choose between two pixel fonts on Setup (Heading font). Text is " +
+                "at least 13, tabs, buttons and switches are at least 48 high. The pages are still the same 14: the " +
+                "five sections come next.",
+            pr = 28, needsDeviceCheck = true, version = "37.38"),
         Entry("2026-11-15", Kind.IMPROVED, "Development plan: Phase 3 (the new design) is complete",
             "You approved the design for all five sections: Play, Hero & match, Knowledge, AI & models, Settings & help. " +
                 "The plan and mockups for the last three are written down (docs/PHASE_3_SCREEN_SPECS.md), with the list " +

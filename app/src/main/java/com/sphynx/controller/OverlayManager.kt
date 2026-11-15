@@ -312,7 +312,7 @@ class OverlayManager(private val ctx: Context) {
         })
         // the status word (ON / DRY / ERR / OFF) in its colour
         val ch = TextView(ctx).apply {
-            textSize = 9.5f; setTypeface(null, Typeface.BOLD); letterSpacing = 0.06f; includeFontPadding = false
+            textSize = 11f; setTypeface(typeface, Typeface.BOLD); letterSpacing = 0.06f; includeFontPadding = false
             setPadding(dp(7), dp(2), dp(7), dp(2))
         }
         chip = ch

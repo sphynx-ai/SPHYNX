@@ -27,6 +27,7 @@
         android:roundIcon="@mipmap/ic_sphynx"
         android:allowBackup="true"
         android:hasFragileUserData="true"
+        android:theme="@style/Theme.Sphynx"
         android:largeHeap="true">
 
         <!-- Lets LiteRT-LM use the phone's GPU (optional: falls back to CPU) -->
@@ -37,7 +38,7 @@
         <activity
             android:name=".app.MainActivity"
             android:exported="true"
-            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+            android:theme="@style/Theme.Sphynx"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density|fontScale">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

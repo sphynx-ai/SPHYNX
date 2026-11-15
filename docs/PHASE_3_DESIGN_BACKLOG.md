@@ -34,8 +34,8 @@ Each item is its own PR, with a version step and a phone test.
 | 2 | P1 | **Confirm every destructive action** (the 11 listed in the state matrix) and group them in "Data & resets" cards | 10 | All 26 ask first |
 | 3 | P1 | **Play: Running now + Ready check** (one switch per engine; missing permissions with Fix; the per-page "running" switches removed) | 7, 11, 25 | One place shows what runs; starting without a permission leads to Fix, not a toast |
 | 4 | P1 | **Split Player** into Hero and Play style; lane and Team / Solo as segmented controls | 2, 26 | Player content on two sub-pages |
-| 5 | P2 | **Design tokens in code**: one palette (app + panel), primary and STOP colours, 48dp targets, text sizes | 13, 14, 15, 19, 22 | Contrast and size rules of the tokens doc hold on every page |
-| 6 | P2 | **Fonts**: bundle Inter and the pixel font; phone sample of Pixelify Sans vs Silkscreen for the owner's pick | 21 | Same look on every phone; owner picked the pixel font |
+| 5 | P2 | *(implemented v37.38, phone test pending; the floating panel's palette is item 12)* **Design tokens in code**: one palette (app + panel), primary and STOP colours, 48dp targets, text sizes | 13, 14, 15, 19, 22 | Contrast and size rules of the tokens doc hold on every page |
+| 6 | P2 | *(implemented v37.38: both pixel fonts bundled, the owner picks on Setup › Heading font)* **Fonts**: bundle Inter and the pixel font; phone sample of Pixelify Sans vs Silkscreen for the owner's pick | 21 | Same look on every phone; owner picked the pixel font |
 | 7 | P2 | **Status words and badges**: permission rows (Granted / Missing), model rows (dot + word), capability badges | 6, 24 | No state by colour alone |
 | 8 | P2 | **Standard states**: loading / progress with Stop, empty states, errors with Try again, "needs internet" | 9, 12 | Patterns of the state matrix on each sub-page |
 | 9 | P3 | **Freshness lines** on Knowledge ("Updated <date> from <source>") | 8 | Every Meta / Library card shows it |
