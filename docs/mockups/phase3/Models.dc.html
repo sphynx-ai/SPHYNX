@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sphynx Models</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Pixelify+Sans:wght@400;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#7FA2FF}a:hover{color:#A9C0FF}
+</style>
+</helmet>
+<div style="width: 390px; height: 1180px; box-sizing: border-box; background: #0B0D10; color: #C9CED6; font-family: Inter, sans-serif; display: flex; flex-direction: column;">
+  <header style="height: 64px; padding: 0 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #3A414D;">
+    <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true"><rect width="36" height="36" rx="8" fill="#1B1F26"/><path d="M18 6 L30 18 L18 30 L6 18 Z" fill="none" stroke="#F4F6F8" stroke-width="3"/><path d="M18 14 L22 18 L18 22 L14 18 Z" fill="#35C2B0"/></svg>
+    <div style="flex-grow: 1; display: flex; flex-direction: column;">
+      <span style="font-family: 'Pixelify Sans', monospace; font-size: 20px; color: #F4F6F8;">Sphynx</span>
+      <span style="font-size: 13px; color: #9AA3AF;">AI off</span>
+    </div>
+    <button style="height: 44px; padding: 0 18px; border: 0; border-radius: 22px; background: #C8303F; color: #FFFFFF; font: 600 15px Inter, sans-serif; display: flex; align-items: center; gap: 8px;"><svg width="12" height="12" aria-hidden="true"><rect width="12" height="12" rx="2" fill="#FFFFFF"/></svg>STOP</button>
+  </header>
+
+  <div role="tablist" aria-label="AI and models" style="margin: 12px 16px 0; padding: 4px; background: #1B1F26; border: 1px solid #3A414D; border-radius: 14px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px;">
+    <a href="Models.dc.html" style="min-height: 44px; border-radius: 10px; background: #F4F6F8; color: #0B0D10; text-decoration: none; display: flex; align-items: center; justify-content: center; font: 600 13px Inter, sans-serif;">Models</a>
+    <a href="#" style="min-height: 44px; border-radius: 10px; color: #C9CED6; text-decoration: none; display: flex; align-items: center; justify-content: center; font: 500 13px Inter, sans-serif;">Learning</a>
+    <a href="#" style="min-height: 44px; border-radius: 10px; color: #C9CED6; text-decoration: none; display: flex; align-items: center; justify-content: center; font: 500 13px Inter, sans-serif;">Practice</a>
+    <a href="#" style="min-height: 44px; border-radius: 10px; color: #C9CED6; text-decoration: none; display: flex; align-items: center; justify-content: center; font: 500 13px Inter, sans-serif;">Speed</a>
+  </div>
+
+  <main style="flex-grow: 1; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px; overflow: hidden;">
+    <section style="background: #1B1F26; border: 1px solid #3A414D; border-radius: 16px; padding: 16px; display: flex; flex-direction: column;">
+      <h2 style="margin: 0 0 6px; font-family: 'Pixelify Sans', monospace; font-size: 17px; font-weight: 600; color: #F4F6F8;">Models in use</h2>
+      <sc-for list="{{models}}" as="m" hint-placeholder-count="6">
+        <button style="min-height: 60px; border: 0; border-top: 1px solid #252B35; background: transparent; padding: 8px 0; display: flex; align-items: center; gap: 10px; text-align: left; font-family: Inter, sans-serif;">
+          <span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 5px; background: {{m.dot}}; flex-shrink: 0;"></span>
+          <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 15px; font-weight: 500; color: #F4F6F8;">{{m.name}}</span>
+            <span style="font-size: 13px; color: {{m.dot}};">{{m.state}}</span>
+          </span>
+          <span style="font-size: 12px; color: {{m.badgeColor}}; border: 1px solid {{m.badgeColor}}; border-radius: 8px; padding: 2px 6px; white-space: nowrap;">{{m.badge}}</span>
+        </button>
+      </sc-for>
+    </section>
+
+    <section style="background: #1B1F26; border: 1px solid #3A414D; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+      <h2 style="margin: 0; font-family: 'Pixelify Sans', monospace; font-size: 17px; font-weight: 600; color: #F4F6F8;">Folder</h2>
+      <span style="font-size: 14px;">Sphynx-Storage / Input</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="none" stroke="#3DD68C" stroke-width="2"/><path d="M5.5 9.2l2.3 2.3 4.7-4.8" fill="none" stroke="#3DD68C" stroke-width="2" stroke-linecap="round"/></svg>
+        <span style="font-size: 14px; color: #3DD68C;">All files access: Granted</span>
+      </div>
+      <button style="height: 52px; border: 0; border-radius: 12px; background: #F4F6F8; color: #0B0D10; font: 600 16px Inter, sans-serif;">Scan the folder now</button>
+      <button style="height: 48px; border-radius: 12px; border: 1px solid #737B88; background: #252B35; color: #C9CED6; font: 500 15px Inter, sans-serif;">Change the folder</button>
+    </section>
+
+    <section style="background: #1B1F26; border: 1px solid #3A414D; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <h2 style="margin: 0; font-family: 'Pixelify Sans', monospace; font-size: 17px; font-weight: 600; color: #F4F6F8;">GGUF (llama.cpp)</h2>
+        <span style="font-size: 12px; color: #C3A6FF; border: 1px solid #C3A6FF; border-radius: 8px; padding: 2px 6px;">Experimental</span>
+      </div>
+      <span style="font-size: 14px;">Llama-3.2-1B-Instruct-Q4_K_M · 770 MB · loads in 1.7 s</span>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+        <button style="height: 48px; border-radius: 12px; border: 1px solid #737B88; background: #252B35; color: #C9CED6; font: 500 15px Inter, sans-serif;">Add a model</button>
+        <button style="height: 48px; border-radius: 12px; border: 1px solid #737B88; background: #252B35; color: #C9CED6; font: 500 15px Inter, sans-serif;">Test question</button>
+      </div>
+    </section>
+  </main>
+
+  <nav aria-label="Main" style="height: 64px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 6px 8px; background: #1B1F26; border-top: 1px solid #3A414D; box-sizing: border-box;">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+      <a href="{{t.href}}" style="border-radius: 20px; background: {{t.bg}}; color: {{t.fg}}; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: 'Pixelify Sans', monospace; font-size: 11px; min-height: 48px;">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="{{t.icon}}" fill="none" stroke="{{t.fg}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>{{t.label}}</span>
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const tabs = [
+      { label: 'Play', href: 'Main.dc.html', icon: 'M6 4l10 6-10 6z' },
+      { label: 'Hero & match', href: 'Hero.dc.html', icon: 'M10 3l7 3v5c0 4-3 6-7 7-4-1-7-3-7-7V6z' },
+      { label: 'Knowledge', href: 'Library.dc.html', icon: 'M4 4h5a3 3 0 013 3v10a2 2 0 00-2-2H4zM16 4h-1a3 3 0 00-3 3' },
+      { label: 'AI & models', href: 'Models.dc.html', icon: 'M6 6h8v8H6zM10 2v4M10 14v4M2 10h4M14 10h4' },
+      { label: 'Settings', href: 'Setup.dc.html', icon: 'M10 7a3 3 0 100 6 3 3 0 000-6zM10 2v3M10 15v3M2 10h3M15 10h3' }
+    ].map((t, i) => ({ ...t, bg: i === 3 ? '#F4F6F8' : 'transparent', fg: i === 3 ? '#0B0D10' : '#9AA3AF' }));
+    const m = (name, state, kind, badge) => {
+      const dot = { ok: '#3DD68C', warn: '#F4C25B', bad: '#FF6B78' }[kind];
+      const badgeColor = { Operational: '#3DD68C', Partial: '#7FA2FF', Experimental: '#C3A6FF' }[badge] || '#9AA3AF';
+      return { name, state, dot, badge, badgeColor };
+    };
+    return {
+      tabs,
+      models: [
+        m('Strategic: Gemma 4 E2B', 'Ready on GPU · 2468 MB', 'ok', 'Partial'),
+        m('Small tactical: Gemma 3 270M', 'Switched off · 289 MB', 'warn', 'Partial'),
+        m('Minimap detector', 'Not loaded: train it on Learning', 'bad', 'Partial'),
+        m('Screen detector', 'Not loaded: train it on Learning', 'bad', 'Partial'),
+        m('Tactical network', 'Not loaded', 'bad', 'Experimental'),
+        m('Online AI (Groq, Gemini, Cerebras)', 'Available · needs internet', 'ok', 'Partial')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

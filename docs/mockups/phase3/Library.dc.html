@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sphynx Library</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Pixelify+Sans:wght@400;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#7FA2FF}a:hover{color:#A9C0FF}
+</style>
+</helmet>
+<div style="width: 390px; height: 1180px; box-sizing: border-box; background: #0B0D10; color: #C9CED6; font-family: Inter, sans-serif; display: flex; flex-direction: column;">
+  <header style="height: 64px; padding: 0 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #3A414D;">
+    <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true"><rect width="36" height="36" rx="8" fill="#1B1F26"/><path d="M18 6 L30 18 L18 30 L6 18 Z" fill="none" stroke="#F4F6F8" stroke-width="3"/><path d="M18 14 L22 18 L18 22 L14 18 Z" fill="#35C2B0"/></svg>
+    <div style="flex-grow: 1; display: flex; flex-direction: column;">
+      <span style="font-family: 'Pixelify Sans', monospace; font-size: 20px; color: #F4F6F8;">Sphynx</span>
+      <span style="font-size: 13px; color: #9AA3AF;">AI off</span>
+    </div>
+    <button style="height: 44px; padding: 0 18px; border: 0; border-radius: 22px; background: #C8303F; color: #FFFFFF; font: 600 15px Inter, sans-serif; display: flex; align-items: center; gap: 8px;"><svg width="12" height="12" aria-hidden="true"><rect width="12" height="12" rx="2" fill="#FFFFFF"/></svg>STOP</button>
+  </header>
+
+  <div role="tablist" aria-label="Knowledge" style="margin: 12px 16px 0; padding: 4px; background: #1B1F26; border: 1px solid #3A414D; border-radius: 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;">
+    <a href="Library.dc.html" style="min-height: 44px; border-radius: 10px; background: #F4F6F8; color: #0B0D10; text-decoration: none; display: flex; align-items: center; justify-content: center; font: 600 14px Inter, sans-serif;">Library</a>
+    <a href="#" style="min-height: 44px; border-radius: 10px; color: #C9CED6; text-decoration: none; display: flex; align-items: center; justify-content: center; font: 500 14px Inter, sans-serif;">Meta</a>
+  </div>
+
+  <main style="flex-grow: 1; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px; overflow: hidden;">
+    <section style="background: #1B1F26; border: 1px solid #3A414D; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <h2 style="margin: 0; font-family: 'Pixelify Sans', monospace; font-size: 17px; font-weight: 600; color: #F4F6F8;">What the app knows</h2>
+        <span style="font-size: 13px; color: #7FA2FF; border: 1px solid #7FA2FF; border-radius: 8px; padding: 2px 8px;">Needs internet</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+        <sc-for list="{{counts}}" as="c" hint-placeholder-count="3">
+          <div style="background: #252B35; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-family: 'Pixelify Sans', monospace; font-size: 22px; color: #F4F6F8;">{{c.n}}</span>
+            <span style="font-size: 13px; color: #9AA3AF;">{{c.label}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <span style="font-size: 13px; color: #9AA3AF;">Last run: never</span>
+      <button style="height: 52px; border: 0; border-radius: 12px; background: #F4F6F8; color: #0B0D10; font: 600 16px Inter, sans-serif;">Learn the whole database</button>
+      <button style="height: 48px; border-radius: 12px; border: 1px solid #737B88; background: #252B35; color: #C9CED6; font: 500 15px Inter, sans-serif;">Load all icons</button>
+    </section>
+
+    <div role="radiogroup" aria-label="Browse" style="padding: 4px; background: #1B1F26; border: 1px solid #3A414D; border-radius: 12px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px;">
+      <sc-for list="{{browse}}" as="b" hint-placeholder-count="4">
+        <button style="min-height: 44px; border: 0; border-radius: 9px; background: {{b.bg}}; color: {{b.fg}}; font: 500 14px Inter, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{b.name}}</button>
+      </sc-for>
+    </div>
+    <label style="display: flex; flex-direction: column;"><span style="position: absolute; left: -9999px;">Search</span>
+      <input type="search" placeholder="Search heroes" style="height: 48px; border-radius: 12px; border: 1px solid #737B88; background: #252B35; color: #F4F6F8; font: 16px Inter, sans-serif; padding: 0 14px;">
+    </label>
+
+    <sc-for list="{{heroes}}" as="h" hint-placeholder-count="5">
+      <button style="min-height: 72px; border-radius: 14px; border: 1px solid #3A414D; background: #1B1F26; padding: 10px 14px; display: flex; align-items: center; gap: 12px; text-align: left; font-family: Inter, sans-serif;">
+        <span aria-hidden="true" style="width: 48px; height: 48px; border-radius: 24px; background: #252B35; border: 1px solid #737B88; display: flex; align-items: center; justify-content: center; font-family: 'Pixelify Sans', monospace; font-size: 18px; color: #C9CED6; flex-shrink: 0;">{{h.initial}}</span>
+        <span style="display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 16px; font-weight: 600; color: #F4F6F8;">{{h.name}}</span>
+          <span style="font-size: 13px; color: #9AA3AF;">{{h.role}}</span>
+          <span style="font-size: 13px; color: #F4C25B;">Skills: not learned · Guide: not yet</span>
+        </span>
+      </button>
+    </sc-for>
+  </main>
+
+  <nav aria-label="Main" style="height: 64px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 6px 8px; background: #1B1F26; border-top: 1px solid #3A414D; box-sizing: border-box;">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+      <a href="{{t.href}}" style="border-radius: 20px; background: {{t.bg}}; color: {{t.fg}}; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: 'Pixelify Sans', monospace; font-size: 11px; min-height: 48px;">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="{{t.icon}}" fill="none" stroke="{{t.fg}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>{{t.label}}</span>
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const tabs = [
+      { label: 'Play', href: 'Main.dc.html', icon: 'M6 4l10 6-10 6z' },
+      { label: 'Hero & match', href: 'Hero.dc.html', icon: 'M10 3l7 3v5c0 4-3 6-7 7-4-1-7-3-7-7V6z' },
+      { label: 'Knowledge', href: 'Library.dc.html', icon: 'M4 4h5a3 3 0 013 3v10a2 2 0 00-2-2H4zM16 4h-1a3 3 0 00-3 3' },
+      { label: 'AI & models', href: 'Models.dc.html', icon: 'M6 6h8v8H6zM10 2v4M10 14v4M2 10h4M14 10h4' },
+      { label: 'Settings', href: 'Setup.dc.html', icon: 'M10 7a3 3 0 100 6 3 3 0 000-6zM10 2v3M10 15v3M2 10h3M15 10h3' }
+    ].map((t, i) => ({ ...t, bg: i === 2 ? '#F4F6F8' : 'transparent', fg: i === 2 ? '#0B0D10' : '#9AA3AF' }));
+    return {
+      tabs,
+      counts: [{ n: '0/133', label: 'Skills' }, { n: '0/133', label: 'Guides' }, { n: '0/98', label: 'Items' }],
+      browse: ['Heroes', 'Spells', 'Items', 'Terms'].map((n, i) => ({ name: n, bg: i === 0 ? '#F4F6F8' : 'transparent', fg: i === 0 ? '#0B0D10' : '#C9CED6' })),
+      heroes: [
+        { name: 'Aamon', initial: 'A', role: 'Assassin · Jungle' },
+        { name: 'Akai', initial: 'A', role: 'Tank · Roam · 2nd: Jungle' },
+        { name: 'Aldous', initial: 'A', role: 'Fighter · EXP lane' },
+        { name: 'Alice', initial: 'A', role: 'Mage · EXP lane · 2nd: Jungle' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

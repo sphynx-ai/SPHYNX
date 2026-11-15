@@ -5,7 +5,7 @@
 | **Phase** | 3 — UI/UX Audit and Product Design Blueprint (information architecture deliverable) |
 | **Based on** | `docs/PHASE_3_UX_AUDIT.md` (findings 1–5, 7, 10, 25–28) and the owner's screenshots |
 | **Owner decision** | 2026-11-14: **yes** to grouping the 14 tabs into 5 sections: Play / Hero & match / Knowledge / AI & models / Settings & help |
-| **Status** | The grouping is **approved**. The details below (sub-pages, what moves where, the global controls) are **proposed** for owner review. Implementation is Phase 4 |
+| **Status** | **Approved by the owner**: the grouping on 2026-11-14, the details with the screen specs on 2026-11-15. Implementation is Phase 4 |
 
 ## 1. Principles
 1. **Order by the user's journey:** set up once, prepare a match, play, then look back and improve. Rarely used and technical pages go to the end.
