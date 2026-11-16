@@ -399,29 +399,14 @@ object TacticalEngine {
     private fun spellCasts(s: GameState, p: HeroProfile, d: TacticalDecision, casts0: List<String>): List<String> {
         val sp = s.spell ?: return casts0
         if ("spell" in casts0 || !CooldownTracker.ready("spell", p)) return casts0
-        val hp = s.selfHp
         val fight = d.intent == Intent.ENGAGE || d.intent == Intent.AMBUSH
         val running = d.intent == Intent.RETREAT && d.moveX != 0f || d.intent == Intent.RETREAT && d.moveY != 0f
         val tDist = if (d.targetX >= 0f) s.distToSelf(d.targetX, d.targetY) else 9f
         val close = s.enemiesWithin(0.15f).size
         val near = s.enemiesWithin(0.5f).size
         val hurt = GameStateTracker.hurtRecently(s.ts)
-        val use = when (sp) {
-            "Execute" -> fight && d.targetHp in 0f..com.sphynx.game.SpellInfo.EXECUTE_BELOW && tDist <= p.engageRange
-            "Flameshot" -> fight && d.targetHp in 0f..0.3f && tDist <= 0.8f || running && close > 0
-            "Petrify" -> (fight && (close >= 2 || close >= 1 && d.targetHp in 0f..0.6f)) || running && close > 0
-            "Inspire" -> fight && tDist <= p.attackRange * 1.3f && d.targetHp > 0.15f
-            "Sprint" -> running && near > 0 || fight && d.targetHp in 0f..0.2f && tDist > p.attackRange * 1.5f && tDist <= p.engageRange * 1.6f
-            "Aegis" -> (fight || running) && near > 0 && hp in 0f..0.45f
-            "Revitalize" -> (fight || running) && near > 0 && hp in 0f..0.5f
-            "Purify" -> (fight || running) && hurt && close > 0 && hp in 0f..0.45f
-            "Vengeance" -> fight && close >= 1 && hurt && hp in 0f..0.75f
-            // Retribution on a hero: in a close fight that is going on (slow / burn / drain = the edge),
-            // only when no buff, Turtle or Lord is on screen to save it for
-            "Retribution" -> fight && tDist <= 0.3f && d.targetHp in 0f..0.6f && s.boss == null &&
-                s.creeps.none { com.sphynx.game.JungleDb.isBuff(it.species) }
-            else -> false      // Flicker (chase / escape / walls) and Arrival are handled elsewhere
-        }
+        // which spell does what is the game's rule (MLBB: MlbbTacticalRules.useSpellInFight)
+        val use = rules.useSpellInFight(sp, s, p, fight, running, tDist, close, near, hurt, d.targetHp)
         return if (use) casts0 + "spell" else casts0
     }
 
@@ -492,7 +477,7 @@ object TacticalEngine {
         if (!pendingHop && !stuck) return d
         val dash = if (Cfg.useDash) rules.dashSlot(s.ownHero)?.takeIf { it != "ult" && CooldownTracker.ready(it, p) } else null
         // Flicker has a long cooldown: only to escape or to catch someone
-        val flicker = if (s.spell == "Flicker" && CooldownTracker.ready("spell", p) &&
+        val flicker = if (rules.isBlink(s.spell) && CooldownTracker.ready("spell", p) &&
             (d.intent == Intent.RETREAT || d.intent == Intent.ENGAGE)) "spell" else null
         val slot = dash ?: flicker ?: return d
         if (slot in d.casts) return d
@@ -502,7 +487,7 @@ object TacticalEngine {
         val ty = if (d.targetX >= 0f && d.intent == Intent.ENGAGE) d.targetY else self.y + d.moveY * 0.3f
         movingSince = now
         return TacticalDecision(d.intent, d.moveX, d.moveY, d.casts + slot, tx, ty, d.targetLabel, d.targetHp, d.targetId,
-            d.reason + " | passing the wall with ${if (slot == "spell") "Flicker" else slot}")
+            d.reason + " | passing the wall with ${if (slot == "spell") (s.spell ?: "spell") else slot}")
     }
 
     private fun decideRaw(s: GameState, p: HeroProfile, plan: StrategyPlan, learnedBias: Float, option: FightOption?): TacticalDecision {
@@ -649,7 +634,7 @@ object TacticalEngine {
             val ultToo = CooldownTracker.lowCdUlt(s.ownHero)
             p.waveClearSkill?.let { if (CooldownTracker.ready(it, p)) casts.add(it) }
             for (sk in p.combo) if ((sk != "ult" || ultToo) && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
-            if (s.spell == "Retribution" && lastMonHp <= 0.25f && retriWorthy(lastMonSpecies, lastMonBoss) && CooldownTracker.ready("spell", p)) casts.add("spell")
+            if (rules.isSmite(s.spell) && lastMonHp <= 0.25f && retriWorthy(lastMonSpecies, lastMonBoss) && CooldownTracker.ready("spell", p)) casts.add("spell")
             // issue #2: hold if it was inside your attack range; otherwise close in on where it was (never
             // out of its aggro zone) instead of standing out of range
             val (hx, hy) = monsterStep(s, p, lastMonX, lastMonY)
@@ -665,7 +650,7 @@ object TacticalEngine {
                 fighting && !it.hero && s.dist(it.x, it.y, lastMonX, lastMonY) < 0.20f && (hp >= 0.25f || it.hp <= 0.55f))
         }.minByOrNull { it.hp }
         if (lowMon != null && threat.isEmpty() && hp >= 0.04f && now >= recallUntil) {
-            return hold(now, hitMonster(s, p, lowMon, if (lowMon.hero) Cfg.retriBossPct else Cfg.retriCreepPct,
+            return hold(now, hitMonster(s, p, lowMon, if (lowMon.hero) rules.smiteBossPct() else rules.smiteCreepPct(),
                 if (lowMon.hero) Intent.OBJECTIVE else Intent.JUNGLE,
                 "finishing the monster first (${(lowMon.hp * 100).toInt()}% HP)"), force = true)
         }
@@ -742,7 +727,7 @@ object TacticalEngine {
         val dying = s.enemiesWithin(1.3f).filter { e ->
             e.hp <= 0.10f && (hp > 0.15f || argusImmortal) && surv >= 35f && !(objectiveOn && bossNow!!.hp < 0.4f) &&
                 s.enemies.none { o -> o.id != e.id && s.dist(o.x, o.y, e.x, e.y) < 0.35f && o.hp > 0.3f } && (!TowerLogic.enemyUnderTower(s, e) || argusImmortal ||
-                hp >= 0.4f && (s.distToSelf(e.x, e.y) <= p.attackRange * 1.6f || dashSlot(s, p) != null || s.spell == "Flicker" && CooldownTracker.ready("spell", p)))
+                hp >= 0.4f && (s.distToSelf(e.x, e.y) <= p.attackRange * 1.6f || dashSlot(s, p) != null || rules.isBlink(s.spell) && CooldownTracker.ready("spell", p)))
         }.minByOrNull { it.hp + s.distToSelf(it.x, it.y) * 0.3f }
         val heroExecPct = if (p.ult == UltRule.EXECUTE && CooldownTracker.ready("ult", p)) (rules.executeUltBelow(s.ownHero, s.level) * 100f).toInt() else 0
         val effExecPct = maxOf(Cfg.executeHpPct + (if (kit.has(Passive.EXECUTE_BONUS)) 10 else 0), heroExecPct)
@@ -756,10 +741,10 @@ object TacticalEngine {
             for (sk in p.combo) if (sk != "ult" && sk !in casts && d <= p.engageRange && CooldownTracker.ready(sk, p)) casts.add(sk)
             if (d <= p.engageRange && CooldownTracker.ready("ult", p) && (p.ult == UltRule.EXECUTE || p.ult == UltRule.ENGAGE)) casts.add("ult")
             // Execute: true damage that grows with the target's LOST HP - a finisher (wiki), not an opener
-            if (s.spell == "Execute" && low.hp <= com.sphynx.game.SpellInfo.EXECUTE_BELOW && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
-            if (s.spell == "Flameshot" && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
+            if (rules.isExecute(s.spell) && low.hp <= rules.executeSpellBelow && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
+            if (rules.isNuke(s.spell) && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
             // Flicker onto a fleeing enemy under 10% that is just out of reach
-            if (low === dying && s.spell == "Flicker" && d > p.attackRange * 1.5f && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
+            if (low === dying && rules.isBlink(s.spell) && d > p.attackRange * 1.5f && d <= p.engageRange && CooldownTracker.ready("spell", p)) casts.add("spell")
             // chasing: straight after it (no keeping distance)
             val (mx, my) = if (low === dying && d > p.attackRange * 0.8f) toward(s, low.x, low.y) else heroSpacing(s, p, low, d)
             return hold(now, TacticalDecision(Intent.ENGAGE, mx, my, casts, low.x, low.y, "enemy #${low.id}", low.hp, low.id,
@@ -804,11 +789,11 @@ object TacticalEngine {
         // next hit kills (gold, EXP, the buff, and no steal). Not in a fight that is going well. ----
         if (fstate != Utility.State.ENGAGING && !ComboRunner.running && surv >= 45f) {
             s.boss?.takeIf { it.hp <= 0.15f && s.distToSelf(it.x, it.y) <= p.engageRange && lordOk(s, it) }?.let { b ->
-                return hold(now, hitMonster(s, p, b, Cfg.retriBossPct, Intent.OBJECTIVE,
+                return hold(now, hitMonster(s, p, b, rules.smiteBossPct(), Intent.OBJECTIVE,
                     "last hit: ${LaneLogic.objectiveName(s.matchSec)} at ${(b.hp * 100).toInt()}%"), force = true)
             }
             s.creeps.filter { it.hp <= 0.2f && s.distToSelf(it.x, it.y) <= p.attackRange * 1.6f }.minByOrNull { it.hp }?.let { c ->
-                return hold(now, hitMonster(s, p, c, Cfg.retriCreepPct, Intent.JUNGLE, "last hit: monster at ${(c.hp * 100).toInt()}%"))
+                return hold(now, hitMonster(s, p, c, rules.smiteCreepPct(), Intent.JUNGLE, "last hit: monster at ${(c.hp * 100).toInt()}%"))
             }
             val minStopDist = maxOf(p.attackRange * 1.55f, if (p.ranged) 0.38f else 0.28f)
             minions.filter { it.hp <= 0.18f && s.distToSelf(it.x, it.y) <= minStopDist * 1.15f }.minByOrNull { it.hp }?.let { m ->
@@ -868,7 +853,7 @@ object TacticalEngine {
             val alliesThere = s.allies.count { s.dist(it.x, it.y, boss.x, boss.y) < 0.5f }
             if (!(alliesThere >= 1 || s.lane == Lane.JUNGLE || s.lane == Lane.ROAM || boss.hp < 0.5f)) return null
             val name = LaneLogic.objectiveName(s.matchSec)
-            return hitMonster(s, p, boss, Cfg.retriBossPct, Intent.OBJECTIVE,
+            return hitMonster(s, p, boss, rules.smiteBossPct(), Intent.OBJECTIVE,
                 "$name HP ${(boss.hp * 100).toInt()}%" + if (alliesThere > 0) ", with $alliesThere allies" else "")
         }
 
@@ -906,7 +891,7 @@ object TacticalEngine {
         fun monstersOnScreen(): TacticalDecision? {
             if (threat.isNotEmpty() && (eng >= 70f || surv < 40f)) return null
             val creep = s.creeps.minByOrNull { s.distToSelf(it.x, it.y) } ?: return null
-            return hitMonster(s, p, creep, Cfg.retriCreepPct, Intent.JUNGLE,
+            return hitMonster(s, p, creep, rules.smiteCreepPct(), Intent.JUNGLE,
                 (com.sphynx.game.JungleDb.byId(creep.species)?.let { m ->
                     m.name + if (m.aliases.isNotEmpty()) " (${m.aliases.first()})" else ""
                 } ?: if (JungleNav.atBuff) "our buff" else "jungle monster") + " HP ${(creep.hp * 100).toInt()}%")
@@ -922,7 +907,7 @@ object TacticalEngine {
         fun minionWave(): TacticalDecision? {
             if (minions.isEmpty() || plan.plan == "group") return null
             // jungler with Retribution: lane minions give 70% less until 5:00 and feed the laners less (wiki)
-            if (s.lane == Lane.JUNGLE && s.spell == "Retribution" && s.matchSec in 0 until 300 &&
+            if (s.lane == Lane.JUNGLE && rules.isSmite(s.spell) && s.matchSec in 0 until 300 &&
                 TowerLogic.towerToDefend(s) == null) return null
             val mx0 = minions.map { it.x }.average().toFloat()
             val my0 = minions.map { it.y }.average().toFloat()
@@ -1013,7 +998,7 @@ object TacticalEngine {
         fun laneCamps(radius: Float): TacticalDecision? {
             if (!Cfg.lanersTakeCamps || threat.isNotEmpty() || s.level >= 15) return null
             if (s.lane == Lane.ROAM) return null
-            val hasRetri = s.spell == "Retribution"
+            val hasRetri = rules.isSmite(s.spell)
             // Non-Retribution laners must NEVER detour into jungle camps before Lv4 (2:40) or while a minion wave is present!
             if (!hasRetri && (s.level < 4 || s.matchSec in 0..160 || minions.isNotEmpty())) return null
             val effRadius = if (hasRetri) radius else minOf(radius, 0.11f)
@@ -1294,7 +1279,7 @@ object TacticalEngine {
             for (sk in p.combo) if ((sk != "ult" || ultToo) && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
         }
         val m = s.creeps.minByOrNull { s.distToSelf(it.x, it.y) }
-        if (s.spell == "Retribution" && JungleNav.atBuff && JungleNav.atCampMs > 5000L && CooldownTracker.ready("spell", p)) casts.add("spell")
+        if (rules.isSmite(s.spell) && JungleNav.atBuff && JungleNav.atCampMs > 5000L && CooldownTracker.ready("spell", p)) casts.add("spell")
         if (m != null) {
             // issue #2: inside your own attack range, never out of the monster's aggro zone
             val (mx, my) = monsterStep(s, p, m.x, m.y)
@@ -1362,7 +1347,7 @@ object TacticalEngine {
             for (sk in p.combo) if ((sk != "ult" || ultToo) && sk !in casts && CooldownTracker.ready(sk, p)) casts.add(sk)
         }
         val mhp = if (m.hero && s.bossHp >= 0f) s.bossHp else m.hp
-        if (s.spell == "Retribution" && retriWorthy(m.species, m.hero) && mhp * 100 <= retriPct && d <= 0.45f && CooldownTracker.ready("spell", p)) casts.add("spell")
+        if (rules.isSmite(s.spell) && retriWorthy(m.species, m.hero) && mhp * 100 <= retriPct && d <= 0.45f && CooldownTracker.ready("spell", p)) casts.add("spell")
         // Issue #2: walk in until the monster is inside YOUR attack range (CombatRange), then stand still.
         // (It used to stop at about twice a melee hero's range and rely on the attack button.)
         val (mx, my) = monsterStep(s, p, m.x, m.y)
