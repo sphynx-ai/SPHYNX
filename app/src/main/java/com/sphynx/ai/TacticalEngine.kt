@@ -1177,7 +1177,7 @@ object TacticalEngine {
         // within poke reach and not under its tower, while the marksman is healthy and safe. It keeps its distance.
         fun marksmanPoke(): TacticalDecision? {
             if (!rules || p.role != Role.MARKSMAN || plan.plan == "retreat" || objectiveOn) return null
-            if (hp < maxOf(retreatHp + 0.2f, 0.5f) || surv < 45f) return null
+            if (hp < maxOf(retreatHp + 0.2f, 0.5f) || surv < 35f) return null   // 35: the same safety bar as finishing a low enemy (2c)
             val around = s.enemiesWithin(0.9f)
             val t = around.singleOrNull()?.takeIf { it in safeTargets && it.hp in 0f..0.6f } ?: return null
             val d = s.distToSelf(t.x, t.y)
