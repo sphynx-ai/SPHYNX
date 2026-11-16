@@ -21,3 +21,12 @@ retreat_plan_enemy_far | PUSH | move 0.00,0.00 | casts - | target - -1.00 | Mid 
 dead | IDLE | move 0.00,0.00 | casts - | target - -1.00 | waiting
 shop_open | IDLE | move 0.00,0.00 | casts - | target - -1.00 | waiting
 no_self_seen | IDLE | move 0.00,0.00 | casts - | target - -1.00 | waiting
+retribution_low_creep | JUNGLE | move 0.00,0.00 | casts attack,spell | target monster 0.15 | finishing the monster first (15% HP)
+lord_low_after_8min | RETREAT | move -0.91,0.41 | casts - | target away -1.00 | the Lord with only 1 allies near (needs 3): walking away
+yu_zhong_dragon_flight | ENGAGE | move 1.00,-0.10 | casts - | target enemy #9 0.70 | Yu Zhong Black Dragon (50%): steering onto enemy #9
+argus_ult_low_hp | ENGAGE | move 0.99,-0.17 | casts attack,s1,s2,ult | target enemy #10 0.60 | last stand: 1v1 I can win (me 8%, enemy 60%)
+recall_bar_running | RECALL | move 0.00,0.00 | casts - | target - -1.00 | recalling (40% blue bar)
+execute_spell_low_enemy | ENGAGE | move 0.99,-0.14 | casts s1,s2,ult,spell | target enemy #11 0.10 | finishing enemy at 10% HP
+flicker_chase_dying | ENGAGE | move 1.00,-0.08 | casts - | target enemy #12 0.06 | chasing a kill: enemy at 6% HP
+teamfight_three_on_three | GROUP | move -0.83,0.56 | casts - | target enemy #14 0.60 | positioning: engage 29 is not enough, keeping distance
+low_enemy_near_its_tower | PUSH | move -0.71,0.71 | casts - | target - -1.00 | Mid lane (fast wave clear, 1-3-1 semi-roam, objective control): positioning outside Mid lane tower range for next minion wave (fight)
