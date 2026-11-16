@@ -42,6 +42,40 @@ object MlbbTacticalRules : TacticalRules {
     override fun multiPhaseUlt(hero: String?) = hero in HeroKit.MULTI_PHASE_HEROES
     override fun dashSlot(hero: String?) = HeroDb.dashSlot(hero)
     override fun role(hero: String?) = HeroDb.role(hero)
+    override fun skills(hero: String?) = com.sphynx.game.SkillBook.get(hero)
+    override fun playbookCasts(d: com.sphynx.ai.TacticalDecision, casts: List<String>, s: GameState,
+                               p: com.sphynx.game.HeroProfile, ready: (String) -> Boolean) =
+        com.sphynx.game.HeroPlaybook.applyCasts(d, casts, s, p, ready)
+
+    // (moved unchanged from Utility.survival)
+    //  - Argus Eternal Evil (4s death immunity on badge/icon): cannot die, stays in fight at full aggression
+    //  - Thamuz Cauterant Inferno (transformation bar + badge): massive HP regen per hit
+    //  - Yu Zhong Black Dragon / Dragonoid, Leomord Phantom Steed, Lukas Sacred Beast, etc.
+    override fun survivalWithHeroState(s: GameState, v: Float): Float {
+        var r = v
+        when {
+            s.ownHero == "Argus" && HeroKit.isBuffUltActive(s) -> r = maxOf(r + 55f, 75f)
+            s.ownHero == "Thamuz" && HeroKit.isBuffUltActive(s) -> r += 24f
+            HeroKit.isYuZhongBlackDragonFlight(s) -> r += 30f
+            HeroKit.isBuffUltActive(s) -> r += 18f
+        }
+        return r
+    }
+
+    // (moved unchanged from Utility.engagement)
+    override fun engageHeroState(s: GameState): Pair<Float, String>? = when {
+        deathImmune(s) -> 28f to "Eternal Evil immortality active"
+        s.ownHero == "Thamuz" && HeroKit.isBuffUltActive(s) -> 20f to "Cauterant Inferno active"
+        HeroKit.isYuZhongBlackDragonFlight(s) -> 25f to "Black Dragon flight active"
+        HeroKit.isBuffUltActive(s) -> 16f to "transformation / ultimate buff active"
+        else -> null
+    }
+
+    override fun engager(hero: String?) = com.sphynx.game.WikiLanes.engager(hero)
+    override fun protector(hero: String?) = com.sphynx.game.WikiLanes.protector(hero)
+    override fun lateGame(hero: String?) = com.sphynx.game.WikiLanes.lateGame(hero)
+    override fun earlyGame(hero: String?) = com.sphynx.game.WikiLanes.earlyGame(hero)
+    override fun needsBuffFirst(hero: String?) = com.sphynx.game.WikiLanes.needPurpleFirst.any { it.equals(hero, ignoreCase = true) }
 
     // ---- the battle spells ----
     override fun isSmite(spell: String?) = spell == "Retribution"

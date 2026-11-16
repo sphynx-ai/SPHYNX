@@ -68,17 +68,21 @@ class ArchitectureRulesTest {
     // Phase 2 adapter split (docs/PHASE_2_ADAPTER_SPLIT.md, step 4): the tactical engine asks the game's rules
     // (ai/TacticalRules) and names no MLBB hero, spell, monster or map helper itself. Comments may.
     private val mlbbInEngine = listOf(
-        Regex("""\b(HeroKit|HeroDb|SpellInfo|JungleNav|JungleDb|TowerLogic|BossRule|SceneryMap|LaneLogic|MapSide|RoleProfile)\."""),
+        Regex("""\b(HeroKit|HeroDb|SpellInfo|JungleNav|JungleDb|TowerLogic|BossRule|SceneryMap|LaneLogic|MapSide|RoleProfile|SkillBook|HeroPlaybook|WikiLanes)\."""),
         Regex("""Cfg\.retri"""),
         Regex(""""(Argus|Thamuz|Edith|Yu Zhong|Retribution|Flicker|Execute|Flameshot|Sprint|Purify|Vengeance|Aegis|Petrify|Inspire|Revitalize|Arrival)""""),
         Regex("""_CORRIDOR\b""")
     )
 
+    // the tactical engine and the scores it decides with (survival, engagement, the options' scores)
+    private val gameFreeAi = listOf("ai/TacticalEngine.kt", "ai/Utility.kt", "ai/Deliberation.kt")
+
     @Test fun theTacticalEngineNamesNoMlbbKnowledge() {
-        val f = sourceRoot().resolve("ai/TacticalEngine.kt")
-        val code = f.readLines().mapIndexed { i, l -> (i + 1) to l.substringBefore("//") }
-        val found = code.flatMap { (n, l) -> mlbbInEngine.mapNotNull { r -> r.find(l)?.let { "line $n: ${it.value}" } } }
-        assertTrue("TacticalEngine names MLBB knowledge; ask TacticalEngine.rules instead:\n" + found.joinToString("\n"),
+        val found = gameFreeAi.flatMap { name ->
+            sourceRoot().resolve(name).readLines().mapIndexed { i, l -> (i + 1) to l.substringBefore("//") }
+                .flatMap { (n, l) -> mlbbInEngine.mapNotNull { r -> r.find(l)?.let { "$name line $n: ${it.value}" } } }
+        }
+        assertTrue("The tactical engine names MLBB knowledge; ask TacticalEngine.rules instead:\n" + found.joinToString("\n"),
             found.isEmpty())
     }
 

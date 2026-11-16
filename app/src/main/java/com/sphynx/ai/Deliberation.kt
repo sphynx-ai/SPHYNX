@@ -63,7 +63,7 @@ object Deliberation {
         val sk = slots.count { CooldownTracker.ready(it, p) } / 3f
         val t = (s.alliesWithin(0.5f).size / 2f).coerceAtMost(1f)
         val me = s.minimapSelf
-        val underTower = me != null && s.towers.any { hypot(it.x - me.first, it.y - me.second) < com.sphynx.game.TowerLogic.range() } && s.allyMinions.isEmpty()
+        val underTower = me != null && s.towers.any { hypot(it.x - me.first, it.y - me.second) < TacticalEngine.rules.towers.range() } && s.allyMinions.isEmpty()
         val r = (s.enemiesWithin(0.9f).sumOf { (0.15 + 0.2 * it.hp) }.toFloat() +
             GameMemory.fogDanger(me, now) * 0.2f +
             (if (MapIntel.gank(s)) 0.3f else 0f) +
@@ -75,7 +75,7 @@ object Deliberation {
         val farmHere = (s.enemyMinions.isNotEmpty() || s.creeps.isNotEmpty())
         val farm = ((if (farmHere) 0.6f else 0.15f) + 0.3f * (1f - r)) * (if (s.lane == Lane.ROAM) 0.6f else 1f)
         val retreat = ((1f - hp) * 0.55f + r * 0.6f - (if (target != null && target.hp < 0.15f) 0.3f else 0f)).coerceIn(0f, 1f)
-        val objective = if (s.boss != null || s.bossHp >= 0f || s.creeps.any { com.sphynx.game.JungleDb.isBuff(it.species) })
+        val objective = if (s.boss != null || s.bossHp >= 0f || s.creeps.any { TacticalEngine.rules.isBuffCamp(it.species) })
             (0.55f + 0.15f * t + 0.2f * hp - 0.4f * r).coerceIn(0f, 1f) else 0f
         val push = if (s.towerRing.zone == com.sphynx.vision.TowerRing.Zone.GREEN) (0.5f + 0.3f * (1f - r)) else 0.1f * (1f - r)
         val recall = if (hp < 0.35f && s.enemiesWithin(0.9f).isEmpty()) (0.9f - hp) else 0f

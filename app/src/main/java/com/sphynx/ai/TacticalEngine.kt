@@ -1,7 +1,5 @@
 package com.sphynx.ai
 
-import com.sphynx.game.SkillBook
-import com.sphynx.game.HeroPlaybook
 import com.sphynx.game.Passive
 
 import com.sphynx.core.Cfg
@@ -361,7 +359,7 @@ object TacticalEngine {
             casts = casts + "attack"
         }
         // how this hero is played: keep the escape, heal / shield when hurt, self-buff first
-        casts = HeroPlaybook.applyCasts(d, casts, s, p) { CooldownTracker.ready(it, p) }
+        casts = rules.playbookCasts(d, casts, s, p) { CooldownTracker.ready(it, p) }
         casts = spellCasts(s, p, d, casts)
 
         // 2. Enforce Active Continuous-Damage Skill Guard across all intents (PVP, Jungle, Lane Clear) (v37.15):
@@ -507,7 +505,7 @@ object TacticalEngine {
         val minions = s.minionsWithin(0.6f)
 
         // ---- 0. assess: survival, the best target and how good a fight with it is, the state ----
-        val kit = SkillBook.get(s.ownHero)
+        val kit = rules.skills(s.ownHero)
         val surv = Utility.survival(s, p, kit)
         val cand = Utility.bestTarget(s, p, threat, lastTargetId)
         val eng = cand?.let { Utility.engagement(s, p, it, kit) + (aggression - 0.5f) * 30f } ?: 0f
@@ -1533,7 +1531,7 @@ object TacticalEngine {
                 // ranged heroes poke with everything; a melee hero only with its RANGED skills, from
                 // that skill's range (it does not walk into basic-attack range)
                 if (!p.ranged) {
-                    val pk = SkillBook.get(s.ownHero).pokeSkills
+                    val pk = rules.skills(s.ownHero).pokeSkills
                     if (pk.isEmpty()) return null
                     val reach = pk.maxOf { it.range }
                     val casts = pk.filter { CooldownTracker.ready(it.slot, p) && d <= it.range * 1.1f }.map { it.slot }
