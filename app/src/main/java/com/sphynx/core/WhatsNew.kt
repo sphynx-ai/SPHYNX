@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Foundation: the strategy questions come from the Mobile Legends rules",
+            "Behind the scenes, for adding other games later: everything the app asks the strategic model about Mobile " +
+                "Legends (the plan, the draft, the loading cards, your hero and battle spell, the build, ranked or " +
+                "standard, the live match clock) and the Build page's text now come from the Mobile Legends part; the " +
+                "strategy part only schedules the questions and applies the answers. The questions are word for word " +
+                "the same, so the answers should not change.",
+            pr = 62, needsDeviceCheck = true, version = "37.72"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the screen reading is split into a pipeline and Mobile Legends' readers",
             "Behind the scenes, for adding other games later: taking each captured frame, timing it and keeping the " +
                 "latest reading is now one game-independent part; everything that reads Mobile Legends' screen (HP bars, " +

@@ -48,6 +48,8 @@ object ProbesWiring {
         com.sphynx.ai.TacticalEngine.rules = com.sphynx.adapters.mlbb.MlbbTacticalRules
         // ...and the frame pipeline reads the screen with Mobile Legends' readers
         com.sphynx.vision.FrameProcessor.reader = com.sphynx.vision.MlbbScreenReading
+        // ...and the strategic model is asked Mobile Legends' questions
+        com.sphynx.ai.StrategicAdvisor.game = com.sphynx.adapters.mlbb.MlbbStrategy
 
         // B4: the models layer finds and copies the model files; the engines that run them are plugged in here
         wireModels()

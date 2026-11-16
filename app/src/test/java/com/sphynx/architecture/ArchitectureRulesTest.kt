@@ -68,14 +68,16 @@ class ArchitectureRulesTest {
     // Phase 2 adapter split (docs/PHASE_2_ADAPTER_SPLIT.md, step 4): the tactical engine asks the game's rules
     // (ai/TacticalRules) and names no MLBB hero, spell, monster or map helper itself. Comments may.
     private val mlbbInEngine = listOf(
-        Regex("""\b(HeroKit|HeroDb|SpellInfo|JungleNav|JungleDb|TowerLogic|BossRule|SceneryMap|LaneLogic|MapSide|RoleProfile|SkillBook|HeroPlaybook|WikiLanes)\."""),
+        Regex("""\b(HeroKit|HeroDb|SpellInfo|JungleNav|JungleDb|TowerLogic|BossRule|SceneryMap|LaneLogic|MapSide|RoleProfile|SkillBook|HeroPlaybook|WikiLanes|SpellDb|MetaStore|PlayerName|BuildBook|CounterRules)\."""),
         Regex("""Cfg\.retri"""),
         Regex(""""(Argus|Thamuz|Edith|Yu Zhong|Retribution|Flicker|Execute|Flameshot|Sprint|Purify|Vengeance|Aegis|Petrify|Inspire|Revitalize|Arrival)""""),
-        Regex("""_CORRIDOR\b""")
+        Regex("""_CORRIDOR\b"""),
+        Regex(""""[^"]*(Mobile Legends|MLBB)""")
     )
 
     // the tactical engine and the scores it decides with (survival, engagement, the options' scores)
-    private val gameFreeAi = listOf("ai/TacticalEngine.kt", "ai/Utility.kt", "ai/Deliberation.kt")
+    private val gameFreeAi = listOf("ai/TacticalEngine.kt", "ai/Utility.kt", "ai/Deliberation.kt", "ai/StrategicAdvisor.kt",
+        "vision/FrameProcessor.kt")
 
     @Test fun theTacticalEngineNamesNoMlbbKnowledge() {
         val found = gameFreeAi.flatMap { name ->
