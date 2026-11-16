@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Setup and the first-run guide share one Permissions card",
+            "Settings > Setup now shows the same Permissions card as the first-run guide, instead of its own copy of " +
+                "the buttons: Accessibility service, Allow restricted settings, Display over other apps, Notifications " +
+                "and All files access (which Setup did not have), each ending with Granted or Missing, and a chip that " +
+                "counts how many are done.",
+            pr = 47, needsDeviceCheck = true, version = "37.57"),
         Entry("2026-11-16", Kind.IMPROVED, "Clear empty, loading and offline states",
             "Pages now say plainly when there is nothing to show and what fills it: What the AI sees offers Start screen " +
                 "capture when there is no capture, Recent actions says nothing has happened yet, and a Library search with " +
