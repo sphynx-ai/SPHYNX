@@ -40,6 +40,23 @@ interface TacticalRules {
     /** The skill slot that dashes (null when none). */
     fun dashSlot(hero: String?): String?
 
+    // ---- the battle / summoner spells ----
+    /** The spell that finishes monsters (MLBB: Retribution). */
+    fun isSmite(spell: String?): Boolean
+    /** The short teleport (MLBB: Flicker): chase, escape, walls. */
+    fun isBlink(spell: String?): Boolean
+    /** The spell that finishes a low enemy hero (MLBB: Execute), and under which HP. */
+    fun isExecute(spell: String?): Boolean
+    val executeSpellBelow: Float
+    /** A long-range damage spell (MLBB: Flameshot). */
+    fun isNuke(spell: String?): Boolean
+    /** The smite's HP % on the big objectives and on the camps (owner's rulebook). */
+    fun smiteBossPct(): Int
+    fun smiteCreepPct(): Int
+    /** Cast the spell now, in a fight or while running away? (the spell's own use) */
+    fun useSpellInFight(spell: String, s: GameState, p: com.sphynx.game.HeroProfile, fight: Boolean, running: Boolean,
+                        targetDist: Float, enemiesClose: Int, enemiesNear: Int, hurt: Boolean, targetHp: Float): Boolean
+
     class Channel(val allowBasicAttack: Boolean, val allowMove: Boolean, val executeUltHp: Float)
 
     /** No game-specific rules at all: nothing channels, transforms, buffs or recasts. */
@@ -59,5 +76,15 @@ interface TacticalRules {
         override fun canRecast(hero: String?, slot: String) = false
         override fun multiPhaseUlt(hero: String?) = false
         override fun dashSlot(hero: String?): String? = null
+        override fun isSmite(spell: String?) = false
+        override fun isBlink(spell: String?) = false
+        override fun isExecute(spell: String?) = false
+        override val executeSpellBelow = 0f
+        override fun isNuke(spell: String?) = false
+        override fun smiteBossPct() = 0
+        override fun smiteCreepPct() = 0
+        override fun useSpellInFight(spell: String, s: GameState, p: com.sphynx.game.HeroProfile, fight: Boolean,
+                                     running: Boolean, targetDist: Float, enemiesClose: Int, enemiesNear: Int,
+                                     hurt: Boolean, targetHp: Float) = false
     }
 }

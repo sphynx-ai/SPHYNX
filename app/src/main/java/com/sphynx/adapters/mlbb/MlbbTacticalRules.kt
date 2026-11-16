@@ -41,4 +41,37 @@ object MlbbTacticalRules : TacticalRules {
     override fun canRecast(hero: String?, slot: String) = HeroKit.canRecastNow(hero, slot)
     override fun multiPhaseUlt(hero: String?) = hero in HeroKit.MULTI_PHASE_HEROES
     override fun dashSlot(hero: String?) = HeroDb.dashSlot(hero)
+
+    // ---- the battle spells ----
+    override fun isSmite(spell: String?) = spell == "Retribution"
+    override fun isBlink(spell: String?) = spell == "Flicker"
+    override fun isExecute(spell: String?) = spell == "Execute"
+    override val executeSpellBelow: Float get() = com.sphynx.game.SpellInfo.EXECUTE_BELOW
+    override fun isNuke(spell: String?) = spell == "Flameshot"
+    override fun smiteBossPct() = com.sphynx.core.Cfg.retriBossPct
+    override fun smiteCreepPct() = com.sphynx.core.Cfg.retriCreepPct
+
+    // THE BATTLE SPELL, by what it does (wiki descriptions) - not only at very low HP. (Moved unchanged from
+    // TacticalEngine.spellCasts.) Retribution on a hero: in a close fight that is going on (slow / burn / drain =
+    // the edge), only when no buff, Turtle or Lord is on screen to save it for.
+    override fun useSpellInFight(spell: String, s: GameState, p: com.sphynx.game.HeroProfile, fight: Boolean,
+                                 running: Boolean, targetDist: Float, enemiesClose: Int, enemiesNear: Int,
+                                 hurt: Boolean, targetHp: Float): Boolean {
+        val hp = s.selfHp
+        val tDist = targetDist; val close = enemiesClose; val near = enemiesNear
+        return when (spell) {
+            "Execute" -> fight && targetHp in 0f..com.sphynx.game.SpellInfo.EXECUTE_BELOW && tDist <= p.engageRange
+            "Flameshot" -> fight && targetHp in 0f..0.3f && tDist <= 0.8f || running && close > 0
+            "Petrify" -> (fight && (close >= 2 || close >= 1 && targetHp in 0f..0.6f)) || running && close > 0
+            "Inspire" -> fight && tDist <= p.attackRange * 1.3f && targetHp > 0.15f
+            "Sprint" -> running && near > 0 || fight && targetHp in 0f..0.2f && tDist > p.attackRange * 1.5f && tDist <= p.engageRange * 1.6f
+            "Aegis" -> (fight || running) && near > 0 && hp in 0f..0.45f
+            "Revitalize" -> (fight || running) && near > 0 && hp in 0f..0.5f
+            "Purify" -> (fight || running) && hurt && close > 0 && hp in 0f..0.45f
+            "Vengeance" -> fight && close >= 1 && hurt && hp in 0f..0.75f
+            "Retribution" -> fight && tDist <= 0.3f && targetHp in 0f..0.6f && s.boss == null &&
+                s.creeps.none { com.sphynx.game.JungleDb.isBuff(it.species) }
+            else -> false      // Flicker (chase / escape / walls) and Arrival are handled elsewhere
+        }
+    }
 }

@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Foundation: battle spells move to the Mobile Legends rules",
+            "Behind the scenes, for adding other games later: when to use Retribution, Flicker, Execute, Flameshot and " +
+                "the other battle spells, and the Retribution percentages from your rulebook, are now asked from the " +
+                "Mobile Legends rules instead of being written into the Player's decisions. The Player decides exactly " +
+                "as before (all recorded situations unchanged).",
+            pr = 57, needsDeviceCheck = true, version = "37.67"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the Player's hero special cases move to the Mobile Legends rules",
             "Behind the scenes, for adding other games later: the Player's decisions no longer name Mobile Legends " +
                 "heroes themselves. Yu Zhong's dragon flight, Argus's and Thamuz's ultimates, Edith's ranged form, " +
