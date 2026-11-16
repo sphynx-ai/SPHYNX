@@ -73,16 +73,24 @@ class ArchitectureRulesTest {
         Regex(""""(Argus|Thamuz|Edith|Yu Zhong|Retribution|Flicker|Execute|Flameshot|Sprint|Purify|Vengeance|Aegis|Petrify|Inspire|Revitalize|Arrival)""""),
         Regex("""_CORRIDOR\b"""),
         Regex(""""[^"]*(Mobile Legends|MLBB)"""),
-        Regex(""""[^"]*\b(Lord|lord|Turtle|turtle|Purple Buff)\b""")
+        Regex(""""[^"]*\b(Lord|lord|Turtle|turtle|Purple Buff)\b"""),
+        // step 6 (v37.75): the game-free halves never reach for a game's own half (adapters/, the MLBB readers)
+        Regex("""\bMlbb\w*|com\.sphynx\.adapters""")
     )
 
     // the tactical engine and the scores it decides with (survival, engagement, the options' scores)
     private val gameFreeAi = listOf("ai/TacticalEngine.kt", "ai/Utility.kt", "ai/Deliberation.kt", "ai/StrategicAdvisor.kt",
-        "vision/FrameProcessor.kt")
+        "vision/FrameProcessor.kt", "ai/DecisionGuard.kt")
+
+    // the code part of a line: no // comment, and nothing for a /* ... */ or KDoc line
+    private fun code(l: String): String {
+        val t = l.trimStart()
+        return if (t.startsWith("/*") || t.startsWith("*")) "" else l.substringBefore("//")
+    }
 
     @Test fun theTacticalEngineNamesNoMlbbKnowledge() {
         val found = gameFreeAi.flatMap { name ->
-            sourceRoot().resolve(name).readLines().mapIndexed { i, l -> (i + 1) to l.substringBefore("//") }
+            sourceRoot().resolve(name).readLines().mapIndexed { i, l -> (i + 1) to code(l) }
                 .flatMap { (n, l) -> mlbbInEngine.mapNotNull { r -> r.find(l)?.let { "$name line $n: ${it.value}" } } }
         }
         assertTrue("The tactical engine names MLBB knowledge; ask TacticalEngine.rules instead:\n" + found.joinToString("\n"),

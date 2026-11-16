@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Foundation: a guide and a test kit for adding other games",
+            "Behind the scenes: a guide now says what a second game would need (its names, rules, screen reading and " +
+                "questions), how features it cannot provide behave, and how it is versioned and tested. A test kit checks " +
+                "any game's part, and Mobile Legends passes it. Only Mobile Legends is supported; nothing in play changes.",
+            pr = 65, needsDeviceCheck = true, version = "37.75"),
         Entry("2026-11-16", Kind.IMPROVED, "Safety: a last check on every decision",
             "Behind the scenes: after the trained network or \"Play like me\" has mixed into a decision, a last check " +
                 "makes sure a retreat, recall or regen of the rules is never replaced, the joystick direction is a " +

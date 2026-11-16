@@ -3,6 +3,9 @@ package com.sphynx.adapters.mlbb
 import com.sphynx.game.GameState
 import com.sphynx.game.Lane
 import com.sphynx.game.Phase
+import com.sphynx.core.Cfg
+import com.sphynx.testing.AdapterContractKit
+import com.sphynx.testing.MemoryPrefs
 import com.sphynx.universal.StateContract
 import com.sphynx.universal.UniversalMatchState
 import com.sphynx.vision.MapTower
@@ -11,11 +14,14 @@ import com.sphynx.vision.Team
 import com.sphynx.vision.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Before
 import org.junit.Test
 
 // Phase 2 submilestone 3: whatever the MLBB readers report, the MLBB adapter's output keeps the universal
 // game-state contract (docs/contracts/UNIVERSAL_MATCH_STATE.md). The contract test every future adapter copies.
 class MlbbAdapterContractTest {
+
+    @Before fun setUp() { Cfg.useForTests(MemoryPrefs()) }
 
     private fun unit(team: Team, hero: Boolean, x: Float, y: Float, hp: Float, species: String = "") =
         Seen(team, hero, x, y, hp, x - 0.02f, y - 0.05f, x + 0.02f, y - 0.04f, species)
@@ -60,5 +66,11 @@ class MlbbAdapterContractTest {
         assertNull(u.matchTimeSec); assertNull(u.self)
         assertNull(u.resources.gold); assertNull(u.resources.itemCount); assertNull(u.resources.level); assertNull(u.resources.levelProgress)
         assertEquals(emptyMap<String, String>(), u.gameSpecific)
+    }
+
+    // the adapter test kit every game adapter runs (docs/ADAPTER_GUIDE.md)
+    @Test fun theAdapterPassesTheAdapterTestKit() {
+        val samples = Phase.values().flatMap { p -> Lane.values().flatMap { l -> listOf(full(p, l), empty(p, l)) } }
+        assertEquals(emptyList<String>(), AdapterContractKit.check(MlbbAdapter, samples))
     }
 }
