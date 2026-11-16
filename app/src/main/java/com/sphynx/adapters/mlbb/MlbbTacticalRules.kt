@@ -142,6 +142,11 @@ object MlbbTacticalRules : TacticalRules {
     }
     override fun objectiveName(matchSec: Int) = com.sphynx.game.LaneLogic.objectiveName(matchSec)
     override val teamBossId: String get() = com.sphynx.game.JungleDb.LORD.id
+    override val teamBossName = "Lord"
+    override val firstHitObjectiveId = "turtle"
+    override val firstHitObjectiveName = "Turtle"
+    override val objectivesText = "turtle / lord"
+    override val firstBuffName = "Purple Buff"
     override val teamBossAllies: Int get() = com.sphynx.ai.BossRule.LORD_ALLIES
     override fun mayTakeTeamBoss(alliesNear: Int) = com.sphynx.ai.BossRule.mayHitLord(alliesNear)
     override fun alliesNearBoss(onScreenNearBoss: Int, onMinimapNearYou: Int) =

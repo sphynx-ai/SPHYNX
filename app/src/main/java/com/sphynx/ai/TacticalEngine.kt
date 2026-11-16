@@ -249,7 +249,7 @@ object TacticalEngine {
         val xp = if (s.xp >= 0f) " (EXP ${(s.xp * 100).toInt()}%)" else ""
         val vs = if (s.enemyLevel > 0) ", enemy level ${s.enemyLevel}" else ""
         val next = when {
-            s.level >= 15 -> "max level: push towers and take turtle / lord to end the game"
+            s.level >= 15 -> "max level: push towers and take ${rules.objectivesText} to end the game"
             s.level < 4 -> "farm to level 4 for the ultimate: " + if (s.lane == Lane.JUNGLE) "clear camps back to back, buffs first" else "last-hit every minion, take a near camp between waves"
             s.enemyLevel > 0 && s.enemyLevel > s.level + 1 -> "behind in level: farm safe camps / waves, fight only with allies"
             s.enemyLevel > 0 && s.level > s.enemyLevel + 1 -> "ahead in level: look for kills and push while stronger"
@@ -325,7 +325,7 @@ object TacticalEngine {
         val atCamp = rules.jungle.atCamp && (d.intent == Intent.JUNGLE || d.intent == Intent.LANE_CLEAR) ||
             d.intent == Intent.PUSH && s.towerRing.zone == com.sphynx.vision.TowerRing.Zone.GREEN ||
             d.reason.startsWith("finishing the monster") ||
-            d.intent == Intent.OBJECTIVE && d.targetLabel == "turtle" ||   // at the Turtle pit: its bar shows after the first hit
+            d.intent == Intent.OBJECTIVE && d.targetLabel == rules.firstHitObjectiveId ||   // at the Turtle pit: its bar shows after the first hit
             d.reason.startsWith("invading: first hit")                     // at an enemy camp (bars show after the first hit)
         val skillRange = s.enemiesWithin(maxOf(p.engageRange * 1.35f, 0.55f)).isNotEmpty() || atCamp ||
             s.minionsWithin(maxOf(p.attackRange * 2.2f, p.engageRange * 1.15f, 0.45f)).isNotEmpty() ||
@@ -613,7 +613,7 @@ object TacticalEngine {
         if (lordNear != null && !lordOk(s, lordNear) && s.distToSelf(lordNear.x, lordNear.y) < 0.6f) {
             val (tx, ty) = toward(s, lordNear.x, lordNear.y)
             return hold(now, TacticalDecision(Intent.RETREAT, -tx, -ty, emptyList(), -1f, -1f, "away", -1f, -1,
-                "the Lord with only ${lordAllies(s, lordNear)} allies near (needs ${rules.teamBossAllies}): walking away"), force = true)
+                "the ${rules.teamBossName} with only ${lordAllies(s, lordNear)} allies near (needs ${rules.teamBossAllies}): walking away"), force = true)
         }
         val lordLeft = lastMonSpecies == rules.teamBossId && !lordOk(s, null)
 
@@ -861,19 +861,19 @@ object TacticalEngine {
             val enemiesThere = s.map.enemies.count { kotlin.math.hypot(it.first - obj.first, it.second - obj.second) < 0.2f }
             if (dObj > maxDist || needAlly && alliesThere == 0 || enemiesThere > alliesThere) return null
             // the Lord: only with 3+ allies already there (BossRule - owner, 2026-11-12)
-            if (rules.objectiveName(s.matchSec) == "lord" && !rules.mayTakeTeamBoss(alliesThere)) return null
+            if (rules.objectiveName(s.matchSec) == rules.teamBossId && !rules.mayTakeTeamBoss(alliesThere)) return null
             if (dObj < 0.05f) {
                 objCommit.done()                          // arrived: the commitment is over (ObjectiveCommit)
                 // at the pit and no boss bar on screen. Only the Lord shows its HP bar before it is hit:
                 // no Lord bar = it is not in view yet, keep walking into the pit. The Turtle's bar shows
                 // only once someone hits it: start it with a basic attack (the skills follow on its bar).
-                if (rules.objectiveName(s.matchSec) == "lord") {
+                if (rules.objectiveName(s.matchSec) == rules.teamBossId) {
                     val (mx, my) = mapDir(me, obj)
                     return TacticalDecision(Intent.OBJECTIVE, mx * 0.5f, my * 0.5f, emptyList(), -1f, -1f, "-", -1f, -1,
-                        "at the Lord pit: its bar is not on screen yet, stepping in")
+                        "at the ${rules.teamBossName} pit: its bar is not on screen yet, stepping in")
                 }
-                return TacticalDecision(Intent.OBJECTIVE, 0f, 0f, listOf("attack"), -1f, -1f, "turtle", -1f, -1,
-                    "at the Turtle pit: first hit to show its HP bar (it shows only after it is hit)")
+                return TacticalDecision(Intent.OBJECTIVE, 0f, 0f, listOf("attack"), -1f, -1f, rules.firstHitObjectiveId, -1f, -1,
+                    "at the ${rules.firstHitObjectiveName} pit: first hit to show its HP bar (it shows only after it is hit)")
             }
             val (mx, my) = com.sphynx.vision.WallMap.direction(me, obj) ?: mapDir(me, obj)
             objCommit.rotating(now)

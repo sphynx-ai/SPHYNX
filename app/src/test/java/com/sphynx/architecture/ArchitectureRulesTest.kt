@@ -72,7 +72,8 @@ class ArchitectureRulesTest {
         Regex("""Cfg\.retri"""),
         Regex(""""(Argus|Thamuz|Edith|Yu Zhong|Retribution|Flicker|Execute|Flameshot|Sprint|Purify|Vengeance|Aegis|Petrify|Inspire|Revitalize|Arrival)""""),
         Regex("""_CORRIDOR\b"""),
-        Regex(""""[^"]*(Mobile Legends|MLBB)""")
+        Regex(""""[^"]*(Mobile Legends|MLBB)"""),
+        Regex(""""[^"]*\b(Lord|lord|Turtle|turtle|Purple Buff)\b""")
     )
 
     // the tactical engine and the scores it decides with (survival, engagement, the options' scores)

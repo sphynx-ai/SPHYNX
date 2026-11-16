@@ -82,7 +82,15 @@ interface TacticalRules {
     fun objectiveName(matchSec: Int): String
     /** The id of the big objective that needs the team there (MLBB: the Lord), and how many allies it needs. */
     val teamBossId: String
+    val teamBossName: String
     val teamBossAllies: Int
+    /** The objective whose HP bar shows only after the first hit (MLBB: the turtle): its id and name. */
+    val firstHitObjectiveId: String
+    val firstHitObjectiveName: String
+    /** The big objectives, as said in a sentence ("turtle / lord"). */
+    val objectivesText: String
+    /** The buff some heroes need before they are strong (MLBB: the Purple Buff). */
+    val firstBuffName: String
     fun mayTakeTeamBoss(alliesNear: Int): Boolean
     fun alliesNearBoss(onScreenNearBoss: Int, onMinimapNearYou: Int): Int
     /** Is the camp a buff (worth the smite)? */
@@ -199,6 +207,11 @@ interface TacticalRules {
         }
         override fun objectiveName(matchSec: Int) = "objective"
         override val teamBossId = ""
+        override val teamBossName = "boss"
+        override val firstHitObjectiveId = ""
+        override val firstHitObjectiveName = "objective"
+        override val objectivesText = "the objectives"
+        override val firstBuffName = "buff"
         override val teamBossAllies = 0
         override fun mayTakeTeamBoss(alliesNear: Int) = true
         override fun alliesNearBoss(onScreenNearBoss: Int, onMinimapNearYou: Int) = maxOf(onScreenNearBoss, onMinimapNearYou)
