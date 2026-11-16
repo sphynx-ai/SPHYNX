@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Foundation: the Player's hero special cases move to the Mobile Legends rules",
+            "Behind the scenes, for adding other games later: the Player's decisions no longer name Mobile Legends " +
+                "heroes themselves. Yu Zhong's dragon flight, Argus's and Thamuz's ultimates, Edith's ranged form, " +
+                "skills that must not be interrupted, execute and multi-phase ultimates and dash skills are now asked " +
+                "from the Mobile Legends rules. The Player decides exactly as before (all 25 recorded situations are " +
+                "unchanged).",
+            pr = 56, needsDeviceCheck = true, version = "37.66"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: more recorded fight situations to protect the Player",
             "Behind the scenes: nine more recorded situations that the Player's decisions are checked against on every " +
                 "change, covering Mobile Legends' special cases (Retribution on a creep, a low lord after 8:00, Yu " +

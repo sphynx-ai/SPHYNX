@@ -44,6 +44,9 @@ object ProbesWiring {
         Probes.itemIconFile = { i -> IconCache.itemFile(i) }
         Probes.loadIcon = { ctx, f -> IconCache.load(ctx, f) { } }
 
+        // Phase 2 adapter split: the tactical engine asks Mobile Legends' own rules (heroes, spells, jungle...)
+        com.sphynx.ai.TacticalEngine.rules = com.sphynx.adapters.mlbb.MlbbTacticalRules
+
         // B4: the models layer finds and copies the model files; the engines that run them are plugged in here
         wireModels()
 
