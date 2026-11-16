@@ -3,14 +3,10 @@ package com.sphynx.ai
 import com.sphynx.game.CooldownTracker
 import com.sphynx.game.GameState
 import com.sphynx.game.GameStateTracker
-import com.sphynx.game.HeroDb
-import com.sphynx.game.HeroKit
 import com.sphynx.game.HeroProfile
 import com.sphynx.game.HeroSkills
 import com.sphynx.game.Passive
 import com.sphynx.game.Role
-import com.sphynx.game.SkillBook
-import com.sphynx.game.TowerLogic
 import com.sphynx.vision.Track
 
 // Scores instead of fixed thresholds. A good player does not ask "can I use my skill?" but
@@ -41,14 +37,14 @@ object Utility {
 
     private fun ready(slot: String, p: HeroProfile) = CooldownTracker.ready(slot, p)
 
-    fun survival(s: GameState, p: HeroProfile, k: HeroSkills = SkillBook.get(s.ownHero)): Float {
+    fun survival(s: GameState, p: HeroProfile, k: HeroSkills = TacticalEngine.rules.skills(s.ownHero)): Float {
         val hp = s.selfHp.coerceAtLeast(0f)
         var v = hp * 70f
-        v += when (HeroDb.role(s.ownHero)) { Role.TANK -> 18f; Role.FIGHTER -> 9f; Role.SUPPORT -> 3f; Role.MARKSMAN, Role.MAGE -> -6f; else -> 0f }
+        v += when (TacticalEngine.rules.role(s.ownHero)) { Role.TANK -> 18f; Role.FIGHTER -> 9f; Role.SUPPORT -> 3f; Role.MARKSMAN, Role.MAGE -> -6f; else -> 0f }
         k.escape?.let { if (ready(it.slot, p)) v += 12f }
         if (k.skills.values.any { (it.shield || it.heal) && ready(it.slot, p) }) v += 8f
         if (k.has(Passive.SHIELD)) v += 4f
-        if (s.spell == "Flicker" && ready("spell", p)) v += 6f
+        if (TacticalEngine.rules.isBlink(s.spell) && ready("spell", p)) v += 6f
         v += s.alliesWithin(0.5f).size * 8f
         val near = s.enemiesWithin(0.6f)
         // what the enemies can still do: a nearly dead enemy is much less of a threat
@@ -68,18 +64,13 @@ object Utility {
         // they are coming at you (a gank)
         if (com.sphynx.game.MapIntel.gank(s)) v -= 12f
         val me = s.minimapSelf
-        if (me != null && s.towers.any { kotlin.math.hypot(it.x - me.first, it.y - me.second) < TowerLogic.range() } && s.allyMinions.isEmpty()) v -= 20f
+        if (me != null && s.towers.any { kotlin.math.hypot(it.x - me.first, it.y - me.second) < TacticalEngine.rules.towers.range() } && s.allyMinions.isEmpty()) v -= 20f
         if (k.has(Passive.LOW_HP_POWER) && hp < 0.5f) v += 6f
         // Transformation Bar & Buff Ultimate Badge survival boosts (v37.15):
         //  - Argus Eternal Evil (4s death immunity on badge/icon): cannot die, stays in fight at full aggression
         //  - Thamuz Cauterant Inferno (transformation bar + badge): massive HP regen per hit
         //  - Yu Zhong Black Dragon / Dragonoid, Leomord Phantom Steed, Lukas Sacred Beast, etc.
-        when {
-            s.ownHero == "Argus" && HeroKit.isBuffUltActive(s) -> v = maxOf(v + 55f, 75f)
-            s.ownHero == "Thamuz" && HeroKit.isBuffUltActive(s) -> v += 24f
-            HeroKit.isYuZhongBlackDragonFlight(s) -> v += 30f
-            HeroKit.isBuffUltActive(s) -> v += 18f
-        }
+        v = TacticalEngine.rules.survivalWithHeroState(s, v)
         return v.coerceIn(0f, 100f)
     }
 
@@ -90,7 +81,7 @@ object Utility {
         return ((if (age > 800) 1f else age / 800f) * (if (fresh) 1f else 0.6f)).coerceIn(0.2f, 1f)
     }
 
-    fun engagement(s: GameState, p: HeroProfile, t: Track, k: HeroSkills = SkillBook.get(s.ownHero)): Float {
+    fun engagement(s: GameState, p: HeroProfile, t: Track, k: HeroSkills = TacticalEngine.rules.skills(s.ownHero)): Float {
         val hp = s.selfHp.coerceAtLeast(0f)
         var v = 0f
         val why = ArrayList<String>()
@@ -105,14 +96,9 @@ object Utility {
         add(minOf(s.alliesWithin(0.5f).size, 2) * 15f, "allies near")
         if (ready("ult", p)) add(15f, "ultimate ready")
         if (k.cc.any { ready(it.slot, p) }) add(8f, "crowd control ready")
-        val argusImmortal = s.ownHero == "Argus" && HeroKit.isBuffUltActive(s)
+        val argusImmortal = TacticalEngine.rules.deathImmune(s)
         if (hp < 0.3f && !argusImmortal) add(-30f * (0.3f - hp) / 0.3f - 10f, "own HP low")
-        when {
-            argusImmortal -> add(28f, "Eternal Evil immortality active")
-            s.ownHero == "Thamuz" && HeroKit.isBuffUltActive(s) -> add(20f, "Cauterant Inferno active")
-            HeroKit.isYuZhongBlackDragonFlight(s) -> add(25f, "Black Dragon flight active")
-            HeroKit.isBuffUltActive(s) -> add(16f, "transformation / ultimate buff active")
-        }
+        TacticalEngine.rules.engageHeroState(s)?.let { (bonus, why) -> add(bonus, why) }
         // more enemies close on the minimap than on screen = hidden ones joining the fight
         val hiddenNear = (com.sphynx.game.MapIntel.enemiesNear(s, 0.15f) - s.enemies.size).coerceAtLeast(0)
         if (hiddenNear > 0) add(-15f * hiddenNear, "$hiddenNear enemy hidden nearby (minimap)")
@@ -125,24 +111,24 @@ object Utility {
         val extra = s.enemiesWithin(0.6f).size - 1
         if (extra > 0) add(-25f * extra, "$extra more enemies")
         val esc = k.escape
-        if (HeroDb.role(s.ownHero) != Role.TANK && (esc == null || !ready(esc.slot, p))) add(-5f, "no escape ready")
+        if (TacticalEngine.rules.role(s.ownHero) != Role.TANK && (esc == null || !ready(esc.slot, p))) add(-5f, "no escape ready")
         // under its tower the tower shoots YOU first (even with our minions there)
         val ring = s.towerRing
         val inRing = ring.zone != com.sphynx.vision.TowerRing.Zone.NONE &&
             ((t.x - ring.cx) / ring.rx).let { it * it } + ((t.y - ring.cy) / ring.ry).let { it * it } < 1f
-        if (inRing || TowerLogic.enemyUnderTower(s, t)) add(-30f, "under their tower (it shoots me first)")
+        if (inRing || TacticalEngine.rules.towers.enemyUnderTower(s, t)) add(-30f, "under their tower (it shoots me first)")
         // tank roamers start fights for the team; supports do not fight alone (they protect)
-        val myRole = HeroDb.role(s.ownHero)
+        val myRole = TacticalEngine.rules.role(s.ownHero)
         // (the wiki's roamer kinds: setters / initiators start fights, utility roamers protect)
-        val engager = myRole == Role.TANK || com.sphynx.game.WikiLanes.engager(s.ownHero)
-        val protector = myRole == Role.SUPPORT || com.sphynx.game.WikiLanes.protector(s.ownHero)
+        val engager = myRole == Role.TANK || TacticalEngine.rules.engager(s.ownHero)
+        val protector = myRole == Role.SUPPORT || TacticalEngine.rules.protector(s.ownHero)
         if (engager && s.alliesWithin(0.5f).isNotEmpty()) add(15f, "starting the fight for the team")
         if (protector && !engager && s.alliesWithin(0.5f).isEmpty()) add(-20f, "protector: not without allies")
         // late-game carries avoid even fights early; early-game heroes press before their power fades
-        if (com.sphynx.game.WikiLanes.lateGame(s.ownHero) && s.matchSec in 0 until 600) add(-8f, "late-game hero: patience early")
-        val needPurple = com.sphynx.game.WikiLanes.needPurpleFirst.any { it.equals(s.ownHero, ignoreCase = true) }
+        if (TacticalEngine.rules.lateGame(s.ownHero) && s.matchSec in 0 until 600) add(-8f, "late-game hero: patience early")
+        val needPurple = TacticalEngine.rules.needsBuffFirst(s.ownHero)
         if (needPurple && s.matchSec in 0 until 120) add(-12f, "weak until the Purple Buff")
-        else if (com.sphynx.game.WikiLanes.earlyGame(s.ownHero) && s.matchSec in 0 until 480) add(6f, "strong early")
+        else if (TacticalEngine.rules.earlyGame(s.ownHero) && s.matchSec in 0 until 480) add(6f, "strong early")
         if (s.enemyLevel > 0) add((s.level - s.enemyLevel).coerceIn(-3, 3) * 5f, "level difference")
         else if (s.level < 4) add(-10f, "no ultimate yet")
         if (k.has(Passive.LOW_HP_POWER) && hp < 0.5f) add(10f, "passive: stronger when hurt")
@@ -161,8 +147,8 @@ object Utility {
     // the best enemy to fight for this hero's role (not just the nearest)
     fun bestTarget(s: GameState, p: HeroProfile, near: List<Track>, current: Int): Track? {
         if (near.isEmpty()) return null
-        val role = HeroDb.role(s.ownHero)
-        val k = SkillBook.get(s.ownHero)
+        val role = TacticalEngine.rules.role(s.ownHero)
+        val k = TacticalEngine.rules.skills(s.ownHero)
         val self = s.self ?: return near.minByOrNull { it.hp }
         // enemies' middle: an enemy far from it (towards us) is exposed
         val cx = s.enemies.map { it.x }.average().toFloat()
@@ -183,7 +169,7 @@ object Utility {
             }
             // passive builds stacks on one target: stay on it
             if (t.id == current) sc += if (k.has(Passive.STACKS)) 25f else 10f
-            if (TowerLogic.enemyUnderTower(s, t)) sc -= 30f
+            if (TacticalEngine.rules.towers.enemyUnderTower(s, t)) sc -= 30f
             sc
         }
     }

@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Foundation: the fight scores ask the Mobile Legends rules too",
+            "Behind the scenes, for adding other games later: the scores the Player decides with (how safe you are, how " +
+                "good a fight looks, which option wins) no longer name Mobile Legends heroes, skills, guides, towers or " +
+                "buffs themselves; they ask the Mobile Legends rules, like the Player's decisions already do. The Player " +
+                "decides exactly as before (all recorded situations unchanged).",
+            pr = 60, needsDeviceCheck = true, version = "37.70"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the Player's decisions no longer contain Mobile Legends",
             "Behind the scenes, for adding other games later: the last Mobile Legends map data in the Player's decisions " +
                 "(the lane corridors, the outer towers' places, the roam patrol) moved to the Mobile Legends rules, and a " +

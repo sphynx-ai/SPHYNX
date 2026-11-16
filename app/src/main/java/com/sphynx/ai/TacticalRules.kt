@@ -41,6 +41,21 @@ interface TacticalRules {
     fun dashSlot(hero: String?): String?
     /** The hero's role (UNKNOWN when not known). */
     fun role(hero: String?): com.sphynx.game.Role
+    /** What the hero's skills do (range, crowd control, dash...), from the game's knowledge. */
+    fun skills(hero: String?): com.sphynx.game.HeroSkills
+    /** How this hero is played: keep the escape, heal / shield when hurt, self-buff first. */
+    fun playbookCasts(d: TacticalDecision, casts: List<String>, s: GameState, p: com.sphynx.game.HeroProfile,
+                      ready: (String) -> Boolean): List<String>
+    /** The survival score with the hero's own state counted in (a buff ultimate, death immunity...). */
+    fun survivalWithHeroState(s: GameState, v: Float): Float
+    /** The engagement bonus of the hero's own state and its reason (null when none). */
+    fun engageHeroState(s: GameState): Pair<Float, String>?
+    /** Hero traits from the game's guides: starts fights, protects allies, late / early power, needs a buff first. */
+    fun engager(hero: String?): Boolean
+    fun protector(hero: String?): Boolean
+    fun lateGame(hero: String?): Boolean
+    fun earlyGame(hero: String?): Boolean
+    fun needsBuffFirst(hero: String?): Boolean
 
     // ---- the battle / summoner spells ----
     /** The spell that finishes monsters (MLBB: Retribution). */
@@ -135,6 +150,16 @@ interface TacticalRules {
         override fun multiPhaseUlt(hero: String?) = false
         override fun dashSlot(hero: String?): String? = null
         override fun role(hero: String?) = com.sphynx.game.Role.UNKNOWN
+        override fun skills(hero: String?) = com.sphynx.game.SkillBook.get(null)
+        override fun playbookCasts(d: TacticalDecision, casts: List<String>, s: GameState, p: com.sphynx.game.HeroProfile,
+                                   ready: (String) -> Boolean) = casts
+        override fun survivalWithHeroState(s: GameState, v: Float) = v
+        override fun engageHeroState(s: GameState): Pair<Float, String>? = null
+        override fun engager(hero: String?) = false
+        override fun protector(hero: String?) = false
+        override fun lateGame(hero: String?) = false
+        override fun earlyGame(hero: String?) = false
+        override fun needsBuffFirst(hero: String?) = false
         override fun isSmite(spell: String?) = false
         override fun isBlink(spell: String?) = false
         override fun isExecute(spell: String?) = false
