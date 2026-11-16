@@ -65,6 +65,23 @@ class ArchitectureRulesTest {
             fixed.isEmpty())
     }
 
+    // Phase 2 adapter split (docs/PHASE_2_ADAPTER_SPLIT.md, step 4): the tactical engine asks the game's rules
+    // (ai/TacticalRules) and names no MLBB hero, spell, monster or map helper itself. Comments may.
+    private val mlbbInEngine = listOf(
+        Regex("""\b(HeroKit|HeroDb|SpellInfo|JungleNav|JungleDb|TowerLogic|BossRule|SceneryMap|LaneLogic|MapSide|RoleProfile)\."""),
+        Regex("""Cfg\.retri"""),
+        Regex(""""(Argus|Thamuz|Edith|Yu Zhong|Retribution|Flicker|Execute|Flameshot|Sprint|Purify|Vengeance|Aegis|Petrify|Inspire|Revitalize|Arrival)""""),
+        Regex("""_CORRIDOR\b""")
+    )
+
+    @Test fun theTacticalEngineNamesNoMlbbKnowledge() {
+        val f = sourceRoot().resolve("ai/TacticalEngine.kt")
+        val code = f.readLines().mapIndexed { i, l -> (i + 1) to l.substringBefore("//") }
+        val found = code.flatMap { (n, l) -> mlbbInEngine.mapNotNull { r -> r.find(l)?.let { "line $n: ${it.value}" } } }
+        assertTrue("TacticalEngine names MLBB knowledge; ask TacticalEngine.rules instead:\n" + found.joinToString("\n"),
+            found.isEmpty())
+    }
+
     @Test fun theSourceIsFound() {
         assertTrue(sourceRoot().resolve("universal").isDirectory)
     }

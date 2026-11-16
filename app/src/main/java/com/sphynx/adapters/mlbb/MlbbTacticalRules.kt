@@ -121,4 +121,34 @@ object MlbbTacticalRules : TacticalRules {
         com.sphynx.game.RoleProfile.of(lane, hero, matchSec)
     override fun midRoamTarget(s: GameState) = com.sphynx.game.RoleProfile.midSemiRoamTarget(s)
     override fun roamWaypoint(s: GameState) = com.sphynx.game.RoleProfile.roamMetaWaypoint(s)
+
+    // Multi-waypoint corridors for EXP Lane, Gold Lane, Mid Lane, and Roam Patrol (v37.13; moved unchanged from
+    // TacticalEngine). Drawn for "EXP lane on top"; MapSide.geo swaps them when the Gold lane is on top.
+    private val EXP_CORRIDOR = listOf(
+        0.12f to 0.74f, 0.10f to 0.56f, 0.10f to 0.38f, 0.11f to 0.22f,
+        0.15f to 0.13f, 0.28f to 0.10f, 0.48f to 0.10f, 0.68f to 0.10f, 0.86f to 0.12f
+    )
+    private val GOLD_CORRIDOR = listOf(
+        0.26f to 0.88f, 0.44f to 0.90f, 0.62f to 0.90f, 0.78f to 0.89f,
+        0.87f to 0.85f, 0.89f to 0.68f, 0.89f to 0.48f, 0.89f to 0.28f, 0.87f to 0.14f
+    )
+    private val MID_CORRIDOR = listOf(
+        0.24f to 0.76f, 0.34f to 0.66f, 0.43f to 0.57f, 0.50f to 0.50f,
+        0.58f to 0.42f, 0.67f to 0.33f, 0.76f to 0.24f, 0.86f to 0.14f
+    )
+    override val roamPatrol = listOf(
+        0.45f to 0.55f, 0.39f to 0.61f, 0.56f to 0.44f, 0.74f to 0.76f, 0.34f to 0.32f
+    )
+
+    override fun laneCorridor(lane: com.sphynx.game.Lane): List<Pair<Float, Float>> = when (mapLane(lane)) {
+        com.sphynx.game.Lane.EXP -> EXP_CORRIDOR
+        com.sphynx.game.Lane.GOLD -> GOLD_CORRIDOR
+        else -> MID_CORRIDOR
+    }
+
+    override fun outerTowerIndex(lane: com.sphynx.game.Lane): Int = when (lane) {
+        com.sphynx.game.Lane.EXP -> 5   // (0.28, 0.10) Enemy EXP outer tower
+        com.sphynx.game.Lane.GOLD -> 5  // (0.89, 0.68) Enemy Gold outer tower
+        else -> 4                       // (0.58, 0.42) Enemy Mid outer tower
+    }
 }
