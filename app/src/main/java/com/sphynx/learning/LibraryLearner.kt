@@ -75,6 +75,8 @@ object LibraryLearner {
                 }
             } finally {
                 progress = (if (running) "done" else "stopped") + ": $learned learned this time · " + counts()
+                // when the library last learned (the Library page's "Updated <date> from the wiki" line, backlog item 9)
+                com.sphynx.core.Cfg.setRaw(LAST_RUN_KEY, System.currentTimeMillis().toString())
                 running = false
                 done(progress)
             }
@@ -82,6 +84,10 @@ object LibraryLearner {
     }
 
     fun stop() { running = false }
+
+    private const val LAST_RUN_KEY = "library_last_run"
+    /** When a "learn the whole database" run last ended (ms), 0 when never. */
+    fun lastRunAt(): Long = com.sphynx.core.Cfg.raw(LAST_RUN_KEY)?.toLongOrNull() ?: 0L
 
     // why a hero's skills / guide could not be learned (shown in the Library)
     private fun errKey(h: String, what: String) = "learn_err_${what}_" + h.lowercase().filter { it.isLetterOrDigit() }

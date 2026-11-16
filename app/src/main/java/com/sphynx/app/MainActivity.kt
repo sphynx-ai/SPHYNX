@@ -1483,8 +1483,12 @@ class MainActivity : Activity() {
                 val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
                 val px = dp(48)
                 col.addView(com.sphynx.app.IconCache.view(this, name ?: "?", true, px).apply {
-                    contentDescription = name ?: "Enemy ${i + 1}: not read yet"
+                    contentDescription = (name ?: "Enemy ${i + 1}: not read yet") + ". Tap to choose the hero"
                 }, LinearLayout.LayoutParams(px, px))
+                // tap a slot to set the hero by hand (screen specs 2.1, card 4: "filled by detection or by tap")
+                val slot = i
+                col.isClickable = true
+                col.setOnClickListener { pickEnemy(slot) }
                 col.addView(TextView(this).apply {
                     text = name ?: "?"; textSize = 13f; gravity = Gravity.CENTER; maxLines = 1
                     ellipsize = android.text.TextUtils.TruncateAt.END
@@ -1579,6 +1583,37 @@ class MainActivity : Activity() {
 
     // Hero & match › Play style (Phase 3 screen specs 2.2, backlog item 4): how the AI plays your hero,
     // split off the old Player page, which keeps the hero itself (now "Hero")
+    // choose an enemy hero for one of the five slots (a list with a search box); "Clear" empties the slot
+    private fun pickEnemy(slot: Int) {
+        val all = HeroDb.allNames.sorted()
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), 0) }
+        val q = EditText(this).apply { hint = "Search a hero"; isSingleLine = true }
+        val lv = android.widget.ListView(this)
+        val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_list_item_1, all.toMutableList())
+        lv.adapter = adapter
+        box.addView(q)
+        box.addView(lv, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(320)))
+        q.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, n: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, n: Int) {}
+            override fun afterTextChanged(e: android.text.Editable?) {
+                val t = e?.toString()?.trim()?.lowercase().orEmpty()
+                adapter.clear(); adapter.addAll(all.filter { t.isEmpty() || t in it.lowercase() })
+            }
+        })
+        fun set(hero: String?) {
+            val team = GameStateTracker.enemyTeam.toMutableList()
+            while (team.size <= slot) team.add("")
+            team[slot] = hero.orEmpty()
+            GameStateTracker.enemyTeam = team.filter { it.isNotEmpty() }.distinct().take(5)
+        }
+        val dlg = AlertDialog.Builder(this).setTitle("Enemy hero ${slot + 1}").setView(box)
+            .setNeutralButton("Clear") { _, _ -> set(null) }
+            .setNegativeButton("Cancel", null).create()
+        lv.setOnItemClickListener { _, _, pos, _ -> set(adapter.getItem(pos)); dlg.dismiss() }
+        dlg.show()
+    }
+
     private fun stylePage() {
         title("SKILL COMBOS (MANUAL OR BUILT-IN)")
         text("Uses your Manual Combo if set for the selected hero; if Manual Combo is empty, uses the Built-In Optimized Multi-Combo Library (online combo overrides are disabled).", 12f, color = "#9AA0A6")
@@ -2039,6 +2074,13 @@ class MainActivity : Activity() {
         val lc = card()
         cardHeader(lc, "What the app knows")
         val lt = cardText(lc, 13f)
+        // how fresh the library is and where it came from (backlog item 9)
+        val lFresh = cardNote(lc)
+        upd {
+            val at = ll.lastRunAt()
+            lFresh.text = if (at > 0) Freshness.line(at, listOf("the Mobile Legends wiki", "the online guides"))
+                else "Never learned as a whole yet (single heroes may be)."
+        }
         upd {
             lt.text = ll.counts() + "\n" + (if (ll.running) "Learning: " else "Last run: ") + ll.progress +
                 com.sphynx.app.IconCache.loadAllStatus.takeIf { it != "-" }?.let { "\nIcons: $it" }.orEmpty() +
