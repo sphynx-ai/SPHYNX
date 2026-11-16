@@ -1,11 +1,7 @@
 package com.sphynx.models
 
 import android.content.Context
-import com.sphynx.ai.AiRuntime
-import com.sphynx.ai.GemmaEngine
-import com.sphynx.ai.TacticalLlmEngine
 import com.sphynx.core.Cfg
-import kotlinx.coroutines.launch
 import java.io.File
 
 // The two language-model slots and their .litertlm files (copied in from the Sphynx
@@ -70,23 +66,17 @@ object ModelManager {
     fun load(ctx: Context, done: (String?) -> Unit) {
         val f = modelFile(ctx)
         if (!f.exists()) { done("No model file yet (put the .litertlm file in the Sphynx-Storage/Input folder)"); return }
-        if (GemmaEngine.loading) return
-        AiRuntime.scope.launch {
-            val err = GemmaEngine.load(ctx.applicationContext, f.absolutePath, Cfg.useGpu)
-            done(err)
-        }
+        if (ModelHooks.strategicLoading()) return
+        ModelHooks.loadStrategic(ctx.applicationContext, f.absolutePath, Cfg.useGpu, done)   // runs in the AI's scope
     }
 
     // the small tactical model: CPU, text only (the GPU is left to the game and the big model)
     fun loadTactical(ctx: Context, done: (String?) -> Unit) {
         val f = tacticalFile(ctx)
         if (!f.exists()) { done("No small model file yet (put e.g. the Gemma 3 270M .litertlm file in the Sphynx-Storage/Input folder)"); return }
-        if (TacticalLlmEngine.loading || TacticalLlmEngine.ready) { done(null); return }
-        AiRuntime.scope.launch {
-            val err = TacticalLlmEngine.load(ctx.applicationContext, f.absolutePath, preferGpu = false, textOnly = true)
-            done(err)
-        }
+        if (ModelHooks.tacticalLoading() || ModelHooks.tacticalReady()) { done(null); return }
+        ModelHooks.loadTactical(ctx.applicationContext, f.absolutePath, done)   // CPU, text only
     }
 
-    fun unloadTactical() { AiRuntime.scope.launch { TacticalLlmEngine.unload() } }
+    fun unloadTactical() = ModelHooks.unloadTactical()
 }
