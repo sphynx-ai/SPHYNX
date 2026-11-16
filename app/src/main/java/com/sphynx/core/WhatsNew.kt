@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Library says when it last learned; enemy slots can be set by tap",
+            "Knowledge > Library now shows when the whole database was last learned and where from (the Mobile " +
+                "Legends wiki and the online guides), or that it has not been learned as a whole yet. On Hero & match > " +
+                "Hero, tapping one of the five enemy slots opens a hero list with a search box: pick the hero, or Clear " +
+                "the slot. A hero read later from the loading screen or the scoreboard can still replace it.",
+            pr = 48, needsDeviceCheck = true, version = "37.58"),
         Entry("2026-11-16", Kind.IMPROVED, "Setup and the first-run guide share one Permissions card",
             "Settings > Setup now shows the same Permissions card as the first-run guide, instead of its own copy of " +
                 "the buttons: Accessibility service, Allow restricted settings, Display over other apps, Notifications " +
