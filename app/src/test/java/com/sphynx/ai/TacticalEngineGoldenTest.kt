@@ -52,13 +52,16 @@ class TacticalEngineGoldenTest {
         ts: Long, phase: Phase = Phase.IN_GAME, selfHp: Float = 1f, self: Boolean = true,
         allies: List<Seen> = emptyList(), enemies: List<Track> = emptyList(), enemyMinions: List<Seen> = emptyList(),
         allyMinions: List<Seen> = emptyList(), monsters: List<Seen> = emptyList(), towers: List<MapTower> = emptyList(),
-        matchSec: Int = 300, level: Int = 6, bossHp: Float = -1f, lane: Lane = Lane.MID, minimapSelf: Pair<Float, Float>? = 0.5f to 0.5f
+        matchSec: Int = 300, level: Int = 6, bossHp: Float = -1f, lane: Lane = Lane.MID, minimapSelf: Pair<Float, Float>? = 0.5f to 0.5f,
+        ownHero: String? = null, spell: String? = null, transformBarPct: Float = -1f, recallBarPct: Float = -1f,
+        skillBadgePct: Float = -1f
     ) = GameState(
         ts = ts, phase = phase, self = if (self) unit(Team.SELF, true, 0.5f, 0.55f, selfHp) else null, selfHp = selfHp,
         allies = allies, enemies = enemies, enemyMinions = enemyMinions, allyMinions = allyMinions,
-        minimapEnemies = enemies.size, aspect = 2.2f, ownHero = null, myTeam = emptyList(), enemyTeam = emptyList(),
+        minimapEnemies = enemies.size, aspect = 2.2f, ownHero = ownHero, myTeam = emptyList(), enemyTeam = emptyList(),
         items = 2, gold = 800, itemsGoldAgeMs = 0L, monsters = monsters, lane = lane, matchSec = matchSec,
-        minimapSelf = minimapSelf, towers = towers, bossHp = bossHp, level = level
+        minimapSelf = minimapSelf, towers = towers, bossHp = bossHp, level = level, spell = spell,
+        transformBarPct = transformBarPct, recallBarPct = recallBarPct, skillBadgePct = skillBadgePct
     )
 
     internal class Scenario(val name: String, val hero: HeroProfile, val plan: StrategyPlan, val state: GameState)
@@ -100,6 +103,26 @@ class TacticalEngineGoldenTest {
             Scenario("dead", fighter, farm, state(next(), phase = Phase.DEAD, self = false, selfHp = 0f)),
             Scenario("shop_open", fighter, farm, state(next(), phase = Phase.SHOP)),
             Scenario("no_self_seen", fighter, farm, state(next(), self = false, selfHp = -1f)),
+            // ---- MLBB-specific paths (v37.65, before the TacticalEngine split: Phase 2 adapter split step 3) ----
+            Scenario("retribution_low_creep", fighter, farm, state(next(), lane = Lane.JUNGLE, spell = "Retribution",
+                monsters = listOf(unit(Team.NEUTRAL, false, 0.56f, 0.52f, 0.15f, "molten_fiend")))),
+            Scenario("lord_low_after_8min", fighter, fight, state(next(), matchSec = 600, bossHp = 0.12f, spell = "Retribution",
+                allies = listOf(unit(Team.ALLY, true, 0.46f, 0.5f, 0.9f)),
+                monsters = listOf(unit(Team.NEUTRAL, true, 0.6f, 0.45f, 0.12f, "lord")))),
+            Scenario("yu_zhong_dragon_flight", fighter, fight, state(next(), ownHero = "Yu Zhong", transformBarPct = 0.5f,
+                enemies = listOf(enemy(9, 0.64f, 0.52f, 0.7f, at = t)))),
+            Scenario("argus_ult_low_hp", fighter, fight, state(next(), ownHero = "Argus", selfHp = 0.08f, skillBadgePct = 0.6f,
+                enemies = listOf(enemy(10, 0.58f, 0.52f, 0.6f, at = t)))),
+            Scenario("recall_bar_running", fighter, farm, state(next(), selfHp = 0.4f, recallBarPct = 0.4f)),
+            Scenario("execute_spell_low_enemy", fighter, fight, state(next(), spell = "Execute", selfHp = 0.7f,
+                enemies = listOf(enemy(11, 0.6f, 0.52f, 0.1f, at = t)))),
+            Scenario("flicker_chase_dying", marksman, fight, state(next(), spell = "Flicker", selfHp = 0.8f,
+                enemies = listOf(enemy(12, 0.78f, 0.5f, 0.06f, at = t)))),
+            Scenario("teamfight_three_on_three", fighter, fight, state(next(), selfHp = 0.85f,
+                allies = listOf(unit(Team.ALLY, true, 0.47f, 0.5f, 0.9f), unit(Team.ALLY, true, 0.45f, 0.6f, 0.8f)),
+                enemies = listOf(enemy(13, 0.62f, 0.5f, 0.8f, at = t), enemy(14, 0.66f, 0.56f, 0.6f, at = t), enemy(15, 0.7f, 0.48f, 0.9f, at = t)))),
+            Scenario("low_enemy_near_its_tower", fighter, fight, state(next(), selfHp = 0.75f, minimapSelf = 0.66f to 0.34f,
+                towers = listOf(MapTower(0.70f, 0.30f, false)), enemies = listOf(enemy(16, 0.6f, 0.5f, 0.15f, at = t)))),
         )
     }
 

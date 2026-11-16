@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Foundation: more recorded fight situations to protect the Player",
+            "Behind the scenes: nine more recorded situations that the Player's decisions are checked against on every " +
+                "change, covering Mobile Legends' special cases (Retribution on a creep, a low lord after 8:00, Yu " +
+                "Zhong's dragon flight, Argus's ultimate, the recall bar, Execute and Flicker kills, a 3-on-3 fight, a low " +
+                "enemy near its tower). They guard the coming split of the Player's rules into a game-independent part " +
+                "and a Mobile Legends part. Nothing changes in play.",
+            pr = 55, needsDeviceCheck = true, version = "37.65"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the game's heroes, lanes and items through one adapter",
             "Behind the scenes, for adding other games later: the game-independent part of the app can now ask the " +
                 "game's adapter for its characters, roles, lanes, battle spells, items and objectives, instead of " +
