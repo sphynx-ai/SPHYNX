@@ -55,4 +55,20 @@ object Probes {
 
     /** The GitHub token from the app's chosen folder (when it is not directly in Sphynx-Storage). */
     @Volatile var tokenFromFolder: (Context, String) -> String? = { _, _ -> null }
+
+    // ---- the screen capture service (ADR 0001 migration B3): it tells the layers above, it does not call them ----
+    /** Called when screen capture has started (the app starts learning from you). */
+    @Volatile var onCaptureStarted: () -> Unit = {}
+    /** Called when screen capture has stopped (the game closes an open match after a minute without capture). */
+    @Volatile var onCaptureStopped: () -> Unit = {}
+    /** The notification's emergency stop button: stop everything (the reason is logged). */
+    @Volatile var emergencyStop: (String) -> Unit = {}
+
+    // ---- the downloaded hero / item pictures (ADR 0001 migration B3): vision reads them by file name ----
+    /** The picture file of a hero (null when the hero is not known). */
+    @Volatile var heroIconFile: (String) -> String? = { null }
+    /** The picture file of an item or battle spell. */
+    @Volatile var itemIconFile: (String) -> String = { it.trim().replace(' ', '_') + ".png" }
+    /** Downloads a picture into the app's icons folder when it is not there yet (in the background). */
+    @Volatile var loadIcon: (Context, String) -> Unit = { _, _ -> }
 }

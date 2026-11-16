@@ -32,6 +32,17 @@ object ProbesWiring {
             )
         }
 
+        // B3: the capture service and vision no longer call the layers above directly
+        Probes.onCaptureStarted = {
+            // learning from you runs whenever the screen is captured, Player on or off
+            if (!com.sphynx.ai.AiRuntime.learnOn) com.sphynx.ai.AiRuntime.start("learn")
+        }
+        Probes.onCaptureStopped = { com.sphynx.game.GameStateTracker.captureStopped() }
+        Probes.emergencyStop = { why -> com.sphynx.ai.AiRuntime.emergencyStop(why) }
+        Probes.heroIconFile = { h -> IconCache.heroFile(h) }
+        Probes.itemIconFile = { i -> IconCache.itemFile(i) }
+        Probes.loadIcon = { ctx, f -> IconCache.load(ctx, f) { } }
+
         Probes.mayRecordMatch = { com.sphynx.learning.LearnGate.on() }
         Probes.screenCaptureRunning = { com.sphynx.capture.ScreenCaptureService.running }
         Probes.matchRunning = { com.sphynx.game.GameStateTracker.matchId != 0L }
