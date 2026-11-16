@@ -28,11 +28,9 @@ class ArchitectureRulesTest {
     // above through core.Probes - 11 entries gone; step B2, v37.29: SessionRecorder too - 6 more; step B3, v37.61:
     // ScreenCaptureService reports start / stop / emergency stop and vision reads the pictures through Probes - 4 more;
     // step B4, v37.62: ModelManager and AutoFolder reach the engines through models.ModelHooks - 4 more)
-    private val baseline = setOf(
-        "engines/DecisionBridge.kt -> ai", "engines/DecisionBridge.kt -> learning",
-        "engines/DecisionLogging.kt -> adapters", "engines/DecisionLogging.kt -> ai",
-        "engines/DecisionLogging.kt -> game", "engines/DecisionLogging.kt -> learning",
-    )
+    // step B5, v37.63: DecisionBridge and DecisionLogging moved from engines to ai (the AI-loop edge) - the last 6.
+    // The baseline is empty: every ruled package now uses only what ADR 0001 allows. Keep it that way.
+    private val baseline = emptySet<String>()
 
     private fun sourceRoot(): File = listOf("src/main/java/com/sphynx", "app/src/main/java/com/sphynx")
         .map { File(it) }.first { it.isDirectory }

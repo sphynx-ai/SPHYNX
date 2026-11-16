@@ -1,4 +1,4 @@
-package com.sphynx.engines
+package com.sphynx.ai
 
 import com.sphynx.core.Cfg
 import com.sphynx.game.GameState
