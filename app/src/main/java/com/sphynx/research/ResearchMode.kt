@@ -4,7 +4,7 @@ import com.sphynx.adapters.mlbb.MlbbAdapter
 import com.sphynx.ai.StrategicAdvisor
 import com.sphynx.ai.TacticalAdvisor
 import com.sphynx.core.Diag
-import com.sphynx.engines.DecisionBridge
+import com.sphynx.ai.DecisionBridge
 import com.sphynx.learning.FightOption
 import com.sphynx.universal.Decision
 import com.sphynx.universal.EngineSource

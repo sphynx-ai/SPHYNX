@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Foundation: the layering rule now has no exceptions",
+            "Behind the scenes, for adding other games later: the code that translates the AI's advice into the shared " +
+                "decision format moved next to the AI, so the game-independent part of the app no longer uses any " +
+                "Mobile Legends code. A test now checks that this stays true. Nothing should look or behave differently.",
+            pr = 53, needsDeviceCheck = true, version = "37.63"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the model files no longer call the AI directly",
             "Behind the scenes, for adding other games later: finding, copying and loading the model files (Gemma, " +
                 "the small model, the tactical networks, the detectors, the online backups) now reaches the parts that " +

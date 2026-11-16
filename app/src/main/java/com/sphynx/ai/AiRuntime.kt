@@ -301,7 +301,7 @@ object AiRuntime {
                         if (r != option) { Brain.adopt(s, r); option = r }
                     }
                     // logging mode only: records every engine's advice next to what is played (never changes it)
-                    com.sphynx.engines.DecisionLogging.observe(s, brainOption, option)
+                    DecisionLogging.observe(s, brainOption, option)
                     // research R4 (verified practice only): records this fight moment for the small-model test
                     if (com.sphynx.learning.LearnGate.on()) com.sphynx.research.ResearchMode.recordMoment(s, profile, option)
                     var d = if (calibrating) TacticalEngine.calibrationStep(s, profile)

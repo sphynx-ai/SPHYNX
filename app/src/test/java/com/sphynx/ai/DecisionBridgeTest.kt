@@ -1,6 +1,5 @@
-package com.sphynx.engines
+package com.sphynx.ai
 
-import com.sphynx.ai.StrategyPlan
 import com.sphynx.learning.FightOption
 import com.sphynx.universal.DecisionKind
 import com.sphynx.universal.EngineSource

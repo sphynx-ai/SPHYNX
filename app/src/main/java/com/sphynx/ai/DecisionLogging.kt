@@ -1,8 +1,6 @@
-package com.sphynx.engines
+package com.sphynx.ai
 
 import com.sphynx.adapters.mlbb.MlbbAdapter
-import com.sphynx.ai.StrategicAdvisor
-import com.sphynx.ai.TacticalAdvisor
 import com.sphynx.core.Cfg
 import com.sphynx.core.Diag
 import com.sphynx.game.GameState
