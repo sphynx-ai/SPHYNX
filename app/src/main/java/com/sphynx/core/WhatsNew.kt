@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Foundation: the Player's decisions no longer contain Mobile Legends",
+            "Behind the scenes, for adding other games later: the last Mobile Legends map data in the Player's decisions " +
+                "(the lane corridors, the outer towers' places, the roam patrol) moved to the Mobile Legends rules, and a " +
+                "test now fails if the Player's decisions ever name a Mobile Legends hero, spell, monster or map helper " +
+                "again. The Player decides exactly as before (all recorded situations unchanged).",
+            pr = 59, needsDeviceCheck = true, version = "37.69"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: jungle, towers and objectives move to the Mobile Legends rules",
             "Behind the scenes, for adding other games later: the jungle path and camps, the enemy towers, the turtle " +
                 "and the lord, the learned map scenery, the map's mirroring and the role paths are now asked from the " +

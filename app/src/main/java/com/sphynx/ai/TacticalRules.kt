@@ -79,6 +79,12 @@ interface TacticalRules {
     fun roleProfile(lane: com.sphynx.game.Lane, hero: String?, matchSec: Int): com.sphynx.game.RoleProfile
     fun midRoamTarget(s: GameState): Pair<Pair<Float, Float>, String>?
     fun roamWaypoint(s: GameState): Pair<Pair<Float, Float>, String>?
+    /** The lane's walking corridor on the minimap, from your base to the enemy's (waypoints 0..1). */
+    fun laneCorridor(lane: com.sphynx.game.Lane): List<Pair<Float, Float>>
+    /** The waypoint of the lane's corridor where the enemy's outer tower stands (until the minimap shows it). */
+    fun outerTowerIndex(lane: com.sphynx.game.Lane): Int
+    /** Where a roamer patrols, in turn (minimap 0..1). */
+    val roamPatrol: List<Pair<Float, Float>>
 
     interface JungleRoute {
         val atCamp: Boolean
@@ -179,5 +185,9 @@ interface TacticalRules {
             com.sphynx.game.RoleProfile.of(lane, hero, matchSec)
         override fun midRoamTarget(s: GameState): Pair<Pair<Float, Float>, String>? = null
         override fun roamWaypoint(s: GameState): Pair<Pair<Float, Float>, String>? = null
+        // no map: a straight line from your corner to the enemy's
+        override fun laneCorridor(lane: com.sphynx.game.Lane) = listOf(0.15f to 0.85f, 0.5f to 0.5f, 0.85f to 0.15f)
+        override fun outerTowerIndex(lane: com.sphynx.game.Lane) = 1
+        override val roamPatrol = listOf(0.5f to 0.5f)
     }
 }

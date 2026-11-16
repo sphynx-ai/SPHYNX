@@ -1059,7 +1059,7 @@ object TacticalEngine {
                 return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roamer: escorting teammate on map")
             }
             // 4. River & bush vision patrol when no ally icon is visible on the minimap
-            val patrol = ROAM_PATROL[(s.ts / 7000L).toInt().mod(ROAM_PATROL.size)]
+            val patrol = rules.roamPatrol[(s.ts / 7000L).toInt().mod(rules.roamPatrol.size)]
             if (kotlin.math.hypot(patrol.first - me.first, patrol.second - me.second) < 0.05f) return null
             val (mx, my) = com.sphynx.vision.WallMap.direction(me, patrol) ?: mapDir(me, patrol)
             return TacticalDecision(Intent.GROUP, mx, my, emptyList(), -1f, -1f, "-", -1f, -1, "roamer: river & bush vision patrol")
@@ -1408,29 +1408,9 @@ object TacticalEngine {
         }
     }
 
-    // Multi-waypoint corridors for EXP Lane, Gold Lane, Mid Lane, and Roam Patrol (v37.13)
-    private val EXP_CORRIDOR = listOf(
-        0.12f to 0.74f, 0.10f to 0.56f, 0.10f to 0.38f, 0.11f to 0.22f,
-        0.15f to 0.13f, 0.28f to 0.10f, 0.48f to 0.10f, 0.68f to 0.10f, 0.86f to 0.12f
-    )
-    private val GOLD_CORRIDOR = listOf(
-        0.26f to 0.88f, 0.44f to 0.90f, 0.62f to 0.90f, 0.78f to 0.89f,
-        0.87f to 0.85f, 0.89f to 0.68f, 0.89f to 0.48f, 0.89f to 0.28f, 0.87f to 0.14f
-    )
-    private val MID_CORRIDOR = listOf(
-        0.24f to 0.76f, 0.34f to 0.66f, 0.43f to 0.57f, 0.50f to 0.50f,
-        0.58f to 0.42f, 0.67f to 0.33f, 0.76f to 0.24f, 0.86f to 0.14f
-    )
-    private val ROAM_PATROL = listOf(
-        0.45f to 0.55f, 0.39f to 0.61f, 0.56f to 0.44f, 0.74f to 0.76f, 0.34f to 0.32f
-    )
-
-    // (the corridors are drawn for "EXP lane on top"; MapSide.geo swaps them when the Gold lane is on top)
-    private fun corridorOf(lane: Lane): List<Pair<Float, Float>> = when (rules.mapLane(lane)) {
-        Lane.EXP -> EXP_CORRIDOR
-        Lane.GOLD -> GOLD_CORRIDOR
-        else -> MID_CORRIDOR
-    }
+    // the lane corridors, the roam patrol and the outer towers are map data: the game's rules
+    // (MLBB: MlbbTacticalRules.laneCorridor; the corridors are drawn for "EXP lane on top" and mirrored there)
+    private fun corridorOf(lane: Lane): List<Pair<Float, Float>> = rules.laneCorridor(lane)
 
     // Lane route from base: EXP = up left corridor then right, Gold = right bottom corridor then up, Mid = diagonal corridor.
     private fun laneVector(s: GameState): Triple<Float, Float, String> {
@@ -1450,7 +1430,7 @@ object TacticalEngine {
             Lane.ROAM -> {
                 val me = s.minimapSelf
                 if (me != null) {
-                    val pt = ROAM_PATROL[(s.ts / 7000L).toInt().mod(ROAM_PATROL.size)]
+                    val pt = rules.roamPatrol[(s.ts / 7000L).toInt().mod(rules.roamPatrol.size)]
                     val (mx, my) = mapDir(me, pt)
                     return t(mx to my, "roaming river & lane vision")
                 }
@@ -1472,11 +1452,7 @@ object TacticalEngine {
 
         // Determine the enemy frontline tower in this lane (with safe early/mid fallback if the minimap tower icon is covered)
         val detectedTower = rules.towers.laneTarget(s, s.lane)
-        val defaultOuterIdx = when (s.lane) {
-            Lane.EXP -> 5   // (0.28, 0.10) Enemy EXP outer tower
-            Lane.GOLD -> 5  // (0.89, 0.68) Enemy Gold outer tower
-            else -> 4       // (0.58, 0.42) Enemy Mid outer tower
-        }
+        val defaultOuterIdx = rules.outerTowerIndex(s.lane)   // the enemy outer tower's waypoint on the corridor
         val frontPos = detectedTower?.pos ?: if (s.matchSec in 0..480) corridor[defaultOuterIdx] else (s.enemyBase ?: corridor.last())
         val frontIdx = corridor.indices.minByOrNull { i ->
             kotlin.math.hypot(corridor[i].first - frontPos.first, corridor[i].second - frontPos.second)
