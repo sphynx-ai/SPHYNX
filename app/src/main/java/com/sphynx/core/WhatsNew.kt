@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Foundation: jungle, towers and objectives move to the Mobile Legends rules",
+            "Behind the scenes, for adding other games later: the jungle path and camps, the enemy towers, the turtle " +
+                "and the lord, the learned map scenery, the map's mirroring and the role paths are now asked from the " +
+                "Mobile Legends rules instead of being called by the Player's decisions directly. The Player decides " +
+                "exactly as before (all recorded situations unchanged).",
+            pr = 58, needsDeviceCheck = true, version = "37.68"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: battle spells move to the Mobile Legends rules",
             "Behind the scenes, for adding other games later: when to use Retribution, Flicker, Execute, Flameshot and " +
                 "the other battle spells, and the Retribution percentages from your rulebook, are now asked from the " +

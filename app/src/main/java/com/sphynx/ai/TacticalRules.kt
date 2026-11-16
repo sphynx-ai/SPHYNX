@@ -39,6 +39,8 @@ interface TacticalRules {
     fun multiPhaseUlt(hero: String?): Boolean
     /** The skill slot that dashes (null when none). */
     fun dashSlot(hero: String?): String?
+    /** The hero's role (UNKNOWN when not known). */
+    fun role(hero: String?): com.sphynx.game.Role
 
     // ---- the battle / summoner spells ----
     /** The spell that finishes monsters (MLBB: Retribution). */
@@ -56,6 +58,56 @@ interface TacticalRules {
     /** Cast the spell now, in a fight or while running away? (the spell's own use) */
     fun useSpellInFight(spell: String, s: GameState, p: com.sphynx.game.HeroProfile, fight: Boolean, running: Boolean,
                         targetDist: Float, enemiesClose: Int, enemiesNear: Int, hurt: Boolean, targetHp: Float): Boolean
+
+    // ---- the map: jungle path, towers, objectives, lanes, roles, scenery ----
+    val jungle: JungleRoute
+    val towers: Towers
+    val scenery: Scenery
+    /** The objective that is up at this time ("turtle", "lord"...). */
+    fun objectiveName(matchSec: Int): String
+    /** The id of the big objective that needs the team there (MLBB: the Lord), and how many allies it needs. */
+    val teamBossId: String
+    val teamBossAllies: Int
+    fun mayTakeTeamBoss(alliesNear: Int): Boolean
+    fun alliesNearBoss(onScreenNearBoss: Int, onMinimapNearYou: Int): Int
+    /** Is the camp a buff (worth the smite)? */
+    fun isBuffCamp(species: String): Boolean
+    /** A monster's name for the decision's reason (null when unknown). */
+    fun monsterLabel(species: String?): String?
+    /** The lane's position on the map as drawn (the map can be mirrored). */
+    fun mapLane(lane: com.sphynx.game.Lane): com.sphynx.game.Lane
+    fun roleProfile(lane: com.sphynx.game.Lane, hero: String?, matchSec: Int): com.sphynx.game.RoleProfile
+    fun midRoamTarget(s: GameState): Pair<Pair<Float, Float>, String>?
+    fun roamWaypoint(s: GameState): Pair<Pair<Float, Float>, String>?
+
+    interface JungleRoute {
+        val atCamp: Boolean
+        val atBuff: Boolean
+        val atCampMs: Long
+        val status: String
+        val next: com.sphynx.vision.Camp?
+        fun direction(s: GameState, maxDist: Float = 9f, allowBuffs: Boolean = true): Triple<Float, Float, String>?
+        fun reset()
+    }
+
+    interface Towers {
+        fun range(): Float
+        fun effectiveTowers(s: GameState): List<com.sphynx.vision.MapTower>
+        fun nearest(s: GameState): Pair<Pair<Float, Float>, Float>?
+        fun selfInRange(s: GameState, margin: Float = 0f): Boolean
+        fun canPush(s: GameState): Boolean
+        fun enemyUnderTower(s: GameState, e: com.sphynx.vision.Track): Boolean
+        fun guard(s: GameState, mx: Float, my: Float): Triple<Float, Float, Boolean>
+        fun laneTarget(s: GameState, lane: com.sphynx.game.Lane): com.sphynx.vision.MapTower?
+        fun towerToDefend(s: GameState): Pair<Float, Float>?
+    }
+
+    interface Scenery {
+        val status: String
+        fun observe(s: GameState)
+        fun roamDecision(s: GameState, p: com.sphynx.game.HeroProfile): TacticalDecision?
+        fun pitAimDirection(s: GameState): Pair<Float, Float>?
+    }
 
     class Channel(val allowBasicAttack: Boolean, val allowMove: Boolean, val executeUltHp: Float)
 
@@ -76,6 +128,7 @@ interface TacticalRules {
         override fun canRecast(hero: String?, slot: String) = false
         override fun multiPhaseUlt(hero: String?) = false
         override fun dashSlot(hero: String?): String? = null
+        override fun role(hero: String?) = com.sphynx.game.Role.UNKNOWN
         override fun isSmite(spell: String?) = false
         override fun isBlink(spell: String?) = false
         override fun isExecute(spell: String?) = false
@@ -86,5 +139,45 @@ interface TacticalRules {
         override fun useSpellInFight(spell: String, s: GameState, p: com.sphynx.game.HeroProfile, fight: Boolean,
                                      running: Boolean, targetDist: Float, enemiesClose: Int, enemiesNear: Int,
                                      hurt: Boolean, targetHp: Float) = false
+        // no map knowledge: no jungle path, no towers, no scenery, no named objectives
+        override val jungle = object : JungleRoute {
+            override val atCamp = false
+            override val atBuff = false
+            override val atCampMs = 0L
+            override val status = "-"
+            override val next: com.sphynx.vision.Camp? = null
+            override fun direction(s: GameState, maxDist: Float, allowBuffs: Boolean): Triple<Float, Float, String>? = null
+            override fun reset() {}
+        }
+        override val towers = object : Towers {
+            override fun range() = 0.06f
+            override fun effectiveTowers(s: GameState) = emptyList<com.sphynx.vision.MapTower>()
+            override fun nearest(s: GameState): Pair<Pair<Float, Float>, Float>? = null
+            override fun selfInRange(s: GameState, margin: Float) = false
+            override fun canPush(s: GameState) = false
+            override fun enemyUnderTower(s: GameState, e: com.sphynx.vision.Track) = false
+            override fun guard(s: GameState, mx: Float, my: Float) = Triple(mx, my, false)
+            override fun laneTarget(s: GameState, lane: com.sphynx.game.Lane): com.sphynx.vision.MapTower? = null
+            override fun towerToDefend(s: GameState): Pair<Float, Float>? = null
+        }
+        override val scenery = object : Scenery {
+            override val status = "-"
+            override fun observe(s: GameState) {}
+            override fun roamDecision(s: GameState, p: com.sphynx.game.HeroProfile): TacticalDecision? = null
+            override fun pitAimDirection(s: GameState): Pair<Float, Float>? = null
+        }
+        override fun objectiveName(matchSec: Int) = "objective"
+        override val teamBossId = ""
+        override val teamBossAllies = 0
+        override fun mayTakeTeamBoss(alliesNear: Int) = true
+        override fun alliesNearBoss(onScreenNearBoss: Int, onMinimapNearYou: Int) = maxOf(onScreenNearBoss, onMinimapNearYou)
+        override fun isBuffCamp(species: String) = false
+        override fun monsterLabel(species: String?): String? = null
+        override fun mapLane(lane: com.sphynx.game.Lane) = lane
+        // the role's job order is by role and lane, not by game data
+        override fun roleProfile(lane: com.sphynx.game.Lane, hero: String?, matchSec: Int) =
+            com.sphynx.game.RoleProfile.of(lane, hero, matchSec)
+        override fun midRoamTarget(s: GameState): Pair<Pair<Float, Float>, String>? = null
+        override fun roamWaypoint(s: GameState): Pair<Pair<Float, Float>, String>? = null
     }
 }
