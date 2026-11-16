@@ -736,8 +736,9 @@ class MainActivity : Activity() {
                 val iv = com.sphynx.app.IconCache.view(this@MainActivity, n, hero, px)
                 cell.addView(iv, LinearLayout.LayoutParams(px, px))
                 cell.addView(TextView(this@MainActivity).apply {
-                    text = captions?.getOrNull(i) ?: n; textSize = 10f; setTextColor(c(T.MUTED)); gravity = Gravity.CENTER
+                    text = captions?.getOrNull(i) ?: n; textSize = 11f; setTextColor(c(T.MUTED)); gravity = Gravity.CENTER
                     maxLines = 2; ellipsize = android.text.TextUtils.TruncateAt.END; setPadding(dp(2), dp(3), dp(2), 0)
+                    fitWords(this, 11f, 8f)
                 }, LinearLayout.LayoutParams(cellW, LinearLayout.LayoutParams.WRAP_CONTENT))
                 row!!.addView(cell, LinearLayout.LayoutParams(cellW, LinearLayout.LayoutParams.WRAP_CONTENT))
             }
@@ -745,6 +746,28 @@ class MainActivity : Activity() {
     }
 
     // a small muted line inside a card
+    // a short label (grid caption, tab) never breaks inside a word (backlog item 10): once laid out, it takes the
+    // largest size at which its longest word fits, or one line with "…" if none does (Labels)
+    private fun fitWords(tv: TextView, maxSp: Float, minSp: Float) {
+        var doneFor = -1
+        tv.addOnLayoutChangeListener { v, l, _, r, _, _, _, _, _ ->
+            val w = r - l
+            if (w == doneFor || w <= 0) return@addOnLayoutChangeListener
+            doneFor = w
+            val t = v as TextView
+            val p = android.text.TextPaint(t.paint).apply {
+                textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 1f, resources.displayMetrics)
+            }
+            val longest = Labels.words(t.text).maxOfOrNull { p.measureText(it) } ?: 0f
+            val avail = (w - t.totalPaddingLeft - t.totalPaddingRight).toFloat()
+            val sp = Labels.fitSp(longest, avail, maxSp, minSp)
+            t.post {
+                if (sp != null) t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, sp)
+                else { t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, minSp); t.maxLines = 1; t.ellipsize = android.text.TextUtils.TruncateAt.END }
+            }
+        }
+    }
+
     private fun cardNote(cd: LinearLayout, t: String = ""): TextView = TextView(this).apply {
         text = t; textSize = 13f; setTextColor(c(T.MUTED)); setLineSpacing(0f, 1.2f); setPadding(0, dp(4), 0, dp(2))
         cd.addView(this)
@@ -1989,7 +2012,10 @@ class MainActivity : Activity() {
         val tabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         for ((k, label) in listOf("heroes" to "Heroes", "spells" to "Spells", "items" to "Equipment", "terms" to "Terms")) {
             tabs.addView(Button(this).apply {
-                text = label; isAllCaps = false; textSize = 13f
+                text = label; isAllCaps = false; textSize = 13f; maxLines = 1
+                setPadding(dp(4), 0, dp(4), 0); minWidth = 0; minimumWidth = 0
+                fitWords(this, 13f, 9f)        // "Equipment" used to break as "Equipmen/t" (audit finding 23)
+                contentDescription = "$label tab"
                 background = ripple(if (k == libTab) T.PRIMARY else T.SURF2, 16)
                 setTextColor(Color.parseColor(if (k == libTab) T.ON_PRIMARY else T.TEXT))
                 setOnClickListener { libTab = k; show("library") }
