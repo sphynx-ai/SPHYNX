@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Safety: a last check on every decision",
+            "Behind the scenes: after the trained network or \"Play like me\" has mixed into a decision, a last check " +
+                "makes sure a retreat, recall or regen of the rules is never replaced, the joystick direction is a " +
+                "valid one, and each button is pressed at most once. The learned parts already did this, so play should " +
+                "not change; it is now guaranteed for any model.",
+            pr = 64, needsDeviceCheck = true, version = "37.74"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the objectives' names come from the Mobile Legends rules",
             "Behind the scenes, for adding other games later: the last Mobile Legends words in the Player's reasons " +
                 "(the Lord, the Turtle, the Purple Buff) now come from the Mobile Legends rules, and the check that keeps " +
