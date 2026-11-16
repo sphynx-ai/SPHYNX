@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed (owner review), 2026-11-14 |
+| **Status** | **Accepted** by the owner on 2026-11-16 (proposed 2026-11-14) |
 | **Phase** | 2 — Universal Architecture Audit and Foundation, submilestone 2 ("define the game-agnostic core") |
 | **Based on** | `docs/PHASE_2_ARCHITECTURE_MAP.md` (current-state map, submilestone 1) |
 | **Enforced by** | `app/src/test/.../architecture/ArchitectureRulesTest.kt` |
