@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "A marksman pokes a hurt enemy instead of waiting for the wave",
+            "Your decision: when you play a marksman and a single enemy hero at 60% HP or less is within poke reach, " +
+                "the Player now attacks it and uses its skills from range, keeping its distance, instead of standing at " +
+                "the lane waiting for the minion wave. It still does not poke when more enemies are around, when the " +
+                "enemy is under its tower, when your HP is low, or when the plan says retreat.",
+            pr = 50, needsDeviceCheck = true, version = "37.60"),
         Entry("2026-11-16", Kind.IMPROVED, "The new look is finished; work on the app's foundation resumes",
             "Every step of the redesign (themes, the five sections, Play's Running now and Ready check, Hero and Play " +
                 "style, status words, empty and offline states, the floating panel's colours) has been tested on the " +
