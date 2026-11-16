@@ -180,7 +180,7 @@ object AutoFolder {
     // "policy_Chou.tflite" -> "chou", "policy_all.tflite" -> "all"
     private fun policyKey(fileName: String): String {
         val stem = fileName.substringBeforeLast('.').substringAfter('_')
-        return com.sphynx.learning.PolicyNet.key(stem).ifEmpty { "all" }
+        return ModelHooks.policyKey(stem).ifEmpty { "all" }
     }
 
     // mlbb_policies.zip from the notebook: policy_<Hero>.tflite / policy_info_<Hero>.json files
@@ -195,17 +195,17 @@ object AutoFolder {
                         z.isDirectory -> {}
                         // the fight-choice network rides in the same zip
                         n == "fight_choice.tflite" -> {
-                            val dst = com.sphynx.learning.FightNet.file(app)
+                            val dst = ModelHooks.fightNetFile(app)
                             val tmp = File(dst.parentFile, dst.name + ".tmp")
                             tmp.outputStream().use { zip.copyTo(it) }
                             dst.delete(); tmp.renameTo(dst)
-                            com.sphynx.learning.FightNet.load(app)
+                            ModelHooks.fightNetLoad(app)
                             names.add("fight-choice network")
                         }
-                        n == "fight_choice_info.json" -> com.sphynx.learning.FightNet.saveInfo(zip.readBytes().toString(Charsets.UTF_8))
+                        n == "fight_choice_info.json" -> ModelHooks.fightNetSaveInfo(zip.readBytes().toString(Charsets.UTF_8))
                         n.endsWith(".tflite") && n.startsWith("policy_") -> {
                             val k = policyKey(n)
-                            val dst = com.sphynx.learning.PolicyNet.fileFor(app, k)
+                            val dst = ModelHooks.policyFileFor(app, k)
                             val tmp = File(dst.parentFile, dst.name + ".tmp")
                             tmp.outputStream().use { zip.copyTo(it) }
                             dst.delete(); tmp.renameTo(dst)
@@ -213,7 +213,7 @@ object AutoFolder {
                         }
                         n.endsWith(".json") && n.startsWith("policy_info_") -> {
                             val k = policyKey("policy_" + n.removePrefix("policy_info_"))
-                            com.sphynx.learning.PolicyNet.saveInfo(k, zip.readBytes().toString(Charsets.UTF_8))
+                            ModelHooks.policySaveInfo(k, zip.readBytes().toString(Charsets.UTF_8))
                         }
                     }
                 }
@@ -256,9 +256,9 @@ object AutoFolder {
                                         remember("gemma_tactical", e)
                                         Cfg.setRaw("llm_name_tactical", ModelManager.prettyName(e.name))
                                         found.add("small tactical model copied (${ModelManager.prettyName(e.name)})")
-                                        if (com.sphynx.ai.TacticalLlmEngine.ready) ModelManager.unloadTactical()
+                                        if (ModelHooks.tacticalReady()) ModelManager.unloadTactical()
                                     }
-                                    if (Cfg.tacticalLlmOn && !com.sphynx.ai.TacticalLlmEngine.ready)
+                                    if (Cfg.tacticalLlmOn && !ModelHooks.tacticalReady())
                                         ModelManager.loadTactical(app) { err -> Diag.info(if (err == null) "Small tactical model loaded" else "Small model load: $err") }
                                 }
                                 n.endsWith(".litertlm") && e !== bigModel -> found.add("${e.name} skipped (a newer model is used)")
@@ -274,8 +274,8 @@ object AutoFolder {
                                         fresh = true
                                     }
                                     // a new model replaces the loaded one
-                                    if (fresh && com.sphynx.ai.GemmaEngine.ready) kotlinx.coroutines.runBlocking { com.sphynx.ai.GemmaEngine.unload() }
-                                    if (!com.sphynx.ai.GemmaEngine.ready) {
+                                    if (fresh && ModelHooks.strategicReady()) ModelHooks.unloadStrategicNow()
+                                    if (!ModelHooks.strategicReady()) {
                                         ModelManager.load(app) { err -> Diag.info(if (err == null) "Gemma loaded from the folder" else "Gemma load: $err") }
                                         found.add("Gemma loading")
                                     }
@@ -287,71 +287,71 @@ object AutoFolder {
                                         val names = unpackPolicies(app, e)
                                         Cfg.setRaw("auto_sig_policyzip", sig)
                                         found.add("tactical networks: " + names.joinToString())
-                                        com.sphynx.learning.PolicyNet.load(app)
+                                        ModelHooks.policyLoad(app)
                                     }
                                 }
                                 n.endsWith(".tflite") && (n.startsWith("policy_") || n.startsWith("tactical_")) -> {
                                     val k = policyKey(n)
-                                    val dst = com.sphynx.learning.PolicyNet.fileFor(app, k)
+                                    val dst = ModelHooks.policyFileFor(app, k)
                                     if (changed("policy_$k", e, dst)) {
                                         copy(e, dst); remember("policy_$k", e)
                                         found.add("tactical network for ${if (k == "all") "all heroes" else k}")
-                                        com.sphynx.learning.PolicyNet.load(app)
+                                        ModelHooks.policyLoad(app)
                                     }
                                 }
                                 n.endsWith(".json") && n.startsWith("policy_info_") -> {
                                     val k = policyKey(n.removePrefix("policy_info_").let { "policy_$it" })
                                     val txt = text(e)
-                                    if (txt != com.sphynx.learning.PolicyNet.infoFor(k)) {
-                                        com.sphynx.learning.PolicyNet.saveInfo(k, txt)
+                                    if (txt != ModelHooks.policyInfoFor(k)) {
+                                        ModelHooks.policySaveInfo(k, txt)
                                         found.add("network quality for ${if (k == "all") "all heroes" else k}")
-                                        com.sphynx.learning.PolicyNet.load(app)
+                                        ModelHooks.policyLoad(app)
                                     }
                                 }
                                 n.endsWith(".tflite") && (n.contains("policy") || n.contains("tactical")) -> {
-                                    val dst = com.sphynx.learning.PolicyNet.modelFile(app)
+                                    val dst = ModelHooks.policyModelFile(app)
                                     if (changed("policy", e, dst)) {
                                         copy(e, dst); remember("policy", e)
-                                        found.add("tactical network " + (com.sphynx.learning.PolicyNet.load(app) ?: "loaded"))
-                                    } else if (!com.sphynx.learning.PolicyNet.ready) com.sphynx.learning.PolicyNet.load(app)
+                                        found.add("tactical network " + (ModelHooks.policyLoad(app) ?: "loaded"))
+                                    } else if (!ModelHooks.policyReady()) ModelHooks.policyLoad(app)
                                 }
                                 n.endsWith(".tflite") && n.contains("screen") -> {   // the whole-screen detector
-                                    val dst = com.sphynx.vision.ScreenDetector.modelFile(app)
+                                    val dst = ModelHooks.screenDetectorFile(app)
                                     if (changed("screen", e, dst)) {
                                         copy(e, dst); remember("screen", e)
-                                        found.add("screen detector " + (com.sphynx.vision.ScreenDetector.load(app) ?: "loaded"))
-                                    } else if (!com.sphynx.vision.ScreenDetector.ready) com.sphynx.vision.ScreenDetector.load(app)
+                                        found.add("screen detector " + (ModelHooks.screenDetectorLoad(app) ?: "loaded"))
+                                    } else if (!ModelHooks.screenDetectorReady()) ModelHooks.screenDetectorLoad(app)
                                 }
                                 n == "policy_info.json" -> {
                                     // how reliable the tactical network is: the app then only uses the reliable parts
                                     val txt = text(e)
                                     if (txt != Cfg.raw("policy_info")) {
                                         Cfg.setRaw("policy_info", txt)
-                                        com.sphynx.learning.PolicyNet.load(app)
-                                        found.add("tactical network quality: " + com.sphynx.learning.PolicyNet.qualityText)
+                                        ModelHooks.policyLoad(app)
+                                        found.add("tactical network quality: " + ModelHooks.policyQuality())
                                     }
                                 }
                                 n == "screen_labels.txt" -> {
                                     val labels = text(e).lines().flatMap { it.split(",") }.map { it.trim() }.filter { it.isNotEmpty() }.joinToString(",")
                                     if (labels.isNotEmpty() && labels != Cfg.screenLabels) {
                                         Cfg.screenLabels = labels
-                                        if (com.sphynx.vision.ScreenDetector.modelFile(app).exists()) com.sphynx.vision.ScreenDetector.load(app)
+                                        if (ModelHooks.screenDetectorFile(app).exists()) ModelHooks.screenDetectorLoad(app)
                                         found.add("screen detector class names")
                                     }
                                 }
                                 n.endsWith(".tflite") -> {           // the minimap detector (mlbb_detector.tflite or any other .tflite)
-                                    val dst = com.sphynx.vision.ObjectDetector.modelFile(app)
+                                    val dst = ModelHooks.minimapDetectorFile(app)
                                     if (changed("detector", e, dst)) {
                                         copy(e, dst); remember("detector", e)
-                                        found.add("detector " + (com.sphynx.vision.ObjectDetector.load(app) ?: "loaded"))
-                                    } else if (!com.sphynx.vision.ObjectDetector.ready) com.sphynx.vision.ObjectDetector.load(app)
+                                        found.add("detector " + (ModelHooks.minimapDetectorLoad(app) ?: "loaded"))
+                                    } else if (!ModelHooks.minimapDetectorReady()) ModelHooks.minimapDetectorLoad(app)
                                 }
                                 n == "labels.txt" || n == "mlbb_labels.txt" -> {
                                     val labels = text(e).lines().map { it.trim() }.filter { it.isNotEmpty() }
                                         .flatMap { it.split(",") }.map { it.trim() }.filter { it.isNotEmpty() }.joinToString(",")
                                     if (labels.isNotEmpty() && labels != Cfg.detectorLabels) {
                                         Cfg.detectorLabels = labels
-                                        if (com.sphynx.vision.ObjectDetector.modelFile(app).exists()) com.sphynx.vision.ObjectDetector.load(app)
+                                        if (ModelHooks.minimapDetectorFile(app).exists()) ModelHooks.minimapDetectorLoad(app)
                                         found.add("detector class names")
                                     }
                                 }
@@ -379,10 +379,10 @@ object AutoFolder {
                                     if (key.isNotEmpty() && key != Cfg.groqKey) { Cfg.groqKey = key; found.add("Groq API key") }
                                 }
                                 // the online meta / skills Groq found, kept in the folder (survives a reinstall)
-                                com.sphynx.learning.OnlineBackup.isBackup(e.name) -> {
+                                ModelHooks.isOnlineBackup(e.name) -> {
                                     val sig = "${e.name}:${e.size}:${e.modified}"
                                     if (Cfg.raw("auto_sig_online_${e.name}") != sig) {
-                                        val k = com.sphynx.learning.OnlineBackup.restore(e.name, text(e))
+                                        val k = ModelHooks.restoreOnlineBackup(e.name, text(e))
                                         Cfg.setRaw("auto_sig_online_${e.name}", sig)
                                         if (k > 0) found.add("online data restored ($k from ${e.name})")
                                     }

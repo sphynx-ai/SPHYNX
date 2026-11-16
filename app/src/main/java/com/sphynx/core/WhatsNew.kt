@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Foundation: the model files no longer call the AI directly",
+            "Behind the scenes, for adding other games later: finding, copying and loading the model files (Gemma, " +
+                "the small model, the tactical networks, the detectors, the online backups) now reaches the parts that " +
+                "run them through one plugged-in list instead of calling them itself. Nothing should look or behave " +
+                "differently: Scan the folder, loading the models and the automatic loading at start work as before.",
+            pr = 52, needsDeviceCheck = true, version = "37.62"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: screen capture and picture matching no longer reach into the app",
             "Behind the scenes, for adding other games later: the screen capture service now reports when it starts " +
                 "and stops (and the notification's emergency stop) instead of calling the AI and game code itself, and " +

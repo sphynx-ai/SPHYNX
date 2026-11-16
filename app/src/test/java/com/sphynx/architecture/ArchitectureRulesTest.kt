@@ -26,13 +26,12 @@ class ArchitectureRulesTest {
     // the violations on 2026-11-14 (ADR 0001): remove an entry when its step is done
     // (step B1, v37.28: Speed, TouchSpeed, PhoneState, VideoRecorder, GitHubUpload, Settings read the layers
     // above through core.Probes - 11 entries gone; step B2, v37.29: SessionRecorder too - 6 more; step B3, v37.61:
-    // ScreenCaptureService reports start / stop / emergency stop and vision reads the pictures through Probes - 4 more)
+    // ScreenCaptureService reports start / stop / emergency stop and vision reads the pictures through Probes - 4 more;
+    // step B4, v37.62: ModelManager and AutoFolder reach the engines through models.ModelHooks - 4 more)
     private val baseline = setOf(
         "engines/DecisionBridge.kt -> ai", "engines/DecisionBridge.kt -> learning",
         "engines/DecisionLogging.kt -> adapters", "engines/DecisionLogging.kt -> ai",
         "engines/DecisionLogging.kt -> game", "engines/DecisionLogging.kt -> learning",
-        "models/AutoFolder.kt -> ai", "models/AutoFolder.kt -> learning", "models/AutoFolder.kt -> vision",
-        "models/ModelManager.kt -> ai",
     )
 
     private fun sourceRoot(): File = listOf("src/main/java/com/sphynx", "app/src/main/java/com/sphynx")

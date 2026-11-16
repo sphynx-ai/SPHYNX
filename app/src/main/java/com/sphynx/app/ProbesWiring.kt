@@ -1,6 +1,7 @@
 package com.sphynx.app
 
 import com.sphynx.core.Probes
+import kotlinx.coroutines.launch
 
 // THE APP LAYER PLUGS ITS READINGS INTO core (ADR 0001): what the core services show or record from the AI,
 // the game, vision and learning. Called first thing in MainApplication.onCreate. Each reading is the same
@@ -43,6 +44,9 @@ object ProbesWiring {
         Probes.itemIconFile = { i -> IconCache.itemFile(i) }
         Probes.loadIcon = { ctx, f -> IconCache.load(ctx, f) { } }
 
+        // B4: the models layer finds and copies the model files; the engines that run them are plugged in here
+        wireModels()
+
         Probes.mayRecordMatch = { com.sphynx.learning.LearnGate.on() }
         Probes.screenCaptureRunning = { com.sphynx.capture.ScreenCaptureService.running }
         Probes.matchRunning = { com.sphynx.game.GameStateTracker.matchId != 0L }
@@ -59,5 +63,47 @@ object ProbesWiring {
             com.sphynx.models.AutoFolder.files(ctx).firstOrNull { it.name.equals(name, ignoreCase = true) }
                 ?.open?.invoke()?.use { it.readBytes().toString(Charsets.UTF_8) }
         }
+    }
+
+    // ADR 0001 migration B4: ModelManager and AutoFolder reach the engines through ModelHooks (same calls as before)
+    private fun wireModels() {
+        val h = com.sphynx.models.ModelHooks
+        val ai = com.sphynx.ai.AiRuntime
+        val gemma = com.sphynx.ai.GemmaEngine
+        val small = com.sphynx.ai.TacticalLlmEngine
+        h.strategicReady = { gemma.ready }
+        h.strategicLoading = { gemma.loading }
+        h.loadStrategic = { ctx, path, gpu, done -> ai.scope.launch { done(gemma.load(ctx, path, gpu)) } }
+        h.unloadStrategicNow = { kotlinx.coroutines.runBlocking { gemma.unload() } }
+        h.tacticalReady = { small.ready }
+        h.tacticalLoading = { small.loading }
+        h.loadTactical = { ctx, path, done -> ai.scope.launch { done(small.load(ctx, path, preferGpu = false, textOnly = true)) } }
+        h.unloadTactical = { ai.scope.launch { small.unload() } }
+
+        val pn = com.sphynx.learning.PolicyNet
+        val fn = com.sphynx.learning.FightNet
+        h.policyKey = { stem -> pn.key(stem) }
+        h.policyFileFor = { ctx, k -> pn.fileFor(ctx, k) }
+        h.policyModelFile = { ctx -> pn.modelFile(ctx) }
+        h.policyInfoFor = { k -> pn.infoFor(k) }
+        h.policySaveInfo = { k, json -> pn.saveInfo(k, json) }
+        h.policyLoad = { ctx -> pn.load(ctx) }
+        h.policyReady = { pn.ready }
+        h.policyQuality = { pn.qualityText }
+        h.fightNetFile = { ctx -> fn.file(ctx) }
+        h.fightNetLoad = { ctx -> fn.load(ctx) }
+        h.fightNetSaveInfo = { json -> fn.saveInfo(json) }
+
+        val sd = com.sphynx.vision.ScreenDetector
+        val od = com.sphynx.vision.ObjectDetector
+        h.screenDetectorFile = { ctx -> sd.modelFile(ctx) }
+        h.screenDetectorLoad = { ctx -> sd.load(ctx) }
+        h.screenDetectorReady = { sd.ready }
+        h.minimapDetectorFile = { ctx -> od.modelFile(ctx) }
+        h.minimapDetectorLoad = { ctx -> od.load(ctx) }
+        h.minimapDetectorReady = { od.ready }
+
+        h.isOnlineBackup = { name -> com.sphynx.learning.OnlineBackup.isBackup(name) }
+        h.restoreOnlineBackup = { name, text -> com.sphynx.learning.OnlineBackup.restore(name, text) }
     }
 }

@@ -32,9 +32,9 @@
      `core.Probes` (`heroIconFile`, `itemIconFile`, `loadIcon`), and `capture/ScreenCaptureService` reports
      `onCaptureStarted`, `onCaptureStopped` and `emergencyStop` through Probes (wired in `app/ProbesWiring`).
      Baseline: 14 → 10 entries.
-   - **B4:**
-     - `models/AutoFolder` → `ai`, `learning`, `vision`: file handlers registered by the code that loads each file.
-     - `models/ModelManager` → `ai`.
+   - ~~**B4**~~ **done in v37.62:** `models/ModelHooks` holds the calls `ModelManager` and `AutoFolder` make to the
+     engines (language models, tactical networks, detectors, online backups); `app/ProbesWiring.wireModels` plugs them
+     in. Baseline: 10 → 6 entries.
    - **B5:**
      - `engines/DecisionBridge` and `engines/DecisionLogging` → `ai`, `learning`, `game`, `adapters`: map to universal decisions at the AI-loop edge.
    - **Afterwards:** add rules for `game`, `vision`, `ai` and `learning` once they are split into universal and MLBB parts.
