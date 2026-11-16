@@ -46,6 +46,8 @@ object ProbesWiring {
 
         // Phase 2 adapter split: the tactical engine asks Mobile Legends' own rules (heroes, spells, jungle...)
         com.sphynx.ai.TacticalEngine.rules = com.sphynx.adapters.mlbb.MlbbTacticalRules
+        // ...and the frame pipeline reads the screen with Mobile Legends' readers
+        com.sphynx.vision.FrameProcessor.reader = com.sphynx.vision.MlbbScreenReading
 
         // B4: the models layer finds and copies the model files; the engines that run them are plugged in here
         wireModels()
