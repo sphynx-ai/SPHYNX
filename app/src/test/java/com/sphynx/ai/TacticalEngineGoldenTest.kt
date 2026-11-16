@@ -127,6 +127,7 @@ class TacticalEngineGoldenTest {
     }
 
     internal fun resetAll() {
+        TacticalEngine.rules = com.sphynx.adapters.mlbb.MlbbTacticalRules   // as the app sets it (ProbesWiring)
         TacticalEngine.reset()          // also JungleNav and MapIntel
         CooldownTracker.reset()
         GameMemory.reset()
