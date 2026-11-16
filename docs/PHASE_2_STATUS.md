@@ -1,6 +1,6 @@
 # Phase 2 — status and resume point
 
-**Status:** PAUSED by owner decision (2026-11-14, "we will come back to Phase 2 later"). Phase 3 started.
+**Status:** RESUMED on 2026-11-16 by owner decision, after Phase 4 was completed and phone-tested. (Paused 2026-11-14 to 2026-11-16 for Phases 3 and 4.)
 **Last commit with Phase 2 work:** `ab25ef1` on `sphynx-test-branch` (merge of PR #19, version 37.29).
 
 ## Done
@@ -26,7 +26,7 @@
 
 ## Open, in the order to resume
 
-1. **Owner review of ADR 0001** (four layers, the dependency rule, Probes instead of package moves).
+1. ~~Owner review of ADR 0001~~ **Done: accepted by the owner on 2026-11-16.**
 2. **Migration B3 to B5.** 14 forbidden dependencies are left in the `ArchitectureRulesTest` baseline:
    - **B3:**
      - `vision/EndBoard`, `vision/PortraitMatch` → `app/IconCache`: move the portrait cache out of `app`.
@@ -39,7 +39,7 @@
    - **Afterwards:** add rules for `game`, `vision`, `ai` and `learning` once they are split into universal and MLBB parts.
 3. **Submilestones 4–8 and 10.** These are the adapter data and mechanics, the MLBB adapter, how future adapters supply data, capability and versioning rules, the final deterministic check on model outputs, and adapter onboarding.
 4. **Submilestone 9.** Grow the regression net beyond the 16 situations: recorded situations from real sessions, and `GameStateTracker`.
-5. **Open question from the regression net:** `marksman_poke_range`. A marksman with a 50%-HP enemy at poke distance waits for the minion wave. Is that intended caution? Owner to decide.
+5. **Regression-net question `marksman_poke_range`: decided by the owner on 2026-11-16, "poke instead".** A marksman with a 50%-HP enemy at poke distance should poke rather than wait for the minion wave. The rule change and its golden-file update come first after resuming (v37.60).
 
 ## How to resume
 

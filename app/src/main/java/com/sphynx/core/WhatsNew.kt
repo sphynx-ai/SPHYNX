@@ -24,49 +24,56 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "The new look is finished; work on the app's foundation resumes",
+            "Every step of the redesign (themes, the five sections, Play's Running now and Ready check, Hero and Play " +
+                "style, status words, empty and offline states, the floating panel's colours) has been tested on the " +
+                "phone, so that phase is complete. Work now goes back to the app's foundation: separating what any MOBA " +
+                "needs from what is specific to Mobile Legends, so another game can be added later. Nothing changes on " +
+                "screen in this version.",
+            pr = 49, needsDeviceCheck = true, version = "37.59"),
         Entry("2026-11-16", Kind.IMPROVED, "Library says when it last learned; enemy slots can be set by tap",
             "Knowledge > Library now shows when the whole database was last learned and where from (the Mobile " +
                 "Legends wiki and the online guides), or that it has not been learned as a whole yet. On Hero & match > " +
                 "Hero, tapping one of the five enemy slots opens a hero list with a search box: pick the hero, or Clear " +
                 "the slot. A hero read later from the loading screen or the scoreboard can still replace it.",
-            pr = 48, needsDeviceCheck = true, version = "37.58"),
+            pr = 48, version = "37.58"),
         Entry("2026-11-16", Kind.IMPROVED, "Setup and the first-run guide share one Permissions card",
             "Settings > Setup now shows the same Permissions card as the first-run guide, instead of its own copy of " +
                 "the buttons: Accessibility service, Allow restricted settings, Display over other apps, Notifications " +
                 "and All files access (which Setup did not have), each ending with Granted or Missing, and a chip that " +
                 "counts how many are done.",
-            pr = 47, needsDeviceCheck = true, version = "37.57"),
+            pr = 47, version = "37.57"),
         Entry("2026-11-16", Kind.IMPROVED, "Clear empty, loading and offline states",
             "Pages now say plainly when there is nothing to show and what fills it: What the AI sees offers Start screen " +
                 "capture when there is no capture, Recent actions says nothing has happened yet, and a Library search with " +
                 "no result says so. Learning the whole database shows a moving bar while it runs (its button is the Stop). " +
                 "Buttons that need the internet (learn the database or a hero's skills, update the meta, upload to GitHub) " +
                 "are greyed out while the phone is offline, with a line saying why; everything else keeps working offline.",
-            pr = 46, needsDeviceCheck = true, version = "37.56"),
+            pr = 46, version = "37.56"),
         Entry("2026-11-16", Kind.IMPROVED, "Ready check lists only what is missing; a failed start says why",
             "The Ready check on Play now lists only what is not ready yet, each with its Fix, Start or Open button, the " +
                 "needed ones first; when everything is ready it shows one line, Ready to play. While the strategic model " +
                 "loads it shows a bar with the model's name. If an engine in Running now cannot start, a red line under it " +
                 "says why, with a Try again button, instead of a message that disappears.",
-            pr = 45, needsDeviceCheck = true, version = "37.55"),
+            pr = 45, version = "37.55"),
         Entry("2026-11-16", Kind.FIXED, "Short labels no longer break inside a word; pictures have spoken names",
             "Names under hero and item pictures and the Library tabs used to break a long word across two lines " +
                 "(\"Equipmen/t\"). They now take the largest size at which every word fits on its line, or end with " +
                 "\"...\" if none does. Every hero and item picture now has its name for TalkBack (the phone's screen " +
                 "reader), so it says \"Layla\" instead of \"image\".",
-            pr = 44, needsDeviceCheck = true, version = "37.54"),
+            pr = 44, version = "37.54"),
         Entry("2026-11-15", Kind.IMPROVED, "The floating panel takes the app's theme",
             "The floating panel in the game now uses the colours of the theme chosen on Settings > Setup > Theme: its " +
                 "ground, buttons, borders and text, and the AI ON button filled with the theme's colour (teal in Signal, " +
                 "cyan in Arcane, amber in Ember). Red STOP and the status colours stay the same in every theme. A panel " +
                 "that is already open takes a new theme the next time it opens.",
-            pr = 43, needsDeviceCheck = true, version = "37.53"),
+            pr = 43, version = "37.53"),
         Entry("2026-11-15", Kind.IMPROVED, "Play is shorter: research tests on Practice, What's new under Settings",
             "The research tests (test the small model on the practice moments, clear the arbiter comparison, delete the " +
                 "practice moments) moved from Play to AI & models > Practice, under Research tests. The What's new card " +
                 "left Play too: the full list is on Settings > What's new. Play now shows what runs, what is missing, " +
                 "what the AI sees and its recent actions.",
-            pr = 42, needsDeviceCheck = true, version = "37.52"),
+            pr = 42, version = "37.52"),
         Entry("2026-11-15", Kind.IMPROVED, "Meta: when it was updated and where it came from",
             "On Knowledge > Meta, the patch meta and the hero meta now start with one line: \"Updated <date> (<days> " +
                 "ago) from <sources>\", so you can see at once how old the downloaded meta is and where it was read. " +
