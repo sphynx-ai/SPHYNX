@@ -1,7 +1,25 @@
-# Phase 2 — status and resume point
+# Phase 2 — status and closing record
 
-**Status:** RESUMED on 2026-11-16 by owner decision, after Phase 4 was completed and phone-tested. (Paused 2026-11-14 to 2026-11-16 for Phases 3 and 4.)
-**Latest Phase 2 work:** v37.59–v37.63 (PRs #49–#53, phone-tested by the owner 2026-11-16) and v37.64 (the game-knowledge surface).
+**Status:** COMPLETE in code on 2026-11-16 (v37.76). Every acceptance criterion of the roadmap (Section 4) is met with CI evidence. **Outstanding:** the owner's phone test of v37.64–v37.76 (the split must play exactly as before).
+**Next phase:** Phase 5 — Android Reliability and Application Foundation.
+
+## Closing evidence (2026-11-16)
+
+| Submilestone | Evidence | Versions / PRs |
+|---|---|---|
+| 1 Map | `docs/PHASE_2_ARCHITECTURE_MAP.md` | #10 |
+| 2 Target architecture | ADR 0001 accepted by the owner; migration B1–B5 done; `ArchitectureRulesTest` baseline 0 | #11, #18, #19, #49–#53 |
+| 3 Game-state contract | `docs/contracts/UNIVERSAL_MATCH_STATE.md`, `StateContract`, `MlbbAdapterContractTest` | #14 |
+| 4–5 MLBB data and mechanics in the adapter, MLBB behaviour kept | `docs/PHASE_2_ADAPTER_SPLIT.md` steps 1–6: `GameKnowledge`, `TacticalRules`, `FrameReader`, `StrategyGame` with MLBB halves; golden test unchanged | 37.64–37.73, #54–#63 |
+| 6, 7, 10 What an adapter supplies, capabilities, versioning, validation, onboarding | `docs/ADAPTER_GUIDE.md`, `GameAdapter.adapterVersion`, `testing/AdapterContractKit` | 37.75, #65 |
+| 8 Models cannot bypass the rules | `ai/DecisionGuard` + `DecisionGuardTest` | 37.74, #64 |
+| 9 Regression net | `TacticalEngineGoldenTest`, 25 situations | #16, #17, #55 |
+
+**Known remaining coupling (by design, for Phase 14):** the MLBB-shaped `game/GameState` that the readers produce and the engine reads, and `learning` (trained per MLBB hero). See `docs/ADAPTER_GUIDE.md` section 2.
+
+---
+
+The record below is the resume log kept while Phase 2 was in progress.
 
 ## Done
 
