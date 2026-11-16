@@ -3408,19 +3408,18 @@ class MainActivity : Activity() {
     // FIRST-RUN SETUP (owner, 2026-11-12): a new install opens here - permissions, the folder, the models,
     // the main switches (all off on a new install), scenery calibration and skill button calibration.
     // It can be opened again from the Setup page.
-    private fun welcomePage() {
-        title("WELCOME TO SPHYNX")
-        text("Six short steps get the app ready. Each turns green when it is done. Every switch starts OFF: turn on only " +
-            "what you want. You can do any step later from the Model, Learn and Setup pages.", 13f, color = T.MUTED)
+    // a full-width button inside a card
+    private fun inCard(cd: LinearLayout, t: String, onClick: () -> Unit) = Button(this).apply {
+        text = t; isAllCaps = false; styleButton(this); setOnClickListener { onClick() }
+        cd.addView(this, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })
+    }
 
-        // 1. permissions
+    // THE PERMISSIONS CARD: one card, used by the first-run guide and by Setup (backlog item 11: no duplicated setup
+    // content). Each permission says Granted / Missing; the chip counts them.
+    private fun permissionsCard(heading: String) {
         val p1 = card()
-        val p1Head = cardHeader(p1, "1. Permissions", "", T.GOLD)
+        val p1Head = cardHeader(p1, heading, "", T.GOLD)
         val p1Chip = (p1Head.parent as LinearLayout).getChildAt(1) as TextView
-        fun inCard(cd: LinearLayout, t: String, onClick: () -> Unit) = Button(this).apply {
-            text = t; isAllCaps = false; styleButton(this); setOnClickListener { onClick() }
-            cd.addView(this, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })
-        }
         val acc = inCard(p1, "Accessibility service (touches and the floating icon)") { openAccessibility() }
         inCard(p1, "Switch greyed out? Allow restricted settings") {
             toast("Tap ⋮ (top-right), then 'Allow restricted settings'")
@@ -3446,6 +3445,15 @@ class MainActivity : Activity() {
             val ok = listOf(a, o, n, f).count { it }
             p1Chip.text = if (ok == 4) "done" else "$ok of 4"; p1Chip.setTextColor(c(if (ok == 4) T.GREEN else T.GOLD))
         }
+    }
+
+    private fun welcomePage() {
+        title("WELCOME TO SPHYNX")
+        text("Six short steps get the app ready. Each turns green when it is done. Every switch starts OFF: turn on only " +
+            "what you want. You can do any step later from the Model, Learn and Setup pages.", 13f, color = T.MUTED)
+
+        // 1. permissions: the same card as on Setup (backlog item 11: the guide reuses the Setup cards)
+        permissionsCard("1. Permissions")
 
         // 2. folder
         val p2 = card()
@@ -3568,24 +3576,7 @@ class MainActivity : Activity() {
         text("The font of the headings, the tabs and the app name. Text and buttons use Inter. Pick the one you like; " +
             "the app redraws at once.")
         title("PERMISSIONS")
-        val acc = btn("1. Accessibility service (touches)") { openAccessibility() }
-        upd { markWord(acc, AccessibilityController.instance != null) }
-        btn("Switch greyed out? Allow restricted settings") {
-            toast("Tap ⋮ (top-right), then 'Allow restricted settings'")
-            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
-        }
-        val ov = btn("2. Display over other apps (floating icon)") {
-            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-        }
-        upd { markWord(ov, Settings.canDrawOverlays(this)) }
-        val nt = btn("3. Notifications") {
-            if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), reqNotify)
-        }
-        upd {
-            markWord(nt, Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
-        }
-        // (screen capture: started on the Home page only - v36.86)
-        text("POCO/Xiaomi: also allow 'pop-up windows while running in the background' and turn off 'Manage app if unused'.", 12f, color = "#9AA0A6")
+        permissionsCard("Permissions")      // the same card as in the first-run guide (backlog item 11)
 
         title("SCREEN")
         val scr = text("", 12f, color = "#9AA0A6")
