@@ -746,6 +746,30 @@ class MainActivity : Activity() {
     }
 
     // a small muted line inside a card
+    // ---- standard states (Phase 3 state matrix; backlog item 8) ----
+
+    // an empty state: a muted sentence, and the action that fills it when there is one
+    private fun emptyState(parent: LinearLayout, sentence: String, action: String? = null, onAction: (() -> Unit)? = null): LinearLayout {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(8), 0, dp(8)) }
+        box.addView(TextView(this).apply { text = sentence; textSize = 14f; setTextColor(c(T.MUTED)) })
+        if (action != null && onAction != null) box.addView(Button(this).apply {
+            text = action; styleButton(this, primary = true); setOnClickListener { onAction() }
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })
+        parent.addView(box)
+        return box
+    }
+
+    // buttons that need the internet: disabled while the phone is offline, with the reason on a line under them
+    private fun needsInternet(vararg buttons: Button) {
+        val note = text("", 13f, color = T.INFO, describe = false)
+        upd {
+            val on = Online.available(this)
+            for (b in buttons) { b.isEnabled = on; b.alpha = if (on) 1f else 0.45f }
+            note.text = if (on) "" else "Offline: these need the internet. Everything else works without it."
+            note.visibility = if (on) View.GONE else View.VISIBLE
+        }
+    }
+
     // a short label (grid caption, tab) never breaks inside a word (backlog item 10): once laid out, it takes the
     // largest size at which its longest word fits, or one line with "…" if none does (Labels)
     private fun fitWords(tv: TextView, maxSp: Float, minSp: Float) {
@@ -1278,9 +1302,14 @@ class MainActivity : Activity() {
         readyCheckCard()
 
         title("WHAT THE AI SEES")
+        val noCapture = emptyState(content, "No screen capture: the AI sees nothing yet.", "Start screen capture") { askScreenCapture() }
         val preview = PreviewView(this)
         content.addView(preview, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(190)))
-        upd { preview.refresh() }
+        upd {
+            val live = FrameHub.isLive()
+            noCapture.visibility = if (live) View.GONE else View.VISIBLE
+            preview.refresh()
+        }
 
         val c2 = card()
         val meRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
@@ -1333,7 +1362,7 @@ class MainActivity : Activity() {
         hc.addView(hist)
         upd {
             val h = ActionExecutor.history(12)
-            hist.text = if (h.isEmpty()) "(nothing yet)" else h.joinToString("\n")
+            hist.text = if (h.isEmpty()) "Nothing yet: the actions appear here once the Player plays." else h.joinToString("\n")
         }
 
         val learn = text("", 12f, color = T.MUTED)
@@ -1536,10 +1565,11 @@ class MainActivity : Activity() {
                 "\nLast cast check: ${ActionExecutor.lastFeedback}" +
                 "\nAll heroes: ${com.sphynx.game.SkillBook.learnAllProgress.ifEmpty { "-" }}"
         }
-        btn("Learn this hero's skills online") {
+        val learnOne = btn("Learn this hero's skills online") {
             val h = GameStateTracker.ownHero()
             if (h == null) toast("Pick a hero first") else com.sphynx.game.SkillBook.fetch(h) { m -> runOnUiThread { toast(m.take(120)) } }
         }
+        needsInternet(learnOne)
         btn("Learn all heroes' skills (background)") {
             com.sphynx.game.SkillBook.learnAll { m -> runOnUiThread { toast(m) } }
             toast("Started")
@@ -2020,6 +2050,13 @@ class MainActivity : Activity() {
         }
         upd { lb.text = if (ll.running) "Stop learning" else "Learn the whole database online" }
         styleButton(lb, primary = true)
+        // learning: an indeterminate bar while it runs (the button above is its Stop)
+        val lbar = android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            isIndeterminate = true; contentDescription = "Learning the database"
+        }
+        content.addView(lbar, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(8)))
+        upd { lbar.visibility = if (ll.running) View.VISIBLE else View.GONE }
+        needsInternet(lb)
         val loadIconsBtn = btn("") {
             if (com.sphynx.app.IconCache.loadingAll) {
                 toast("Already loading icons: ${com.sphynx.app.IconCache.loadAllStatus}")
@@ -2342,6 +2379,7 @@ class MainActivity : Activity() {
                 }
             }
         }
+        if (list.childCount == 0) emptyState(list, if (q.isNotEmpty()) "Nothing named \"${libFilter.trim()}\" here." else "Nothing here yet.")
         search.setOnEditorActionListener { v, _, _ -> libFilter = v.text.toString(); show("library"); true }
         search.imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
     }
@@ -2388,8 +2426,9 @@ class MainActivity : Activity() {
             }
         }
         styleButton(upd1, primary = true)
+        needsInternet(upd1)
         val heroBox = field("Hero (empty = the hero you play)", "", false) { }
-        btn("Update this hero") {
+        val updHero = btn("Update this hero") {
             leaveHooks.forEach { it() }
             val h = HeroDb.match(heroBox.text.toString()) ?: GameStateTracker.ownHero() ?: HeroDb.match(Cfg.myHero)
             when {
@@ -2398,6 +2437,7 @@ class MainActivity : Activity() {
                 else -> { toast("Asking Groq about $h (10-30 s)…"); ma.updateHero(h) { msg -> runOnUiThread { toast(msg) } } }
             }
         }
+        needsInternet(updHero)
 
         // the two cards are rebuilt only when their data changes
         val patchBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -3303,10 +3343,11 @@ class MainActivity : Activity() {
             }.start()
         }
         refreshGh()
-        btn("Upload the debug data to GitHub now") {
+        val upNow = btn("Upload the debug data to GitHub now") {
             toast("Uploading…")
             gh.uploadAll(this) { msg -> refreshGh(); runOnUiThread { toast(msg.take(200)) } }
         }
+        needsInternet(upNow)
         switch("Upload by itself after each recording", Cfg.autoUpload) { Cfg.autoUpload = it }
         upd { ghInfo.text = ghState + "\n" + (if (gh.busy) "Uploading: " else "Last upload: ") + gh.status }
     }

@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Clear empty, loading and offline states",
+            "Pages now say plainly when there is nothing to show and what fills it: What the AI sees offers Start screen " +
+                "capture when there is no capture, Recent actions says nothing has happened yet, and a Library search with " +
+                "no result says so. Learning the whole database shows a moving bar while it runs (its button is the Stop). " +
+                "Buttons that need the internet (learn the database or a hero's skills, update the meta, upload to GitHub) " +
+                "are greyed out while the phone is offline, with a line saying why; everything else keeps working offline.",
+            pr = 46, needsDeviceCheck = true, version = "37.56"),
         Entry("2026-11-16", Kind.IMPROVED, "Ready check lists only what is missing; a failed start says why",
             "The Ready check on Play now lists only what is not ready yet, each with its Fix, Start or Open button, the " +
                 "needed ones first; when everything is ready it shows one line, Ready to play. While the strategic model " +
