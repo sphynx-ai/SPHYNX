@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Phase 2 finished: Mobile Legends is the first game of a universal core",
+            "The foundation work of Phase 2 is done: the app's core no longer names Mobile Legends; everything about " +
+                "the game sits in its own part, checked by tests. Play should be exactly as before; please play a 5v5 " +
+                "match and a Solo practice to confirm. Next: Phase 5, reliability on Android.",
+            pr = 66, needsDeviceCheck = true, version = "37.76"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: a guide and a test kit for adding other games",
             "Behind the scenes: a guide now says what a second game would need (its names, rules, screen reading and " +
                 "questions), how features it cannot provide behave, and how it is versioned and tested. A test kit checks " +
