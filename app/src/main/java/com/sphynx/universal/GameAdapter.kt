@@ -7,5 +7,7 @@ interface GameAdapter<S> {
     val gameId: String
     val displayName: String
     val capabilities: CapabilitySet
+    /** The game's characters, roles, lanes, spells, items and objectives (submilestone 6). */
+    val knowledge: GameKnowledge
     fun toUniversal(state: S): UniversalMatchState
 }
