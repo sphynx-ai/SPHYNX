@@ -148,6 +148,8 @@ object IconCache {
     // an ImageView showing a hero (round) or an item (rounded square)
     fun view(ctx: Context, name: String, hero: Boolean, sizePx: Int, fileOverride: String? = null): ImageView {
         val iv = ImageView(ctx)
+        // TalkBack reads the hero's or item's name (backlog item 10: every drawn picture has a label)
+        if (name.isNotBlank() && name != "?") iv.contentDescription = name
         iv.scaleType = ImageView.ScaleType.CENTER_CROP
         iv.setImageBitmap(placeholder(name, sizePx))
         iv.clipToOutline = true

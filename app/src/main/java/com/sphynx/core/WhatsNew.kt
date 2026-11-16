@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.FIXED, "Short labels no longer break inside a word; pictures have spoken names",
+            "Names under hero and item pictures and the Library tabs used to break a long word across two lines " +
+                "(\"Equipmen/t\"). They now take the largest size at which every word fits on its line, or end with " +
+                "\"...\" if none does. Every hero and item picture now has its name for TalkBack (the phone's screen " +
+                "reader), so it says \"Layla\" instead of \"image\".",
+            pr = 44, needsDeviceCheck = true, version = "37.54"),
         Entry("2026-11-15", Kind.IMPROVED, "The floating panel takes the app's theme",
             "The floating panel in the game now uses the colours of the theme chosen on Settings > Setup > Theme: its " +
                 "ground, buttons, borders and text, and the AI ON button filled with the theme's colour (teal in Signal, " +
