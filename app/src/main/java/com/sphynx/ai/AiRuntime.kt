@@ -306,6 +306,7 @@ object AiRuntime {
                     if (com.sphynx.learning.LearnGate.on()) com.sphynx.research.ResearchMode.recordMoment(s, profile, option)
                     var d = if (calibrating) TacticalEngine.calibrationStep(s, profile)
                         else TacticalEngine.decide(s, profile, plan, bias, option)
+                    val rulesD = d   // the rules' own decision, before any blend (for DecisionGuard)
                     // fights: play the hero's combo in order instead of pressing everything at once
                     if (!calibrating) d = ComboRunner.apply(d, s, profile)
                     // "Play like me": your style mixed into the AI's decision (it keeps control of the
@@ -325,6 +326,8 @@ object AiRuntime {
                         }
                     }
                     d = TacticalEngine.filterCasts(d, s, profile)
+                    // Phase 2 SM8: the last check on the blended decision (safety intents kept, valid movement / casts)
+                    if (!calibrating) d = DecisionGuard.check(rulesD, d)
                     // no freezing: your HP bar can vanish for a moment (effects, animations); keep the
                     // last movement going for up to 0.6 s instead of stopping
                     val tNow = System.currentTimeMillis()
@@ -344,7 +347,7 @@ object AiRuntime {
                     SessionRows.frame(s, d)
                     benchMoving = d.moveX != 0f || d.moveY != 0f
                     // never into the enemy fountain, whatever the mode (owner, 2026-11-11) - applied last
-                    d = FountainGuard.apply(s, d)
+                    d = DecisionGuard.sane(FountainGuard.apply(s, d))
                     ActionExecutor.execute(d)
                     // screen-to-touch recorder: from the start of reading this frame to its touches being queued
                     com.sphynx.core.TouchSpeed.log.frameToDecision(System.currentTimeMillis() - s.ts)
