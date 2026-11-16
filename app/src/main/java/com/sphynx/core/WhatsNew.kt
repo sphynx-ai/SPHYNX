@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Foundation: the screen reading is split into a pipeline and Mobile Legends' readers",
+            "Behind the scenes, for adding other games later: taking each captured frame, timing it and keeping the " +
+                "latest reading is now one game-independent part; everything that reads Mobile Legends' screen (HP bars, " +
+                "minimap, buttons, banners, bushes, the tower circle, the level badge, K/D/A) is Mobile Legends' screen " +
+                "reader, plugged in at start. What the AI sees should be exactly the same, at the same speed.",
+            pr = 61, needsDeviceCheck = true, version = "37.71"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the fight scores ask the Mobile Legends rules too",
             "Behind the scenes, for adding other games later: the scores the Player decides with (how safe you are, how " +
                 "good a fight looks, which option wins) no longer name Mobile Legends heroes, skills, guides, towers or " +
