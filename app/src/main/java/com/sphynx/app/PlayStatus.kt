@@ -37,4 +37,7 @@ object PlayStatus {
     }
 
     fun allNeededOk(items: List<Item>): Boolean = items.all { it.ok || !it.needed }
+
+    // the Ready check lists only what is not ready, the needed ones first (screen specs, Play card 2)
+    fun notReady(items: List<Item>): List<Item> = items.filter { !it.ok }.sortedBy { if (it.needed) 0 else 1 }
 }

@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Ready check lists only what is missing; a failed start says why",
+            "The Ready check on Play now lists only what is not ready yet, each with its Fix, Start or Open button, the " +
+                "needed ones first; when everything is ready it shows one line, Ready to play. While the strategic model " +
+                "loads it shows a bar with the model's name. If an engine in Running now cannot start, a red line under it " +
+                "says why, with a Try again button, instead of a message that disappears.",
+            pr = 45, needsDeviceCheck = true, version = "37.55"),
         Entry("2026-11-16", Kind.FIXED, "Short labels no longer break inside a word; pictures have spoken names",
             "Names under hero and item pictures and the Library tabs used to break a long word across two lines " +
                 "(\"Equipmen/t\"). They now take the largest size at which every word fits on its line, or end with " +

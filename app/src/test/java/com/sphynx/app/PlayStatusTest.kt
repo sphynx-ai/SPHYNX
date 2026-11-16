@@ -29,6 +29,14 @@ class PlayStatusTest {
         assertFalse(PlayStatus.allNeededOk(listOf(item(false))))
     }
 
+    @Test fun onlyWhatIsNotReadyIsListedNeededFirst() {
+        val a = PlayStatus.Item("a", "A", true, "Granted", "Missing")
+        val b = PlayStatus.Item("b", "B", false, "Loaded", "Not loaded", needed = false)
+        val c = PlayStatus.Item("c", "C", false, "Granted", "Missing")
+        assertEquals(listOf("c", "b"), PlayStatus.notReady(listOf(a, b, c)).map { it.key })
+        assertTrue(PlayStatus.notReady(listOf(a)).isEmpty())
+    }
+
     @Test fun itemWords() {
         assertEquals("Granted", item(true).word)
         assertEquals("Missing", item(false).word)

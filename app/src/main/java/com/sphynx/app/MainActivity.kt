@@ -852,26 +852,29 @@ class MainActivity : Activity() {
     //  Starting things (jumps to whatever is missing)
     // =====================================================================
 
-    private fun startStage(stage: String) {
+    // starts a stage; the error when it could not start (null when it started, or when the user was sent to fix a
+    // missing permission or model)
+    private fun startStage(stage: String): String? {
         if (AccessibilityController.instance == null) {
             pendingStage = stage
             toast("Turn ON 'Sphynx' in Accessibility, then come back")
             openAccessibility()
-            return
+            return null
         }
         if (AiRuntime.needsGemma(stage) && !GemmaEngine.ready) {
             toast("Load the Gemma model first")
             show("model")
-            return
+            return null
         }
         val err = AiRuntime.start(stage)
-        if (err != null) { toast(err); return }
+        if (err != null) { toast(err); return err }
         if (!ScreenCaptureService.running) askScreenCapture()
         val ov = AccessibilityController.instance?.overlay
         if (ov != null && !ov.shown && !Settings.canDrawOverlays(this)) {
             toast("Allow 'Display over other apps' so the floating icon can show")
             startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         }
+        return null
     }
 
     private fun askScreenCapture() {
@@ -1114,16 +1117,29 @@ class MainActivity : Activity() {
         )
         for ((name, stage, isOn) in engines) {
             var syncing = false
+            // an engine that failed to start: a danger row with the reason and Try again (state matrix, Running now)
+            val errRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; visibility = View.GONE }
+            val errText = TextView(this).apply { textSize = 13f; setTextColor(c(T.RED)) }
+            fun start(): String? =
+                if (stage == "learn") AiRuntime.start("learn").also { if (it == null && !ScreenCaptureService.running) askScreenCapture() }
+                else startStage(stage)
+            fun showError(err: String?) {
+                errRow.visibility = if (err == null) View.GONE else View.VISIBLE
+                errText.text = err?.let { "Could not start: $it" }.orEmpty()
+            }
             val (sw, word) = cardSwitchRow(cd, name, isOn()) { on ->
                 if (!syncing) {
-                    if (!on) AiRuntime.stop(stage)
-                    else if (stage == "learn") {
-                        val err = AiRuntime.start("learn")
-                        if (err != null) toast(err) else if (!ScreenCaptureService.running) askScreenCapture()
-                    } else startStage(stage)
+                    if (!on) { AiRuntime.stop(stage); showError(null) } else showError(start())
                 }
             }
+            errRow.addView(errText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            errRow.addView(Button(this).apply {
+                text = "Try again"; styleButton(this); contentDescription = "Try again: start $name"
+                setOnClickListener { showError(start()) }
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(44)))
+            cd.addView(errRow)
             upd {
+                if (isOn() && errRow.visibility == View.VISIBLE) showError(null)
                 val on = isOn()
                 if (sw.isChecked != on) { syncing = true; sw.isChecked = on; syncing = false }
                 word.text = PlayStatus.engineWord(on, Cfg.dryRun, touches = stage != "learn")
@@ -1173,11 +1189,23 @@ class MainActivity : Activity() {
             val summary = PlayStatus.readySummary(all)
             badge.text = summary
             badge.setTextColor(c(if (PlayStatus.allNeededOk(all)) T.GREEN else T.GOLD))
-            val key = all.map { it.key + it.word to it.ok }
+            val key = all.map { it.key + it.word to it.ok } + ("loading" to GemmaEngine.loading)
             if (key == shown) return@upd
             shown = key
             list.removeAllViews()
-            for (item in all) {
+            // only what is NOT ready is listed (screen specs, Play card 2); all ready: one line
+            val missing = PlayStatus.notReady(all)
+            if (missing.isEmpty()) list.addView(TextView(this).apply {
+                text = "● Ready to play"; textSize = 15f; setTextColor(c(T.GREEN)); setPadding(0, dp(6), 0, dp(6))
+            })
+            if (GemmaEngine.loading) {
+                // the model is loading: a bar and its name (state matrix, Ready check)
+                list.addView(TextView(this).apply { text = "Loading ${ModelManager.strategicName()}…"; textSize = 13f; setTextColor(c(T.TEXT)) })
+                list.addView(android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                    isIndeterminate = true; contentDescription = "Loading the model"
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(8)))
+            }
+            for (item in missing) {
                 val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; minimumHeight = dp(48) }
                 val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
                 col.addView(TextView(this).apply { text = item.label; textSize = 15f; setTextColor(c(T.TEXT)) })
