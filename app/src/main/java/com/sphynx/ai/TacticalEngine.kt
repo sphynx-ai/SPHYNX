@@ -562,9 +562,9 @@ object TacticalEngine {
         // ---- 1. survive ----
         // Low HP always retreats (EXCEPT Argus during Eternal Evil 4s death immunity on badge/icon!).
         val argusImmortal = rules.deathImmune(s)
-        val rules = option == null || option == FightOption.RULES
-        val outnumbered = rules && !argusImmortal && threat.size >= alliesNear + 2 && surv < 55f
-        val losingDuel = rules && !argusImmortal && threat.size == 1 && alliesNear == 0 && hp < 0.5f && threat[0].hp > hp + 0.25f && surv < 45f
+        val rulesMode = option == null || option == FightOption.RULES
+        val outnumbered = rulesMode && !argusImmortal && threat.size >= alliesNear + 2 && surv < 55f
+        val losingDuel = rulesMode && !argusImmortal && threat.size == 1 && alliesNear == 0 && hp < 0.5f && threat[0].hp > hp + 0.25f && surv < 45f
         val brainRetreat = option == FightOption.RETREAT && !argusImmortal && s.enemiesWithin(0.9f).isNotEmpty()
         // LAST STAND (your rule): low HP but a 1v1 you can still win - the enemy is lower than you,
         // or the skills you have ready can finish it (e.g. an execute ultimate when you are both
@@ -585,7 +585,7 @@ object TacticalEngine {
                 "last stand: 1v1 I can win (me ${(hp * 100).toInt()}%, enemy ${(duelFoe.hp * 100).toInt()}%)"), force = true)
         }
         if (!argusImmortal && ((hp in 0f..0.15f || fstate == Utility.State.RETREATING) && threat.isNotEmpty() || outnumbered || losingDuel || brainRetreat ||
-                plan.plan == "retreat" && threat.isNotEmpty() && rules)
+                plan.plan == "retreat" && threat.isNotEmpty() && rulesMode)
         ) {
             var (mx, my) = retreatDir(s, threat)
             // hurt and chased: a bush on the way out hides you (enemies lose sight of you)
@@ -824,7 +824,7 @@ object TacticalEngine {
         val me = s.minimapSelf
         val early = s.matchSec in 0..599
         val target = if (noDuel) null else cand?.takeIf { option != null || it in safeTargets }
-        if (target != null && option != null && !rules) {
+        if (target != null && option != null && !rulesMode) {
             brainFight(s, p, option, target, hp, alliesNear)?.let { lastTargetId = target.id; return hold(now, it, force = true) }
         }
 
@@ -832,7 +832,7 @@ object TacticalEngine {
         fun fight(minEng: Float = 0f): TacticalDecision? {
             val effMin = if (minEng >= 70f) 52f else minEng
             val fightOk = (fstate == Utility.State.ENGAGING || ComboRunner.running || rules.buffUltActive(s)) && eng >= effMin && !(objectiveOn && eng < 60f) || option == FightOption.ALL_IN
-            if (target == null || !(rules || option == FightOption.ALL_IN) || s.distToSelf(target.x, target.y) > 0.62f || !fightOk) return null
+            if (target == null || !(rulesMode || option == FightOption.ALL_IN) || s.distToSelf(target.x, target.y) > 0.62f || !fightOk) return null
             val d = s.distToSelf(target.x, target.y)
             lastTargetId = target.id
             val casts = ArrayList<String>()
@@ -1174,7 +1174,7 @@ object TacticalEngine {
         // the minion wave): a marksman hits a lone, hurt enemy hero from range - one enemy around, at 60% HP or less,
         // within poke reach and not under its tower, while the marksman is healthy and safe. It keeps its distance.
         fun marksmanPoke(): TacticalDecision? {
-            if (!rules || p.role != Role.MARKSMAN || plan.plan == "retreat" || objectiveOn) return null
+            if (!rulesMode || p.role != Role.MARKSMAN || plan.plan == "retreat" || objectiveOn) return null
             if (hp < maxOf(retreatHp + 0.2f, 0.5f) || surv < 35f) return null   // 35: the same safety bar as finishing a low enemy (2c)
             val around = s.enemiesWithin(0.9f)
             val t = around.singleOrNull()?.takeIf { it in safeTargets && it.hp in 0f..0.6f } ?: return null
