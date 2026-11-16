@@ -1172,6 +1172,29 @@ object TacticalEngine {
                     d.reason + " (committed: ${(now - objCommit.since) / 1000} s)"))
             }
         }
+        // MARKSMAN POKE (owner decision 2026-11-16, regression scenario marksman_poke_range: "poke instead" of waiting for
+        // the minion wave): a marksman hits a lone, hurt enemy hero from range - one enemy around, at 60% HP or less,
+        // within poke reach and not under its tower, while the marksman is healthy and safe. It keeps its distance.
+        fun marksmanPoke(): TacticalDecision? {
+            if (!rules || p.role != Role.MARKSMAN || plan.plan == "retreat" || objectiveOn) return null
+            if (hp < maxOf(retreatHp + 0.2f, 0.5f) || surv < 35f) return null   // 35: the same safety bar as finishing a low enemy (2c)
+            val around = s.enemiesWithin(0.9f)
+            val t = around.singleOrNull()?.takeIf { it in safeTargets && it.hp in 0f..0.6f } ?: return null
+            val d = s.distToSelf(t.x, t.y)
+            if (d > maxOf(p.engageRange * 1.3f, p.attackRange * 1.45f)) return null
+            lastTargetId = t.id
+            val casts = ArrayList<String>()
+            if (d <= p.attackRange * 1.45f) casts.add("attack")
+            for (sk in p.combo) {
+                if (sk == "ult") continue
+                val skR = maxOf(kit[sk]?.range ?: p.engageRange, p.engageRange)
+                if (d <= skR * 1.25f && CooldownTracker.ready(sk, p)) casts.add(sk)
+            }
+            val (mx, my) = heroSpacing(s, p, t, d)
+            return TacticalDecision(Intent.ENGAGE, mx, my, casts, t.x, t.y, "enemy #${t.id}", t.hp, t.id,
+                "poking enemy #${t.id} at ${(t.hp * 100).toInt()}% from range (marksman), ${(d * 100).toInt()} away")
+        }
+        marksmanPoke()?.let { return hold(now, it) }
         for (step in order) step()?.let { return hold(now, it) }
 
         // ---- 8. follow Gemma's plan, else walk your lane ----

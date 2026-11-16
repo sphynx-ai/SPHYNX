@@ -39,7 +39,7 @@
    - **Afterwards:** add rules for `game`, `vision`, `ai` and `learning` once they are split into universal and MLBB parts.
 3. **Submilestones 4–8 and 10.** These are the adapter data and mechanics, the MLBB adapter, how future adapters supply data, capability and versioning rules, the final deterministic check on model outputs, and adapter onboarding.
 4. **Submilestone 9.** Grow the regression net beyond the 16 situations: recorded situations from real sessions, and `GameStateTracker`.
-5. **Regression-net question `marksman_poke_range`: decided by the owner on 2026-11-16, "poke instead".** A marksman with a 50%-HP enemy at poke distance should poke rather than wait for the minion wave. The rule change and its golden-file update come first after resuming (v37.60).
+5. **Regression-net question `marksman_poke_range`: decided by the owner on 2026-11-16, "poke instead".** A marksman with a 50%-HP enemy at poke distance should poke rather than wait for the minion wave. Done in v37.60: `TacticalEngine.marksmanPoke` (one enemy around, at 60% HP or less, in poke reach, not under its tower; the marksman healthy and safe: survival 35+), golden line updated in the same PR.
 
 ## How to resume
 

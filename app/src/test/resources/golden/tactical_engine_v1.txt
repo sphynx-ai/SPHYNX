@@ -11,7 +11,7 @@ weak_enemy_in_reach | ENGAGE | move 0.99,-0.17 | casts attack,s1,s2,ult | target
 outnumbered_low_hp | RETREAT | move -0.82,0.57 | casts s1 | target away -1.00 | outnumbered 2 vs 1
 low_hp_alone | RECALL | move 0.00,0.00 | casts recall | target - -1.00 | low HP, safe to recall
 even_duel_with_ally | ENGAGE | move 0.99,-0.14 | casts s1,s2,ult | target enemy #4 0.75 | target HP 75%, 35 away, engage 64, survival 41
-marksman_poke_range | PUSH | move 0.00,0.00 | casts - | target - -1.00 | Mid lane (fast wave clear, 1-3-1 semi-roam, objective control): at Mid lane clash point: waiting for minion wave (fight)
+marksman_poke_range | ENGAGE | move 1.00,-0.09 | casts attack,s1,s2 | target enemy #5 0.50 | poking enemy #5 at 50% from range (marksman), 55 away
 enemy_dashing_at_me | RETREAT | move -0.83,0.56 | casts - | target away -1.00 | HP 60%, survival 17
 jungle_creep | JUNGLE | move 0.96,-0.27 | casts attack | target monster 0.80 | Molten Fiend (orange buff) HP 80%
 turtle_low_with_ally | OBJECTIVE | move 0.94,-0.35 | casts attack | target objective 0.30 | turtle HP 30%, with 1 allies
