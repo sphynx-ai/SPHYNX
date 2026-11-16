@@ -22,7 +22,6 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
 import android.view.WindowManager
-import com.sphynx.ai.AiRuntime
 import com.sphynx.core.Diag
 
 // Live screen frames (10-15 fps) through MediaProjection.
@@ -68,7 +67,7 @@ class ScreenCaptureService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> { stopSelf(); return START_NOT_STICKY }
-            ACTION_EMERGENCY -> { AiRuntime.emergencyStop("notification button"); return START_NOT_STICKY }
+            ACTION_EMERGENCY -> { com.sphynx.core.Probes.emergencyStop("notification button"); return START_NOT_STICKY }
         }
         if (projection != null) return START_NOT_STICKY
 
@@ -108,8 +107,7 @@ class ScreenCaptureService : Service() {
             startCapture(mp)
             running = true
             Diag.info("Screen capture started (${capW}x$capH)")
-            // learning from you runs whenever the screen is captured, Player on or off
-            if (!com.sphynx.ai.AiRuntime.learnOn) com.sphynx.ai.AiRuntime.start("learn")
+            com.sphynx.core.Probes.onCaptureStarted()   // the app starts learning from you (ADR 0001: no call upwards)
         } catch (e: Exception) {
             Diag.error("Capture: could not start", e)
             stopSelf()
@@ -232,7 +230,7 @@ class ScreenCaptureService : Service() {
         thread?.quitSafely()
         display = null; reader = null; projection = null
         FrameHub.reset()
-        com.sphynx.game.GameStateTracker.captureStopped()   // an open match is closed after a minute without capture
+        com.sphynx.core.Probes.onCaptureStopped()   // the game closes an open match after a minute without capture
         super.onDestroy()
     }
 }

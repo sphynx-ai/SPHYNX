@@ -38,8 +38,8 @@ object PortraitMatch {
             val dir = java.io.File(ctx.filesDir, "icons")
             var n = 0
             for (h in HeroDb.allNames) {
-                val f = com.sphynx.app.IconCache.heroFile(h) ?: continue
-                if (!java.io.File(dir, f).exists()) { com.sphynx.app.IconCache.load(ctx, f) { }; n++ }
+                val f = com.sphynx.core.Probes.heroIconFile(h) ?: continue
+                if (!java.io.File(dir, f).exists()) { com.sphynx.core.Probes.loadIcon(ctx, f); n++ }
             }
             if (n > 0) Diag.info("Portrait pictures: fetching $n heroes' pictures for portrait matching")
         }
@@ -54,8 +54,8 @@ object PortraitMatch {
         val dir = java.io.File(ctx.filesDir, "icons")
         var n = 0
         for (sp in ALL_SPELLS) {
-            val f = com.sphynx.app.IconCache.itemFile(sp)
-            if (!java.io.File(dir, f).exists()) { com.sphynx.app.IconCache.load(ctx, f) { }; n++ }
+            val f = com.sphynx.core.Probes.itemIconFile(sp)
+            if (!java.io.File(dir, f).exists()) { com.sphynx.core.Probes.loadIcon(ctx, f); n++ }
         }
         if (n > 0) Diag.info("Spell pictures: fetching $n battle spell icons from the wiki for spell matching")
     }
@@ -67,7 +67,7 @@ object PortraitMatch {
         val dir = java.io.File(ctx.filesDir, "icons")
         if (!dir.exists()) return emptyList()
         return HeroDb.allNames.filter(allowed).mapNotNull { h ->
-            val f = com.sphynx.app.IconCache.heroFile(h) ?: return@mapNotNull null
+            val f = com.sphynx.core.Probes.heroIconFile(h) ?: return@mapNotNull null
             HeroVerifier.wikiPrint(f)?.let { h to HeroVerifier.corr(print, it) }
         }.sortedByDescending { it.second }
     }
@@ -90,7 +90,7 @@ object PortraitMatch {
         if (!dir.exists()) return emptyList()
         val pool = if (includeBlessed) ALL_SPELLS else SpellDb.names
         return pool.mapNotNull { sp ->
-            val f = com.sphynx.app.IconCache.itemFile(sp)
+            val f = com.sphynx.core.Probes.itemIconFile(sp)
             HeroVerifier.wikiPrint(f)?.let { sp to HeroVerifier.corr(print, it) }
         }.sortedByDescending { it.second }
     }

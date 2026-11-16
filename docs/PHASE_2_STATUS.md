@@ -27,10 +27,11 @@
 ## Open, in the order to resume
 
 1. ~~Owner review of ADR 0001~~ **Done: accepted by the owner on 2026-11-16.**
-2. **Migration B3 to B5.** 14 forbidden dependencies are left in the `ArchitectureRulesTest` baseline:
-   - **B3:**
-     - `vision/EndBoard`, `vision/PortraitMatch` → `app/IconCache`: move the portrait cache out of `app`.
-     - `capture/ScreenCaptureService` → `ai`, `game`: status callbacks through Probes.
+2. **Migration B3 to B5.** 14 forbidden dependencies were left in the `ArchitectureRulesTest` baseline when Phase 2 resumed:
+   - ~~**B3**~~ **done in v37.61:** `vision/EndBoard` and `vision/PortraitMatch` read the hero / item pictures through
+     `core.Probes` (`heroIconFile`, `itemIconFile`, `loadIcon`), and `capture/ScreenCaptureService` reports
+     `onCaptureStarted`, `onCaptureStopped` and `emergencyStop` through Probes (wired in `app/ProbesWiring`).
+     Baseline: 14 → 10 entries.
    - **B4:**
      - `models/AutoFolder` → `ai`, `learning`, `vision`: file handlers registered by the code that loads each file.
      - `models/ModelManager` → `ai`.

@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Foundation: screen capture and picture matching no longer reach into the app",
+            "Behind the scenes, for adding other games later: the screen capture service now reports when it starts " +
+                "and stops (and the notification's emergency stop) instead of calling the AI and game code itself, and " +
+                "the end-of-match and loading-screen readers ask for hero and item pictures the same way. Nothing should " +
+                "look or behave differently: learning still starts with screen capture, an open match still closes a " +
+                "minute after capture stops, and the emergency stop still stops everything.",
+            pr = 51, needsDeviceCheck = true, version = "37.61"),
         Entry("2026-11-16", Kind.IMPROVED, "A marksman pokes a hurt enemy instead of waiting for the wave",
             "Your decision: when you play a marksman and a single enemy hero at 60% HP or less is within poke reach, " +
                 "the Player now attacks it and uses its skills from range, keeping its distance, instead of standing at " +

@@ -65,12 +65,12 @@ object EndBoard {
         val ctx = HeroVerifier.appContext()
         val detected = listOfNotNull(GameStateTracker.ownHero(), GameStateTracker.loadingHero, HeroVerifier.skillHero,
             GameStateTracker.scoreboardHero, GameStateTracker.modelHero, GameStateTracker.portraitHero).distinct()
-        if (ctx != null) for (d in detected) com.sphynx.app.IconCache.heroFile(d)?.let { f ->
-            if (!java.io.File(java.io.File(ctx.filesDir, "icons"), f).exists()) com.sphynx.app.IconCache.load(ctx, f) { }
+        if (ctx != null) for (d in detected) com.sphynx.core.Probes.heroIconFile(d)?.let { f ->
+            if (!java.io.File(java.io.File(ctx.filesDir, "icons"), f).exists()) com.sphynx.core.Probes.loadIcon(ctx, f)
         }
         PortraitMatch.prefetch()
         val scores = HeroDb.allNames.mapNotNull { h ->
-            val f = com.sphynx.app.IconCache.heroFile(h) ?: return@mapNotNull null
+            val f = com.sphynx.core.Probes.heroIconFile(h) ?: return@mapNotNull null
             HeroVerifier.wikiPrint(f)?.let { h to HeroVerifier.corr(p, it) }
         }.sortedByDescending { it.second }
         val b = scores.firstOrNull() ?: return null
