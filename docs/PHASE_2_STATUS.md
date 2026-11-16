@@ -1,7 +1,7 @@
 # Phase 2 — status and resume point
 
 **Status:** RESUMED on 2026-11-16 by owner decision, after Phase 4 was completed and phone-tested. (Paused 2026-11-14 to 2026-11-16 for Phases 3 and 4.)
-**Last commit with Phase 2 work:** `ab25ef1` on `sphynx-test-branch` (merge of PR #19, version 37.29).
+**Latest Phase 2 work:** v37.59–v37.63 (PRs #49–#53, phone-tested by the owner 2026-11-16) and v37.64 (the game-knowledge surface).
 
 ## Done
 
@@ -40,7 +40,7 @@
      package (`universal`, `inference`, `core`, `capture`, `models`, `engines`) now uses only what ADR 0001 allows.
    - **Next:** add rules for `game`, `vision`, `ai` and `learning` once they are split into universal and MLBB parts
      (submilestones 4–5).
-3. **Submilestones 4–8 and 10.** These are the adapter data and mechanics, the MLBB adapter, how future adapters supply data, capability and versioning rules, the final deterministic check on model outputs, and adapter onboarding.
+3. **Submilestones 4–8 and 10.** **Started 2026-11-16:** the plan and its progress are in `docs/PHASE_2_ADAPTER_SPLIT.md` (step 1, the game-knowledge surface, done in v37.64). These are the adapter data and mechanics, the MLBB adapter, how future adapters supply data, capability and versioning rules, the final deterministic check on model outputs, and adapter onboarding.
 4. **Submilestone 9.** Grow the regression net beyond the 16 situations: recorded situations from real sessions, and `GameStateTracker`.
 5. **Regression-net question `marksman_poke_range`: decided by the owner on 2026-11-16, "poke instead".** A marksman with a 50%-HP enemy at poke distance should poke rather than wait for the minion wave. Done in v37.60: `TacticalEngine.marksmanPoke` (one enemy around, at 60% HP or less, in poke reach, not under its tower; the marksman healthy and safe: survival 35+), golden line updated in the same PR.
 

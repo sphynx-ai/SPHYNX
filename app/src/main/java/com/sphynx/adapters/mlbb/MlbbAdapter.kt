@@ -26,6 +26,7 @@ object MlbbAdapter : GameAdapter<GameState> {
 
     override val gameId = "mlbb"
     override val displayName = "Mobile Legends: Bang Bang"
+    override val knowledge: com.sphynx.universal.GameKnowledge get() = MlbbKnowledge
 
     // from the support matrix in docs/ARCHITECTURE_AUDIT.md section 10 (2026-11-07). Nothing is
     // device-verified, so nothing is above PARTIAL. Update both together.

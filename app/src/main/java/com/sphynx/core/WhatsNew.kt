@@ -24,37 +24,43 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-16", Kind.IMPROVED, "Foundation: the game's heroes, lanes and items through one adapter",
+            "Behind the scenes, for adding other games later: the game-independent part of the app can now ask the " +
+                "game's adapter for its characters, roles, lanes, battle spells, items and objectives, instead of " +
+                "knowing Mobile Legends' lists itself. The Mobile Legends adapter reads the same lists the app already " +
+                "uses. Nothing should look or behave differently.",
+            pr = 54, needsDeviceCheck = true, version = "37.64"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the layering rule now has no exceptions",
             "Behind the scenes, for adding other games later: the code that translates the AI's advice into the shared " +
                 "decision format moved next to the AI, so the game-independent part of the app no longer uses any " +
                 "Mobile Legends code. A test now checks that this stays true. Nothing should look or behave differently.",
-            pr = 53, needsDeviceCheck = true, version = "37.63"),
+            pr = 53, version = "37.63"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the model files no longer call the AI directly",
             "Behind the scenes, for adding other games later: finding, copying and loading the model files (Gemma, " +
                 "the small model, the tactical networks, the detectors, the online backups) now reaches the parts that " +
                 "run them through one plugged-in list instead of calling them itself. Nothing should look or behave " +
                 "differently: Scan the folder, loading the models and the automatic loading at start work as before.",
-            pr = 52, needsDeviceCheck = true, version = "37.62"),
+            pr = 52, version = "37.62"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: screen capture and picture matching no longer reach into the app",
             "Behind the scenes, for adding other games later: the screen capture service now reports when it starts " +
                 "and stops (and the notification's emergency stop) instead of calling the AI and game code itself, and " +
                 "the end-of-match and loading-screen readers ask for hero and item pictures the same way. Nothing should " +
                 "look or behave differently: learning still starts with screen capture, an open match still closes a " +
                 "minute after capture stops, and the emergency stop still stops everything.",
-            pr = 51, needsDeviceCheck = true, version = "37.61"),
+            pr = 51, version = "37.61"),
         Entry("2026-11-16", Kind.IMPROVED, "A marksman pokes a hurt enemy instead of waiting for the wave",
             "Your decision: when you play a marksman and a single enemy hero at 60% HP or less is within poke reach, " +
                 "the Player now attacks it and uses its skills from range, keeping its distance, instead of standing at " +
                 "the lane waiting for the minion wave. It still does not poke when more enemies are around, when the " +
                 "enemy is under its tower, when your HP is low, or when the plan says retreat.",
-            pr = 50, needsDeviceCheck = true, version = "37.60"),
+            pr = 50, version = "37.60"),
         Entry("2026-11-16", Kind.IMPROVED, "The new look is finished; work on the app's foundation resumes",
             "Every step of the redesign (themes, the five sections, Play's Running now and Ready check, Hero and Play " +
                 "style, status words, empty and offline states, the floating panel's colours) has been tested on the " +
                 "phone, so that phase is complete. Work now goes back to the app's foundation: separating what any MOBA " +
                 "needs from what is specific to Mobile Legends, so another game can be added later. Nothing changes on " +
                 "screen in this version.",
-            pr = 49, needsDeviceCheck = true, version = "37.59"),
+            pr = 49, version = "37.59"),
         Entry("2026-11-16", Kind.IMPROVED, "Library says when it last learned; enemy slots can be set by tap",
             "Knowledge > Library now shows when the whole database was last learned and where from (the Mobile " +
                 "Legends wiki and the online guides), or that it has not been learned as a whole yet. On Hero & match > " +
