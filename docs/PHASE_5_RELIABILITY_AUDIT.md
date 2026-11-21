@@ -69,7 +69,7 @@ Each row moves to "Works" only with a phone test or a recording from that phone.
 | P6 | **Background restrictions in the Ready check:** battery optimisation and background restriction shown with a button to the system page | F5 | Ready check only | **Done in code (v37.83)**: optional Ready check item, `PlayStatus.batteryWord`; phone check pending |
 | P7 | **Start-up off the main thread:** migrations and initialisers that touch storage run on a background start-up task; one-shot model loads go through one executor | F6 | No (same work, other thread) | Planned |
 | P8 | **Permissions and data-flow record:** why each permission is needed, what leaves the phone (Groq, GitHub upload, Kaggle, wiki), retention; `allowBackup` review | F8, F11 | No (document; any change is owner decision) | **Done (v37.84)**: `docs/PHASE_5_PERMISSIONS_AND_DATA.md`; finding D1 (keys in Android backup) awaits the owner |
-| P9 | **Lifecycle test plan:** phone checklist for process death, capture stop by the system, accessibility off, rotation, low memory, airplane mode; instrumented tests where CI can run an emulator | F9 | No | Planned |
+| P9 | **Lifecycle test plan:** phone checklist for process death, capture stop by the system, accessibility off, rotation, low memory, airplane mode; instrumented tests where CI can run an emulator | F9 | No | **Done (v37.85)**: Section 8, checks L1–L12; results pending on the phone |
 | P10 | Diagnostics log trimming off the caller's thread | F10 | No | Planned |
 
 ## 6. Acceptance criteria for Phase 5 (from the roadmap mission and deliverables)
@@ -89,3 +89,24 @@ Each row moves to "Works" only with a phone test or a recording from that phone.
 1. **P5 policy** — what the app may unload or slow down by itself under memory pressure or heat.
 2. **P8 / D1** — API keys are in the preferences that Android's Auto Backup copies (`allowBackup="true"`, no backup rules): exclude the preferences from backup, or turn backup off (`docs/PHASE_5_PERMISSIONS_AND_DATA.md`).
 3. Which other phones (if any) can be used to fill the compatibility matrix.
+
+## 8. Lifecycle test plan (P9)
+
+There are no instrumented tests yet, and CI runs no emulator. Until it does, these phone checks are the evidence for the lifecycle acceptance criterion. Record each result with the date and the app version. After every check, the diagnostics history (Logs page) should show the matching line.
+
+| # | Check | How | Expected |
+|---:|---|---|---|
+| L1 | Force stop | Settings > Apps > Sphynx > Force stop, then open the app | Logs: "Last time the app closed: closed by you (force stop or swiped away)" (v37.80) |
+| L2 | Swipe away during capture | Start screen capture, swipe the app away in recents | Capture notification stays or ends cleanly; the next start logs how it closed |
+| L3 | Capture stopped by the system | Start capture, then stop casting from the quick settings tile | "Screen capture stopped by the system"; the AI stops reading frames; no crash |
+| L4 | Accessibility off | Turn the accessibility service off during play | "accessibility service turned off" emergency stop; panel gone; no touches |
+| L5 | Rotation / split screen | Rotate, then open split screen | Capture keeps the screen's shape; the app does not restart |
+| L6 | Low memory | Load Gemma (GPU) and a GGUF model, then play a 5v5 | Memory lines in the log (v37.82); if Android closes the app, the next start says "for lack of memory" (v37.80) |
+| L7 | Heat | A long match with both models | "Heat: the phone reports …" lines when throttling changes (v37.82) |
+| L8 | Offline | Airplane mode, open every page | Online features show "needs internet"; play and the rules engine work |
+| L9 | Battery restriction | Settings > Apps > Sphynx > Battery > Restricted | Ready check shows "Battery … Restricted"; a tap opens the phone's page (v37.83) |
+| L10 | Process death in the background | Open the game for 10+ min with capture off, return to Sphynx | The app reopens on a working page; settings kept |
+| L11 | Device profile | Open Performance | "What this phone supports" card; one "Device profile:" line per start in the log (v37.81) |
+| L12 | Reinstall | Uninstall and install the APK again | Calibration comes back from the `Output` backups |
+
+**Automated later:** L1–L5 and L10 can become instrumented tests (`ActivityScenario.recreate`, `UiAutomator` for system pages) when CI runs an emulator. Adding an emulator job to CI is a CI change; it is proposed here, not made.
