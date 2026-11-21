@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-21", Kind.IMPROVED, "Development: a record of every permission and what leaves the phone",
+            "Behind the scenes: a new document lists why the app needs each permission, every place it sends data to " +
+                "(the online models, the wiki, the debug upload, Kaggle) and how long data stays on the phone. It found " +
+                "that Android's own backup can copy the online-model keys; how to handle that is your decision. Nothing " +
+                "in the app changes.",
+            pr = 74, needsDeviceCheck = true, version = "37.84"),
         Entry("2026-11-21", Kind.NEW, "Ready check: battery restrictions",
             "The Ready check on Play now also shows when Android restricts the app in the background or optimises its " +
                 "battery use; on some phones that stops or delays the app while the game is on screen. A tap opens the " +

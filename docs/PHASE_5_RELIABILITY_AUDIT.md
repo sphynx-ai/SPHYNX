@@ -68,7 +68,7 @@ Each row moves to "Works" only with a phone test or a recording from that phone.
 | P5 | **Memory / thermal policy:** what to unload or slow down at which level (e.g. drop the tactical model before the strategic one; pause GGUF at severe throttling). | F2, F4 | **Yes — needs owner approval of the policy** | Planned, owner decision |
 | P6 | **Background restrictions in the Ready check:** battery optimisation and background restriction shown with a button to the system page | F5 | Ready check only | **Done in code (v37.83)**: optional Ready check item, `PlayStatus.batteryWord`; phone check pending |
 | P7 | **Start-up off the main thread:** migrations and initialisers that touch storage run on a background start-up task; one-shot model loads go through one executor | F6 | No (same work, other thread) | Planned |
-| P8 | **Permissions and data-flow record:** why each permission is needed, what leaves the phone (Groq, GitHub upload, Kaggle, wiki), retention; `allowBackup` review | F8, F11 | No (document; any change is owner decision) | Planned |
+| P8 | **Permissions and data-flow record:** why each permission is needed, what leaves the phone (Groq, GitHub upload, Kaggle, wiki), retention; `allowBackup` review | F8, F11 | No (document; any change is owner decision) | **Done (v37.84)**: `docs/PHASE_5_PERMISSIONS_AND_DATA.md`; finding D1 (keys in Android backup) awaits the owner |
 | P9 | **Lifecycle test plan:** phone checklist for process death, capture stop by the system, accessibility off, rotation, low memory, airplane mode; instrumented tests where CI can run an emulator | F9 | No | Planned |
 | P10 | Diagnostics log trimming off the caller's thread | F10 | No | Planned |
 
@@ -87,5 +87,5 @@ Each row moves to "Works" only with a phone test or a recording from that phone.
 ## 7. Owner decisions needed
 
 1. **P5 policy** — what the app may unload or slow down by itself under memory pressure or heat.
-2. **P8** — whether `allowBackup` stays on, after the data-flow record.
+2. **P8 / D1** — API keys are in the preferences that Android's Auto Backup copies (`allowBackup="true"`, no backup rules): exclude the preferences from backup, or turn backup off (`docs/PHASE_5_PERMISSIONS_AND_DATA.md`).
 3. Which other phones (if any) can be used to fill the compatibility matrix.
