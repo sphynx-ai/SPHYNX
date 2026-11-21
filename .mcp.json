@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "androidbuild": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@asjackson/androidbuild-mcp"],
+      "env": {}
+    }
+  }
+}
