@@ -10,6 +10,7 @@ import com.sphynx.learning.ExperienceRecorder
 class MainApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        val createdAt = android.os.SystemClock.elapsedRealtime()   // Phase 5 (P7): start-up time, measured before moving anything
         ProbesWiring.install()      // before any core service reads the AI / game / vision (ADR 0001)
         Cfg.init(this)
         // the chosen theme, before any screen or the floating panel draws (the panel's symbol takes its colour)
@@ -100,6 +101,9 @@ class MainApplication : Application() {
         // Groq rate limit: a notification the moment it can be asked again
         com.sphynx.ai.GroqClient.onAvailable = { groqAvailableNotice() }
         com.sphynx.ai.GroqClient.schedule()
+        // Phase 5 (P7): how long the start took on the main thread (from the process start, and this onCreate alone)
+        val now = android.os.SystemClock.elapsedRealtime()
+        Diag.info(com.sphynx.core.StartupTime.line(now - android.os.Process.getStartElapsedRealtime(), now - createdAt))
     }
 
     // Phase 5 (P4): Android asks the app to free memory; written down so a later low-memory close can be explained
