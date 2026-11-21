@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-21", Kind.IMPROVED, "Development: a phone checklist for the app's lifecycle",
+            "Behind the scenes: twelve phone checks (force stop, capture stopped by the system, accessibility off, " +
+                "rotation, low memory, heat, offline, battery restriction, reinstall and more), each with what the " +
+                "diagnostics history should show, so Android reliability can be confirmed step by step. Nothing in the " +
+                "app changes.",
+            pr = 75, needsDeviceCheck = true, version = "37.85"),
         Entry("2026-11-21", Kind.IMPROVED, "Development: a record of every permission and what leaves the phone",
             "Behind the scenes: a new document lists why the app needs each permission, every place it sends data to " +
                 "(the online models, the wiki, the debug upload, Kaggle) and how long data stays on the phone. It found " +
