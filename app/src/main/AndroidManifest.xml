@@ -27,6 +27,8 @@
         android:icon="@mipmap/ic_sphynx"
         android:roundIcon="@mipmap/ic_sphynx"
         android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:hasFragileUserData="true"
         android:theme="@style/Theme.Sphynx"
         android:largeHeap="true">

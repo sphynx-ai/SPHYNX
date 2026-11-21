@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-21", Kind.IMPROVED, "Privacy: your keys are left out of Android's backup",
+            "The app's settings, which hold your Groq, Gemini, Cerebras and Kaggle keys, no longer go into Android's own " +
+                "backup (Google Drive) or a transfer to a new phone. After a reinstall the keys are read again from " +
+                "Sphynx-Storage/Input and calibration comes back from the Output backups, as before.",
+            pr = 78, needsDeviceCheck = true, version = "37.88"),
         Entry("2026-11-21", Kind.IMPROVED, "Your phone test and your Phase 5 decisions are recorded",
             "Your phone test of 37.79 to 37.86 is recorded, and so is your confirmation of the older changes: nothing on " +
                 "this page waits for a phone check any more. Your decisions for the next steps are written down too: a " +

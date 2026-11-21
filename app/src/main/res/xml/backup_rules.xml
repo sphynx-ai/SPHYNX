@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 backup (the same rule as data_extraction_rules.xml for Android 12+): the settings file with the keys
+     (cfg.xml) is never backed up. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="cfg.xml" />
+</full-backup-content>
