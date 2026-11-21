@@ -42,4 +42,14 @@ class PlayStatusTest {
         assertEquals("Missing", item(false).word)
         assertTrue(item(false).needsFix)
     }
+
+    @Test fun batteryAndBackground() {
+        assertEquals("Unrestricted", PlayStatus.batteryWord(ignoringOptimizations = true, backgroundRestricted = false))
+        assertEquals("Optimized", PlayStatus.batteryWord(ignoringOptimizations = false, backgroundRestricted = false))
+        // a background restriction is the stronger one and is named first
+        assertEquals("Restricted", PlayStatus.batteryWord(ignoringOptimizations = true, backgroundRestricted = true))
+        assertTrue(PlayStatus.batteryOk(true, false))
+        assertFalse(PlayStatus.batteryOk(false, false))
+        assertFalse(PlayStatus.batteryOk(true, true))
+    }
 }
