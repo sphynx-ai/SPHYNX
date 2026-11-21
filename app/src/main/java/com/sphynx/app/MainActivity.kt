@@ -3655,6 +3655,14 @@ class MainActivity : Activity() {
         }
         text("The font of the headings, the tabs and the app name. Text and buttons use Inter. Pick the one you like; " +
             "the app redraws at once.")
+        // Phase 5 (P5, owner 2026-11-21): what the app does by itself when the phone is low on memory or hot
+        title("LOW MEMORY AND HEAT")
+        radioSwitches(com.sphynx.core.PressurePolicy.Mode.values().map { it.key to it.label },
+            com.sphynx.core.PressurePolicy.Mode.of(Cfg.pressureMode).key) { pick -> Cfg.pressureMode = pick }
+        text("Only warn me: a line on the floating panel and in the log; nothing is unloaded. Step down gently: when the " +
+            "phone is warm or low on memory the tactical model is unloaded first; when it is hot or very low on memory the " +
+            "GGUF model too, and the strategic model only when memory is critical. They come back by themselves after five " +
+            "quiet minutes, never during a fight. Play goes on with the rules either way.")
         title("PERMISSIONS")
         permissionsCard("Permissions")      // the same card as in the first-run guide (backlog item 11)
 

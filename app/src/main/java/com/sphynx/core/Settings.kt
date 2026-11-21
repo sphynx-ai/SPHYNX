@@ -156,6 +156,8 @@ object Cfg {
 
     // start a session recording by itself at the start of every match (owner, 2026-11-12; can be switched off)
     var autoRecord: Boolean get() = b("auto_record", false); set(v) = put("auto_record", v)
+    // Phase 5 (P5, owner 2026-11-21): under low memory or heat, "warn" (default) or "stepdown" (core/PressurePolicy)
+    var pressureMode: String get() = s("pressure_mode", "warn"); set(v) = put("pressure_mode", v)
     // upload the debug data to GitHub by itself after each recording (needs github_token.txt; can be switched off)
     var autoUpload: Boolean get() = b("auto_upload", false); set(v) = put("auto_upload", v)
 

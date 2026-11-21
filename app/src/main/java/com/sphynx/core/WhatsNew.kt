@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-21", Kind.NEW, "Setup: what to do when the phone is low on memory or hot",
+            "A new choice on the Setup page, Low memory and heat. Only warn me (the default) shows a line on the floating " +
+                "panel and in the log. Step down gently also unloads models by itself: the tactical model first, the " +
+                "GGUF model when the phone is hot or very low on memory, and the strategic model only when memory is " +
+                "critical. They load again after five quiet minutes, never during a fight, and play goes on with the " +
+                "rules in the meantime.",
+            pr = 79, needsDeviceCheck = true, version = "37.89"),
         Entry("2026-11-21", Kind.IMPROVED, "Privacy: your keys are left out of Android's backup",
             "The app's settings, which hold your Groq, Gemini, Cerebras and Kaggle keys, no longer go into Android's own " +
                 "backup (Google Drive) or a transfer to a new phone. After a reinstall the keys are read again from " +
