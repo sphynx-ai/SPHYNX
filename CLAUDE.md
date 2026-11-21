@@ -259,6 +259,8 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
   pushes for security problems on its own (hardcoded secrets, injection and similar). A finding about a key or token is
   fixed before anything is pushed (see "never show or upload any key / token" above); other findings are fixed or
   explained to the owner. It advises only: it never replaces the owner's approval, CI or the phone test.
+- Anthropic's pyright-lsp plugin (`pyright-lsp@anthropic-plugin-directory`) gives Python type checking for the
+  notebooks and `tools/`; it needs Pyright installed (`npm install -g pyright` or `pip install pyright`) and only reads.
 - Anthropic's code-review plugin (`code-review-anthropics@anthropic-plugin-directory`, from
   github.com/anthropics/claude-plugins-official) reviews a PR; it posts on GitHub only with `--comment`, and only when
   the owner asks for that. Anthropic's pr-review-toolkit (`pr-review-toolkit@anthropic-plugin-directory`) adds

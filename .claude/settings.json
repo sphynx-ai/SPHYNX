@@ -14,6 +14,7 @@
     "feature-dev@anthropic-plugin-directory": true,
     "pr-review-toolkit@anthropic-plugin-directory": true,
     "commit-commands@anthropic-plugin-directory": true,
-    "security-guidance@anthropic-plugin-directory": true
+    "security-guidance@anthropic-plugin-directory": true,
+    "pyright-lsp@anthropic-plugin-directory": true
   }
 }
