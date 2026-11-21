@@ -251,6 +251,10 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
   `docs/superpowers/`; `test-driven-development`, `systematic-debugging` and `verification-before-completion` follow
   sections 3 and 8 (CI is the build check here, the phone test is the device check).
 - The `androidbuild` MCP server (`.mcp.json`) only works on a computer with the Android SDK and a phone or emulator.
+- Anthropic's commit-commands plugin (`commit-commands@anthropic-plugin-directory`): only `commit` is used as is.
+  `commit-push-pr` is never used for SPHYNX PRs (it opens a non-draft PR against `main` and skips the version step and
+  the What's new entry); PRs are opened as in "Workflow" above. `clean_gone` force-deletes branches and worktrees, so it
+  runs only when the owner asks for it.
 - Anthropic's code-review plugin (`code-review-anthropics@anthropic-plugin-directory`, from
   github.com/anthropics/claude-plugins-official) reviews a PR; it posts on GitHub only with `--comment`, and only when
   the owner asks for that. Anthropic's pr-review-toolkit (`pr-review-toolkit@anthropic-plugin-directory`) adds
