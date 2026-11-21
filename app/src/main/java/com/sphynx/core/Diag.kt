@@ -15,12 +15,25 @@ object Diag {
         if (file == null) file = File(ctx.applicationContext.filesDir, "diagnostics.log")
     }
 
+    // Phase 5 (P10): the size is checked every TRIM_EVERY lines, not on every line (a file check per log line)
+    const val MAX_BYTES = 200_000L
+    const val KEEP_CHARS = 100_000
+    const val TRIM_EVERY = 50
+    private var sinceCheck = TRIM_EVERY      // check on the first line after start
+
+    /** Should the file be trimmed now? Pure, unit-tested. */
+    fun needsTrim(lineCount: Int, sizeBytes: Long): Boolean = lineCount >= TRIM_EVERY && sizeBytes > MAX_BYTES
+
     @Synchronized
     fun log(level: String, msg: String) {
         SessionRecorder.log(level, msg)
         val f = file ?: return
         try {
-            if (f.exists() && f.length() > 200_000) f.writeText(f.readText().takeLast(100_000))
+            if (sinceCheck >= TRIM_EVERY) {
+                if (needsTrim(sinceCheck, if (f.exists()) f.length() else 0L)) f.writeText(f.readText().takeLast(KEEP_CHARS))
+                sinceCheck = 0
+            }
+            sinceCheck++
             f.appendText("${fmt.format(Date())} [$level] ${msg.replace("\n", " | ")}\n")
         } catch (e: Exception) {
         }

@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-21", Kind.IMPROVED, "Logs: how long the app takes to start",
+            "Each start now writes one line into the diagnostics history: how long the app took to start, and how much " +
+                "of that was spent before the first screen could draw. It marks a start over one second as slow. This " +
+                "measures first, before any start-up work is moved. The diagnostics history also checks its own size less " +
+                "often. Nothing in play changes.",
+            pr = 76, needsDeviceCheck = true, version = "37.86"),
         Entry("2026-11-21", Kind.IMPROVED, "Development: a phone checklist for the app's lifecycle",
             "Behind the scenes: twelve phone checks (force stop, capture stopped by the system, accessibility off, " +
                 "rotation, low memory, heat, offline, battery restriction, reinstall and more), each with what the " +
