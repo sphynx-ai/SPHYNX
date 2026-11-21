@@ -67,6 +67,8 @@ class MainApplication : Application() {
         }
         Diag.init(this)
         CrashLog.install()
+        // Phase 5 (P2): how the app ended last time (native crash, ANR, low memory) into the diagnostics log
+        com.sphynx.core.ExitHistory.checkAsync(this)
         ExperienceRecorder.init(this)
         com.sphynx.learning.OnlineBackup.init(this)
         com.sphynx.learning.DatasetCollector.init(this)

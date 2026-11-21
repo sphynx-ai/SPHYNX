@@ -3404,6 +3404,12 @@ class MainActivity : Activity() {
             cur.text = if (e.isEmpty()) "✓ No active errors" else e.joinToString("\n") { "✗ $it" }
             cur.setTextColor(Color.parseColor(if (e.isEmpty()) "#66BB6A" else "#EF5350"))
         }
+        // Phase 5 (P2): how Android says the app ended last time (crash, native crash, not responding, low memory)
+        val lastExit = text("", 12f, color = T.MUTED, describe = false)
+        upd {
+            val s = "Last time the app closed: " + (com.sphynx.core.ExitHistory.last ?: "checking…")
+            if (lastExit.text.toString() != s) lastExit.text = s
+        }
         btn("Copy history") {
             val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
             cm.setPrimaryClip(ClipData.newPlainText("MLBB logs", Diag.read()))
