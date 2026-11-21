@@ -254,8 +254,9 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
   of a phase (section 11). Clear bug fixes, small requests and roadmap work inside an approved phase plan follow
   section 2 (implement directly). This does not change section 2.
 - How the skills fit: `finishing-a-development-branch` only through its push-and-PR option, never a local merge; plans
-  and specs keep the `docs/PHASE_*` naming instead of `docs/superpowers/`; `test-driven-development`, `systematic-debugging` and `verification-before-completion` follow
-  sections 3 and 8 (CI is the build check here, the phone test is the device check).
+  and specs keep the `docs/PHASE_*` naming instead of `docs/superpowers/`; `test-driven-development`,
+  `systematic-debugging` and `verification-before-completion` follow sections 3 and 8 (CI is the build check here,
+  the phone test is the device check).
 - The `androidbuild` MCP server (`.mcp.json`) only works on a computer with the Android SDK and a phone or emulator.
 - Anthropic's commit-commands plugin (`commit-commands`): only `commit` is used as is.
   `commit-push-pr` is never used for SPHYNX PRs (it opens a non-draft PR against `main` and skips the version step and
