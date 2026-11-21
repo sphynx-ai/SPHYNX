@@ -62,7 +62,7 @@ Each row moves to "Works" only with a phone test or a recording from that phone.
 | Step | Work | Finding | Behaviour change in play? | Status |
 |---:|---|---|---|---|
 | P1 | This audit, the compatibility matrix and the plan; Phase 2 phone test recorded | — | No | **Done (v37.79)** |
-| P2 | **Last exit reasons:** at start, read Android's record of how the app last ended (crash, native crash, ANR, low memory, killed by the user / system) and write each new one into the diagnostics log; show the last one on the Logs page | F1 | No (diagnostics only) | Next |
+| P2 | **Last exit reasons:** at start, read Android's record of how the app last ended (crash, native crash, ANR, low memory, killed by the user / system) and write each new one into the diagnostics log; show the last one on the Logs page | F1 | No (diagnostics only) | **Done in code (v37.80)**: `core/ExitHistory`, `ExitHistoryTest`; phone check pending |
 | P3 | **Device profile:** one record of the phone's capabilities (RAM, cores, ABI, API level, GGUF CPU support, GPU, accelerators) with an entry / midrange / flagship tier; shown on the Performance page and written into the diagnostics log at start | F3, F7 | No | Planned |
 | P4 | **Memory pressure and thermal events logged:** `onTrimMemory` and a thermal-status listener write to the diagnostics log and the session recording (no automatic unloading yet) | F2, F4 | No | Planned |
 | P5 | **Memory / thermal policy:** what to unload or slow down at which level (e.g. drop the tactical model before the strategic one; pause GGUF at severe throttling). | F2, F4 | **Yes — needs owner approval of the policy** | Planned, owner decision |

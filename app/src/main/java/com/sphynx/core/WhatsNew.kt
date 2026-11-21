@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-21", Kind.NEW, "Logs: why the app closed last time",
+            "When the app stops unexpectedly (a crash in the AI engines' native code, the app not responding, or " +
+                "Android closing it for lack of memory) the reason is now written into the diagnostics history at the " +
+                "next start, and the Logs page shows how it closed last time. For a \"not responding\" or a native " +
+                "crash, Android's report is saved in Sphynx-Storage/Recordings and uploaded with the debug data. " +
+                "Nothing in play changes.",
+            pr = 70, needsDeviceCheck = true, version = "37.80"),
         Entry("2026-11-21", Kind.IMPROVED, "Phase 5 started: reliability on Android",
             "Your phone test of 37.64 to 37.78 is recorded: those changes are no longer marked as waiting for a phone " +
                 "check. Phase 5 has started with a reliability check of the app: what it already does on Android, what " +
