@@ -2631,6 +2631,17 @@ class MainActivity : Activity() {
         content.addView(TextView(this).apply { text = di.phoneName(); textSize = 26f; setTextColor(Color.WHITE); setPadding(0, dp(8), 0, 0) })
         content.addView(TextView(this).apply { text = "Live · updates every 2 seconds"; textSize = 14f; setTextColor(c(T.ACCENT)) })
 
+        // ---- SUPPORT (Phase 5, P3): this phone against the app's requirements (read once at start) ----
+        val sup = pcard("What this phone supports")
+        val prof = com.sphynx.core.DeviceProfile.last
+        if (prof == null) note(sup, "Still reading this phone's details; open the page again in a moment.")
+        else for (ck in com.sphynx.core.DeviceProfile.checks(prof)) {
+            val v = kv(sup, ck.name)
+            v.text = (when (ck.ok) { true -> "Yes · "; false -> "No · "; null -> "" }) + ck.detail
+            if (ck.ok == false) v.setTextColor(c(T.RED))
+        }
+        if (prof != null) note(sup, "Minimum 6 GB of memory, 8 to 12 GB recommended. A GPU or an NPU driver being present does not prove a model can run on it: the Model page shows where a model really loaded.")
+
         // ---- MEMORY: ring (in use), available / total, available over 5 min, unused, this app ----
         val mem = pcard("Memory", "#2E4374")
         val memRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(10), 0, dp(4)) }

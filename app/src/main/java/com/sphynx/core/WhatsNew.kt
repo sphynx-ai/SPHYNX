@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-21", Kind.NEW, "Performance: what this phone supports",
+            "The Performance page has a new card at the top: this phone checked against what the app needs (Android " +
+                "11, a 64-bit ARM processor, 6 GB of memory minimum, 8 to 12 GB recommended) and whether its processor can " +
+                "run the GGUF engine, with the GPU and any NPU drivers it has. The same line is written into the " +
+                "diagnostics history at each start and into every session recording, so recordings show which phone " +
+                "made them. It only reads; nothing in play changes.",
+            pr = 71, needsDeviceCheck = true, version = "37.81"),
         Entry("2026-11-21", Kind.NEW, "Logs: why the app closed last time",
             "When the app stops unexpectedly (a crash in the AI engines' native code, the app not responding, or " +
                 "Android closing it for lack of memory) the reason is now written into the diagnostics history at the " +
