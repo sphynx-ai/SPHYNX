@@ -253,7 +253,9 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
 - The `androidbuild` MCP server (`.mcp.json`) only works on a computer with the Android SDK and a phone or emulator.
 - Anthropic's code-review plugin (`code-review-anthropics@anthropic-plugin-directory`, from
   github.com/anthropics/claude-plugins-official) reviews a PR; it posts on GitHub only with `--comment`, and only when
-  the owner asks for that. A review never replaces CI or the owner's phone test.
+  the owner asks for that. Anthropic's pr-review-toolkit (`pr-review-toolkit@anthropic-plugin-directory`) adds
+  focused reviewers (silent failures, test coverage, comments, types, simplification) that report in the chat only.
+  A review never replaces CI or the owner's phone test.
 - Anthropic's feature-dev plugin (`feature-dev@anthropic-plugin-directory`) guides a new feature (explore, clarify,
   design, then build only after the owner approves). Use it or the Superpowers brainstorming / plans chain for a
   feature, not both; either way the feature maps to its roadmap phase and goes through the normal PR workflow.
