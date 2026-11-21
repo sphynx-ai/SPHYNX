@@ -40,4 +40,14 @@ object PlayStatus {
 
     // the Ready check lists only what is not ready, the needed ones first (screen specs, Play card 2)
     fun notReady(items: List<Item>): List<Item> = items.filter { !it.ok }.sortedBy { if (it.needed) 0 else 1 }
+
+    // battery and background (Phase 5, P6; audit F5): a restricted or battery-optimised app can be stopped or delayed
+    // in the background on some phones, while the game is on screen. Optional: play still starts without it.
+    fun batteryOk(ignoringOptimizations: Boolean, backgroundRestricted: Boolean): Boolean = ignoringOptimizations && !backgroundRestricted
+
+    fun batteryWord(ignoringOptimizations: Boolean, backgroundRestricted: Boolean): String = when {
+        backgroundRestricted -> "Restricted"
+        !ignoringOptimizations -> "Optimized"
+        else -> "Unrestricted"
+    }
 }

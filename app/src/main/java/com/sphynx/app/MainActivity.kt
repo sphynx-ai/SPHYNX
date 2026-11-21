@@ -1195,6 +1195,7 @@ class MainActivity : Activity() {
                 checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED, "Granted", "Missing"),
             PlayStatus.Item("files", "All files access (the app's folder)", com.sphynx.core.Storage.allFilesAccess, "Granted", "Missing"),
             PlayStatus.Item("capture", "Screen capture", ScreenCaptureService.running, "Running", "Off", needed = false),
+            batteryItem(),
             PlayStatus.Item("model", "Strategic model (Gemma)", GemmaEngine.ready, "Loaded", if (GemmaEngine.loading) "Loading" else "Not loaded", needed = false)
         )
         fun fix(key: String) {
@@ -1205,6 +1206,7 @@ class MainActivity : Activity() {
                 "files" -> try { startActivity(com.sphynx.core.Storage.requestIntent(this)) }
                     catch (e: Exception) { toast("Open Settings > Apps > Special app access > All files access > Sphynx") }
                 "capture" -> askScreenCapture()
+                "battery" -> openBatterySettings()
                 "model" -> show("model")
             }
         }
@@ -3446,6 +3448,25 @@ class MainActivity : Activity() {
     // =====================================================================
     //  SETUP: permissions + calibration
     // =====================================================================
+
+    // Phase 5 (P6): battery optimisation and background restriction (optional item of the Ready check)
+    private fun batteryItem(): PlayStatus.Item {
+        val ignoring = try { getSystemService(android.os.PowerManager::class.java)?.isIgnoringBatteryOptimizations(packageName) == true } catch (e: Exception) { true }
+        val restricted = try { getSystemService(android.app.ActivityManager::class.java)?.isBackgroundRestricted == true } catch (e: Exception) { false }
+        return PlayStatus.Item("battery", "Battery: not restricted in the background", PlayStatus.batteryOk(ignoring, restricted),
+            PlayStatus.batteryWord(ignoring, restricted), PlayStatus.batteryWord(ignoring, restricted), needed = false)
+    }
+
+    // the system's own page (no extra permission): restricted -> the app's page; optimised -> the battery optimisation list
+    private fun openBatterySettings() {
+        val restricted = try { getSystemService(android.app.ActivityManager::class.java)?.isBackgroundRestricted == true } catch (e: Exception) { false }
+        val intents = listOfNotNull(
+            if (restricted) null else Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+        )
+        for (i in intents) { try { startActivity(i); toast("Choose Sphynx, then No restrictions / Don't optimise"); return } catch (e: Exception) { } }
+        toast("Open Settings > Apps > Sphynx > Battery > No restrictions")
+    }
 
     // the GPU switch changed while the model is loaded: load it again on the chosen processor (owner, 2026-11-13:
     // turning the switch on did nothing until the next start, so Gemma stayed on the slow CPU)

@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-21", Kind.NEW, "Ready check: battery restrictions",
+            "The Ready check on Play now also shows when Android restricts the app in the background or optimises its " +
+                "battery use; on some phones that stops or delays the app while the game is on screen. A tap opens the " +
+                "phone's own battery page for Sphynx. It is optional: play still starts without it.",
+            pr = 73, needsDeviceCheck = true, version = "37.83"),
         Entry("2026-11-21", Kind.NEW, "Logs: low memory and heat are written down",
             "When Android asks the app to free memory, or the phone starts or stops throttling because of heat, a line " +
                 "now goes into the diagnostics history (and into a running session recording), with the phone's free memory " +
