@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-21", Kind.IMPROVED, "Development: the plan for Phase 6 (one way to run every model)",
+            "Behind the scenes: a plan for the next phase. Every language model, LiteRT-LM or GGUF, will run through one " +
+                "common part, and the strategic and tactical jobs will be assigned to models instead of being built into " +
+                "them. Today the strategic job is always Gemma and the tactical job always the small model. It is waiting " +
+                "for your approval. Nothing in the app changes.",
+            pr = 82, needsDeviceCheck = true, version = "37.92"),
         Entry("2026-11-21", Kind.NEW, "Debug data: save a resource snapshot",
             "Your phone test of 37.87 to 37.90 is recorded. New on the Debug data page: one tap saves a snapshot of the " +
                 "phone's memory, the app's memory and CPU, the heat and the battery, and which models are loaded, into " +
