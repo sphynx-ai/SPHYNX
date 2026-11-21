@@ -87,6 +87,21 @@ object ProbesWiring {
         h.loadTactical = { ctx, path, done -> ai.scope.launch { done(small.load(ctx, path, preferGpu = false, textOnly = true)) } }
         h.unloadTactical = { ai.scope.launch { small.unload() } }
 
+        // Phase 5 (P5): the models the low-memory / heat policy may set aside and bring back (core.PressurePolicy)
+        val pp = com.sphynx.core.PressurePolicy
+        val mm = com.sphynx.models.ModelManager
+        val gg = com.sphynx.models.GgufLibrary
+        fun ctx() = Probes.appContext()
+        pp.mode = { com.sphynx.core.PressurePolicy.Mode.of(com.sphynx.core.Cfg.pressureMode) }
+        pp.inFight = { com.sphynx.game.GameStateTracker.state.enemies.isNotEmpty() }     // an enemy on screen = a fight may be on
+        pp.tactical = com.sphynx.core.PressurePolicy.Slot("the tactical model", { small.ready },
+            { mm.unloadTactical() }, { ctx()?.let { c -> mm.loadTactical(c) { err -> if (err != null) com.sphynx.core.Diag.info("Pressure: tactical model not reloaded: $err") } } })
+        var ggufFile: java.io.File? = null
+        pp.gguf = com.sphynx.core.PressurePolicy.Slot("the GGUF model", { ctx()?.let { gg.loadedFile(it) } != null },
+            { ctx()?.let { c -> ggufFile = gg.loadedFile(c); gg.unload(c) } }, { val c = ctx(); val f = ggufFile; if (c != null && f != null && f.isFile) gg.load(c, f) { } })
+        pp.strategic = com.sphynx.core.PressurePolicy.Slot("the strategic model", { gemma.ready },
+            { h.unloadStrategicNow() }, { ctx()?.let { c -> mm.load(c) { err -> if (err != null) com.sphynx.core.Diag.info("Pressure: strategic model not reloaded: $err") } } })
+
         val pn = com.sphynx.learning.PolicyNet
         val fn = com.sphynx.learning.FightNet
         h.policyKey = { stem -> pn.key(stem) }

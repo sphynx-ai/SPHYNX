@@ -66,6 +66,7 @@ object PressureLog {
     @Synchronized
     fun onTrim(level: Int) {
         val now = System.currentTimeMillis()
+        if (level != UI_HIDDEN) PressurePolicy.onPressure(PressurePolicy.memoryLevel(level), "memory")
         if (!shouldLogTrim(level, lastTrim, lastTrimAt, now)) return
         lastTrim = level; lastTrimAt = now
         val msg = "Memory: " + trimName(level) + (DeviceStats.last?.let { " (phone RAM available ${it.ramAvailMb} MB, this app ${it.appRamMb} MB)" } ?: "")
@@ -81,7 +82,11 @@ object PressureLog {
             pm.addThermalStatusListener(ctx.applicationContext.mainExecutor) { status ->
                 val msg = "Heat: the phone reports " + thermalName(status)
                 if (status >= 3) Diag.error(msg) else Diag.info(msg)
+                PressurePolicy.onPressure(PressurePolicy.heatLevel(status), "heat")
             }
+            // once a minute: bring back what the policy set aside, after the cool-down and outside a fight
+            val h = android.os.Handler(android.os.Looper.getMainLooper())
+            h.post(object : Runnable { override fun run() { try { PressurePolicy.tick() } catch (t: Throwable) { }; h.postDelayed(this, 60_000L) } })
         } catch (t: Throwable) { Diag.error("Heat: could not listen to the thermal status", t) }
     }
 }
