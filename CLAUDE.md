@@ -239,11 +239,13 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
   reads or writes must be added there. Write into the right folder; read through `AutoFolder.files`.
 
 ### Claude Code plugins and tools (owner, 2026-11-21)
-- All plugins below come from the official `claude-plugins-official` marketplace (github.com/anthropics/claude-plugins-official,
-  declared in `.claude/settings.json`); use these `<plugin>@claude-plugins-official` names everywhere (a cloud container
-  may also list the same plugins under its built-in `anthropic-plugin-directory`).
-- Superpowers (`superpowers`, from github.com/obra/superpowers through that marketplace) **complements** this workflow and never overrides it. This file, the roadmap and the
-  owner's decisions come first; a Superpowers skill applies only where it does not conflict with them.
+- All plugins below come from the official `claude-plugins-official` marketplace
+  (github.com/anthropics/claude-plugins-official, declared in `.claude/settings.json`); use these
+  `<plugin>@claude-plugins-official` names everywhere (a cloud container may also list the same plugins under its
+  built-in `anthropic-plugin-directory`).
+- Superpowers (`superpowers`, from github.com/obra/superpowers through that marketplace) **complements** this workflow
+  and never overrides it. This file, the roadmap and the owner's decisions come first; a Superpowers skill applies only
+  where it does not conflict with them.
 - The owner is the final authority on SPHYNX architecture, implementation approvals and PR merges. The standing
   approval stays: a PR into `sphynx-test-branch` is merged as soon as CI passes; `main` only gets phone-tested work
   the owner approves. No Superpowers skill approves, merges or releases anything.
@@ -251,9 +253,8 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
   is used for features outside the approved roadmap, for real design questions, and for the execution plan at the start
   of a phase (section 11). Clear bug fixes, small requests and roadmap work inside an approved phase plan follow
   section 2 (implement directly). This does not change section 2.
-- How the skills fit: `finishing-a-development-branch`
-  only through its push-and-PR option, never a local merge; plans and specs keep the `docs/PHASE_*` naming instead of
-  `docs/superpowers/`; `test-driven-development`, `systematic-debugging` and `verification-before-completion` follow
+- How the skills fit: `finishing-a-development-branch` only through its push-and-PR option, never a local merge; plans
+  and specs keep the `docs/PHASE_*` naming instead of `docs/superpowers/`; `test-driven-development`, `systematic-debugging` and `verification-before-completion` follow
   sections 3 and 8 (CI is the build check here, the phone test is the device check).
 - The `androidbuild` MCP server (`.mcp.json`) only works on a computer with the Android SDK and a phone or emulator.
 - Anthropic's commit-commands plugin (`commit-commands`): only `commit` is used as is.
