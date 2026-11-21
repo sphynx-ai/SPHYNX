@@ -10,6 +10,7 @@
   "enabledPlugins": {
     "ponytail@ponytail": true,
     "superpowers@anthropic-plugin-directory": true,
-    "code-review-anthropics@anthropic-plugin-directory": true
+    "code-review-anthropics@anthropic-plugin-directory": true,
+    "feature-dev@anthropic-plugin-directory": true
   }
 }
