@@ -24,29 +24,36 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-21", Kind.NEW, "Debug data: save a resource snapshot",
+            "Your phone test of 37.87 to 37.90 is recorded. New on the Debug data page: one tap saves a snapshot of the " +
+                "phone's memory, the app's memory and CPU, the heat and the battery, and which models are loaded, into " +
+                "Recordings (uploaded with the debug data). Tap it four times: with nothing loaded, with screen capture " +
+                "on, with the strategic model loaded and with a GGUF model loaded. These four snapshots are the last " +
+                "thing Phase 5 needs.",
+            pr = 81, needsDeviceCheck = true, version = "37.91"),
         Entry("2026-11-21", Kind.IMPROVED, "Development: lifecycle tests on an emulator",
             "Behind the scenes: every change is now also started on an Android emulator, which checks that each start " +
                 "writes its diagnostics lines (device profile, start-up time, last close) and that the app survives its " +
                 "screen being rebuilt and going to the background and back. Nothing in the app changes.",
-            pr = 80, needsDeviceCheck = true, version = "37.90"),
+            pr = 80, version = "37.90"),
         Entry("2026-11-21", Kind.NEW, "Setup: what to do when the phone is low on memory or hot",
             "A new choice on the Setup page, Low memory and heat. Only warn me (the default) shows a line on the floating " +
                 "panel and in the log. Step down gently also unloads models by itself: the tactical model first, the " +
                 "GGUF model when the phone is hot or very low on memory, and the strategic model only when memory is " +
                 "critical. They load again after five quiet minutes, never during a fight, and play goes on with the " +
                 "rules in the meantime.",
-            pr = 79, needsDeviceCheck = true, version = "37.89"),
+            pr = 79, version = "37.89"),
         Entry("2026-11-21", Kind.IMPROVED, "Privacy: your keys are left out of Android's backup",
             "The app's settings, which hold your Groq, Gemini, Cerebras and Kaggle keys, no longer go into Android's own " +
                 "backup (Google Drive) or a transfer to a new phone. After a reinstall the keys are read again from " +
                 "Sphynx-Storage/Input and calibration comes back from the Output backups, as before.",
-            pr = 78, needsDeviceCheck = true, version = "37.88"),
+            pr = 78, version = "37.88"),
         Entry("2026-11-21", Kind.IMPROVED, "Your phone test and your Phase 5 decisions are recorded",
             "Your phone test of 37.79 to 37.86 is recorded, and so is your confirmation of the older changes: nothing on " +
                 "this page waits for a phone check any more. Your decisions for the next steps are written down too: a " +
                 "Settings choice for low memory and heat, the online-model keys left out of Android's backup, start-up " +
                 "left as it is (under half a second), and automatic emulator tests. Nothing in the app changes.",
-            pr = 77, needsDeviceCheck = true, version = "37.87"),
+            pr = 77, version = "37.87"),
         Entry("2026-11-21", Kind.IMPROVED, "Logs: how long the app takes to start",
             "Each start now writes one line into the diagnostics history: how long the app took to start, and how much " +
                 "of that was spent before the first screen could draw. It marks a start over one second as slow. This " +

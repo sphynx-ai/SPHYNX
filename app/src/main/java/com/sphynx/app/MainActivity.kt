@@ -3378,6 +3378,34 @@ class MainActivity : Activity() {
             }.start()
         }
 
+        // Phase 5: resource baselines (idle, capture on, Gemma loaded, GGUF loaded) - one snapshot per tap
+        btn("Save a resource snapshot now (memory, CPU, heat, what is loaded)") {
+            Thread {
+                val msg = try {
+                    val now = System.currentTimeMillis()
+                    val st = com.sphynx.core.DeviceStats.sample(this)
+                        ?: throw IllegalStateException("no reading yet, try again in two seconds")
+                    val pw = com.sphynx.core.DeviceInfo.power(this)
+                    val pm = getSystemService(android.os.PowerManager::class.java)
+                    val r = com.sphynx.core.ResourceBaseline.Reading(now, ScreenCaptureService.running, GemmaEngine.ready,
+                        com.sphynx.ai.TacticalLlmEngine.ready, com.sphynx.models.GgufLibrary.loadedFile(this) != null,
+                        st.ramTotalMb, st.ramAvailMb, st.lowMemory, st.appRamMb, st.appJavaMb, st.appNativeMb, st.appCpuPct,
+                        pw.thermal + (try { " (status ${pm?.currentThermalStatus})" } catch (e: Exception) { "" }),
+                        pw.headroom, pw.batteryC, pw.batteryPct, pw.charging)
+                    val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date(now))
+                    val f = java.io.File(cacheDir, com.sphynx.core.ResourceBaseline.fileName(stamp))
+                    f.writeText(com.sphynx.core.ResourceBaseline.toJson(r,
+                        com.sphynx.core.DeviceProfile.last?.let { com.sphynx.core.DeviceProfile.summary(it) },
+                        com.sphynx.core.AppVersion.VERSION).toString(2))
+                    Diag.info("Resource baseline: " + com.sphynx.core.ResourceBaseline.summary(r))
+                    com.sphynx.core.ResourceBaseline.summary(r) + "\n" + com.sphynx.core.SessionRecorder.exportFile(this, f, "application/json").also { f.delete() }
+                } catch (e: Exception) { "Snapshot failed: ${e.message}" }
+                runOnUiThread { toast(msg.take(240)) }
+            }.start()
+        }
+        text("For Phase 5's resource baselines: tap once in each state (nothing loaded; screen capture on; the strategic " +
+            "model loaded; a GGUF model loaded). Each snapshot is saved in Recordings and uploaded with the debug data.")
+
         title("UPLOAD TO GITHUB", Capability.NEEDS_INTERNET)
         val gh = com.sphynx.core.GitHubUpload
         text("Uploads everything in the recordings folder that is not on GitHub yet to the branch " + gh.BRANCH + ": all files " +
