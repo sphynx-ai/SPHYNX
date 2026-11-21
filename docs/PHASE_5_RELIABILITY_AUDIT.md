@@ -62,33 +62,36 @@ Each row moves to "Works" only with a phone test or a recording from that phone.
 | Step | Work | Finding | Behaviour change in play? | Status |
 |---:|---|---|---|---|
 | P1 | This audit, the compatibility matrix and the plan; Phase 2 phone test recorded | — | No | **Done (v37.79)** |
-| P2 | **Last exit reasons:** at start, read Android's record of how the app last ended (crash, native crash, ANR, low memory, killed by the user / system) and write each new one into the diagnostics log; show the last one on the Logs page | F1 | No (diagnostics only) | **Done in code (v37.80)**: `core/ExitHistory`, `ExitHistoryTest`; phone check pending |
-| P3 | **Device profile:** one record of the phone's capabilities (RAM, cores, ABI, API level, GGUF CPU support, GPU, accelerators), checked against the owner-approved requirements (`UNIVERSAL_COMPATIBILITY.md` A.9.4); shown on the Performance page, written into the diagnostics log at start and into every recording's start row. It picks **no** model profile: A.9.3 chooses profiles from measurements, in Phase 11 | F3, F7 | No | **Done in code (v37.81)**: `core/DeviceProfile`, `DeviceProfileTest`; phone check pending |
-| P4 | **Memory pressure and thermal events logged:** `onTrimMemory` and a thermal-status listener write to the diagnostics log and the session recording (no automatic unloading yet) | F2, F4 | No | **Done in code (v37.82)**: `core/PressureLog`, `PressureLogTest`; phone check pending |
-| P5 | **Memory / thermal policy:** what to unload or slow down at which level (e.g. drop the tactical model before the strategic one; pause GGUF at severe throttling). | F2, F4 | **Yes — needs owner approval of the policy** | Planned, owner decision |
-| P6 | **Background restrictions in the Ready check:** battery optimisation and background restriction shown with a button to the system page | F5 | Ready check only | **Done in code (v37.83)**: optional Ready check item, `PlayStatus.batteryWord`; phone check pending |
-| P7 | **Start-up off the main thread.** Step 1, measure: one "Start-up:" line per start (process start to the end of `Application.onCreate`). Code reading shows model loads, the folder scan and the exit and device checks already run on background threads. Left on the main thread: the settings migrations (preferences, in memory) and `OnlineBackup`'s calibration restore (external storage), which must finish before calibration is read. Step 2, moving the restore, only if the phone's numbers show it is slow | F6 | No | **Step 1 done in code (v37.86)**: `core/StartupTime`; step 2 waits for phone numbers |
-| P8 | **Permissions and data-flow record:** why each permission is needed, what leaves the phone (Groq, GitHub upload, Kaggle, wiki), retention; `allowBackup` review | F8, F11 | No (document; any change is owner decision) | **Done (v37.84)**: `docs/PHASE_5_PERMISSIONS_AND_DATA.md`; finding D1 (keys in Android backup) awaits the owner |
-| P9 | **Lifecycle test plan:** phone checklist for process death, capture stop by the system, accessibility off, rotation, low memory, airplane mode; instrumented tests where CI can run an emulator | F9 | No | **Done (v37.85)**: Section 8, checks L1–L12; results pending on the phone |
-| P10 | Diagnostics log: check the size every 50 lines instead of on every line (the trim itself stays rare: once per ~100 KB of log) | F10 | No | **Done in code (v37.86)**: `Diag.needsTrim` |
+| P2 | **Last exit reasons:** at start, read Android's record of how the app last ended (crash, native crash, ANR, low memory, killed by the user / system) and write each new one into the diagnostics log; show the last one on the Logs page | F1 | No (diagnostics only) | **Done in code (v37.80)**: `core/ExitHistory`, `ExitHistoryTest`; phone-tested by the owner 2026-11-21 |
+| P3 | **Device profile:** one record of the phone's capabilities (RAM, cores, ABI, API level, GGUF CPU support, GPU, accelerators), checked against the owner-approved requirements (`UNIVERSAL_COMPATIBILITY.md` A.9.4); shown on the Performance page, written into the diagnostics log at start and into every recording's start row. It picks **no** model profile: A.9.3 chooses profiles from measurements, in Phase 11 | F3, F7 | No | **Done in code (v37.81)**: `core/DeviceProfile`, `DeviceProfileTest`; phone-tested by the owner 2026-11-21 |
+| P4 | **Memory pressure and thermal events logged:** `onTrimMemory` and a thermal-status listener write to the diagnostics log and the session recording (no automatic unloading yet) | F2, F4 | No | **Done in code (v37.82)**: `core/PressureLog`, `PressureLogTest`; phone-tested by the owner 2026-11-21 |
+| P5 | **Memory / thermal policy:** what to unload or slow down at which level (e.g. drop the tactical model before the strategic one; pause GGUF at severe throttling). | F2, F4 | **Yes — needs owner approval of the policy** | **Owner decision 2026-11-21:** a switch in Settings chooses between "Step down gently" (unload the tactical model first; pause GGUF at severe heat or critical memory; back up only after a cool-down, never in a fight) and "Only warn me" (notice and log, nothing unloaded). Next |
+| P6 | **Background restrictions in the Ready check:** battery optimisation and background restriction shown with a button to the system page | F5 | Ready check only | **Done in code (v37.83)**: optional Ready check item, `PlayStatus.batteryWord`; phone-tested by the owner 2026-11-21 |
+| P7 | **Start-up off the main thread.** Step 1, measure: one "Start-up:" line per start (process start to the end of `Application.onCreate`). Code reading shows model loads, the folder scan and the exit and device checks already run on background threads. Left on the main thread: the settings migrations (preferences, in memory) and `OnlineBackup`'s calibration restore (external storage), which must finish before calibration is read. Step 2, moving the restore, only if the phone's numbers show it is slow | F6 | No | **Done (v37.86)**: `core/StartupTime`. Owner's phone (2026-11-21): under 500 ms in `Application.onCreate`, so step 2 (moving the restore) is not needed |
+| P8 | **Permissions and data-flow record:** why each permission is needed, what leaves the phone (Groq, GitHub upload, Kaggle, wiki), retention; `allowBackup` review | F8, F11 | No (document; any change is owner decision) | **Done (v37.84)**: `docs/PHASE_5_PERMISSIONS_AND_DATA.md`; D1: owner decided 2026-11-21 to exclude the keys from Android's backup (next PR) |
+| P9 | **Lifecycle test plan:** phone checklist for process death, capture stop by the system, accessibility off, rotation, low memory, airplane mode; instrumented tests where CI can run an emulator | F9 | No | **Done (v37.85)**: Section 8, checks L1–L12; owner reported 2026-11-21 "all test works fine" (REPORTED, per check not itemised). Owner approved an emulator CI job for L1–L5 and L10 |
+| P10 | Diagnostics log: check the size every 50 lines instead of on every line (the trim itself stays rare: once per ~100 KB of log) | F10 | No | **Done (v37.86)**: `Diag.needsTrim`; phone-tested by the owner 2026-11-21 |
 
 ## 6. Acceptance criteria for Phase 5 (from the roadmap mission and deliverables)
 
 - [x] Reliability audit (this file).
 - [ ] Compatibility matrix maintained with dated device evidence (started in Section 4).
 - [ ] Every way the app can end (Java crash, native crash, ANR, low-memory kill) leaves a readable record (P2; needs a phone check).
-- [ ] Device capability profile available to the model platform and recorded with diagnostics (P3).
+- [x] Device capability profile available to the model platform and recorded with diagnostics (P3; v37.81, phone-tested 2026-11-21).
 - [ ] Memory pressure and thermal changes are recorded (P4) and handled by an owner-approved policy (P5).
-- [ ] Permissions and background restrictions are explained and checked (P6, P8).
-- [ ] Start-up does no storage work on the main thread (P7).
+- [x] Permissions and background restrictions are explained and checked (P6, P8; v37.83, v37.84, phone-tested 2026-11-21).
+- [x] Start-up time measured on the phone: under 500 ms in `Application.onCreate` (P7; owner 2026-11-21). The calibration restore stays on the main thread by owner decision, because it is fast enough and must finish before calibration is read.
 - [ ] Lifecycle transitions and recovery paths tested on the phone (P9).
 - [ ] Resource baselines measured on the owner's phone (idle, capture on, Gemma loaded, GGUF loaded).
 
-## 7. Owner decisions needed
+## 7. Owner decisions (2026-11-21)
 
-1. **P5 policy** — what the app may unload or slow down by itself under memory pressure or heat.
-2. **P8 / D1** — API keys are in the preferences that Android's Auto Backup copies (`allowBackup="true"`, no backup rules): exclude the preferences from backup, or turn backup off (`docs/PHASE_5_PERMISSIONS_AND_DATA.md`).
-3. Which other phones (if any) can be used to fill the compatibility matrix.
+1. **P5 policy:** a Settings switch chooses between "Step down gently" and "Only warn me". The policy is described in the P5 row.
+2. **P8 / D1:** exclude the settings that hold the API keys from Android's backup.
+3. **P7:** start-up is under 500 ms on the owner's phone, so the calibration restore stays where it is.
+4. **What's new:** the owner confirmed the older entries too (37.27–37.29 and the 31 entries from before the move): none waits for a phone check any more.
+5. **Emulator CI:** approved, to automate lifecycle checks L1–L5 and L10.
+6. **Other phones:** none named; the compatibility matrix has the owner's phone only.
 
 ## 8. Lifecycle test plan (P9)
 

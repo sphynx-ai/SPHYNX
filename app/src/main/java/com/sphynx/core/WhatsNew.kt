@@ -24,55 +24,61 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-21", Kind.IMPROVED, "Your phone test and your Phase 5 decisions are recorded",
+            "Your phone test of 37.79 to 37.86 is recorded, and so is your confirmation of the older changes: nothing on " +
+                "this page waits for a phone check any more. Your decisions for the next steps are written down too: a " +
+                "Settings choice for low memory and heat, the online-model keys left out of Android's backup, start-up " +
+                "left as it is (under half a second), and automatic emulator tests. Nothing in the app changes.",
+            pr = 77, needsDeviceCheck = true, version = "37.87"),
         Entry("2026-11-21", Kind.IMPROVED, "Logs: how long the app takes to start",
             "Each start now writes one line into the diagnostics history: how long the app took to start, and how much " +
                 "of that was spent before the first screen could draw. It marks a start over one second as slow. This " +
                 "measures first, before any start-up work is moved. The diagnostics history also checks its own size less " +
                 "often. Nothing in play changes.",
-            pr = 76, needsDeviceCheck = true, version = "37.86"),
+            pr = 76, version = "37.86"),
         Entry("2026-11-21", Kind.IMPROVED, "Development: a phone checklist for the app's lifecycle",
             "Behind the scenes: twelve phone checks (force stop, capture stopped by the system, accessibility off, " +
                 "rotation, low memory, heat, offline, battery restriction, reinstall and more), each with what the " +
                 "diagnostics history should show, so Android reliability can be confirmed step by step. Nothing in the " +
                 "app changes.",
-            pr = 75, needsDeviceCheck = true, version = "37.85"),
+            pr = 75, version = "37.85"),
         Entry("2026-11-21", Kind.IMPROVED, "Development: a record of every permission and what leaves the phone",
             "Behind the scenes: a new document lists why the app needs each permission, every place it sends data to " +
                 "(the online models, the wiki, the debug upload, Kaggle) and how long data stays on the phone. It found " +
                 "that Android's own backup can copy the online-model keys; how to handle that is your decision. Nothing " +
                 "in the app changes.",
-            pr = 74, needsDeviceCheck = true, version = "37.84"),
+            pr = 74, version = "37.84"),
         Entry("2026-11-21", Kind.NEW, "Ready check: battery restrictions",
             "The Ready check on Play now also shows when Android restricts the app in the background or optimises its " +
                 "battery use; on some phones that stops or delays the app while the game is on screen. A tap opens the " +
                 "phone's own battery page for Sphynx. It is optional: play still starts without it.",
-            pr = 73, needsDeviceCheck = true, version = "37.83"),
+            pr = 73, version = "37.83"),
         Entry("2026-11-21", Kind.NEW, "Logs: low memory and heat are written down",
             "When Android asks the app to free memory, or the phone starts or stops throttling because of heat, a line " +
                 "now goes into the diagnostics history (and into a running session recording), with the phone's free memory " +
                 "and the app's own. Switching to the game is not counted. This only records: the app does not unload " +
                 "anything by itself yet. Nothing in play changes.",
-            pr = 72, needsDeviceCheck = true, version = "37.82"),
+            pr = 72, version = "37.82"),
         Entry("2026-11-21", Kind.NEW, "Performance: what this phone supports",
             "The Performance page has a new card at the top: this phone checked against what the app needs (Android " +
                 "11, a 64-bit ARM processor, 6 GB of memory minimum, 8 to 12 GB recommended) and whether its processor can " +
                 "run the GGUF engine, with the GPU and any NPU drivers it has. The same line is written into the " +
                 "diagnostics history at each start and into every session recording, so recordings show which phone " +
                 "made them. It only reads; nothing in play changes.",
-            pr = 71, needsDeviceCheck = true, version = "37.81"),
+            pr = 71, version = "37.81"),
         Entry("2026-11-21", Kind.NEW, "Logs: why the app closed last time",
             "When the app stops unexpectedly (a crash in the AI engines' native code, the app not responding, or " +
                 "Android closing it for lack of memory) the reason is now written into the diagnostics history at the " +
                 "next start, and the Logs page shows how it closed last time. For a \"not responding\" or a native " +
                 "crash, Android's report is saved in Sphynx-Storage/Recordings and uploaded with the debug data. " +
                 "Nothing in play changes.",
-            pr = 70, needsDeviceCheck = true, version = "37.80"),
+            pr = 70, version = "37.80"),
         Entry("2026-11-21", Kind.IMPROVED, "Phase 5 started: reliability on Android",
             "Your phone test of 37.64 to 37.78 is recorded: those changes are no longer marked as waiting for a phone " +
                 "check. Phase 5 has started with a reliability check of the app: what it already does on Android, what " +
                 "is missing (for example a record of why the app was closed last time), the phones it is known to work " +
                 "on, and the order of the next steps. Nothing in the app changes yet.",
-            pr = 69, needsDeviceCheck = true, version = "37.79"),
+            pr = 69, version = "37.79"),
         Entry("2026-11-21", Kind.IMPROVED, "Development: review and feature plugins, and the rules for the Claude Code plugins",
             "Behind the scenes, for development only: the code-review, pr-review-toolkit, feature-dev, " +
                 "commit-commands, security-guidance, pyright-lsp and kotlin-lsp plugins and the serena code tool " +
@@ -389,20 +395,20 @@ object WhatsNew {
                 "writes it. The recording format is the same. Also through the app: whether a match may be recorded by " +
                 "itself (5v5 only), the screen capture check, and the debug export's scenery picture. 6 more of the " +
                 "known exceptions gone (14 left). Please record one session and check it uploads as before.",
-            pr = 19, needsDeviceCheck = true, version = "37.29"),
+            pr = 19, version = "37.29"),
         Entry("2026-11-14", Kind.IMPROVED, "Clean-up: the phone services no longer reach into the AI",
             "Phase 2, first clean-up step: the speed pages, the screen-to-touch log, the phone state, the session video " +
                 "and the debug upload now get what they show (frame rates, model speeds, where the enemies are) from the " +
                 "app when it starts, instead of reaching into the AI and game code themselves. The build checks this " +
                 "direction from now on (11 of the 31 known exceptions gone). Nothing should look or work differently: " +
                 "please check the Speed page, a session video and the debug upload once.",
-            pr = 18, needsDeviceCheck = true, version = "37.28"),
+            pr = 18, version = "37.28"),
         Entry("2026-11-14", Kind.FIXED, "Turning the AI off and on forgets the old fight",
             "When the AI was paused and started again, the Player's fast rules still remembered parts of what came " +
                 "before: the last jungle monster (it could stand still \"holding position\" at a monster that was gone), " +
                 "a Turtle / Lord rotation it had given up on (blocked for 60 s), the decision it was committed to, the " +
                 "invade and travel timers. Starting again now begins clean. Found by the new MLBB safety net.",
-            pr = 17, needsDeviceCheck = true, version = "37.27"),
+            pr = 17, version = "37.27"),
         Entry("2026-11-14", Kind.IMPROVED, "A safety net for how the Player plays MLBB",
             "Phase 2: 16 fixed MLBB situations (a minion wave, a weak enemy in reach, low HP alone, outnumbered, an " +
                 "enemy dashing at you, a jungle camp, the Turtle, an enemy tower, before the ultimate, dead, shop open...) " +
@@ -460,11 +466,11 @@ object WhatsNew {
                 "the app moves the files it recognises into their folder; anything it does not recognise stays where " +
                 "it is, and nothing is overwritten. A file you put at the top by hand is still found. Also: the " +
                 "Phase 1 report of the development plan (docs/PHASE_1_BASELINE.md).",
-            pr = 8, needsDeviceCheck = true),
+            pr = 8),
         Entry("2026-11-14", Kind.FIXED, "The Home page no longer shows an empty box for the power symbol",
             "The Home page line about the floating icon used the power symbol as text, and your phone's font has no " +
                 "power symbol, so it showed an empty box. It now says \"the power button on the floating icon\".",
-            pr = 7, needsDeviceCheck = true),
+            pr = 7),
         Entry("2026-11-14", Kind.IMPROVED, "New Sphynx icon; the floating panel has drawn icons and a new look",
             "The app has its new symbol: two interlocking halves around one point of focus (launcher icon, themed " +
                 "icon, the header). On the floating panel the AI button had no icon: the panel used text symbols, and " +
@@ -472,7 +478,7 @@ object WhatsNew {
                 "drawn, so it looks the same on every phone. The panel is restyled to match: the symbol and a status " +
                 "word in the title, evenly sized buttons, and the AI button filled teal while the AI is on. The round " +
                 "icon shows the symbol with ON / DRY / ERR / OFF under it and a ring in the status colour.",
-            pr = 6, needsDeviceCheck = true),
+            pr = 6),
         Entry("2026-11-14", Kind.NEW, "GGUF models: add, load and ask them on the Model page",
             "The GGUF engine (llama.cpp) is now a real part of the app instead of a one-off test. On the Model page, " +
                 "add a .gguf model (it is copied into the app), load it, and ask the test question: the answer streams " +
@@ -480,7 +486,7 @@ object WhatsNew {
                 "It runs on the CPU. A phone whose processor is too old is told so instead of the app closing. Your " +
                 "2026-11-14 tests: Qwen2.5 0.5B answered at 25.5 tokens per second, Llama 3.2 1B at 13.4. The AI " +
                 "does not use GGUF models yet.",
-            pr = 5, needsDeviceCheck = true),
+            pr = 5),
         Entry("2026-11-14", Kind.IMPROVED, "The app is called Sphynx; descriptions show only while you hold \"?\"",
             "The app's new name is Sphynx: the launcher, the header, the notifications and the pages. Its folder is now " +
                 "/CodeOnTheGoProjects/Sphynx-Storage (Download/Sphynx-Storage without All files access), the debug uploads " +
@@ -489,7 +495,7 @@ object WhatsNew {
                 "permissions. The descriptions under the buttons and switches are now hidden (the names stay): press and " +
                 "hold the small \"?\" circle next to STOP to see them, and they hide again when you let go. Lines that " +
                 "show a live reading stay visible.",
-            pr = 4, needsDeviceCheck = true),
+            pr = 4),
         Entry("2026-11-13", Kind.NEW, "The app reads which buff you hold",
             "While you hold a jungle buff, emblems of its colour circle your hero: orange for the orange buff, purple for " +
                 "the purple buff (you can hold both). The app now reads them: the floating panel shows \"Buffs held\", the " +
@@ -497,7 +503,7 @@ object WhatsNew {
                 "2026-11-13 recording (22 of 22 screenshots right). The purple colour is a first guess - that recording has " +
                 "no frame with it - so a screenshot is saved with the recording each time a buff reading changes, to " +
                 "confirm it. The jungle route does not use the reading yet.",
-            pr = 84, needsDeviceCheck = true),
+            pr = 84),
         Entry("2026-11-13", Kind.FIXED, "Phantom 3% monsters, and camp monsters read as enemy heroes",
             "From your 2026-11-13 recording. Small orange / red things next to dark ground (the emblems that circle your hero " +
                 "while you hold the orange buff, damage numbers) were read as monsters with 3-5% HP, and the Player \"finished\" them on empty ground: a " +
@@ -505,21 +511,21 @@ object WhatsNew {
                 "the first sighting of a camp monster's bar (right above your own bar) was taken for an enemy hero for a " +
                 "moment, so the Player backed off in the middle of a camp: while you stand at a jungle camp or buff spot, a " +
                 "bar is an enemy hero only when its level number can be read.",
-            pr = 82, needsDeviceCheck = true),
+            pr = 82),
         Entry("2026-11-13", Kind.FIXED, "The AI remembers where it got stuck",
             "When the hero walks into a wall the minimap did not show, that place used to be forgotten at the start of " +
                 "every match, so it got stuck at the same walls again. Now each stuck place is counted across matches: " +
                 "stuck there twice (in any matches) and it is a wall for the path finder from the first second of every " +
                 "later match. A place the hero later stands on is forgotten again. Setup page (scenery section): how many " +
                 "places are remembered, and a button to forget them.",
-            pr = 81, needsDeviceCheck = true),
+            pr = 81),
         Entry("2026-11-13", Kind.FIXED, "Gemma on the GPU; training circles for the AI's fights and yours",
             "Turning the GPU switch on (Model page or the first-run setup) now reloads the model on it at once: in your " +
                 "2026-11-13 match Gemma stayed on the CPU (line-up read 122 s, strategy answers 12-17 s). The GPU switch is " +
                 "ON on a new install (a speed setting). Learn page: the tactical engine circle now counts only the AI's " +
                 "fights, and a new circle counts your own fights (the first 84% was yours). The detector results show how " +
                 "many pictures they were tested on.",
-            pr = 80, needsDeviceCheck = true),
+            pr = 80),
         Entry("2026-11-13", Kind.FIXED, "Misreads and log noise from the 2026-11-13 recording",
             "The K / D / A counter at the top is no longer read as a jungle monster at 3-5% HP. Recording screenshots: at " +
                 "most one \"monster\" a minute and one \"enemy hero\" every 20 s (30 of 39 were monsters). The learned enemy " +
@@ -528,7 +534,7 @@ object WhatsNew {
                 "read no longer contradicts the spell button already recognised. An online answer cut off in the middle " +
                 "keeps its complete part (the meta update failed on one). The Coach's \"observed your sequence\" line is " +
                 "logged only when it changes.",
-            pr = 79, needsDeviceCheck = true),
+            pr = 79),
         Entry("2026-11-13", Kind.IMPROVED, "No learning in Solo practice; learning from you by itself in 5v5",
             "Solo practice vs Computer is for calibration only (skill buttons, scenery): nothing is learned or recorded " +
                 "there - no recorded moments, no practice benchmark, no minimap or screen training pictures (the tour-stop " +
@@ -537,7 +543,7 @@ object WhatsNew {
                 "says so (or says why it is not learning). Solo or 5v5 is now read from the loading screen and the " +
                 "scoreboard even with the Research player off. In the first-run setup the skill button calibration comes " +
                 "before the scenery calibration.",
-            pr = 78, needsDeviceCheck = true),
+            pr = 78),
         Entry("2026-11-13", Kind.FIXED, "Recordings cover the whole match, without duplicate files",
             "Your 2026-11-13 recording covered only about half of the match: each part stopped at 25 MB (~70 s) and the next " +
                 "one had to be started by hand. Now a full part is closed and the next one starts at once, always (not only " +
@@ -546,21 +552,21 @@ object WhatsNew {
                 "with every part, and the CSV copies are gone. The match's own scorecard is saved before the recording is " +
                 "closed. When screen capture stops in the middle of a match, the match is closed as unfinished after a " +
                 "minute, so its scorecard and recording are still saved.",
-            pr = 77, needsDeviceCheck = true),
+            pr = 77),
         Entry("2026-11-12", Kind.FIXED, "The small tactical model keeps learning between trainings",
             "On Kaggle each training of the small tactical model started again from plain Gemma 3 270M. Now the notebook " +
                 "also saves a trainable copy (tactical_llm_trainable.zip, ~500 MB) that the app downloads and sends with the " +
                 "next training, which continues from it (use Wi-Fi). The app's own copy of that notebook was also out of date: " +
                 "it never wrote the quality report, so the Model page could not tell a weak model and the Learn page had no " +
                 "score for it. Fixed.",
-            pr = 76, needsDeviceCheck = true),
+            pr = 76),
         Entry("2026-11-12", Kind.NEW, "First-run setup",
             "A new install opens a setup screen with six steps that turn green when done: permissions (accessibility, " +
                 "display over apps, notifications, all files access), the app's folder, loading the models, choosing what " +
                 "runs (every switch starts off; Dry run stays on), scenery calibration and skill button calibration. " +
                 "Finish setup goes to Home; Setup > Open the first-run setup opens it again. Every calibration is now on the " +
                 "Setup page: the scenery calibration and minimap synchronization moved there from the Player page.",
-            pr = 75, needsDeviceCheck = true),
+            pr = 75),
         Entry("2026-11-12", Kind.NEW, "Training progress circles, and training data in the GitHub upload",
             "The Learn page shows a circle for each training (minimap detector, screen detector, tactical networks, small " +
                 "tactical model, tactical engine): how much better (green) or worse (red) the last training is than the one " +
@@ -569,30 +575,30 @@ object WhatsNew {
                 "deleted from the phone once it is on GitHub; the picture zips used for training are deleted after a " +
                 "successful training (the detector keeps what it learned in its best.pt). New buttons: Delete all minimap " +
                 "pictures and Delete all screen pictures (Learn page).",
-            pr = 74, needsDeviceCheck = true),
+            pr = 74),
         Entry("2026-11-12", Kind.NEW, "New app icon and logo",
             "A sphynx cat head (big ears, amber eyes) with an arrow for a nose and an AI spark, on the dark " +
                 "background - Sphynx. It is the launcher icon (also the one-colour themed icon on Android 13+) and " +
                 "the logo at the top of the app.",
-            pr = 73, needsDeviceCheck = true),
+            pr = 73),
         Entry("2026-11-12", Kind.IMPROVED, "Every switch starts off on a new install",
             "On a fresh install every feature switch starts OFF, so nothing runs until you turn it on (the first-run setup " +
                 "helps). Safety guards keep their safe position: Dry run ON and the Quick buy guards ON. A phone that already " +
                 "had the app keeps how it worked: switches you never changed stay on.",
-            pr = 72, needsDeviceCheck = true),
+            pr = 72),
         Entry("2026-11-12", Kind.IMPROVED, "Minimap and screen picture collectors tuned",
             "Both collectors skip near-duplicate pictures (nothing moved since the last one). The screen collector also takes " +
                 "a clean picture at every calibration tour stop (walls, bushes, pits and towers all over the map), keeps one " +
                 "monster from filling the set, and skips moments when your HP bar is covered; its labels follow the new rules " +
                 "(real enemy heroes only, monsters named by their spots on both lane layouts). Minimap picture names now tell " +
                 "the lane layout and Solo / 5v5 (mm_<time>_gs.png).",
-            pr = 66, needsDeviceCheck = true),
+            pr = 66),
         Entry("2026-11-12", Kind.NEW, "Recordings continue in a new file at the size limit",
             "Your last recording stopped by itself every ~68 s (the 25 MB video limit) and about 2 minutes of the match were " +
                 "lost between files. With the automatic GitHub upload on (and a token), a full recording is now saved and " +
                 "uploaded while the next part starts by itself, so the whole match is covered. Without the upload it stops and " +
                 "saves at the limit, as before.",
-            pr = 65, needsDeviceCheck = true),
+            pr = 65),
         Entry("2026-11-12", Kind.NEW, "Debug data page: every export in one place, uploaded to GitHub by a button",
             "A new Debug data page holds everything needed for debugging: the session recorder (moved from Logs), the speed / " +
                 "scorecard exports (moved from Performance and Practice), a full-log export, and \"Upload the debug data to GitHub " +
@@ -600,72 +606,72 @@ object WhatsNew {
                 "in one commit, each video in its own), and by itself after each recording if you leave that switch on. Put a " +
                 "fine-grained GitHub token (this repository only, Contents: read and write) in github_token.txt in the app's " +
                 "folder. The training data for the notebooks is not part of it.",
-            pr = 64, needsDeviceCheck = true),
+            pr = 64),
         Entry("2026-11-12", Kind.NEW, "Recordings now carry the debug data",
             "Every recording also saves: clean screenshots at key moments (the gate's readings, the lane side decided, an enemy " +
                 "hero or monster first seen, your HP read as 0%, the pictures Gemma was given), everything the app saw each frame " +
                 "(allies, minions, towers, the minimap reading, the gate, the lane side, Solo / 5v5), every touch sent and how long " +
                 "it waited, Gemma's prompts and replies, the calibration tour's log, your settings (no keys or tokens), the full " +
                 "log with crashes, and a picture of the saved scenery map.",
-            pr = 63, needsDeviceCheck = true),
+            pr = 63),
         Entry("2026-11-12", Kind.NEW, "Recording starts by itself at the start of every match",
             "The session recorder now starts on its own when a match starts (the loading screen, or your hero first seen) and " +
                 "stops and saves at the match end - switch it off on the Logs page if you don't need it (a recording you start " +
                 "yourself is never stopped by the match end). The video's time / decision banner moved to the BOTTOM (at the top " +
                 "it covered the minimap's lane mark), and every recording's start row names the build's git commit.",
-            pr = 62, needsDeviceCheck = true),
+            pr = 62),
         Entry("2026-11-12", Kind.IMPROVED, "Gemma freed: no practice check by Gemma, line-up read once",
             "Your recording: the Gemma line-up read took 50 s on the loading screen and 70 s on the scoreboard (Gemma could do " +
                 "nothing else meanwhile), and its practice check misread the Computer cards. Now the practice gate uses only its " +
                 "pixel check, and Gemma reads the line-up once per match on the loading screen - never on the scoreboard (the " +
                 "enemy spells are read there from the icons) and never in Solo practice.",
-            pr = 61, needsDeviceCheck = true),
+            pr = 61),
         Entry("2026-11-12", Kind.IMPROVED, "Faster touches: joystick slices 120 ms instead of 320 ms",
             "Your recording measured about 280 ms from screen to touch, ~240 ms of it waiting in the touch queue: every joystick " +
                 "slice was held 320 ms and the next decision waited for it to end. A joystick that is already held now continues in " +
                 "120 ms slices (the first press still holds 320 ms so the game registers it), and skills / taps are no longer " +
                 "stretched to the joystick's 320 ms. Check the Performance page: the touch queue should drop.",
-            pr = 60, needsDeviceCheck = true),
+            pr = 60),
         Entry("2026-11-12", Kind.FIXED, "Paths keep out of enemy tower range; no regen while being hit",
             "Your recording had 198 frames of \"inside the enemy tower range with no minions: getting out\" - the jungle and gank " +
                 "paths cut through enemy towers' range - and at 2:29 the Player stood still to regenerate while taking hits. Now the " +
                 "paths go around enemy towers' range when there is a way (a goal inside it can still be reached), and Regen is " +
                 "neither started nor continued while your HP is dropping (being hit).",
-            pr = 59, needsDeviceCheck = true),
+            pr = 59),
         Entry("2026-11-12", Kind.FIXED, "A sudden 0% HP reading is ignored",
             "Your recording had 94 frames where your HP read 0% while the bar was full (effects and the buff's bars covered it), " +
                 "which made the Player stand \"waiting\". Now a 0% reading right after a healthy one is ignored (the last good reading " +
                 "is kept) unless the death screen shows or the 0% lasts 1.5 s.",
-            pr = 58, needsDeviceCheck = true),
+            pr = 58),
         Entry("2026-11-12", Kind.FIXED, "Commits to the Turtle / Lord instead of flip-flopping",
             "In your recording \"turtle is up: rotating there\" ran from 2:07 to 7:18 and the Player never reached the pit. Now, once " +
                 "it starts rotating to the Turtle or Lord, that goes first (before the jungle route, ganks, waves) until it " +
                 "arrives - unless enemies are near or its HP is under 40%. Not there after 45 s: it gives up on the objective " +
                 "for 60 s. The panel shows \"(committed: N s)\". The Lord still needs 3 or more allies.",
-            pr = 57, needsDeviceCheck = true),
+            pr = 57),
         Entry("2026-11-12", Kind.FIXED, "Research experiment (R3) is safety-first",
             "In your recording the research experiment changed the fight choice 82 times, always to \"keep farming\" because the " +
                 "strategy's generic plan said farm - 19 times over a retreat and 30 times over an all-in. Now it never overrides a " +
                 "retreat, and the strategic plan's generic \"farm\" alone cannot turn an all-in into farming.",
-            pr = 56, needsDeviceCheck = true),
+            pr = 56),
         Entry("2026-11-12", Kind.FIXED, "Buffs and camps are finished, not left alive",
             "In your recording (0:36-0:46) the Molten Fiend's bar was read as enemy minions (\"clearing the wave\", \"last hit: minion\") " +
                 "in a pit with no minions, so the Player walked off to \"a jungle camp\" while the buff was still alive. Now, while " +
                 "you stand at a known jungle camp and no enemy minion wave is near you on the minimap, those bars are the camp's " +
                 "monster: the Player keeps hitting it until it dies (and uses Retribution on the buff). Low-HP enemy heroes are now " +
                 "real ones only (the ghost \"enemies at 3%\" were fixed in the previous update), so real kills are taken.",
-            pr = 55, needsDeviceCheck = true),
+            pr = 55),
         Entry("2026-11-12", Kind.FIXED, "The Lord only with 3 or more allies",
             "The Research player kept hitting the Lord with no ally near and was killed by it. Now it starts, finishes or rotates " +
                 "to the Lord only with 3 or more allied heroes near it (on the screen, or on the minimap around you); with fewer it " +
                 "walks away from the Lord. The Turtle is unchanged.",
-            pr = 54, needsDeviceCheck = true),
+            pr = 54),
         Entry("2026-11-12", Kind.FIXED, "Jungle monsters no longer taken for low-HP enemy heroes",
             "Your recording (0:36) showed the Molten Fiend's bar read as two enemy heroes at 3% and 25% - the Player left the buff to " +
                 "\"chase a kill\" and spent Retribution on ghosts. A red bar now counts as an enemy hero only with its own level badge " +
                 "(your own badge next to it no longer counts) AND an enemy hero icon near you on the minimap; while a camp is being " +
                 "fought, a bar where the monster was just seen stays the monster unless its level number can be read.",
-            pr = 53, needsDeviceCheck = true),
+            pr = 53),
         Entry("2026-11-11", Kind.IMPROVED, "Without All files access, files go to Download/Sphynx-Storage",
             "Recordings (\u25cf REC), CSV exports, training pictures and zips, cloud-training results and backups are saved in " +
                 "Download/Sphynx-Storage when the app has no All files access. The old Download/MLBB-Research folder is " +
