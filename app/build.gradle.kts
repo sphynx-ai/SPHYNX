@@ -87,13 +87,15 @@ android {
         // (37.20 -> 37.21 -> ...; after 37.99 comes 38.00). Written only here: the version code follows
         // from it (37.20 -> 3720) and the app reads it through BuildConfig.VERSION_NAME (core.AppVersion).
         // The newest What's new entry carries the same version; a unit test checks they match.
-        val sphynxVersion = "37.89"
+        val sphynxVersion = "37.90"
         versionCode = sphynxVersion.split(".").let { it[0].toInt() * 100 + it[1].toInt() }
         versionName = sphynxVersion
 
         vectorDrawables {
             useSupportLibrary = true
         }
+        // Phase 5 (owner, 2026-11-21): lifecycle checks on an emulator (app/src/androidTest, workflow android-emulator.yml)
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // the llama.cpp library is built for 64-bit ARM phones only (the other ABIs' libraries from
         // LiteRT-LM and TFLite are still packaged as before)
@@ -219,4 +221,8 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     // the real org.json for unit tests (android.jar only has stubs of it)
     testImplementation("org.json:json:20240303")
+    // Phase 5: instrumented lifecycle tests, run only by the emulator workflow (not needed to build the app)
+    androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }

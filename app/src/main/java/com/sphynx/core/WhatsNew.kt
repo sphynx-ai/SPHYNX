@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-21", Kind.IMPROVED, "Development: lifecycle tests on an emulator",
+            "Behind the scenes: every change is now also started on an Android emulator, which checks that each start " +
+                "writes its diagnostics lines (device profile, start-up time, last close) and that the app survives its " +
+                "screen being rebuilt and going to the background and back. Nothing in the app changes.",
+            pr = 80, needsDeviceCheck = true, version = "37.90"),
         Entry("2026-11-21", Kind.NEW, "Setup: what to do when the phone is low on memory or hot",
             "A new choice on the Setup page, Low memory and heat. Only warn me (the default) shows a line on the floating " +
                 "panel and in the log. Step down gently also unloads models by itself: the tactical model first, the " +

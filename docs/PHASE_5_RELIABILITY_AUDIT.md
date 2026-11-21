@@ -112,4 +112,4 @@ There are no instrumented tests yet, and CI runs no emulator. Until it does, the
 | L11 | Device profile | Open Performance | "What this phone supports" card; one "Device profile:" line per start in the log (v37.81) |
 | L12 | Reinstall | Uninstall and install the APK again | Calibration comes back from the `Output` backups |
 
-**Automated later:** L1–L5 and L10 can become instrumented tests (`ActivityScenario.recreate`, `UiAutomator` for system pages) when CI runs an emulator. Adding an emulator job to CI is a CI change; it is proposed here, not made.
+**Automated (v37.90, owner-approved 2026-11-21):** the workflow `Lifecycle tests (emulator)` (`.github/workflows/android-emulator.yml`, Android 12 x86_64) runs `app/src/androidTest/.../LifecycleTest` on every PR: L1/L11 (each start writes the device profile, the start-up time and the last close), L5 (the screen recreated twice), and the part of L10 that needs no process kill (background and back). L2–L4 need screen capture or the accessibility service, and stay phone checks. "Android build" stays the merge check; the emulator workflow reports next to it.
