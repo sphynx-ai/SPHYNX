@@ -15,6 +15,7 @@
     "pr-review-toolkit@anthropic-plugin-directory": true,
     "commit-commands@anthropic-plugin-directory": true,
     "security-guidance@anthropic-plugin-directory": true,
-    "pyright-lsp@anthropic-plugin-directory": true
+    "pyright-lsp@anthropic-plugin-directory": true,
+    "kotlin-lsp-anthropics@anthropic-plugin-directory": true
   }
 }

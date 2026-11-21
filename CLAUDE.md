@@ -262,6 +262,10 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
 - Anthropic's pyright-lsp plugin (`pyright-lsp@anthropic-plugin-directory`) gives Python type checking for `.py` /
   `.pyi` files (such as `tools/`), not for the `.ipynb` notebooks; it needs Pyright installed (`npm install -g pyright`
   or `pip install pyright`) and only reads.
+- Anthropic's Kotlin language-server plugin (`kotlin-lsp-anthropics@anthropic-plugin-directory`) gives error checking,
+  definitions and references for `.kt` / `.kts`; it needs JetBrains' `kotlin-lsp` on the PATH (Java 17+; Mac:
+  `brew install JetBrains/utils/kotlin-lsp`, others: github.com/Kotlin/kotlin-lsp releases) and only reads. Without the
+  Android SDK it cannot resolve Android classes, so its findings do not replace CI.
 - Anthropic's code-review plugin (`code-review-anthropics@anthropic-plugin-directory`, from
   github.com/anthropics/claude-plugins-official) reviews a PR; it posts on GitHub only with `--comment`, and only when
   the owner asks for that. Anthropic's pr-review-toolkit (`pr-review-toolkit@anthropic-plugin-directory`) adds
