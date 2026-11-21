@@ -251,3 +251,6 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
   `docs/superpowers/`; `test-driven-development`, `systematic-debugging` and `verification-before-completion` follow
   sections 3 and 8 (CI is the build check here, the phone test is the device check).
 - The `androidbuild` MCP server (`.mcp.json`) only works on a computer with the Android SDK and a phone or emulator.
+- Anthropic's code-review plugin (`code-review-anthropics@anthropic-plugin-directory`, from
+  github.com/anthropics/claude-plugins-official) reviews a PR; it posts on GitHub only with `--comment`, and only when
+  the owner asks for that. A review never replaces CI or the owner's phone test.
