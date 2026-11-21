@@ -258,6 +258,9 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
   `systematic-debugging` and `verification-before-completion` follow sections 3 and 8 (CI is the build check here,
   the phone test is the device check).
 - The `androidbuild` MCP server (`.mcp.json`) only works on a computer with the Android SDK and a phone or emulator.
+- The `serena` MCP server (`.mcp.json`, by Oraios, not Anthropic) gives code navigation and editing by symbol through
+  language servers. It is pinned to a release tag (`@v2.1.0`); raise the tag on purpose, never point it at `main`. It
+  needs `uv` (`uvx`) installed, keeps its cache in `.serena/` (ignored by git) and, like the plugins, never replaces CI.
 - Anthropic's commit-commands plugin (`commit-commands`): only `commit` is used as is.
   `commit-push-pr` is never used for SPHYNX PRs (it opens a non-draft PR against `main` and skips the version step and
   the What's new entry); PRs are opened as in "Workflow" above. `clean_gone` force-deletes branches and worktrees, so it

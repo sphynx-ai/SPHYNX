@@ -27,3 +27,5 @@ Thumbs.db
 # native (llama.cpp) build output: CMake / ninja working folders (owner phone check, 2026-11-14)
 .cxx/
 .externalNativeBuild/
+# Serena MCP server: its per-project cache and memories
+.serena/
