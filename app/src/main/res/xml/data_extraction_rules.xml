@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ backup (owner decision 2026-11-21, docs/PHASE_5_PERMISSIONS_AND_DATA.md D1): the settings file cfg.xml
+     holds the online-model and Kaggle keys, so it is left out of both the cloud backup and phone-to-phone transfer.
+     Keys come back from Sphynx-Storage/Input and calibration from the Output backups after a reinstall. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="cfg.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="cfg.xml" />
+    </device-transfer>
+</data-extraction-rules>
