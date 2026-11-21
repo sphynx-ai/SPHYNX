@@ -69,6 +69,8 @@ class MainApplication : Application() {
         CrashLog.install()
         // Phase 5 (P2): how the app ended last time (native crash, ANR, low memory) into the diagnostics log
         com.sphynx.core.ExitHistory.checkAsync(this)
+        // Phase 5 (P4): heat changes into the diagnostics log (memory signals: onTrimMemory below)
+        com.sphynx.core.PressureLog.install(this)
         // Phase 5 (P3): this phone's capabilities in one record, logged once per start (off the main thread: GPU name)
         Thread({
             try {
@@ -98,6 +100,12 @@ class MainApplication : Application() {
         // Groq rate limit: a notification the moment it can be asked again
         com.sphynx.ai.GroqClient.onAvailable = { groqAvailableNotice() }
         com.sphynx.ai.GroqClient.schedule()
+    }
+
+    // Phase 5 (P4): Android asks the app to free memory; written down so a later low-memory close can be explained
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        com.sphynx.core.PressureLog.onTrim(level)
     }
 
     private fun groqAvailableNotice() {

@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-21", Kind.NEW, "Logs: low memory and heat are written down",
+            "When Android asks the app to free memory, or the phone starts or stops throttling because of heat, a line " +
+                "now goes into the diagnostics history (and into a running session recording), with the phone's free memory " +
+                "and the app's own. Switching to the game is not counted. This only records: the app does not unload " +
+                "anything by itself yet. Nothing in play changes.",
+            pr = 72, needsDeviceCheck = true, version = "37.82"),
         Entry("2026-11-21", Kind.NEW, "Performance: what this phone supports",
             "The Performance page has a new card at the top: this phone checked against what the app needs (Android " +
                 "11, a 64-bit ARM processor, 6 GB of memory minimum, 8 to 12 GB recommended) and whether its processor can " +
