@@ -255,6 +255,10 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
   `commit-push-pr` is never used for SPHYNX PRs (it opens a non-draft PR against `main` and skips the version step and
   the What's new entry); PRs are opened as in "Workflow" above. `clean_gone` force-deletes branches and worktrees, so it
   runs only when the owner asks for it.
+- Anthropic's security-guidance plugin (`security-guidance@anthropic-plugin-directory`) checks edits, commits and
+  pushes for security problems on its own (hardcoded secrets, injection and similar). A finding about a key or token is
+  fixed before anything is pushed (see "never show or upload any key / token" above); other findings are fixed or
+  explained to the owner. It advises only: it never replaces the owner's approval, CI or the phone test.
 - Anthropic's code-review plugin (`code-review-anthropics@anthropic-plugin-directory`, from
   github.com/anthropics/claude-plugins-official) reviews a PR; it posts on GitHub only with `--comment`, and only when
   the owner asks for that. Anthropic's pr-review-toolkit (`pr-review-toolkit@anthropic-plugin-directory`) adds

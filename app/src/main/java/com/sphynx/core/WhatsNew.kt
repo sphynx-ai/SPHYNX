@@ -25,7 +25,7 @@ object WhatsNew {
 
     val ENTRIES: List<Entry> = listOf(
         Entry("2026-11-21", Kind.IMPROVED, "Development: review and feature plugins, and the rules for the Claude Code plugins",
-            "Behind the scenes, for development only: the code-review, pr-review-toolkit, feature-dev and commit-commands plugins are turned on, and the project rules now say the superpowers plugin only helps the " +
+            "Behind the scenes, for development only: the code-review, pr-review-toolkit, feature-dev, commit-commands and security-guidance plugins are turned on, and the project rules now say the superpowers plugin only helps the " +
                 "existing way of working and never overrides it, and that you decide on the design, approvals and " +
                 "merges. Nothing in the app changes.",
             pr = 68, needsDeviceCheck = true, version = "37.78"),
