@@ -96,6 +96,7 @@ object SessionRecorder {
         on = true
         write(JSONObject().put("k", "start").put("t", startedAt)
             .put("app", AppVersion.VERSION).put("commit", com.sphynx.BuildConfig.GIT_COMMIT).put("auto", autoStarted).put("part", part + 1).put("phone", Build.MANUFACTURER + " " + Build.MODEL).put("android", Build.VERSION.SDK_INT)
+            .put("device", DeviceProfile.last?.let { DeviceProfile.summary(it) } ?: "not read yet")
             .put("aimSkills", Cfg.aimSkills)
             .put("note", "t = wall-clock ms; ms = match seconds (the in-game timer). Screen positions are 0..1."))
         val app = ctx.applicationContext

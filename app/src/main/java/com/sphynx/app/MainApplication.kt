@@ -69,6 +69,14 @@ class MainApplication : Application() {
         CrashLog.install()
         // Phase 5 (P2): how the app ended last time (native crash, ANR, low memory) into the diagnostics log
         com.sphynx.core.ExitHistory.checkAsync(this)
+        // Phase 5 (P3): this phone's capabilities in one record, logged once per start (off the main thread: GPU name)
+        Thread({
+            try {
+                val cpuinfo = try { java.io.File("/proc/cpuinfo").readText() } catch (e: Exception) { null }
+                com.sphynx.core.DeviceProfile.collect(this,
+                    com.sphynx.inference.LlamaCpu.unsupportedReason(android.os.Build.SUPPORTED_ABIS.toList(), cpuinfo))
+            } catch (t: Throwable) { Diag.error("Device profile: could not read", t) }
+        }, "device-profile").start()
         ExperienceRecorder.init(this)
         com.sphynx.learning.OnlineBackup.init(this)
         com.sphynx.learning.DatasetCollector.init(this)
