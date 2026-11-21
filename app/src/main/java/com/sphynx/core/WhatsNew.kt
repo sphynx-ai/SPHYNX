@@ -24,97 +24,103 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-21", Kind.IMPROVED, "Phase 5 started: reliability on Android",
+            "Your phone test of 37.64 to 37.78 is recorded: those changes are no longer marked as waiting for a phone " +
+                "check. Phase 5 has started with a reliability check of the app: what it already does on Android, what " +
+                "is missing (for example a record of why the app was closed last time), the phones it is known to work " +
+                "on, and the order of the next steps. Nothing in the app changes yet.",
+            pr = 69, needsDeviceCheck = true, version = "37.79"),
         Entry("2026-11-21", Kind.IMPROVED, "Development: review and feature plugins, and the rules for the Claude Code plugins",
             "Behind the scenes, for development only: the code-review, pr-review-toolkit, feature-dev, " +
                 "commit-commands, security-guidance, pyright-lsp and kotlin-lsp plugins and the serena code tool " +
                 "are turned on, and the project rules now say the superpowers plugin only helps the existing way of " +
                 "working and never overrides it, and that you decide on the design, approvals and merges. Nothing in " +
                 "the app changes.",
-            pr = 68, needsDeviceCheck = true, version = "37.78"),
+            pr = 68, version = "37.78"),
         Entry("2026-11-21", Kind.NEW, "Development: an Android build tool and a plugin for Claude Code",
             "Behind the scenes, for development only: the project now names an Android build helper (Gradle, adb, " +
                 "logcat, UI automation) that Claude Code can use on a computer with the Android SDK and a connected " +
                 "phone, and turns on the superpowers plugin for Claude Code. Nothing in the app changes.",
-            pr = 67, needsDeviceCheck = true, version = "37.77"),
+            pr = 67, version = "37.77"),
         Entry("2026-11-16", Kind.IMPROVED, "Phase 2 finished: Mobile Legends is the first game of a universal core",
             "The foundation work of Phase 2 is done: the app's core no longer names Mobile Legends; everything about " +
                 "the game sits in its own part, checked by tests. Play should be exactly as before; please play a 5v5 " +
                 "match and a Solo practice to confirm. Next: Phase 5, reliability on Android.",
-            pr = 66, needsDeviceCheck = true, version = "37.76"),
+            pr = 66, version = "37.76"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: a guide and a test kit for adding other games",
             "Behind the scenes: a guide now says what a second game would need (its names, rules, screen reading and " +
                 "questions), how features it cannot provide behave, and how it is versioned and tested. A test kit checks " +
                 "any game's part, and Mobile Legends passes it. Only Mobile Legends is supported; nothing in play changes.",
-            pr = 65, needsDeviceCheck = true, version = "37.75"),
+            pr = 65, version = "37.75"),
         Entry("2026-11-16", Kind.IMPROVED, "Safety: a last check on every decision",
             "Behind the scenes: after the trained network or \"Play like me\" has mixed into a decision, a last check " +
                 "makes sure a retreat, recall or regen of the rules is never replaced, the joystick direction is a " +
                 "valid one, and each button is pressed at most once. The learned parts already did this, so play should " +
                 "not change; it is now guaranteed for any model.",
-            pr = 64, needsDeviceCheck = true, version = "37.74"),
+            pr = 64, version = "37.74"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the objectives' names come from the Mobile Legends rules",
             "Behind the scenes, for adding other games later: the last Mobile Legends words in the Player's reasons " +
                 "(the Lord, the Turtle, the Purple Buff) now come from the Mobile Legends rules, and the check that keeps " +
                 "the Player's decisions free of Mobile Legends names now covers them too. The reasons read exactly as " +
                 "before.",
-            pr = 63, needsDeviceCheck = true, version = "37.73"),
+            pr = 63, version = "37.73"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the strategy questions come from the Mobile Legends rules",
             "Behind the scenes, for adding other games later: everything the app asks the strategic model about Mobile " +
                 "Legends (the plan, the draft, the loading cards, your hero and battle spell, the build, ranked or " +
                 "standard, the live match clock) and the Build page's text now come from the Mobile Legends part; the " +
                 "strategy part only schedules the questions and applies the answers. The questions are word for word " +
                 "the same, so the answers should not change.",
-            pr = 62, needsDeviceCheck = true, version = "37.72"),
+            pr = 62, version = "37.72"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the screen reading is split into a pipeline and Mobile Legends' readers",
             "Behind the scenes, for adding other games later: taking each captured frame, timing it and keeping the " +
                 "latest reading is now one game-independent part; everything that reads Mobile Legends' screen (HP bars, " +
                 "minimap, buttons, banners, bushes, the tower circle, the level badge, K/D/A) is Mobile Legends' screen " +
                 "reader, plugged in at start. What the AI sees should be exactly the same, at the same speed.",
-            pr = 61, needsDeviceCheck = true, version = "37.71"),
+            pr = 61, version = "37.71"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the fight scores ask the Mobile Legends rules too",
             "Behind the scenes, for adding other games later: the scores the Player decides with (how safe you are, how " +
                 "good a fight looks, which option wins) no longer name Mobile Legends heroes, skills, guides, towers or " +
                 "buffs themselves; they ask the Mobile Legends rules, like the Player's decisions already do. The Player " +
                 "decides exactly as before (all recorded situations unchanged).",
-            pr = 60, needsDeviceCheck = true, version = "37.70"),
+            pr = 60, version = "37.70"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the Player's decisions no longer contain Mobile Legends",
             "Behind the scenes, for adding other games later: the last Mobile Legends map data in the Player's decisions " +
                 "(the lane corridors, the outer towers' places, the roam patrol) moved to the Mobile Legends rules, and a " +
                 "test now fails if the Player's decisions ever name a Mobile Legends hero, spell, monster or map helper " +
                 "again. The Player decides exactly as before (all recorded situations unchanged).",
-            pr = 59, needsDeviceCheck = true, version = "37.69"),
+            pr = 59, version = "37.69"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: jungle, towers and objectives move to the Mobile Legends rules",
             "Behind the scenes, for adding other games later: the jungle path and camps, the enemy towers, the turtle " +
                 "and the lord, the learned map scenery, the map's mirroring and the role paths are now asked from the " +
                 "Mobile Legends rules instead of being called by the Player's decisions directly. The Player decides " +
                 "exactly as before (all recorded situations unchanged).",
-            pr = 58, needsDeviceCheck = true, version = "37.68"),
+            pr = 58, version = "37.68"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: battle spells move to the Mobile Legends rules",
             "Behind the scenes, for adding other games later: when to use Retribution, Flicker, Execute, Flameshot and " +
                 "the other battle spells, and the Retribution percentages from your rulebook, are now asked from the " +
                 "Mobile Legends rules instead of being written into the Player's decisions. The Player decides exactly " +
                 "as before (all recorded situations unchanged).",
-            pr = 57, needsDeviceCheck = true, version = "37.67"),
+            pr = 57, version = "37.67"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the Player's hero special cases move to the Mobile Legends rules",
             "Behind the scenes, for adding other games later: the Player's decisions no longer name Mobile Legends " +
                 "heroes themselves. Yu Zhong's dragon flight, Argus's and Thamuz's ultimates, Edith's ranged form, " +
                 "skills that must not be interrupted, execute and multi-phase ultimates and dash skills are now asked " +
                 "from the Mobile Legends rules. The Player decides exactly as before (all 25 recorded situations are " +
                 "unchanged).",
-            pr = 56, needsDeviceCheck = true, version = "37.66"),
+            pr = 56, version = "37.66"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: more recorded fight situations to protect the Player",
             "Behind the scenes: nine more recorded situations that the Player's decisions are checked against on every " +
                 "change, covering Mobile Legends' special cases (Retribution on a creep, a low lord after 8:00, Yu " +
                 "Zhong's dragon flight, Argus's ultimate, the recall bar, Execute and Flicker kills, a 3-on-3 fight, a low " +
                 "enemy near its tower). They guard the coming split of the Player's rules into a game-independent part " +
                 "and a Mobile Legends part. Nothing changes in play.",
-            pr = 55, needsDeviceCheck = true, version = "37.65"),
+            pr = 55, version = "37.65"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the game's heroes, lanes and items through one adapter",
             "Behind the scenes, for adding other games later: the game-independent part of the app can now ask the " +
                 "game's adapter for its characters, roles, lanes, battle spells, items and objectives, instead of " +
                 "knowing Mobile Legends' lists itself. The Mobile Legends adapter reads the same lists the app already " +
                 "uses. Nothing should look or behave differently.",
-            pr = 54, needsDeviceCheck = true, version = "37.64"),
+            pr = 54, version = "37.64"),
         Entry("2026-11-16", Kind.IMPROVED, "Foundation: the layering rule now has no exceptions",
             "Behind the scenes, for adding other games later: the code that translates the AI's advice into the shared " +
                 "decision format moved next to the AI, so the game-independent part of the app no longer uses any " +

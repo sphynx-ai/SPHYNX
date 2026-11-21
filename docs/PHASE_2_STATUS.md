@@ -1,7 +1,7 @@
 # Phase 2 — status and closing record
 
-**Status:** COMPLETE in code on 2026-11-16 (v37.76). Every acceptance criterion of the roadmap (Section 4) is met with CI evidence. **Outstanding:** the owner's phone test of v37.64–v37.76 (the split must play exactly as before).
-**Next phase:** Phase 5 — Android Reliability and Application Foundation.
+**Status:** COMPLETE in code on 2026-11-16 (v37.76). Every acceptance criterion of the roadmap (Section 4) is met with CI evidence. **Phone test:** done by the owner on 2026-11-21 for v37.64–v37.78 ("All test works fine"): the split plays as before.
+**Next phase:** Phase 5 — Android Reliability and Application Foundation (in progress: `docs/PHASE_5_RELIABILITY_AUDIT.md`).
 
 ## Closing evidence (2026-11-16)
 
