@@ -239,38 +239,42 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
   reads or writes must be added there. Write into the right folder; read through `AutoFolder.files`.
 
 ### Claude Code plugins and tools (owner, 2026-11-21)
-- Superpowers (`superpowers@anthropic-plugin-directory`, official source github.com/obra/superpowers, enabled in
-  `.claude/settings.json`) **complements** this workflow and never overrides it. This file, the roadmap and the
+- All plugins below come from the official `claude-plugins-official` marketplace (github.com/anthropics/claude-plugins-official,
+  declared in `.claude/settings.json`); use these `<plugin>@claude-plugins-official` names everywhere (a cloud container
+  may also list the same plugins under its built-in `anthropic-plugin-directory`).
+- Superpowers (`superpowers`, from github.com/obra/superpowers through that marketplace) **complements** this workflow and never overrides it. This file, the roadmap and the
   owner's decisions come first; a Superpowers skill applies only where it does not conflict with them.
 - The owner is the final authority on SPHYNX architecture, implementation approvals and PR merges. The standing
   approval stays: a PR into `sphynx-test-branch` is merged as soon as CI passes; `main` only gets phone-tested work
   the owner approves. No Superpowers skill approves, merges or releases anything.
-- How the skills fit: `brainstorming` (design approval first) only for new features, design questions and the plan at
-  the start of a phase, not for clear bug fixes or small requests (section 2 applies); `finishing-a-development-branch`
+- Design approval and section 2: a design-approval step (`brainstorming`, or feature-dev's approval before building)
+  is used for features outside the approved roadmap, for real design questions, and for the execution plan at the start
+  of a phase (section 11). Clear bug fixes, small requests and roadmap work inside an approved phase plan follow
+  section 2 (implement directly). This does not change section 2.
+- How the skills fit: `finishing-a-development-branch`
   only through its push-and-PR option, never a local merge; plans and specs keep the `docs/PHASE_*` naming instead of
   `docs/superpowers/`; `test-driven-development`, `systematic-debugging` and `verification-before-completion` follow
   sections 3 and 8 (CI is the build check here, the phone test is the device check).
 - The `androidbuild` MCP server (`.mcp.json`) only works on a computer with the Android SDK and a phone or emulator.
-- Anthropic's commit-commands plugin (`commit-commands@anthropic-plugin-directory`): only `commit` is used as is.
+- Anthropic's commit-commands plugin (`commit-commands`): only `commit` is used as is.
   `commit-push-pr` is never used for SPHYNX PRs (it opens a non-draft PR against `main` and skips the version step and
   the What's new entry); PRs are opened as in "Workflow" above. `clean_gone` force-deletes branches and worktrees, so it
   runs only when the owner asks for it.
-- Anthropic's security-guidance plugin (`security-guidance@anthropic-plugin-directory`) checks edits, commits and
+- Anthropic's security-guidance plugin (`security-guidance`) checks edits, commits and
   pushes for security problems on its own (hardcoded secrets, injection and similar). A finding about a key or token is
   fixed before anything is pushed (see "never show or upload any key / token" above); other findings are fixed or
   explained to the owner. It advises only: it never replaces the owner's approval, CI or the phone test.
-- Anthropic's pyright-lsp plugin (`pyright-lsp@anthropic-plugin-directory`) gives Python type checking for `.py` /
+- Anthropic's pyright-lsp plugin (`pyright-lsp`) gives Python type checking for `.py` /
   `.pyi` files (such as `tools/`), not for the `.ipynb` notebooks; it needs Pyright installed (`npm install -g pyright`
   or `pip install pyright`) and only reads.
-- Anthropic's Kotlin language-server plugin (`kotlin-lsp-anthropics@anthropic-plugin-directory`) gives error checking,
+- Anthropic's Kotlin language-server plugin (`kotlin-lsp`) gives error checking,
   definitions and references for `.kt` / `.kts`; it needs JetBrains' `kotlin-lsp` on the PATH (Java 17+; Mac:
   `brew install JetBrains/utils/kotlin-lsp`, others: github.com/Kotlin/kotlin-lsp releases) and only reads. Without the
   Android SDK it cannot resolve Android classes, so its findings do not replace CI.
-- Anthropic's code-review plugin (`code-review-anthropics@anthropic-plugin-directory`, from
-  github.com/anthropics/claude-plugins-official) reviews a PR; it posts on GitHub only with `--comment`, and only when
-  the owner asks for that. Anthropic's pr-review-toolkit (`pr-review-toolkit@anthropic-plugin-directory`) adds
+- Anthropic's code-review plugin (`code-review`) reviews a PR; it posts on GitHub only with `--comment`, and only when
+  the owner asks for that. Anthropic's pr-review-toolkit (`pr-review-toolkit`) adds
   focused reviewers (silent failures, test coverage, comments, types, simplification) that report in the chat only.
   A review never replaces CI or the owner's phone test.
-- Anthropic's feature-dev plugin (`feature-dev@anthropic-plugin-directory`) guides a new feature (explore, clarify,
-  design, then build only after the owner approves). Use it or the Superpowers brainstorming / plans chain for a
+- Anthropic's feature-dev plugin (`feature-dev`) guides a new feature (explore, clarify, design, then build only after
+  the owner approves, under the design-approval rule above). Use it or the Superpowers brainstorming / plans chain for a
   feature, not both; either way the feature maps to its roadmap phase and goes through the normal PR workflow.
