@@ -24,10 +24,10 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
-        Entry("2026-11-21", Kind.NEW, "Development: an Android build tool for Claude Code",
+        Entry("2026-11-21", Kind.NEW, "Development: an Android build tool and a plugin for Claude Code",
             "Behind the scenes, for development only: the project now names an Android build helper (Gradle, adb, " +
                 "logcat, UI automation) that Claude Code can use on a computer with the Android SDK and a connected " +
-                "phone. Nothing in the app changes.",
+                "phone, and turns on the superpowers plugin for Claude Code. Nothing in the app changes.",
             pr = 67, needsDeviceCheck = true, version = "37.77"),
         Entry("2026-11-16", Kind.IMPROVED, "Phase 2 finished: Mobile Legends is the first game of a universal core",
             "The foundation work of Phase 2 is done: the app's core no longer names Mobile Legends; everything about " +
