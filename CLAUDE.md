@@ -237,3 +237,17 @@ Training inputs (picture dataset zips, CSV exports) stay until a successful trai
   reads: models, keys), `Output` (what it makes: training pictures, exports, Kaggle extras, backups) and
   `Recordings` (debug data). `core/StorageLayout.kt` decides which file goes where; a new file type the app
   reads or writes must be added there. Write into the right folder; read through `AutoFolder.files`.
+
+### Claude Code plugins and tools (owner, 2026-11-21)
+- Superpowers (`superpowers@anthropic-plugin-directory`, official source github.com/obra/superpowers, enabled in
+  `.claude/settings.json`) **complements** this workflow and never overrides it. This file, the roadmap and the
+  owner's decisions come first; a Superpowers skill applies only where it does not conflict with them.
+- The owner is the final authority on SPHYNX architecture, implementation approvals and PR merges. The standing
+  approval stays: a PR into `sphynx-test-branch` is merged as soon as CI passes; `main` only gets phone-tested work
+  the owner approves. No Superpowers skill approves, merges or releases anything.
+- How the skills fit: `brainstorming` (design approval first) only for new features, design questions and the plan at
+  the start of a phase, not for clear bug fixes or small requests (section 2 applies); `finishing-a-development-branch`
+  only through its push-and-PR option, never a local merge; plans and specs keep the `docs/PHASE_*` naming instead of
+  `docs/superpowers/`; `test-driven-development`, `systematic-debugging` and `verification-before-completion` follow
+  sections 3 and 8 (CI is the build check here, the phone test is the device check).
+- The `androidbuild` MCP server (`.mcp.json`) only works on a computer with the Android SDK and a phone or emulator.
