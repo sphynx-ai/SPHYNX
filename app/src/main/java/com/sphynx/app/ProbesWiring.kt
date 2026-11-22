@@ -95,13 +95,21 @@ object ProbesWiring {
         fun ctx() = Probes.appContext()
         pp.mode = { com.sphynx.core.PressurePolicy.Mode.of(com.sphynx.core.Cfg.pressureMode) }
         pp.inFight = { com.sphynx.game.GameStateTracker.state.enemies.isNotEmpty() }     // an enemy on screen = a fight may be on
+        // Phase 6 S5: the slots are the roles; "Step down gently" swaps in the next smaller model when there is one
+        // (owner, 2026-11-22) and brings the owner's model back after the cool-down; "Only warn me" never calls these
+        fun reloadByManager(role: com.sphynx.inference.ModelRole) = ctx()?.let { c ->
+            val done: (String?) -> Unit = { err -> if (err != null) com.sphynx.core.Diag.info("Pressure: ${role.name.lowercase()} model not reloaded: $err") }
+            if (role == roles.STRATEGIC) mm.load(c, done) else mm.loadTactical(c, done)
+        }
         pp.tactical = com.sphynx.core.PressurePolicy.Slot("the tactical model", { roles.ready(roles.TACTICAL) },
-            { mm.unloadTactical() }, { ctx()?.let { c -> mm.loadTactical(c) { err -> if (err != null) com.sphynx.core.Diag.info("Pressure: tactical model not reloaded: $err") } } })
+            { roles.stepDown(roles.TACTICAL) }, { if (!roles.restore(roles.TACTICAL)) reloadByManager(roles.TACTICAL) }) { roles.stepDownLine.ifEmpty { null } }
+        // the GGUF test model of the Model page, when no role uses the GGUF engine (a role's GGUF model is its role's slot)
         var ggufFile: java.io.File? = null
-        pp.gguf = com.sphynx.core.PressurePolicy.Slot("the GGUF model", { ctx()?.let { gg.loadedFile(it) } != null },
+        fun ggufForRole() = listOf(roles.STRATEGIC, roles.TACTICAL).any { roles.backend(it) == com.sphynx.inference.BackendType.LLAMA_CPP }
+        pp.gguf = com.sphynx.core.PressurePolicy.Slot("the GGUF model", { !ggufForRole() && ctx()?.let { gg.loadedFile(it) } != null },
             { ctx()?.let { c -> ggufFile = gg.loadedFile(c); gg.unload(c) } }, { val c = ctx(); val f = ggufFile; if (c != null && f != null && f.isFile) gg.load(c, f) { } })
         pp.strategic = com.sphynx.core.PressurePolicy.Slot("the strategic model", { roles.ready(roles.STRATEGIC) },
-            { h.unloadStrategicNow() }, { ctx()?.let { c -> mm.load(c) { err -> if (err != null) com.sphynx.core.Diag.info("Pressure: strategic model not reloaded: $err") } } })
+            { roles.stepDown(roles.STRATEGIC) }, { if (!roles.restore(roles.STRATEGIC)) reloadByManager(roles.STRATEGIC) }) { roles.stepDownLine.ifEmpty { null } }
 
         val pn = com.sphynx.learning.PolicyNet
         val fn = com.sphynx.learning.FightNet

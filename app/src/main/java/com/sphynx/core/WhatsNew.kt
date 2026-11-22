@@ -24,6 +24,14 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-22", Kind.NEW, "Step down gently now switches to a smaller model",
+            "Your idea is in: with Setup > Low memory and heat > Step down gently, when the phone gets warm or low on memory " +
+                "a job's model is replaced by the next smaller model you have (LiteRT-LM files in the app or in " +
+                "Sphynx-Storage/Input, or your GGUF models) instead of only being unloaded. The strategic job only takes a " +
+                "model that also reads pictures. The panel says which model is standing in, and your own model comes back " +
+                "after five quiet minutes, never in a fight. Only warn me (the default) never unloads or replaces anything, " +
+                "for testing a model at full speed.",
+            pr = 92, needsDeviceCheck = true, version = "38.01"),
         Entry("2026-11-22", Kind.IMPROVED, "Foundation: the pages read the models through the same part",
             "Behind the scenes, for Phase 6: the Play, Model and Performance pages now show whether each job's model is " +
                 "loaded, where it runs and how fast it answered through the new part that decides which model does which job. " +

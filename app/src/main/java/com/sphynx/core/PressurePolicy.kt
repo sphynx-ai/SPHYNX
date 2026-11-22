@@ -64,7 +64,9 @@ object PressurePolicy {
     // ---- on the phone ----
 
     /** One model the policy can set aside and bring back (plugged in by the app layer). */
-    class Slot(val name: String, val loaded: () -> Boolean, val unload: () -> Unit, val reload: () -> Unit)
+    class Slot(val name: String, val loaded: () -> Boolean, val unload: () -> Unit, val reload: () -> Unit,
+               /** What the slot runs after stepping down (a smaller model), or null when it is only unloaded. */
+               val now: () -> String? = { null })
 
     @Volatile var tactical: Slot? = null
     @Volatile var gguf: Slot? = null
@@ -96,8 +98,11 @@ object PressurePolicy {
         if (m == Mode.WARN) { Diag.info("Pressure ($source, $level): warning only (Settings: ${m.label})"); return }
         if (toUnload.isEmpty()) { Diag.info("Pressure ($source, $level): nothing more to unload"); return }
         Diag.error("Pressure ($source, $level): unloading " + toUnload.joinToString { it.name })
-        Thread({ for (s in toUnload) try { s.unload() } catch (t: Throwable) { Diag.error("Pressure: could not unload ${s.name}", t) } },
-            "pressure-unload").start()
+        Thread({
+            for (s in toUnload) try { s.unload() } catch (t: Throwable) { Diag.error("Pressure: could not unload ${s.name}", t) }
+            // a slot that stepped down to a smaller model says so on the panel instead of "unloaded"
+            toUnload.mapNotNull { try { it.now() } catch (t: Throwable) { null } }.firstOrNull()?.let { noticeLine = it }
+        }, "pressure-unload").start()
     }
 
     /** Called about once a minute: brings back what was set aside, after the cool-down and outside a fight. */
