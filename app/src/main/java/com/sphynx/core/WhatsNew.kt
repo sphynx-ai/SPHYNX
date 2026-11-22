@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-22", Kind.IMPROVED, "Foundation: one part decides which model does which job",
+            "Behind the scenes, for Phase 6: a new part holds which model does the strategic job and which does the " +
+                "tactical one, on LiteRT-LM or GGUF. It knows what each model can do (pictures or text only) and refuses a " +
+                "question a model cannot answer, saying why. Nothing uses it yet, so play is exactly as before.",
+            pr = 88, needsDeviceCheck = true, version = "37.97"),
         Entry("2026-11-22", Kind.IMPROVED, "Your resource snapshot is recorded",
             "The snapshot you uploaded (both models loaded: the app uses 2.7 GB and 3.2 GB of the phone's 11.1 GB stays " +
                 "free) is now in the Phase 5 record, with your phone's details (Android 16). Three more would complete " +
