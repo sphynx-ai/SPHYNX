@@ -2985,6 +2985,16 @@ class MainActivity : Activity() {
         }
         btn("Groq API key (free)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) }
 
+        // Phase 6 S7 (owner, 2026-11-22): which model does which job; the LiteRT-LM files stay the default
+        title("WHICH MODEL DOES WHICH JOB")
+        for (role in listOf(com.sphynx.ai.Roles.STRATEGIC, com.sphynx.ai.Roles.TACTICAL)) {
+            val b = btn("") { chooseRoleModel(role) }
+            upd { b.text = (if (role == com.sphynx.ai.Roles.STRATEGIC) "Strategic job: " else "Tactical job: ") + ModelManager.choiceLabel(this, role) }
+        }
+        text("Tap a job to choose its model: its LiteRT-LM file (as before) or one of your GGUF models. Only one GGUF model " +
+            "runs at a time. A GGUF strategic model reads text only, so the questions with a picture (draft, loading cards, " +
+            "end screen) wait for a model that reads pictures.")
+
         title("SETTINGS")
         switch("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it; reloadGemmaForGpu() }
         switch("Small tactical model in fights", Cfg.tacticalLlmOn) { on ->
@@ -3493,6 +3503,31 @@ class MainActivity : Activity() {
         )
         for (i in intents) { try { startActivity(i); toast("Choose Sphynx, then No restrictions / Don't optimise"); return } catch (e: Exception) { } }
         toast("Open Settings > Apps > Sphynx > Battery > No restrictions")
+    }
+
+    // Phase 6 S7: pick the model of a job (its LiteRT-LM file or a GGUF model) and load it
+    private fun chooseRoleModel(role: com.sphynx.inference.ModelRole) {
+        val rc = com.sphynx.inference.roles.RoleChoice
+        val lite = if (role == com.sphynx.ai.Roles.STRATEGIC) ModelManager.strategicName() else ModelManager.tacticalName()
+        val ggufs = com.sphynx.models.GgufLibrary.models(this)
+        val values = listOf(rc.LITERT) + ggufs.map { rc.gguf(it.name) }
+        val labels = listOf("$lite (LiteRT-LM file)") + ggufs.map { "${it.name} (GGUF, ${it.length() / 1048576} MB)" }
+        AlertDialog.Builder(this).setTitle(if (role == com.sphynx.ai.Roles.STRATEGIC) "Strategic job" else "Tactical job")
+            .setItems(labels.toTypedArray()) { _, i ->
+                val v = values[i]
+                val why = rc.problem(role, v, ModelManager.choice(rc.other(role)))
+                if (why != null) { toast(why) } else {
+                    Cfg.setRaw(rc.settingKey(role), v)
+                    Thread {
+                        com.sphynx.ai.Roles.unload(role)
+                        com.sphynx.ai.Roles.loadByOwner()
+                        val done: (String?) -> Unit = { err -> runOnUiThread { toast(err ?: ("Loaded: " + ModelManager.choiceLabel(this, role))) } }
+                        if (role == com.sphynx.ai.Roles.STRATEGIC) ModelManager.load(this, done)
+                        else if (Cfg.tacticalLlmOn) ModelManager.loadTactical(this, done)
+                        else runOnUiThread { toast("Saved. Turn on the small tactical model to load it") }
+                    }.start()
+                }
+            }.setNegativeButton("Cancel", null).show()
     }
 
     // the GPU switch changed while the model is loaded: load it again on the chosen processor (owner, 2026-11-13:

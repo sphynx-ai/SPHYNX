@@ -81,11 +81,16 @@ object ProbesWiring {
         roles.gguf = { Probes.appContext()?.let { com.sphynx.models.GgufLibrary.backend(it) } }
         h.strategicReady = { roles.ready(roles.STRATEGIC) }
         h.strategicLoading = { roles.loading(roles.STRATEGIC) }
-        h.loadStrategic = { ctx, path, gpu, done -> roles.init(ctx); ai.scope.launch { done(roles.loadLiteRt(roles.STRATEGIC, path, gpu)) } }
+        // a .gguf path is the owner's GGUF choice for the job (Phase 6 S7), anything else the job's LiteRT-LM file
+        fun loadFor(role: com.sphynx.inference.ModelRole, path: String, gpu: Boolean): String? =
+            if (path.endsWith(".gguf", ignoreCase = true))
+                roles.load(com.sphynx.inference.roles.Assignment(role, com.sphynx.models.GgufLibrary.config(java.io.File(path)).copy(role = role)))
+            else roles.loadLiteRt(role, path, gpu)
+        h.loadStrategic = { ctx, path, gpu, done -> roles.init(ctx); ai.scope.launch { done(loadFor(roles.STRATEGIC, path, gpu)) } }
         h.unloadStrategicNow = { roles.unload(roles.STRATEGIC) }
         h.tacticalReady = { roles.ready(roles.TACTICAL) }
         h.tacticalLoading = { roles.loading(roles.TACTICAL) }
-        h.loadTactical = { ctx, path, done -> roles.init(ctx); ai.scope.launch { done(roles.loadLiteRt(roles.TACTICAL, path, preferGpu = false)) } }
+        h.loadTactical = { ctx, path, done -> roles.init(ctx); ai.scope.launch { done(loadFor(roles.TACTICAL, path, false)) } }
         h.unloadTactical = { ai.scope.launch { roles.unload(roles.TACTICAL) } }
         h.loadByOwner = { roles.loadByOwner() }
 
