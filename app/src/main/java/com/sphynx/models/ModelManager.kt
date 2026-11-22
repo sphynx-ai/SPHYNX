@@ -54,17 +54,29 @@ object ModelManager {
     fun strategicName(): String = Cfg.raw("llm_name_strategic") ?: "Gemma"
     fun tacticalName(): String = Cfg.raw("llm_name_tactical") ?: "small Gemma"
 
+    // ---- Phase 6 S7: the model the owner chose for each job (RoleChoice); a GGUF choice is a file in the GGUF library ----
+    fun choice(role: com.sphynx.inference.ModelRole): String? = Cfg.raw(com.sphynx.inference.roles.RoleChoice.settingKey(role))
+    /** The chosen GGUF model for [role], or null when the job uses its LiteRT-LM file (or the chosen file is gone). */
+    fun chosenGguf(ctx: Context, role: com.sphynx.inference.ModelRole): File? =
+        com.sphynx.inference.roles.RoleChoice.ggufFile(choice(role))?.let { File(GgufLibrary.dir(ctx), it) }?.takeIf { it.isFile }
+    fun choiceLabel(ctx: Context, role: com.sphynx.inference.ModelRole): String {
+        val lite = if (role == com.sphynx.inference.ModelRole.STRATEGIC) strategicName() else tacticalName()
+        return com.sphynx.inference.roles.RoleChoice.label(role, chosenGguf(ctx, role)?.let { com.sphynx.inference.roles.RoleChoice.gguf(it.name) }, lite)
+    }
+
     fun status(ctx: Context): String {
+        chosenGguf(ctx, com.sphynx.inference.ModelRole.STRATEGIC)?.let { return "${it.name} (GGUF, ${it.length() / 1048576} MB)" }
         val f = modelFile(ctx)
         return if (f.exists()) "${strategicName()} (${f.length() / 1048576} MB)" else "no model file yet"
     }
     fun tacticalStatus(ctx: Context): String {
+        chosenGguf(ctx, com.sphynx.inference.ModelRole.TACTICAL)?.let { return "${it.name} (GGUF, ${it.length() / 1048576} MB)" }
         val f = tacticalFile(ctx)
         return if (f.exists()) "${tacticalName()} (${f.length() / 1048576} MB)" else "no small model file yet"
     }
 
     fun load(ctx: Context, done: (String?) -> Unit) {
-        val f = modelFile(ctx)
+        val f = chosenGguf(ctx, com.sphynx.inference.ModelRole.STRATEGIC) ?: modelFile(ctx)
         if (!f.exists()) { done("No model file yet (put the .litertlm file in the Sphynx-Storage/Input folder)"); return }
         if (ModelHooks.strategicLoading()) return
         ModelHooks.loadStrategic(ctx.applicationContext, f.absolutePath, Cfg.useGpu, done)   // runs in the AI's scope
@@ -72,7 +84,7 @@ object ModelManager {
 
     // the small tactical model: CPU, text only (the GPU is left to the game and the big model)
     fun loadTactical(ctx: Context, done: (String?) -> Unit) {
-        val f = tacticalFile(ctx)
+        val f = chosenGguf(ctx, com.sphynx.inference.ModelRole.TACTICAL) ?: tacticalFile(ctx)
         if (!f.exists()) { done("No small model file yet (put e.g. the Gemma 3 270M .litertlm file in the Sphynx-Storage/Input folder)"); return }
         if (ModelHooks.tacticalLoading() || ModelHooks.tacticalReady()) { done(null); return }
         ModelHooks.loadTactical(ctx.applicationContext, f.absolutePath, done)   // CPU, text only

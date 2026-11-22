@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-22", Kind.NEW, "Model page: choose which model does which job",
+            "New on the Model page, Which model does which job: tap the strategic or the tactical job to give it its usual " +
+                "LiteRT-LM model or one of your GGUF models. The choice is kept and loads by itself at the next start. Only one " +
+                "GGUF model runs at a time. A GGUF strategic model reads text only for now, so the picture questions wait for a " +
+                "model that reads pictures.",
+            pr = 94, needsDeviceCheck = true, version = "38.03"),
         Entry("2026-11-22", Kind.IMPROVED, "A model that crashed the app is not loaded again by itself",
             "If the app stops while a model is loading (for example the GPU driver crashes on a big model), the next start " +
                 "does not load that model again by itself, so the app cannot crash in a loop. The Model page and the logs say " +
