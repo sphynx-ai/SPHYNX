@@ -1,7 +1,7 @@
 # Phase 5 — Reliability audit and execution plan
 
 **Phase:** 5 — Android Reliability and Application Foundation (roadmap Section 3).
-**Started:** 2026-11-16 (owner decision). **This audit:** 2026-11-21, Claude Code, on `sphynx-test-branch` @ `5aa1d9e` (v37.78), by reading the code. No phone or emulator was used for this audit, and there is no Android SDK in the cloud container: CI ("Android build") is the build check and the owner's phone is the device check.
+**Status: COMPLETE (owner decision 2026-11-22)**, with the two open items below carried forward. **Started:** 2026-11-16 (owner decision). **This audit:** 2026-11-21, Claude Code, on `sphynx-test-branch` @ `5aa1d9e` (v37.78), by reading the code. No phone or emulator was used for this audit, and there is no Android SDK in the cloud container: CI ("Android build") is the build check and the owner's phone is the device check.
 
 **Entry condition met:** the owner phone-tested v37.64–v37.78 (Phase 2 split and the development-only PRs) on 2026-11-21: "All test works fine".
 
@@ -75,14 +75,14 @@ Each row moves to "Works" only with a phone test or a recording from that phone.
 ## 6. Acceptance criteria for Phase 5 (from the roadmap mission and deliverables)
 
 - [x] Reliability audit (this file).
-- [ ] Compatibility matrix maintained with dated device evidence (Section 4). One phone so far, the owner's (2026-11-21); the device profile in every recording fills new rows when other phones are used.
+- [~] Compatibility matrix maintained with dated device evidence (Section 4). **Closed by owner decision 2026-11-22 with one phone** (the owner's). Rows are added from the device profile in recordings whenever other phones are used.
 - [x] Every way the app can end leaves a readable record (P2, v37.80): phone-tested by the owner 2026-11-21, and the emulator CI checks it on every PR. A native crash and an ANR have not been provoked on purpose: their records come from the same Android history.
 - [x] Device capability profile available to the model platform and recorded with diagnostics (P3; v37.81, phone-tested 2026-11-21).
 - [x] Memory pressure and thermal changes are recorded (P4) and handled by an owner-approved policy (P5, v37.89); both phone-tested by the owner 2026-11-21.
 - [x] Permissions and background restrictions are explained and checked (P6, P8; v37.83, v37.84, phone-tested 2026-11-21).
 - [x] Start-up time measured on the phone: under 500 ms in `Application.onCreate` (P7; owner 2026-11-21). The calibration restore stays on the main thread by owner decision, because it is fast enough and must finish before calibration is read.
 - [x] Lifecycle transitions and recovery paths tested on the phone (P9): the owner reported "all test works fine" on 2026-11-21, not itemised per check, so this is REPORTED. The emulator CI has run L1/L11, L5 and L10 (part) on every PR since v37.90; that is VERIFIED by CI.
-- [ ] Resource baselines measured on the owner's phone (idle, capture on, Gemma loaded, GGUF loaded). **Tool added in v37.91:** Debug data > "Save a resource snapshot now" (`core/ResourceBaseline`); waiting for the four snapshots.
+- [~] Resource baselines measured on the owner's phone (idle, capture on, Gemma loaded, GGUF loaded), with the tool from v37.91 (Debug data > "Save a resource snapshot now"). **REPORTED** by the owner on 2026-11-22 ("all test are good"). On that date the `diagnostics-baseline-*.json` files were **not yet on `recordings-for-debugging`**: the latest upload there was 2026-11-14. The numbers go into this file when they are uploaded.
 
 ## 7. Owner decisions (2026-11-21)
 

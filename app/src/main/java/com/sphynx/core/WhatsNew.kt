@@ -24,19 +24,26 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-22", Kind.IMPROVED, "Phase 5 finished; Phase 6 starts",
+            "Your phone test of 37.91 and 37.92 is recorded and Phase 5 (reliability on Android) is closed, as you decided. " +
+                "Phase 6 starts with the plan you approved: every model through one common part, any model for either " +
+                "job (GGUF models included, with pictures through their mmproj file later), and a model that crashed the " +
+                "app while loading is not loaded again by itself. Please upload the four resource snapshots from the Debug " +
+                "data page. Nothing in the app changes.",
+            pr = 83, needsDeviceCheck = true, version = "37.93"),
         Entry("2026-11-21", Kind.IMPROVED, "Development: the plan for Phase 6 (one way to run every model)",
             "Behind the scenes: a plan for the next phase. Every language model, LiteRT-LM or GGUF, will run through one " +
                 "common part, and the strategic and tactical jobs will be assigned to models instead of being built into " +
                 "them. Today the strategic job is always Gemma and the tactical job always the small model. It is waiting " +
                 "for your approval. Nothing in the app changes.",
-            pr = 82, needsDeviceCheck = true, version = "37.92"),
+            pr = 82, version = "37.92"),
         Entry("2026-11-21", Kind.NEW, "Debug data: save a resource snapshot",
             "Your phone test of 37.87 to 37.90 is recorded. New on the Debug data page: one tap saves a snapshot of the " +
                 "phone's memory, the app's memory and CPU, the heat and the battery, and which models are loaded, into " +
                 "Recordings (uploaded with the debug data). Tap it four times: with nothing loaded, with screen capture " +
                 "on, with the strategic model loaded and with a GGUF model loaded. These four snapshots are the last " +
                 "thing Phase 5 needs.",
-            pr = 81, needsDeviceCheck = true, version = "37.91"),
+            pr = 81, version = "37.91"),
         Entry("2026-11-21", Kind.IMPROVED, "Development: lifecycle tests on an emulator",
             "Behind the scenes: every change is now also started on an Android emulator, which checks that each start " +
                 "writes its diagnostics lines (device profile, start-up time, last close) and that the app survives its " +
