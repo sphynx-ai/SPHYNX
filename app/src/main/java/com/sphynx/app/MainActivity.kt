@@ -38,9 +38,7 @@ import com.sphynx.R
 import com.sphynx.ai.AiRuntime
 import com.sphynx.ai.ComboFetcher
 import com.sphynx.ai.ComboRunner
-import com.sphynx.ai.GemmaEngine
 import com.sphynx.ai.TacticalAdvisor
-import com.sphynx.ai.TacticalLlmEngine
 import com.sphynx.ai.StrategicAdvisor
 import com.sphynx.capture.FrameHub
 import com.sphynx.capture.ScreenCaptureService
@@ -885,7 +883,7 @@ class MainActivity : Activity() {
             openAccessibility()
             return null
         }
-        if (AiRuntime.needsGemma(stage) && !GemmaEngine.ready) {
+        if (AiRuntime.needsGemma(stage) && !com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.STRATEGIC)) {
             toast("Load the Gemma model first")
             show("model")
             return null
@@ -1196,7 +1194,7 @@ class MainActivity : Activity() {
             PlayStatus.Item("files", "All files access (the app's folder)", com.sphynx.core.Storage.allFilesAccess, "Granted", "Missing"),
             PlayStatus.Item("capture", "Screen capture", ScreenCaptureService.running, "Running", "Off", needed = false),
             batteryItem(),
-            PlayStatus.Item("model", "Strategic model (Gemma)", GemmaEngine.ready, "Loaded", if (GemmaEngine.loading) "Loading" else "Not loaded", needed = false)
+            PlayStatus.Item("model", "Strategic model (Gemma)", com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.STRATEGIC), "Loaded", if (com.sphynx.ai.Roles.loading(com.sphynx.ai.Roles.STRATEGIC)) "Loading" else "Not loaded", needed = false)
         )
         fun fix(key: String) {
             when (key) {
@@ -1215,7 +1213,7 @@ class MainActivity : Activity() {
             val summary = PlayStatus.readySummary(all)
             badge.text = summary
             badge.setTextColor(c(if (PlayStatus.allNeededOk(all)) T.GREEN else T.GOLD))
-            val key = all.map { it.key + it.word to it.ok } + ("loading" to GemmaEngine.loading)
+            val key = all.map { it.key + it.word to it.ok } + ("loading" to com.sphynx.ai.Roles.loading(com.sphynx.ai.Roles.STRATEGIC))
             if (key == shown) return@upd
             shown = key
             list.removeAllViews()
@@ -1224,7 +1222,7 @@ class MainActivity : Activity() {
             if (missing.isEmpty()) list.addView(TextView(this).apply {
                 text = "● Ready to play"; textSize = 15f; setTextColor(c(T.GREEN)); setPadding(0, dp(6), 0, dp(6))
             })
-            if (GemmaEngine.loading) {
+            if (com.sphynx.ai.Roles.loading(com.sphynx.ai.Roles.STRATEGIC)) {
                 // the model is loading: a bar and its name (state matrix, Ready check)
                 list.addView(TextView(this).apply { text = "Loading ${ModelManager.strategicName()}…"; textSize = 13f; setTextColor(c(T.TEXT)) })
                 list.addView(android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
@@ -1278,10 +1276,10 @@ class MainActivity : Activity() {
             status.text = if (on) AiRuntime.statusLine() else "AI is off"
             sChip.text = if (on) "running" else "stopped"
             sChip.setTextColor(c(T.ON_BANNER))
-            gemma.text = "Strategy: " + ModelManager.strategicName() + " – " + GemmaEngine.state +
-                (if (GemmaEngine.calls > 0) " (${GemmaEngine.lastLatencyMs / 100 / 10.0} s)" else "") +
-                (if (Cfg.tacticalLlmOn) "\nFights: " + ModelManager.tacticalName() + " – " + TacticalLlmEngine.state +
-                    (if (TacticalLlmEngine.calls > 0) " (${TacticalLlmEngine.lastLatencyMs} ms)" else "") else "")
+            gemma.text = "Strategy: " + ModelManager.strategicName() + " – " + com.sphynx.ai.Roles.state(com.sphynx.ai.Roles.STRATEGIC) +
+                (if (com.sphynx.ai.Roles.calls(com.sphynx.ai.Roles.STRATEGIC) > 0) " (${com.sphynx.ai.Roles.lastLatencyMs(com.sphynx.ai.Roles.STRATEGIC) / 100 / 10.0} s)" else "") +
+                (if (Cfg.tacticalLlmOn) "\nFights: " + ModelManager.tacticalName() + " – " + com.sphynx.ai.Roles.state(com.sphynx.ai.Roles.TACTICAL) +
+                    (if (com.sphynx.ai.Roles.calls(com.sphynx.ai.Roles.TACTICAL) > 0) " (${com.sphynx.ai.Roles.lastLatencyMs(com.sphynx.ai.Roles.TACTICAL)} ms)" else "") else "")
             capture.text = "Screen: " + (if (FrameHub.isLive()) FrameHub.source else "not captured") +
                 " · ${"%.0f".format(FrameProcessor.processedFps)} fps · frame→touch ${"%.0f".format(com.sphynx.core.Speed.total())} ms"
         }
@@ -1397,7 +1395,7 @@ class MainActivity : Activity() {
         runningLine("Player") { AiRuntime.playerOn }
         val info = text("", 13f)
         upd {
-            info.text = if (GemmaEngine.ready) "Fast rules play; Gemma adjusts the plan every ${Cfg.strategyEverySec}s or when a fight starts."
+            info.text = if (com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.STRATEGIC)) "Fast rules play; Gemma adjusts the plan every ${Cfg.strategyEverySec}s or when a fight starts."
                         else "Gemma not loaded: the Player still works with the fast rules only."
         }
 
@@ -1876,7 +1874,7 @@ class MainActivity : Activity() {
         title("MATCH TYPE")
         val phase = text("", 13f, color = "#9AA0A6")
         upd { phase.text = "Detected by itself on the hero-select screen (a ban stage = ranked): now ${if (Cfg.ranked) "RANKED" else "STANDARD"}" +
-            (if (!GemmaEngine.ready) " (needs the Gemma model to tell them apart)" else "") + "\nScreen now: ${GameStateTracker.state.phase.label}" }
+            (if (!com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.STRATEGIC)) " (needs the Gemma model to tell them apart)" else "") + "\nScreen now: ${GameStateTracker.state.phase.label}" }
 
         title("STANDARD MATCH")
         text("Picks your hero (and spell / emblem), then confirms. Needs Drafter + Autonomous.", 13f)
@@ -2838,8 +2836,8 @@ class MainActivity : Activity() {
                 gpuMaker.text = g?.second ?: "-"
                 gpuGl.text = g?.third ?: ""
             }
-            gpuUse.text = "Strategist " + com.sphynx.ai.GemmaEngine.backendName.let { if (it == "-") "not loaded" else it } +
-                " · small model " + com.sphynx.ai.TacticalLlmEngine.backendName.let { if (it == "-") "not loaded" else it }
+            gpuUse.text = "Strategist " + com.sphynx.ai.Roles.where(com.sphynx.ai.Roles.STRATEGIC).let { if (it == "-") "not loaded" else it } +
+                " · small model " + com.sphynx.ai.Roles.where(com.sphynx.ai.Roles.TACTICAL).let { if (it == "-") "not loaded" else it }
             val acc = di.accelerators
             if (acc != null && acc != npuShown) {
                 npuShown = acc
@@ -2858,11 +2856,11 @@ class MainActivity : Activity() {
             powTemp.text = pw.batteryC?.let { "%.1f °C".format(it) } ?: "Not reported"
             powLevel.text = (pw.batteryPct?.let { "$it%" } ?: "Not reported") + if (pw.charging == true) " · charging" else ""
             powLevelBar.set((pw.batteryPct ?: 0) / 100f, c(when { (pw.batteryPct ?: 100) > 30 -> T.GREEN; (pw.batteryPct ?: 0) > 15 -> T.GOLD; else -> T.RED }))
-            val gs = GemmaEngine.state
+            val gs = com.sphynx.ai.Roles.state(com.sphynx.ai.Roles.STRATEGIC)
             llmBig.text = if (gs.startsWith("ready", true)) "Loaded" else gs.replaceFirstChar { it.uppercase() }
             llmSub.text = "Strategist: ${ModelManager.strategicName()} · $gs"
-            llmTac.text = if (Cfg.tacticalLlmOn) "${ModelManager.tacticalName()} · ${TacticalLlmEngine.state}" else "Off"
-            llmLast.text = if (GemmaEngine.calls > 0) "%.1f s (${GemmaEngine.calls} answers)".format(GemmaEngine.lastLatencyMs / 1000f) else "-"
+            llmTac.text = if (Cfg.tacticalLlmOn) "${ModelManager.tacticalName()} · ${com.sphynx.ai.Roles.state(com.sphynx.ai.Roles.TACTICAL)}" else "Off"
+            llmLast.text = if (com.sphynx.ai.Roles.calls(com.sphynx.ai.Roles.STRATEGIC) > 0) "%.1f s (${com.sphynx.ai.Roles.calls(com.sphynx.ai.Roles.STRATEGIC)} answers)".format(com.sphynx.ai.Roles.lastLatencyMs(com.sphynx.ai.Roles.STRATEGIC) / 1000f) else "-"
 
             // ---- the AI's speed ----
             log.tick()
@@ -2925,13 +2923,13 @@ class MainActivity : Activity() {
             line(if (af.treeUri != null) 2 else 0, "Folder: " + (af.treeUri?.let { Uri.decode(it.lastPathSegment ?: "chosen").substringAfter(':') } ?: "not chosen yet"))
             sub(af.status)
             sb.append("\n")
-            line(when { GemmaEngine.ready -> 2; GemmaEngine.loading -> 1; else -> 0 },
-                "Strategic model: ${ModelManager.status(this)}, ${GemmaEngine.state}" +
-                (if (GemmaEngine.calls > 0) " (last answer ${GemmaEngine.lastLatencyMs} ms)" else ""))
+            line(when { com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.STRATEGIC) -> 2; com.sphynx.ai.Roles.loading(com.sphynx.ai.Roles.STRATEGIC) -> 1; else -> 0 },
+                "Strategic model: ${ModelManager.status(this)}, ${com.sphynx.ai.Roles.state(com.sphynx.ai.Roles.STRATEGIC)}" +
+                (if (com.sphynx.ai.Roles.calls(com.sphynx.ai.Roles.STRATEGIC) > 0) " (last answer ${com.sphynx.ai.Roles.lastLatencyMs(com.sphynx.ai.Roles.STRATEGIC)} ms)" else ""))
             val smallFile = ModelManager.tacticalFile(this).exists()
-            line(when { TacticalLlmEngine.ready && Cfg.tacticalLlmOn -> 2; TacticalLlmEngine.loading -> 1; smallFile -> 1; else -> 0 },
-                "Small tactical model: ${ModelManager.tacticalStatus(this)}, " + (if (Cfg.tacticalLlmOn) TacticalLlmEngine.state else "switched off"))
-            if (Cfg.tacticalLlmOn && TacticalLlmEngine.ready) sub(TacticalAdvisor.text().substringAfter(": "))
+            line(when { com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.TACTICAL) && Cfg.tacticalLlmOn -> 2; com.sphynx.ai.Roles.loading(com.sphynx.ai.Roles.TACTICAL) -> 1; smallFile -> 1; else -> 0 },
+                "Small tactical model: ${ModelManager.tacticalStatus(this)}, " + (if (Cfg.tacticalLlmOn) com.sphynx.ai.Roles.state(com.sphynx.ai.Roles.TACTICAL) else "switched off"))
+            if (Cfg.tacticalLlmOn && com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.TACTICAL)) sub(TacticalAdvisor.text().substringAfter(": "))
             val sd = com.sphynx.vision.ScreenDetector
             line(when { ObjectDetector.ready && Cfg.detectorOn -> 2; ObjectDetector.ready -> 1; else -> 0 },
                 "Minimap detector: ${ObjectDetector.state}" + (if (ObjectDetector.ready) ", ${ObjectDetector.lastMs} ms per run" else "") +
@@ -3387,8 +3385,8 @@ class MainActivity : Activity() {
                         ?: throw IllegalStateException("no reading yet, try again in two seconds")
                     val pw = com.sphynx.core.DeviceInfo.power(this)
                     val pm = getSystemService(android.os.PowerManager::class.java)
-                    val r = com.sphynx.core.ResourceBaseline.Reading(now, ScreenCaptureService.running, GemmaEngine.ready,
-                        com.sphynx.ai.TacticalLlmEngine.ready, com.sphynx.models.GgufLibrary.loadedFile(this) != null,
+                    val r = com.sphynx.core.ResourceBaseline.Reading(now, ScreenCaptureService.running, com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.STRATEGIC),
+                        com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.TACTICAL), com.sphynx.models.GgufLibrary.loadedFile(this) != null,
                         st.ramTotalMb, st.ramAvailMb, st.lowMemory, st.appRamMb, st.appJavaMb, st.appNativeMb, st.appCpuPct,
                         pw.thermal + (try { " (status ${pm?.currentThermalStatus})" } catch (e: Exception) { "" }),
                         pw.headroom, pw.batteryC, pw.batteryPct, pw.charging)
@@ -3499,9 +3497,9 @@ class MainActivity : Activity() {
     // the GPU switch changed while the model is loaded: load it again on the chosen processor (owner, 2026-11-13:
     // turning the switch on did nothing until the next start, so Gemma stayed on the slow CPU)
     private fun reloadGemmaForGpu() {
-        if (!GemmaEngine.ready) return
+        if (!com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.STRATEGIC)) return
         toast("Reloading the model on the " + (if (Cfg.useGpu) "GPU" else "CPU") + "…")
-        ModelManager.load(this) { err -> runOnUiThread { toast(err ?: ("Model loaded: " + GemmaEngine.state)) } }
+        ModelManager.load(this) { err -> runOnUiThread { toast(err ?: ("Model loaded: " + com.sphynx.ai.Roles.state(com.sphynx.ai.Roles.STRATEGIC))) } }
     }
 
     // switch to MLBB and start placing one group of buttons there in 5 s
@@ -3597,10 +3595,10 @@ class MainActivity : Activity() {
         cardNote(p3, "Put the .litertlm file in the app's folder, then Scan the folder (step 2): it is copied in. The trained " +
             "detectors and networks load by themselves from the same folder. More on the Model page.")
         upd {
-            val ready = GemmaEngine.ready
-            p3Note.text = "Strategic model: " + ModelManager.status(this) + (if (ready) " - loaded" else if (GemmaEngine.loading) " - loading…" else "") +
+            val ready = com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.STRATEGIC)
+            p3Note.text = "Strategic model: " + ModelManager.status(this) + (if (ready) " - loaded" else if (com.sphynx.ai.Roles.loading(com.sphynx.ai.Roles.STRATEGIC)) " - loading…" else "") +
                 "\nSmall tactical model: " + ModelManager.tacticalStatus(this)
-            markWord(load, ready, "Loaded", if (GemmaEngine.loading) "Loading" else "Not loaded")
+            markWord(load, ready, "Loaded", if (com.sphynx.ai.Roles.loading(com.sphynx.ai.Roles.STRATEGIC)) "Loading" else "Not loaded")
             p3Chip.text = if (ready) "done" else "to do"; p3Chip.setTextColor(c(if (ready) T.GREEN else T.GOLD))
         }
 

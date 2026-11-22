@@ -56,7 +56,7 @@ Every step adds contract or unit tests. The phone check after S4 and S7 is a 5v5
 
 - [ ] Inference architecture and ADR 0002 accepted by the owner (S1). **Proposed in v37.94:** `docs/adr/0002-role-model-runtime.md`.
 - [ ] Both runtimes pass one contract test kit (load, generate, stream, cancel, unload, errors, one terminal event) (S2). **Done in code (v37.95):** `inference/LiteRtLmBackend`, `ai/LlmSlotPort`, `testing/InferenceContractKit`, `InferenceContractKitTest` (both runtimes over fakes).
-- [ ] No caller outside the router names a runtime or a slot; an `ArchitectureRulesTest` rule enforces it (S4).
+- [ ] No caller outside the router names a runtime or a slot; an `ArchitectureRulesTest` rule enforces it (S4). **Done in code (v37.99–v38.00):** `ai/Roles` over `RoleRouter`; `RolesOnlyTest` enforces it.
 - [ ] Role, model identity and runtime are independent: any compatible model can serve either role (S3, S7).
 - [ ] Capability negotiation is explicit: an unsupported request is refused with a reason, not silently degraded (S3, S4). **S3 in code (v37.97):** `inference/roles/RoleRouter` (`RoleRouterTest`); callers move in S4.
 - [ ] A model that crashed the app on load is not reloaded by itself (S6).

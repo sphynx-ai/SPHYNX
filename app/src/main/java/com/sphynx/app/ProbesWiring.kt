@@ -15,8 +15,8 @@ object ProbesWiring {
         Probes.tacticalNetworkMs = { com.sphynx.learning.PolicyNet.lastMs }
         Probes.minimapDetectorMs = { com.sphynx.vision.ObjectDetector.lastMs }
         Probes.screenDetectorMs = { com.sphynx.vision.ScreenDetector.lastMs }
-        Probes.tacticalModelMs = { com.sphynx.ai.TacticalLlmEngine.lastLatencyMs }
-        Probes.strategicModelMs = { com.sphynx.ai.GemmaEngine.lastLatencyMs }
+        Probes.tacticalModelMs = { com.sphynx.ai.Roles.lastLatencyMs(com.sphynx.ai.Roles.TACTICAL) }
+        Probes.strategicModelMs = { com.sphynx.ai.Roles.lastLatencyMs(com.sphynx.ai.Roles.STRATEGIC) }
         Probes.onlineMetaMs = { com.sphynx.ai.GroqClient.lastMs }
 
         Probes.videoMarks = {
@@ -76,8 +76,6 @@ object ProbesWiring {
     private fun wireModels() {
         val h = com.sphynx.models.ModelHooks
         val ai = com.sphynx.ai.AiRuntime
-        val gemma = com.sphynx.ai.GemmaEngine
-        val small = com.sphynx.ai.TacticalLlmEngine
         // Phase 6 S4 (ADR 0002): the models load and unload through the role router (ai/Roles), same slots and order
         val roles = com.sphynx.ai.Roles
         roles.gguf = { Probes.appContext()?.let { com.sphynx.models.GgufLibrary.backend(it) } }
@@ -97,12 +95,12 @@ object ProbesWiring {
         fun ctx() = Probes.appContext()
         pp.mode = { com.sphynx.core.PressurePolicy.Mode.of(com.sphynx.core.Cfg.pressureMode) }
         pp.inFight = { com.sphynx.game.GameStateTracker.state.enemies.isNotEmpty() }     // an enemy on screen = a fight may be on
-        pp.tactical = com.sphynx.core.PressurePolicy.Slot("the tactical model", { small.ready },
+        pp.tactical = com.sphynx.core.PressurePolicy.Slot("the tactical model", { roles.ready(roles.TACTICAL) },
             { mm.unloadTactical() }, { ctx()?.let { c -> mm.loadTactical(c) { err -> if (err != null) com.sphynx.core.Diag.info("Pressure: tactical model not reloaded: $err") } } })
         var ggufFile: java.io.File? = null
         pp.gguf = com.sphynx.core.PressurePolicy.Slot("the GGUF model", { ctx()?.let { gg.loadedFile(it) } != null },
             { ctx()?.let { c -> ggufFile = gg.loadedFile(c); gg.unload(c) } }, { val c = ctx(); val f = ggufFile; if (c != null && f != null && f.isFile) gg.load(c, f) { } })
-        pp.strategic = com.sphynx.core.PressurePolicy.Slot("the strategic model", { gemma.ready },
+        pp.strategic = com.sphynx.core.PressurePolicy.Slot("the strategic model", { roles.ready(roles.STRATEGIC) },
             { h.unloadStrategicNow() }, { ctx()?.let { c -> mm.load(c) { err -> if (err != null) com.sphynx.core.Diag.info("Pressure: strategic model not reloaded: $err") } } })
 
         val pn = com.sphynx.learning.PolicyNet

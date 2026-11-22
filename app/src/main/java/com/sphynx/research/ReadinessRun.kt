@@ -3,7 +3,6 @@ package com.sphynx.research
 import com.sphynx.adapters.mlbb.MlbbAdapter
 import com.sphynx.ai.AiRuntime
 import com.sphynx.ai.TacticalAdvisor
-import com.sphynx.ai.TacticalLlmEngine
 import com.sphynx.core.Diag
 import com.sphynx.engines.TacticalReadiness
 import kotlinx.coroutines.launch
