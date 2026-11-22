@@ -131,7 +131,7 @@ object Roles {
 
     /** Does this model read pictures? Known from an earlier load on this phone, else from its name (Gemma 3n / 4). */
     fun readsPictures(c: ModelConfiguration): Boolean {
-        if (c.backend != BackendType.LITERT_LM) return false            // GGUF pictures need an mmproj file (S8)
+        if (c.backend != BackendType.LITERT_LM) return c.projector != null    // GGUF: through its mmproj file (S8)
         com.sphynx.core.Cfg.raw("vision_" + c.displayName)?.let { return it == "1" }
         val n = c.displayName.lowercase()
         return n.contains("3n") || n.contains("gemma-4") || n.contains("gemma4") || n.contains("gemma_4") || c.id.startsWith("litertlm:strategic")

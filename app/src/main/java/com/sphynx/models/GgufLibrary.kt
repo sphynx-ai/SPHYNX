@@ -37,7 +37,19 @@ object GgufLibrary {
 
     /** The added models, by name. */
     fun models(ctx: Context): List<File> =
-        dir(ctx).listFiles { f -> f.isFile && f.name.endsWith(".gguf", ignoreCase = true) }?.sortedBy { it.name.lowercase() } ?: emptyList()
+        dir(ctx).listFiles { f -> f.isFile && f.name.endsWith(".gguf", ignoreCase = true) && !com.sphynx.inference.MmprojPairing.isProjector(f.name) }
+            ?.sortedBy { it.name.lowercase() } ?: emptyList()
+
+    /** Phase 6 S8: the multimodal projector files (mmproj) in the library. */
+    fun projectors(dir: File): List<File> =
+        dir.listFiles { f -> f.isFile && com.sphynx.inference.MmprojPairing.isProjector(f.name) }?.toList() ?: emptyList()
+
+    /** The model's projector file in the library (its mmproj), or null. */
+    fun projectorFor(file: File): File? {
+        val dir = file.parentFile ?: return null
+        val all = projectors(dir)
+        return com.sphynx.inference.MmprojPairing.pairFor(file.name, all.map { it.name })?.let { n -> all.firstOrNull { it.name == n } }
+    }
 
     fun config(file: File): ModelConfiguration = ModelConfiguration(
         id = "gguf:" + file.name,
@@ -49,7 +61,8 @@ object GgufLibrary {
         accelerators = listOf(Accelerator.CPU),     // CPU only in this build
         contextTokens = CONTEXT_TOKENS,
         maxOutputTokens = MAX_OUTPUT_TOKENS,
-        threads = LlamaCpu.threads()
+        threads = LlamaCpu.threads(),
+        projector = projectorFor(file)?.absolutePath
     )
 
     /** Copies the picked .gguf into the app (checked first); [done] gets a message for the owner. */

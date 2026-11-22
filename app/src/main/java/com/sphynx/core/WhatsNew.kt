@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-22", Kind.NEW, "GGUF models can read pictures (with their mmproj file)",
+            "A GGUF model can now read pictures, so it can do the strategic job fully (draft, loading cards, end screen). " +
+                "Add the model and its mmproj file (the picture part, e.g. mmproj-gemma-3-4b-it-f16.gguf) to the GGUF library; " +
+                "the app pairs them by name and loads the picture part only for the strategic job. Without an mmproj file the " +
+                "model reads text only, as before. The app's engine is bigger, so the first build on the phone takes longer.",
+            pr = 95, needsDeviceCheck = true, version = "38.04"),
         Entry("2026-11-22", Kind.NEW, "Model page: choose which model does which job",
             "New on the Model page, Which model does which job: tap the strategic or the tactical job to give it its usual " +
                 "LiteRT-LM model or one of your GGUF models. The choice is kept and loads by itself at the next start. Only one " +

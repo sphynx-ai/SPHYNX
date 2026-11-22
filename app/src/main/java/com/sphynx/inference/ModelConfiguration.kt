@@ -16,7 +16,8 @@ data class ModelConfiguration(
     val wantsVision: Boolean = false,     // image + text (LiteRT-LM multimodal only)
     val contextTokens: Int = 4096,
     val maxOutputTokens: Int = 512,
-    val threads: Int = 0                  // 0 = runtime default
+    val threads: Int = 0,                 // 0 = runtime default
+    val projector: String? = null         // Phase 6 S8: a GGUF model's multimodal projector file (mmproj), for pictures
 ) {
     fun problems(): List<String> {
         val p = ArrayList<String>()
@@ -27,7 +28,8 @@ data class ModelConfiguration(
         if (contextTokens !in 128..131_072) p.add("context length $contextTokens is out of range (128-131072)")
         if (maxOutputTokens !in 1..contextTokens) p.add("max output $maxOutputTokens must be 1..context length")
         if (threads !in 0..16) p.add("threads $threads is out of range (0-16)")
-        if (wantsVision && backend != BackendType.LITERT_LM) p.add("image input needs a LiteRT-LM multimodal model")
+        if (wantsVision && backend != BackendType.LITERT_LM && projector == null)
+            p.add("image input needs a LiteRT-LM multimodal model or a GGUF model with its mmproj file")
         if (storage == StorageMode.APP_COPY && location.startsWith("content://")) p.add("an app-storage copy cannot be a document URI")
         if (storage == StorageMode.DOCUMENT_REFERENCE && !location.startsWith("content://")) p.add("a document reference must be a content:// URI")
         val fileType = BackendType.forFileName(displayName.takeIf { '.' in it } ?: location)

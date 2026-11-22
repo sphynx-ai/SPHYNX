@@ -27,6 +27,14 @@ interface LlamaNative {
      */
     fun generate(handle: Long, prompt: String, maxTokens: Int, temperature: Float, seed: Int, onPiece: (ByteArray) -> Unit): JSONObject
 
+    /** Phase 6 S8: loads the model's multimodal projector (an mmproj GGUF); "" when it loaded, else why not. */
+    fun loadProjector(handle: Long, path: String, threads: Int): String = "picture input is not available in this build"
+
+    /** Phase 6 S8: one answer about [image] (encoded JPEG / PNG); needs [loadProjector] first. Same JSON as [generate]. */
+    fun generateWithImage(handle: Long, prompt: String, image: ByteArray, maxTokens: Int, temperature: Float, seed: Int,
+                          onPiece: (ByteArray) -> Unit): JSONObject =
+        JSONObject().put("ok", false).put("error", "picture input is not available in this build").put("stop", "error")
+
     /** Stops the running answer; safe from any thread. */
     fun cancel(handle: Long)
 
@@ -52,7 +60,8 @@ object LlamaJni : LlamaNative {
     private external fun nativeLoad(path: String, nCtx: Int, threads: Int): Long
     private external fun nativeLoadError(): ByteArray
     private external fun nativeDescribe(handle: Long): ByteArray
-    private external fun nativeGenerate(handle: Long, prompt: ByteArray, maxTokens: Int, temperature: Float, seed: Int, sink: PieceSink?): ByteArray
+    private external fun nativeGenerate(handle: Long, prompt: ByteArray, maxTokens: Int, temperature: Float, seed: Int, sink: PieceSink?, image: ByteArray?): ByteArray
+    private external fun nativeLoadProjector(handle: Long, path: String, threads: Int): ByteArray
     private external fun nativeCancel(handle: Long)
     private external fun nativeFree(handle: Long)
 
@@ -63,7 +72,12 @@ object LlamaJni : LlamaNative {
     override fun loadError(): String = unavailableReason ?: utf8(nativeLoadError())
     override fun describe(handle: Long): JSONObject = JSONObject(utf8(nativeDescribe(handle)))
     override fun generate(handle: Long, prompt: String, maxTokens: Int, temperature: Float, seed: Int, onPiece: (ByteArray) -> Unit): JSONObject =
-        JSONObject(utf8(nativeGenerate(handle, prompt.toByteArray(Charsets.UTF_8), maxTokens, temperature, seed, PieceSink { onPiece(it) })))
+        JSONObject(utf8(nativeGenerate(handle, prompt.toByteArray(Charsets.UTF_8), maxTokens, temperature, seed, PieceSink { onPiece(it) }, null)))
+    override fun loadProjector(handle: Long, path: String, threads: Int): String =
+        if (handle == 0L) "no model loaded" else utf8(nativeLoadProjector(handle, path, threads))
+    override fun generateWithImage(handle: Long, prompt: String, image: ByteArray, maxTokens: Int, temperature: Float, seed: Int,
+                                   onPiece: (ByteArray) -> Unit): JSONObject =
+        JSONObject(utf8(nativeGenerate(handle, prompt.toByteArray(Charsets.UTF_8), maxTokens, temperature, seed, PieceSink { onPiece(it) }, image)))
     override fun cancel(handle: Long) { if (handle != 0L) nativeCancel(handle) }
     override fun free(handle: Long) { if (handle != 0L) nativeFree(handle) }
 }

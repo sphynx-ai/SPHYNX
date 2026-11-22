@@ -37,7 +37,12 @@ The Kotlin side: `inference/LlamaCppBackend` (the shared `InferenceBackend` cont
 
 **Vendored (copied unchanged from the pinned commit):** `include/`, `src/`, `ggml/CMakeLists.txt`, `ggml/cmake/`, `ggml/include/`, and the top-level files of `ggml/src/` and `ggml/src/ggml-cpu/`.
 
-**Left out:** every GPU / NPU backend; the non-ARM CPU code (`ggml-cpu/arch/{x86,powerpc,riscv,s390,wasm,loongarch}`, `spacemit`); tools, tests, examples, `vendor/`, `common/`; llama.cpp's own top-level `CMakeLists.txt` (`CMakeLists.txt` here sets the few variables it would have set).
+**Also vendored for pictures (Phase 6 S8, 2026-11-22, same commit):**
+- `tools/mtmd/`: llama.cpp's multimodal library. It keeps its `CMakeLists.txt`, the sources, `models/` and `debug/mtmd-debug.h`; the tests, sample media, legacy models and command-line tools are left out.
+- `vendor/stb` (image decoding), `vendor/hash`, `vendor/miniaudio` (compiled in, no audio used) and `vendor/sheredom` (only for video, which is off).
+- A GGUF model reads pictures through its separate `mmproj` GGUF file (`inference/MmprojPairing` pairs them by name).
+
+**Left out:** every GPU / NPU backend; the non-ARM CPU code (`ggml-cpu/arch/{x86,powerpc,riscv,s390,wasm,loongarch}`, `spacemit`); tools other than `tools/mtmd`, tests, examples, the rest of `vendor/`, `common/`; llama.cpp's own top-level `CMakeLists.txt` (`CMakeLists.txt` here sets the few variables it would have set).
 
 1. Copy the same folders from a newer tag.
 2. Update the tag and commit here and in `CMakeLists.txt`.

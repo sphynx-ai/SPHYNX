@@ -8,10 +8,12 @@
 
 struct llama_model;
 struct llama_context;
+struct mtmd_context;
 
 struct SphynxLlama {
     llama_model * model = nullptr;
     llama_context * ctx = nullptr;
+    mtmd_context * vision = nullptr;     // Phase 6 S8: the multimodal projector (mmproj), when one is loaded
     std::atomic<bool> cancel{false};
     int nCtx = 0;
     int threads = 0;
@@ -27,6 +29,10 @@ std::string sphynx_llama_info();
 // err says why (llama.cpp's own last warnings and errors included)
 SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads, std::string & err);
 
+// Phase 6 S8: loads the model's multimodal projector (a separate mmproj GGUF) so answers can take a picture; false on
+// failure, and err says why. The text model keeps working without it.
+bool sphynx_llama_load_projector(SphynxLlama * h, const std::string & path, int threads, std::string & err);
+
 // JSON: model (description), sizeBytes, params, nCtx, threads, templated (has a chat format)
 std::string sphynx_llama_describe(const SphynxLlama * h);
 
@@ -34,8 +40,10 @@ std::string sphynx_llama_describe(const SphynxLlama * h);
 // greedy. onPiece gets the answer's bytes as they are made (a UTF-8 character can be split between
 // two pieces). Returns JSON: ok, error, stop ("eos" | "length" | "cancelled" | "error"),
 // promptTokens, promptMs, genTokens, genMs, firstTokenMs.
+// image / imageLen: an encoded picture (JPEG, PNG) for a model with a projector loaded (Phase 6 S8); null = text only.
 std::string sphynx_llama_generate(SphynxLlama * h, const std::string & prompt, int maxTokens, float temperature,
-                                  uint32_t seed, void (*onPiece)(const char * bytes, int n, void * user), void * user);
+                                  uint32_t seed, void (*onPiece)(const char * bytes, int n, void * user), void * user,
+                                  const unsigned char * image = nullptr, size_t imageLen = 0);
 
 // stops the answer that is running (a new answer starts with the flag cleared); safe from any thread
 void sphynx_llama_cancel(SphynxLlama * h);

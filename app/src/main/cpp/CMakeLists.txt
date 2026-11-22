@@ -42,8 +42,19 @@ set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod+fp16" CACHE STRING "" FORCE)
 add_subdirectory(${LLAMA_DIR}/ggml ggml)
 add_subdirectory(${LLAMA_DIR}/src  llama)
 
+# Phase 6 S8: llama.cpp's multimodal library (tools/mtmd) for pictures through a model's mmproj file, with the three
+# header libraries it needs (vendor/: stb_image decodes the picture; hash names it; miniaudio is compiled in but no
+# audio is used). No video (it needs ffmpeg) and no command-line tools.
+set(LLAMA_BUILD_TOOLS OFF)
+set(MTMD_VIDEO OFF CACHE BOOL "" FORCE)
+add_subdirectory(${LLAMA_DIR}/vendor/hash      vendor-hash)
+add_subdirectory(${LLAMA_DIR}/vendor/miniaudio vendor-miniaudio)
+add_subdirectory(${LLAMA_DIR}/vendor/stb       vendor-stb)
+add_subdirectory(${LLAMA_DIR}/vendor/sheredom  vendor-sheredom)
+add_subdirectory(${LLAMA_DIR}/tools/mtmd       mtmd)
+
 add_library(sphynx_llama SHARED llama_jni.cpp llama_engine.cpp)
 target_compile_definitions(sphynx_llama PRIVATE LLAMA_PIN_TAG="${LLAMA_PIN_TAG}" LLAMA_PIN_COMMIT="${LLAMA_PIN_COMMIT}")
-target_link_libraries(sphynx_llama PRIVATE llama ggml log android)
+target_link_libraries(sphynx_llama PRIVATE mtmd llama ggml log android)
 # smaller library: drop unused code; 16 KB pages (Android 15+ devices)
 target_link_options(sphynx_llama PRIVATE -Wl,--gc-sections -Wl,-z,max-page-size=16384)
