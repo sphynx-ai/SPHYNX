@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-22", Kind.IMPROVED, "Development: the design decision for Phase 6",
+            "Behind the scenes: the written decision for Phase 6. The strategic and the tactical job are each given a model, " +
+                "and that model runs on LiteRT-LM or GGUF. One part decides which model does which job, checks what it can " +
+                "do (pictures or text only), and does not reload a model that crashed the app. It is waiting for your OK. " +
+                "Nothing in the app changes.",
+            pr = 84, needsDeviceCheck = true, version = "37.94"),
         Entry("2026-11-22", Kind.IMPROVED, "Phase 5 finished; Phase 6 starts",
             "Your phone test of 37.91 and 37.92 is recorded and Phase 5 (reliability on Android) is closed, as you decided. " +
                 "Phase 6 starts with the plan you approved: every model through one common part, any model for either " +
