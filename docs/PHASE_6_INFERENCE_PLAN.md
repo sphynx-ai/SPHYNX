@@ -1,6 +1,6 @@
 # Phase 6 — Model-Agnostic Unified Inference Architecture: audit and execution plan
 
-**Status:** **APPROVED by the owner 2026-11-22** (S1–S7, in order; S8 added by the owner's answer). IN PROGRESS.
+**Status:** **APPROVED by the owner 2026-11-22** (S1–S7, in order; S8 added by the owner's answer). **All steps S1–S8 built (v37.94–v38.04, each CI-checked as its own PR); the owner's phone test of the whole phase is pending** (checklist in Section 8).
 **Date:** 2026-11-21, Claude Code, by reading `sphynx-test-branch` (v37.91). No phone was used for this plan.
 
 ## 1. Role for this phase (roadmap 3.1)
@@ -80,3 +80,16 @@ The questions as first asked:
 1. **Approve this plan** (S1–S7, in this order).
 2. **S7:** should a GGUF model be allowed to serve a role in Phase 6 (minimal picker on the Model page), or should that wait for the Phase 9 Model Lab?
 3. **Phase 5 close:** after the four resource snapshots (v37.91), may Phase 5 be marked complete with the compatibility matrix holding the owner's phone only?
+
+## 8. Phone checklist for the whole phase (owner tests it all at once)
+
+After `git pull` on `sphynx-test-branch` and a rebuild (the native part is bigger since v38.04, so the first build takes longer):
+
+1. **Play as before (S2–S4):** a 5v5 with Gemma and the small model. Draft, plan and fight advice should be as before. Then Model page > speed test.
+2. **Low memory and heat (S5):**
+   - "Only warn me": models never change.
+   - "Step down gently" with a smaller model in the folder or the GGUF library: during a long match the panel says "… job on <model> (smaller) for now", and your model comes back after 5 quiet minutes.
+3. **Crash on load (S6):** if a model ever stops the app while loading, the next start does not load it again by itself, and the Model page says so. Load it by hand to try again.
+4. **Which model does which job (S7):** Model page, give the tactical job a GGUF model, play a fight, then switch back.
+5. **GGUF pictures (S8):** add a vision GGUF model and its mmproj file (for example a Gemma 3 4B Q4_K_M and `mmproj-gemma-3-4b-it-f16.gguf`) to the GGUF library, then give it the strategic job. The job should show "reads pictures", and the draft or loading-card reading should work. Without the mmproj file the model reads text only.
+6. **Logs:** no new ERROR lines except expected ones (for example "Pressure …" lines in step-down mode).

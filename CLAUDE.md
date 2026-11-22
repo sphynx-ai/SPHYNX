@@ -195,6 +195,9 @@ Android app (Kotlin, package `com.sphynx`, app id `com.sphynx`). The canonical r
 - The owner builds on the phone (Code on the Go) from `sphynx-test-branch`. Work goes in draft PRs into that branch.
 - Merge a PR as soon as CI ("Android build") passes; then start the next PR in the queue.
 - After the queue is merged, post the phone steps (`git pull`, rebuild) and a device-test checklist.
+- Continuous phases (owner, 2026-11-22): build all steps of an approved phase plan back to back, each as its own PR
+  merged when CI passes, and post one phone checklist at the end of the phase, so the owner tests it all at once. This
+  applies to every later phase too. A new phase still starts with its plan for the owner's OK (section 11).
 - There is no Android SDK in the cloud container: CI is the build check. Add unit tests for pure logic.
 - Every PR adds a What's new entry (`core/WhatsNew.kt`, `needsDeviceCheck = true` until the owner tests it on the phone).
 - Every PR raises the app version by one step (owner, 2026-11-14): `sphynxVersion` in `app/build.gradle.kts`
