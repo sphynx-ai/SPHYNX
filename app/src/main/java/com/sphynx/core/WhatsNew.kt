@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-22", Kind.IMPROVED, "Foundation: LiteRT-LM on the shared model contract",
+            "Behind the scenes, for Phase 6: Gemma and the small model (LiteRT-LM) can now also run through the same " +
+                "common contract the GGUF engine already uses, and one test kit checks both engines the same way. Nothing " +
+                "uses the new path yet, so the models load and answer exactly as before.",
+            pr = 85, needsDeviceCheck = true, version = "37.95"),
         Entry("2026-11-22", Kind.IMPROVED, "Development: the design decision for Phase 6",
             "Behind the scenes: the written decision for Phase 6. The strategic and the tactical job are each given a model, " +
                 "and that model runs on LiteRT-LM or GGUF. One part decides which model does which job, checks what it can " +
