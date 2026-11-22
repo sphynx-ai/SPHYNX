@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-22", Kind.IMPROVED, "Foundation: the pages read the models through the same part",
+            "Behind the scenes, for Phase 6: the Play, Model and Performance pages now show whether each job's model is " +
+                "loaded, where it runs and how fast it answered through the new part that decides which model does which job. " +
+                "With your usual models the words are the same as before. A test now keeps the rest of the app from going " +
+                "around it.",
+            pr = 91, needsDeviceCheck = true, version = "38.00"),
         Entry("2026-11-22", Kind.IMPROVED, "Foundation: every model question goes through one part",
             "Behind the scenes, for Phase 6: loading Gemma and the small model, and every question the app asks them (draft, " +
                 "plan, combo, fight advice, the speed test, the readiness test), now goes through the new part that decides " +
