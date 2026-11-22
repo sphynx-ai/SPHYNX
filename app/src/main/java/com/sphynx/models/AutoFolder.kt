@@ -228,6 +228,7 @@ object AutoFolder {
     fun scan(ctx: Context, done: ((String) -> Unit)? = null) {
         if (busy) { done?.invoke("Already scanning"); return }
         busy = true
+        if (done != null) ModelHooks.loadByOwner()      // a scan by hand: a model that crashed may be tried again (Phase 6 S6)
         val app = ctx.applicationContext
         Thread {
             val found = ArrayList<String>()

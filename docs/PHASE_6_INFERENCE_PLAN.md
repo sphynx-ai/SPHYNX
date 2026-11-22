@@ -59,7 +59,7 @@ Every step adds contract or unit tests. The phone check after S4 and S7 is a 5v5
 - [ ] No caller outside the router names a runtime or a slot; an `ArchitectureRulesTest` rule enforces it (S4). **Done in code (v37.99–v38.00):** `ai/Roles` over `RoleRouter`; `RolesOnlyTest` enforces it.
 - [ ] Role, model identity and runtime are independent: any compatible model can serve either role (S3, S7).
 - [ ] Capability negotiation is explicit: an unsupported request is refused with a reason, not silently degraded (S3, S4). **S3 in code (v37.97):** `inference/roles/RoleRouter` (`RoleRouterTest`); callers move in S4.
-- [ ] A model that crashed the app on load is not reloaded by itself (S6).
+- [ ] A model that crashed the app on load is not reloaded by itself (S6). **Done in code (v38.02):** `inference/roles/LoadSentinel` (`LoadSentinelTest`), used by `ai/Roles.load`.
 - [ ] Play is unchanged with the default assignment: golden tests, plus the owner's phone test.
 
 ## 6. Risks

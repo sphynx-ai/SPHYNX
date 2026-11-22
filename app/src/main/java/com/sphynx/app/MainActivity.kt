@@ -2989,6 +2989,7 @@ class MainActivity : Activity() {
         switch("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it; reloadGemmaForGpu() }
         switch("Small tactical model in fights", Cfg.tacticalLlmOn) { on ->
             Cfg.tacticalLlmOn = on
+            com.sphynx.ai.Roles.loadByOwner()   // a button: a model that crashed may be tried again (Phase 6 S6)
             if (on) ModelManager.loadTactical(this) { err -> runOnUiThread { toast(err ?: "Small tactical model loaded") } }
             else ModelManager.unloadTactical()
         }
@@ -3499,6 +3500,7 @@ class MainActivity : Activity() {
     private fun reloadGemmaForGpu() {
         if (!com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.STRATEGIC)) return
         toast("Reloading the model on the " + (if (Cfg.useGpu) "GPU" else "CPU") + "…")
+        com.sphynx.ai.Roles.loadByOwner()   // a button: a model that crashed may be tried again (Phase 6 S6)
         ModelManager.load(this) { err -> runOnUiThread { toast(err ?: ("Model loaded: " + com.sphynx.ai.Roles.state(com.sphynx.ai.Roles.STRATEGIC))) } }
     }
 
@@ -3589,6 +3591,7 @@ class MainActivity : Activity() {
         val p3Note = cardNote(p3)
         val load = inCard(p3, "Load the strategic model (Gemma)") {
             toast("Loading…")
+            com.sphynx.ai.Roles.loadByOwner()   // a button: a model that crashed may be tried again (Phase 6 S6)
             ModelManager.load(this) { err -> runOnUiThread { toast(err ?: "Model loaded") } }
         }
         inCard(p3, "Get Gemma 4 E2B (2.6 GB)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.MODEL_PAGE))) }

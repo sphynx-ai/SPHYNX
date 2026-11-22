@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-22", Kind.IMPROVED, "A model that crashed the app is not loaded again by itself",
+            "If the app stops while a model is loading (for example the GPU driver crashes on a big model), the next start " +
+                "does not load that model again by itself, so the app cannot crash in a loop. The Model page and the logs say " +
+                "which model it was; loading it by hand (a Load button, or Scan the folder) tries it again.",
+            pr = 93, needsDeviceCheck = true, version = "38.02"),
         Entry("2026-11-22", Kind.NEW, "Step down gently now switches to a smaller model",
             "Your idea is in: with Setup > Low memory and heat > Step down gently, when the phone gets warm or low on memory " +
                 "a job's model is replaced by the next smaller model you have (LiteRT-LM files in the app or in " +

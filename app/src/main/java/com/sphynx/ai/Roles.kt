@@ -35,7 +35,27 @@ object Roles {
     val TACTICAL = ModelRole.TACTICAL
 
     @Volatile private var appCtx: Context? = null
-    fun init(ctx: Context) { appCtx = ctx.applicationContext }
+    @Volatile private var sentinelChecked = false
+    fun init(ctx: Context) {
+        appCtx = ctx.applicationContext
+        if (!sentinelChecked) {
+            sentinelChecked = true
+            for ((role, name) in sentinel.checkAtStart())
+                Diag.error("$name was loading for the ${role.name.lowercase()} job when the app stopped: it is not loaded by itself again (load it by hand to try again)")
+        }
+    }
+
+    // Phase 6 S6: a model that was loading when the app stopped is not loaded again by itself (owner, 2026-11-22)
+    private val sentinel = com.sphynx.inference.roles.LoadSentinel(object : com.sphynx.inference.roles.LoadSentinel.Store {
+        override fun get(key: String) = com.sphynx.core.Cfg.raw(key)
+        override fun setNow(key: String, value: String?) = com.sphynx.core.Cfg.setRawNow(key, value)
+    })
+    /** The next load is the owner's own (a button), so a model suspected of a crash may be tried again. */
+    @Volatile private var byOwner = false
+    fun loadByOwner() { byOwner = true; sentinel.forgiveAll() }
+    /** Why [role] has no model although one is set, after a crash while loading (null = no such problem). */
+    fun crashNote(role: ModelRole): String? = sentinel.suspected(role)?.let {
+        "$it stopped the app while loading last time, so it is not loaded by itself; load it by hand to try again" }
 
     private val strategicLite by lazy { LiteRtLmBackend(LlmSlotPort(GemmaEngine) { appCtx }) }
     private val tacticalLite by lazy { LiteRtLmBackend(LlmSlotPort(TacticalLlmEngine) { appCtx }) }
@@ -63,7 +83,8 @@ object Roles {
     /** Does the role's model read pictures? */
     fun images(role: ModelRole): Boolean = if (onSlot(role)) slot(role).visionOk else router.capabilities(role).images
     /** The status words ("ready on GPU", "loading...", "not loaded"...). */
-    fun state(role: ModelRole): String = if (onSlot(role)) slot(role).state else router.status(role).describe()
+    fun state(role: ModelRole): String = (if (!ready(role)) crashNote(role) else null)
+        ?: if (onSlot(role)) slot(role).state else router.status(role).describe()
     /** Where the model runs ("GPU", "CPU, text only", "-" when not loaded). */
     fun where(role: ModelRole): String = if (onSlot(role)) slot(role).backendName
         else router.status(role).takeIf { it.ready }?.accelerator?.name ?: "-"
@@ -90,8 +111,11 @@ object Roles {
 
     /** Assigns and loads [a]; null when it loaded, else why not. */
     fun load(a: Assignment): String? {
+        val owner = byOwner.also { byOwner = false }
+        sentinel.refusal(a.role, a.model.displayName, owner)?.let { e -> Diag.info("Not loaded: " + e.message); return e.message }
         router.assign(a)?.let { return it }
-        val st = router.load(a.role)
+        sentinel.loading(a.role, a.model.displayName)
+        val st = try { router.load(a.role) } finally { sentinel.loaded(a.role) }
         if (st.ready && a.backend == BackendType.LITERT_LM && a.model.wantsVision)
             com.sphynx.core.Cfg.setRaw("vision_" + a.model.displayName, if (st.visionOk) "1" else "0")
         return if (st.ready) null else (st.error?.message ?: "not loaded (${st.state.label})")
