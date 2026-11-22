@@ -18,6 +18,7 @@ class MainApplication : Application() {
         PanelTheme.apply()
         com.sphynx.core.SessionRecorder.init(this)
         com.sphynx.vision.HeroVerifier.init(this)
+        com.sphynx.ai.Roles.init(this)      // Phase 6: the role router's runtimes need the app context
         // your rule change: Retribution on buffs at 20% (was 35%) - an old saved 35 moves too
         if (Cfg.raw("mig_retri20") == null) { if (Cfg.retriCreepPct == 35) Cfg.retriCreepPct = 20; Cfg.setRaw("mig_retri20", "1") }
         // v36.66: buttons wrongly marked as missing by misfires (Alpha's ultimate before level 4) are forgotten

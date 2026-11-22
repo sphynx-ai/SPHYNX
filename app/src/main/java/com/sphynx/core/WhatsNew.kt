@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-22", Kind.IMPROVED, "Foundation: every model question goes through one part",
+            "Behind the scenes, for Phase 6: loading Gemma and the small model, and every question the app asks them (draft, " +
+                "plan, combo, fight advice, the speed test, the readiness test), now goes through the new part that decides " +
+                "which model does which job. With your usual models it is the same engine, the same settings and the same " +
+                "answers. Please play a 5v5 and run the model speed test to confirm.",
+            pr = 90, needsDeviceCheck = true, version = "37.99"),
         Entry("2026-11-22", Kind.IMPROVED, "Foundation: stepping down to a smaller model",
             "Behind the scenes, your idea for Step down gently: when the phone is low on memory or hot, instead of only " +
                 "unloading a model the app will switch that job to the next smaller model you have. The strategic job only " +

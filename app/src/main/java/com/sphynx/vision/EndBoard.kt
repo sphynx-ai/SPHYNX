@@ -109,7 +109,7 @@ object EndBoard {
         }
         val name = com.sphynx.game.PlayerName.get()
         // your row: by your name (Gemma), else the highlighted one
-        val row = if (nameRow >= 0) nameRow else if (name.isBlank() || !com.sphynx.ai.GemmaEngine.visionOk || nameChecked) highlightRow else -1
+        val row = if (nameRow >= 0) nameRow else if (name.isBlank() || !com.sphynx.ai.Roles.images(com.sphynx.ai.Roles.STRATEGIC) || nameChecked) highlightRow else -1
         if (row < 0) { status = if (highlightRow < 0) "your row not found" else "checking your name…"; return }
         val p = prints[row] ?: return
         val m = heroOf(p) ?: splashHero?.let { it to 1f }

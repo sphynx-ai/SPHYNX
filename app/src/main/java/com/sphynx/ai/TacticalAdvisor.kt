@@ -38,7 +38,7 @@ object TacticalAdvisor {
     // the notebook's report (tactical_llm_info.json): a model that only learned to repeat the most
     // common answer gives no advice (ModelQuality)
     val weakReason: String? get() = com.sphynx.learning.ModelQuality.weakReason(Cfg.raw("tactical_llm_info"))
-    val active: Boolean get() = Cfg.tacticalLlmOn && TacticalLlmEngine.ready && weakReason == null
+    val active: Boolean get() = Cfg.tacticalLlmOn && Roles.ready(Roles.TACTICAL) && weakReason == null
 
     // The moment in a few short lines (the fine-tuning notebook writes the same format)
     // ready: skills ready (null = yours; a live match passes the watched player's)
@@ -94,7 +94,7 @@ object TacticalAdvisor {
         AiRuntime.scope.launch {
             try {
                 val t0 = System.currentTimeMillis()
-                val r = TacticalLlmEngine.ask(q, null, 0.0, purpose = "fight advice")
+                val r = Roles.ask(Roles.TACTICAL, q, null, 0.0, purpose = "fight advice")
                 lastMs = System.currentTimeMillis() - t0
                 asked++
                 lastAnswer = r.take(40).replace('\n', ' ')
@@ -147,7 +147,7 @@ object TacticalAdvisor {
 
     fun text(): String {
         if (!Cfg.tacticalLlmOn) return "Small tactical model: off"
-        if (!TacticalLlmEngine.ready) return "Small tactical model: ${TacticalLlmEngine.state}"
+        if (!Roles.ready(Roles.TACTICAL)) return "Small tactical model: ${Roles.state(Roles.TACTICAL)}"
         weakReason?.let { return "Small tactical model: TOO WEAK, NOT USED ($it) - retrain with more varied fights" }
         return "Small tactical model (${com.sphynx.models.ModelManager.tacticalName()}): asked $asked, used $used, " +
             "rejected by the checks $rejected; last answer \"$lastAnswer\" in $lastMs ms\n   $lastNote"
