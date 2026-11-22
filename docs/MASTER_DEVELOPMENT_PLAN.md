@@ -74,7 +74,7 @@ The phase sequence below is controlling. Issue #1, Issue #37, and the MLBB-speci
 | 9 | Model Lab and Model Management | Deliver model registry, metadata, role assignment, configuration profiles, loading status, and management | **APPROVED / PLANNED** |
 | 10 | Model Benchmarking and Evaluation | Establish repeatable Strategic and Tactical evaluations for quality, latency, reliability, memory, thermal behavior, and battery impact | **APPROVED / PLANNED** |
 | 11 | Model-Pairing and Device-Aware Recommendations | Compare model pairs and recommend configurations based on device, backend, workload, quality, and resource trade-offs | **APPROVED / PLANNED** |
-| 12 | Strategic/Tactical Intelligence and Coordination | Deliver coordinated reasoning, shared context, task arbitration, confidence handling, and staged tactical-autonomy readiness; includes reusable target-state, tracking, and combat-decision logic from Issue #2 | **APPROVED / PLANNED**. Proposed submilestone **12.1 — Unified Gaming Coach and Real-Time Companion Intelligence** (Section 6.1, REQUIRES OWNER APPROVAL) |
+| 12 | Strategic/Tactical Intelligence and Coordination | Deliver coordinated reasoning, shared context, task arbitration, confidence handling, and staged tactical-autonomy readiness; includes reusable target-state, tracking, and combat-decision logic from Issue #2 | **APPROVED / PLANNED**. Submilestone **12.1 — Unified Gaming Coach and Real-Time Companion Intelligence** (Section 6.1) APPROVED / PLANNED 2026-11-22 |
 | 13 | MLBB Companion and Game-Specific Intelligence | Complete MLBB integration and companion capabilities; incorporates Issue #37 and the MLBB-specific combat-perception integration from historical Issue #2 | **APPROVED / PLANNED; EXISTING WORK REQUIRES AUDIT** |
 | 14 | Universal MOBA Expansion and Additional Game Adapters | Prove adapter contract beyond MLBB and add further game integrations incrementally | **APPROVED / PLANNED** |
 | 15 | Advanced Game Intelligence | Expand visual, spatial, temporal, contextual, predictive, adaptive, and evidence-driven intelligence | **APPROVED / PLANNED** |
@@ -519,7 +519,7 @@ The owner has authorized implementation of all five work packages. They are comm
 
 ### 6.1 Phase 12.1 — Unified Gaming Coach and Real-Time Companion Intelligence (coordinating submilestone)
 
-**Status: PROPOSED — REQUIRES OWNER APPROVAL** (owner-requested 2026-11-22). Once the owner approves this roadmap change, the status becomes **APPROVED / PLANNED**. Implementation starts only when Phase 12 is reached and its dependencies are met. This entry authorizes no implementation now, assigns no model identities, and approves no new or expanded autonomous capability.
+**Status: APPROVED / PLANNED** (owner-requested and owner-approved 2026-11-22). Implementation starts only when Phase 12 is reached and its dependencies are met. This entry authorizes no implementation now, assigns no model identities, and approves no new or expanded autonomous capability.
 
 **Placement:** Phase 12 (primary). Supporting contributions are listed under Phases 10, 11, 13, 14, 15 and 16 below. Nothing in this submilestone moves work into Phases 1–9. In particular, Phase 6 (the current phase) and Phases 7–9 continue exactly as approved.
 

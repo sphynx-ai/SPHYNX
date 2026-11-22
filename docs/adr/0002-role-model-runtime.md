@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** 2026-11-22. This step (S1) only needs the owner's acceptance; S2–S8 build it |
+| **Status** | **Accepted** by the owner on 2026-11-22 (proposed 2026-11-22) |
 | **Phase** | 6 — Model-Agnostic Unified Inference Architecture, step S1 (`docs/PHASE_6_INFERENCE_PLAN.md`, approved 2026-11-22) |
 | **Builds on** | ADR 0001 (layers): `inference` is L0 platform and may use nothing above it |
 | **Enforced by** | `ArchitectureRulesTest` (a new rule from S4: outside the router, no code names `GemmaEngine`, `TacticalLlmEngine` or a backend class) |
