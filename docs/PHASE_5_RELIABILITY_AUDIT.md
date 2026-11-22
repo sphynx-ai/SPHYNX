@@ -49,7 +49,7 @@ Severity: **H** can lose the user's session or data, or hide why the app failed;
 
 | Device | Android | SoC / GPU | ABI | Capture | Overlay | LiteRT-LM GPU | GGUF CPU | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| POCO X6 Pro (owner) | UNKNOWN (to be read by the device profile) | MediaTek Dimensity 8300-Ultra / Mali-G615 | arm64-v8a | Works | Works | Works (Gemma 4 E2B) | Works (Qwen 0.5B 25.5 tok/s, Llama 1B 13.4 tok/s) | Owner phone tests; roadmap 9.1 |
+| POCO X6 Pro (owner; model 2311DRK48G) | **16 (API 36)**, from the device profile 2026-11-22 | MediaTek Dimensity 8300-Ultra (MT6897) / Mali-G615 MC6, OpenGL ES 3.2; 11.1 GB RAM; 8 cores up to 3.35 GHz; 3 NPU/DSP driver libraries | arm64-v8a | Works | Works | Works (Gemma 4 E2B) | Works (Qwen 0.5B 25.5 tok/s, Llama 1B 13.4 tok/s) | Owner phone tests; roadmap 9.1 |
 | Android 10 or older | — | — | — | Not supported (minSdk 30) | — | — | — | `app/build.gradle.kts` |
 | 32-bit ARM / x86 phones | — | — | armeabi-v7a, x86 | Not supported (arm64-v8a only) | — | — | Refused with a reason | `abiFilters`, `LlamaCpu` |
 | ARMv8.0 cores (Cortex-A53/A73) | ≥ 11 | — | arm64-v8a | Expected | Expected | Unknown | Refused with a reason (no dot product / fp16) | `LlamaCpu` |
@@ -82,7 +82,7 @@ Each row moves to "Works" only with a phone test or a recording from that phone.
 - [x] Permissions and background restrictions are explained and checked (P6, P8; v37.83, v37.84, phone-tested 2026-11-21).
 - [x] Start-up time measured on the phone: under 500 ms in `Application.onCreate` (P7; owner 2026-11-21). The calibration restore stays on the main thread by owner decision, because it is fast enough and must finish before calibration is read.
 - [x] Lifecycle transitions and recovery paths tested on the phone (P9): the owner reported "all test works fine" on 2026-11-21, not itemised per check, so this is REPORTED. The emulator CI has run L1/L11, L5 and L10 (part) on every PR since v37.90; that is VERIFIED by CI.
-- [~] Resource baselines measured on the owner's phone (idle, capture on, Gemma loaded, GGUF loaded), with the tool from v37.91 (Debug data > "Save a resource snapshot now"). **REPORTED** by the owner on 2026-11-22 ("all test are good"). On that date the `diagnostics-baseline-*.json` files were **not yet on `recordings-for-debugging`**: the latest upload there was 2026-11-14. The numbers go into this file when they are uploaded.
+- [~] Resource baselines measured on the owner's phone (idle, capture on, Gemma loaded, GGUF loaded), with the tool from v37.91. **One of four VERIFIED** (Section 9, uploaded 2026-11-22 as `diagnostics-baseline-20261123-032846.json` on `recordings-for-debugging`): the strategic and tactical models loaded. Still to measure: nothing loaded, screen capture on, a GGUF model loaded.
 
 ## 7. Owner decisions (2026-11-21)
 
@@ -113,3 +113,15 @@ There are no instrumented tests yet, and CI runs no emulator. Until it does, the
 | L12 | Reinstall | Uninstall and install the APK again | Calibration comes back from the `Output` backups |
 
 **Automated (v37.90, owner-approved 2026-11-21):** the workflow `Lifecycle tests (emulator)` (`.github/workflows/android-emulator.yml`, Android 12 x86_64) runs `app/src/androidTest/.../LifecycleTest` on every PR: L1/L11 (each start writes the device profile, the start-up time and the last close), L5 (the screen recreated twice), and the part of L10 that needs no process kill (background and back). L2–L4 need screen capture or the accessibility service, and stay phone checks. "Android build" stays the merge check; the emulator workflow reports next to it.
+
+## 9. Resource baselines (owner's phone)
+
+From Debug data > "Save a resource snapshot now" (v37.91). One row per uploaded snapshot.
+
+| Date (phone time) | App | State | Phone RAM free / total | App RAM (Java / native) | App CPU | Heat (headroom) | Battery | File |
+|---|---|---|---|---|---|---|---|---|
+| 2026-11-23 03:28 | 37.92 | strategic + tactical models loaded, capture off | 3,236 / 11,323 MB (not low) | 2,700 MB (9 / 948 MB) | 0 % | no throttling (0.76) | 38.2 °C, 96 %, not charging | `diagnostics-baseline-20261123-032846.json` |
+
+**Reading:** with both LiteRT-LM models loaded and nothing running, the app uses 2.7 GB, and 3.2 GB of the phone's 11.1 GB stays free before the game starts. That matches the Phase 5 plan's warning that two models plus MLBB (about 2–4 GB) leave little room. The "Step down gently" setting (v37.89) exists for this case.
+
+**Still to measure:** nothing loaded, screen capture on, and a GGUF model loaded. Ideally one more with the game running.
