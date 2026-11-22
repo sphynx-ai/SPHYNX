@@ -20,6 +20,8 @@ object ModelHooks {
     @Volatile var tacticalLoading: () -> Boolean = { false }
     @Volatile var loadTactical: (Context, String, (String?) -> Unit) -> Unit = { _, _, done -> done("not available") }
     @Volatile var unloadTactical: () -> Unit = {}
+    /** The owner asked for this load (a button, a scan by hand): a model suspected of a crash may be tried again (Phase 6 S6). */
+    @Volatile var loadByOwner: () -> Unit = {}
 
     // ---- the tactical networks (learning: PolicyNet, FightNet) ----
     @Volatile var policyKey: (String) -> String = { it.lowercase() }

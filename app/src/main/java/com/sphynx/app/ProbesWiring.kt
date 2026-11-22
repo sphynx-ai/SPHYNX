@@ -87,6 +87,7 @@ object ProbesWiring {
         h.tacticalLoading = { roles.loading(roles.TACTICAL) }
         h.loadTactical = { ctx, path, done -> roles.init(ctx); ai.scope.launch { done(roles.loadLiteRt(roles.TACTICAL, path, preferGpu = false)) } }
         h.unloadTactical = { ai.scope.launch { roles.unload(roles.TACTICAL) } }
+        h.loadByOwner = { roles.loadByOwner() }
 
         // Phase 5 (P5): the models the low-memory / heat policy may set aside and bring back (core.PressurePolicy)
         val pp = com.sphynx.core.PressurePolicy

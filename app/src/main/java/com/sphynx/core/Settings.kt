@@ -297,6 +297,10 @@ object Cfg {
     fun setRaw(k: String, v: String?) {
         if (v == null) prefs.edit().remove(k).apply() else put(k, v)
     }
+    /** Like setRaw, but on disk before it returns (Phase 6 load sentinel: a crash right after must not lose it). */
+    fun setRawNow(k: String, v: String?) {
+        if (v == null) prefs.edit().remove(k).commit() else prefs.edit().putString(k, v).commit()
+    }
 
     // ---- for the learned-data backup (OnlineBackup) ----
     fun all(): Map<String, *> = prefs.all
