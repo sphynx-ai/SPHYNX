@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-22", Kind.IMPROVED, "Phase 6 is built: one phone test for all of it",
+            "Every step of Phase 6 is in this version: every model goes through one common part, you choose which model " +
+                "does which job (LiteRT-LM or GGUF, GGUF with pictures through its mmproj file), Step down gently switches to " +
+                "a smaller model, and a model that crashed the app is not loaded again by itself. The checklist to test it " +
+                "all at once is in the Phase 6 plan. From now on each phase is built completely before the phone test.",
+            pr = 96, needsDeviceCheck = true, version = "38.05"),
         Entry("2026-11-22", Kind.NEW, "GGUF models can read pictures (with their mmproj file)",
             "A GGUF model can now read pictures, so it can do the strategic job fully (draft, loading cards, end screen). " +
                 "Add the model and its mmproj file (the picture part, e.g. mmproj-gemma-3-4b-it-f16.gguf) to the GGUF library; " +
