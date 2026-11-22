@@ -92,10 +92,76 @@ object Roles {
     fun load(a: Assignment): String? {
         router.assign(a)?.let { return it }
         val st = router.load(a.role)
+        if (st.ready && a.backend == BackendType.LITERT_LM && a.model.wantsVision)
+            com.sphynx.core.Cfg.setRaw("vision_" + a.model.displayName, if (st.visionOk) "1" else "0")
         return if (st.ready) null else (st.error?.message ?: "not loaded (${st.state.label})")
     }
 
     fun unload(role: ModelRole) = router.unload(role)
+
+    // ---- stepping down to a smaller model (owner decision 2026-11-22; only in "Step down gently", Phase 5 P5) ----
+
+    private val original = ConcurrentHashMap<ModelRole, Assignment>()
+    /** What a stepped-down role runs now, for the floating panel ("" when nothing was stepped down). */
+    @Volatile var stepDownLine = ""; private set
+
+    /** Does this model read pictures? Known from an earlier load on this phone, else from its name (Gemma 3n / 4). */
+    fun readsPictures(c: ModelConfiguration): Boolean {
+        if (c.backend != BackendType.LITERT_LM) return false            // GGUF pictures need an mmproj file (S8)
+        com.sphynx.core.Cfg.raw("vision_" + c.displayName)?.let { return it == "1" }
+        val n = c.displayName.lowercase()
+        return n.contains("3n") || n.contains("gemma-4") || n.contains("gemma4") || n.contains("gemma_4") || c.id.startsWith("litertlm:strategic")
+    }
+
+    /** Every model on the phone that a role could step down to (LiteRT-LM files and the GGUF library). */
+    fun candidates(role: ModelRole): List<ModelConfiguration> {
+        val c = appCtx ?: return emptyList()
+        val out = ArrayList<ModelConfiguration>()
+        val lite = ArrayList<File>()
+        lite.add(com.sphynx.models.ModelManager.modelFile(c)); lite.add(com.sphynx.models.ModelManager.tacticalFile(c))
+        com.sphynx.core.Storage.dir(com.sphynx.core.StorageLayout.INPUT)?.listFiles()
+            ?.filter { it.isFile && (it.name.endsWith(".litertlm", true) || it.name.endsWith(".task", true)) }?.let { lite.addAll(it) }
+        for (f in lite.distinctBy { it.absolutePath }) if (f.isFile) out.add(ModelConfiguration(
+            id = "litertlm:" + f.absolutePath, displayName = f.name, backend = BackendType.LITERT_LM, location = f.absolutePath,
+            sizeBytes = f.length(),
+            accelerators = if (role == ModelRole.STRATEGIC && com.sphynx.core.Cfg.useGpu) listOf(Accelerator.GPU, Accelerator.CPU) else listOf(Accelerator.CPU)))
+        try { com.sphynx.models.GgufLibrary.models(c).forEach { out.add(com.sphynx.models.GgufLibrary.config(it)) } } catch (t: Throwable) { }
+        return out
+    }
+
+    /**
+     * Frees [role]'s model and, when a smaller compatible model is on the phone, loads that one instead (strategic: only
+     * one that reads pictures). The owner's model is kept to come back in [restore].
+     */
+    fun stepDown(role: ModelRole) {
+        val now = router.assignment(role) ?: return
+        original.putIfAbsent(role, now)
+        router.unload(role)
+        val pick = com.sphynx.inference.roles.StepDown.choose(role, now.model, candidates(role), ::readsPictures) { cand ->
+            router.problemWith(Assignment(role, cand)) }
+        if (pick == null) {
+            Diag.info("Pressure: the ${role.name.lowercase()} model is unloaded (no smaller model to step down to)")
+            return
+        }
+        val cfg = com.sphynx.inference.roles.StepDown.configFor(role, pick, readsPictures(pick))
+        val err = load(Assignment(role, cfg))
+        if (err == null && role == ModelRole.STRATEGIC && !images(role)) {
+            Diag.info("Pressure: ${pick.displayName} loaded without pictures, so the strategic job stays unloaded")
+            router.unload(role)
+            return
+        }
+        stepDownLine = if (err == null) com.sphynx.inference.roles.StepDown.notice(role, pick) else ""
+        Diag.info(if (err == null) "Pressure: ${role.name.lowercase()} job stepped down to ${pick.displayName}" else "Pressure: stepping down to ${pick.displayName} failed: $err")
+    }
+
+    /** Brings back the owner's model after the pressure is over (the policy's cool-down, never in a fight). */
+    fun restore(role: ModelRole): Boolean {
+        val back = original.remove(role) ?: return false
+        if (original.isEmpty()) stepDownLine = ""
+        val err = load(back)
+        Diag.info(if (err == null) "Pressure over: ${back.model.displayName} is back for the ${role.name.lowercase()} job" else "Pressure over: ${back.model.displayName} did not load again: $err")
+        return true
+    }
 
     // ---- asking ----
 
