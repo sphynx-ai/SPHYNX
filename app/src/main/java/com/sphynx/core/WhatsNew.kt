@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-22", Kind.IMPROVED, "Foundation: stepping down to a smaller model",
+            "Behind the scenes, your idea for Step down gently: when the phone is low on memory or hot, instead of only " +
+                "unloading a model the app will switch that job to the next smaller model you have. The strategic job only " +
+                "takes a model that also reads pictures, and your own model comes back when the phone has recovered. This " +
+                "version adds the choosing rule; it starts working when the low-memory policy goes through the new model " +
+                "part (Phase 6, step S5). Nothing in play changes yet.",
+            pr = 89, needsDeviceCheck = true, version = "37.98"),
         Entry("2026-11-22", Kind.IMPROVED, "Foundation: one part decides which model does which job",
             "Behind the scenes, for Phase 6: a new part holds which model does the strategic job and which does the " +
                 "tactical one, on LiteRT-LM or GGUF. It knows what each model can do (pictures or text only) and refuses a " +
