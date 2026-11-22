@@ -121,7 +121,12 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
     // Asks Gemma one question, optionally with a screenshot. Returns the text reply.
     // v37.01 workload reduction: fast sampler (topK=16, topP=0.85), no-thinking instruction, and 512px JPEG at quality 70.
     // purpose: what asked, only for the model speed recorder (draft, plan, combo, fight advice ...)
-    suspend fun ask(prompt: String, image: Bitmap? = null, temperature: Double = 0.15, purpose: String = "other"): String = withContext(dispatcher) {
+    suspend fun ask(prompt: String, image: Bitmap? = null, temperature: Double = 0.15, purpose: String = "other"): String =
+        askJpeg(prompt, image, null, temperature, purpose)
+
+    // Phase 6 (S2): the same question with the picture already as JPEG bytes (the shared InferenceRequest carries bytes).
+    // Exactly one of image / jpeg is used; the reply, sampler and speed record are the same as ask().
+    suspend fun askJpeg(prompt: String, image: Bitmap?, jpegBytes: ByteArray?, temperature: Double = 0.15, purpose: String = "other"): String = withContext(dispatcher) {
         val e = engine ?: throw IllegalStateException("the $label model is not loaded")
         val t0 = System.currentTimeMillis()
         val conv = e.createConversation(
@@ -130,13 +135,13 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
         active = conv
         val cold = coldNext
         coldNext = false
-        val withImage = image != null && visionOk
+        val withImage = (image != null || jpegBytes != null) && visionOk
         var promptChars = prompt.length
         try {
             val fastPrompt = if ("Do not think" in prompt) prompt else "$prompt Do not think; answer directly."
             // text first, then the image (the order LiteRT-LM's guide asks for)
-            val contents = if (image != null && visionOk) {
-                Contents.of(Content.Text(fastPrompt), Content.ImageBytes(jpeg(image)))
+            val contents = if (withImage) {
+                Contents.of(Content.Text(fastPrompt), Content.ImageBytes(jpegBytes ?: jpeg(image!!)))
             } else {
                 Contents.of(Content.Text(fastPrompt))
             }
