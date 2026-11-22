@@ -57,22 +57,24 @@ Controls include action allowlists and limits, state validation, timeouts, cance
 
 ## 3. Approved 16-phase development roadmap
 
+**Owner-confirmed checkpoint (2026-11-22):** Phases 1–5 COMPLETE; Phase 6 is the current active phase; Phases 7–16 follow the approved sequence. Phase 8 also runs by owner decision (Section 9.1).
+
 The phase sequence below is controlling. Issue #1, Issue #37, and the MLBB-specific combat-perception scope from the historical Issue #2 have been placed in the phases where their work belongs; their detailed requirements are in Sections 4 and 5.
 
 | Phase | Name | Primary outcome | Planning status |
 |---:|---|---|---|
 | 1 | Repository Baseline and Project Verification | Establish authoritative repository, branch, build/test baseline, inventory, and evidence-backed current state | **COMPLETE** (2026-11-14) — baseline report `docs/PHASE_1_BASELINE.md`; owner's working copy VERIFIED; versioning decided |
-| 2 | Universal Architecture Audit and Foundation | Define shared MOBA core, normalized game-state contract, and adapter boundaries; incorporates Issue #1 | **IN PROGRESS — resumed 2026-11-16** after Phase 4 (paused 2026-11-14 to 2026-11-16). ADR 0001 **accepted by the owner** 2026-11-16. Done and next: `docs/PHASE_2_STATUS.md` |
+| 2 | Universal Architecture Audit and Foundation | Define shared MOBA core, normalized game-state contract, and adapter boundaries; incorporates Issue #1 | **COMPLETE** (2026-11-16 in code; phone-tested by the owner 2026-11-21) — closing record `docs/PHASE_2_STATUS.md`; ADR 0001 accepted by the owner 2026-11-16 |
 | 3 | UI/UX Audit and Product Design Blueprint | Complete UX audit, information architecture, design system, screen flows, and interaction specifications | **COMPLETE** (2026-11-15) — owner approved the design for all five sections. Deliverables: `docs/PHASE_3_UX_AUDIT.md` (29 findings, with the owner's phone screenshots), `PHASE_3_INFORMATION_ARCHITECTURE.md`, `PHASE_3_DESIGN_TOKENS.md`, `PHASE_3_STATE_MATRIX.md`, `PHASE_3_SCREEN_SPECS.md` + mockups (`docs/mockups/phase3/`), `PHASE_3_DESIGN_BACKLOG.md` (use cases, prioritized backlog). Open into Phase 4: the pixel-font pick from a phone sample |
 | 4 | UI/UX Implementation and Experience Modernization | Implement approved design system and screen-by-screen experience, including all product states | **COMPLETE** (2026-11-16) — all twelve items of `docs/PHASE_3_DESIGN_BACKLOG.md` built (v37.38–v37.58, each CI-built as its own PR) and phone-tested by the owner (last batch v37.52–v37.58 confirmed 2026-11-16). Not done by owner decision: the launcher icon does not follow the theme |
-| 5 | Android Reliability and Application Foundation | Stabilize lifecycle, permissions, storage, device capability detection, crash recovery, diagnostics, and compatibility | **APPROVED / PLANNED** |
-| 6 | Model-Agnostic Unified Inference Architecture | Establish common inference contracts, role assignment, model lifecycle, streaming, cancellation, health, and backend abstraction | **APPROVED / PLANNED** |
+| 5 | Android Reliability and Application Foundation | Stabilize lifecycle, permissions, storage, device capability detection, crash recovery, diagnostics, and compatibility | **COMPLETE** (owner decision 2026-11-22) — `docs/PHASE_5_RELIABILITY_AUDIT.md` |
+| 6 | Model-Agnostic Unified Inference Architecture | Establish common inference contracts, role assignment, model lifecycle, streaming, cancellation, health, and backend abstraction | **IN PROGRESS — current phase** (started 2026-11-22; plan approved) — `docs/PHASE_6_INFERENCE_PLAN.md` |
 | 7 | LiteRT-LM Backend Integration and Stabilization | Integrate and validate LiteRT-LM through the common inference interface on supported Android devices | **APPROVED / PLANNED; VERIFY EXISTING IMPLEMENTATION** |
 | 8 | GGUF / llama.cpp Backend Integration | Add a separately maintained Android native inference backend, including NDK/CMake/JNI/ABI and device validation | **IN PROGRESS** — feasibility VERIFIED on the owner's phone 2026-11-14; backend implementation started (Section 9.1) |
 | 9 | Model Lab and Model Management | Deliver model registry, metadata, role assignment, configuration profiles, loading status, and management | **APPROVED / PLANNED** |
 | 10 | Model Benchmarking and Evaluation | Establish repeatable Strategic and Tactical evaluations for quality, latency, reliability, memory, thermal behavior, and battery impact | **APPROVED / PLANNED** |
 | 11 | Model-Pairing and Device-Aware Recommendations | Compare model pairs and recommend configurations based on device, backend, workload, quality, and resource trade-offs | **APPROVED / PLANNED** |
-| 12 | Strategic/Tactical Intelligence and Coordination | Deliver coordinated reasoning, shared context, task arbitration, confidence handling, and staged tactical-autonomy readiness; includes reusable target-state, tracking, and combat-decision logic from Issue #2 | **APPROVED / PLANNED** |
+| 12 | Strategic/Tactical Intelligence and Coordination | Deliver coordinated reasoning, shared context, task arbitration, confidence handling, and staged tactical-autonomy readiness; includes reusable target-state, tracking, and combat-decision logic from Issue #2 | **APPROVED / PLANNED**. Proposed submilestone **12.1 — Unified Gaming Coach and Real-Time Companion Intelligence** (Section 6.1, REQUIRES OWNER APPROVAL) |
 | 13 | MLBB Companion and Game-Specific Intelligence | Complete MLBB integration and companion capabilities; incorporates Issue #37 and the MLBB-specific combat-perception integration from historical Issue #2 | **APPROVED / PLANNED; EXISTING WORK REQUIRES AUDIT** |
 | 14 | Universal MOBA Expansion and Additional Game Adapters | Prove adapter contract beyond MLBB and add further game integrations incrementally | **APPROVED / PLANNED** |
 | 15 | Advanced Game Intelligence | Expand visual, spatial, temporal, contextual, predictive, adaptive, and evidence-driven intelligence | **APPROVED / PLANNED** |
@@ -514,6 +516,146 @@ The owner has authorized implementation of all five work packages. They are comm
 - [ ] Tests, measurements, documentation, and integration evidence are recorded before any capability is marked VERIFIED or complete.
 
 **Status semantics:** These five packages are approved for implementation now, but their implementation status remains **APPROVED / PLANNED** until work actually begins. When work begins, update the relevant submilestone to **IN PROGRESS**; mark individual deliverables **VERIFIED** only with reproducible evidence. Experimental components may retain an experimental runtime label without reverting the approved work package itself to PROPOSED.
+
+### 6.1 Phase 12.1 — Unified Gaming Coach and Real-Time Companion Intelligence (coordinating submilestone)
+
+**Status: PROPOSED — REQUIRES OWNER APPROVAL** (owner-requested 2026-11-22). Once the owner approves this roadmap change, the status becomes **APPROVED / PLANNED**. Implementation starts only when Phase 12 is reached and its dependencies are met. This entry authorizes no implementation now, assigns no model identities, and approves no new or expanded autonomous capability.
+
+**Placement:** Phase 12 (primary). Supporting contributions are listed under Phases 10, 11, 13, 14, 15 and 16 below. Nothing in this submilestone moves work into Phases 1–9. In particular, Phase 6 (the current phase) and Phases 7–9 continue exactly as approved.
+
+#### 6.1.1 Objective and intended outcome
+
+Evolve Sphynx into an offline-first MOBA coaching and companion platform. It should understand the match as it happens, evaluate situations, anticipate likely developments, and give the player contextual, prioritized, confidence-labelled recommendations, both during play and after the match. It is built on the Phase 12 coordination of Strategic and Tactical intelligence and stays game-agnostic: game knowledge reaches it only through adapters, and MLBB is the first adapter.
+
+#### 6.1.2 Scope and capabilities
+
+**A. Intelligent MOBA Coach (Strategic responsibility; longer horizon)**
+- Match-wide gameplay understanding from the normalized game state (ADR 0001 / `docs/contracts/UNIVERSAL_MATCH_STATE.md`).
+- Strategic decision evaluation: whether a choice was sound given the known state and alternatives.
+- Objective prioritization (which objective, when, and at what risk).
+- Team composition and matchup analysis (strengths, power spikes, win conditions), through adapter-supplied knowledge.
+- Enemy behaviour and movement prediction, expressed as likelihoods with stated uncertainty, never as certainty.
+- Rotation and macro-strategy evaluation.
+- Contextual coaching and actionable feedback (what to change and why).
+- Post-match performance evaluation and improvement recommendations, from the match's own recorded evidence.
+
+**B. Real-Time Gaming Companion (Tactical responsibility; short horizon)**
+- Continuous awareness of the gameplay state while a match runs.
+- Context-sensitive tactical recommendations.
+- Gank, ambush and danger warnings.
+- Objective and rotation recommendations at the moment they matter.
+- Engagement and disengagement suggestions.
+- Awareness of match events and changing conditions (deaths, objectives, towers, timers, power spikes).
+- Recommendations ranked by urgency, confidence and relevance, with a budget for how many are shown at once.
+
+**C. Intelligence coordination (the umbrella's own mechanism)**
+- A coordinator that combines Strategic and Tactical outputs into one consistent recommendation stream and keeps strategic guidance and tactical suggestions visibly separate.
+- Shared match context and an event history (inputs from WP-02) with timestamps, provenance and staleness.
+- Structured, versioned recommendation records, each with type, horizon, urgency, confidence, evidence, source and expiry. Free text from a model is never the record itself.
+- Contradiction handling: conflicting recommendations are resolved by explicit rules (the deterministic rules and the existing `universal/DecisionArbiter` / `DecisionValidator` / `ai/DecisionGuard` safeguards first). When they cannot be resolved, the coordinator says so instead of presenting both as advice.
+- Confidence and uncertainty are communicated to the player, with the safe default of "no recommendation" when evidence is weak, stale or conflicting.
+- **Advisory only.** Recommendations are shown, never executed. Autonomous tactical execution stays disabled for this capability unless separately authorized through the existing safety, permission, validation and release gates (Section 2 and the Phase 12 staged-autonomy criteria). The app's existing, separately gated AI-player behaviour is neither expanded nor changed by this submilestone.
+
+#### 6.1.3 Dependencies
+
+| Depends on | What it provides | Status at writing |
+|---|---|---|
+| Phase 2 | Normalized match state, adapter contract, layer rules (ADR 0001), the decision safeguards | COMPLETE |
+| Phases 3–4 | Design system and presentation patterns (floating panel, states, capability badges) | COMPLETE |
+| Phase 5 | Capture, lifecycle, diagnostics, device profile, low-memory and heat policy | COMPLETE |
+| Phase 6 | Role-based inference (Strategic / Tactical roles served by any compatible model and runtime, ADR 0002) | IN PROGRESS (current) |
+| Phases 7–8 | LiteRT-LM and GGUF / llama.cpp backends behind the common contract | Per roadmap |
+| Phase 9 | Model registry and role assignment management | Per roadmap |
+| Phases 10–11 | Coaching evaluation sets and measured model-pair / device recommendations (see contributions below) | Per roadmap |
+| WP-01…WP-05 | Perception, temporal context, strategic/tactical evaluation, companion/coaching, prediction and adaptation (Section 6.1.10) | APPROVED / PLANNED |
+| Section 13.12 (Phase 12 part) | Game-agnostic target identity, fusion and confidence, the inputs for danger and engagement warnings | APPROVED / PLANNED |
+
+#### 6.1.4 Technical deliverables (Phase 12)
+
+1. **Coaching and companion architecture** (an ADR): data flow from the normalized state and event history to the coordinator and presentation, with the universal core / adapter split.
+2. **Recommendation contract**, versioned: types (strategic, tactical, warning, post-match), urgency, confidence, evidence, source, timestamps, expiry, and an "unknown / insufficient evidence" outcome.
+3. **Coordinator:** merges Strategic and Tactical outputs, resolves conflicts by explicit rules, keeps context, applies a display budget, and feeds the existing safeguards.
+4. **Game-agnostic warning and evaluation contracts:** danger and gank-risk estimate, objective-priority score, engagement / disengagement assessment, post-match evaluation summary. Each is supplied with data and mechanics by adapters.
+5. **Presentation integration** within the approved design system: the floating panel during play, and a post-match review, with clear Operational / Experimental labels and user controls (on/off per recommendation type, verbosity).
+6. **Evaluation suite:** replayable, synthetic-by-default scenario fixtures with expected recommendations, contradiction tests, and staleness / missing-data tests.
+7. **Audit record:** every recommendation is logged with its inputs and confidence into the existing diagnostics and session recordings (debug-data rule).
+
+#### 6.1.5 Acceptance criteria (Phase 12)
+
+- [ ] The architecture ADR and the recommendation contract are documented, versioned and accepted by the owner.
+- [ ] Strategic and Tactical outputs reach the player through one coordinator, and the two kinds are visibly distinct.
+- [ ] Contradictory recommendations are never shown as advice; the scenario tests prove each resolution rule.
+- [ ] Every recommendation carries confidence, evidence, source and expiry. Stale or low-confidence input yields "no recommendation" or an explicit uncertainty label.
+- [ ] Danger, objective, rotation and engagement recommendations are evaluated on the scenario suite against documented baselines (including the deterministic rules), with results recorded.
+- [ ] Post-match evaluation uses only recorded match evidence and states its limitations.
+- [ ] No recommendation causes an action. The existing action safeguards and gates are unchanged, and a test or rule enforces it.
+- [ ] It works offline. Network-dependent inputs (for example online meta) are optional and labelled with their freshness.
+- [ ] No MLBB names or rules in the universal coordinator (enforced as in Phase 2, `ArchitectureRulesTest`).
+- [ ] Device cost (latency, memory, heat, battery) stays within budgets set from Phase 10–11 measurements on the owner's phone.
+
+#### 6.1.6 Validation and testing requirements
+
+- Unit and contract tests for the recommendation contract, the coordinator rules, prioritization and expiry.
+- Scenario fixtures (synthetic by default; real gameplay recordings only with owner approval, Section 8) covering teamfights, ganks, objectives, rotations, missing or stale perception, and conflicting model outputs.
+- Regression tests that the deterministic safeguards (`DecisionValidator`, `DecisionArbiter`, `DecisionGuard`) still have the last word.
+- Shadow evaluation on recorded matches before any recommendation type is labelled Operational.
+- Device validation on the owner's phone: latency to a warning, memory, heat and battery during a full 5v5, with the Phase 5 low-memory and heat policy active.
+
+#### 6.1.7 Security, privacy, performance and game integrity
+
+- **Privacy:** processing stays on the phone by default. No gameplay data leaves the phone except through the owner-controlled debug upload. Coaching history is local, with user controls to view and delete it (`docs/PHASE_5_PERMISSIONS_AND_DATA.md`).
+- **Performance:** the play loop never waits for a language model (`docs/UNIVERSAL_COMPATIBILITY.md` A.9.2). Recommendations degrade gracefully under the Phase 5 low-memory and heat policy, and a model's absence means fewer recommendations, not wrong ones.
+- **Game integrity:** advice only. Anything that sends input to the game goes through the existing gated execution pipeline and policy, never through this submilestone. It must comply with each game's terms and anti-cheat policy. No access to game memory, network traffic or private APIs.
+- **Third parties:** it assumes no access to proprietary APIs, including Razer's (WP-04 rule).
+
+#### 6.1.8 Explicit exclusions and limitations
+
+- No new phase; no change to the phase order or to WP-01…WP-05.
+- No model identities assigned, and no roles hard-wired to models (ADR 0002).
+- No new or expanded autonomous execution, and no change to existing autonomy gates.
+- No work in Phases 1–9; their approved scope and sequence are unchanged.
+- No claim of support for games other than MLBB until Phase 14 validates an adapter.
+- Predictions are probabilistic estimates with stated uncertainty, not guarantees.
+
+#### 6.1.9 Completion criteria
+
+Phase 12.1 is complete when every acceptance criterion in 6.1.5 has dated evidence (CI, scenario-suite results and the owner's phone test), each recommendation type is labelled Operational or Experimental with its evidence, and the owner accepts the result. The supporting contributions below are completed and reported in their own phases. 12.1 does not depend on finishing Phases 13–16.
+
+#### 6.1.10 Relationship to WP-01 … WP-05 (no duplication)
+
+12.1 coordinates the **Phase 12 portions** of the existing packages. It does not replace them, re-scope them or change their approval.
+
+| Package | Overlap with 12.1 | How 12.1 connects it |
+|---|---|---|
+| WP-01 Visual Intelligence | Perception that warnings and match understanding rely on | **Consumes** WP-01 outputs (with their confidence); builds no perception itself |
+| WP-02 Temporal and Contextual | Event history, match phase, staleness | **Consumes** WP-02's temporal state as the coordinator's shared context |
+| WP-03 Advanced Strategic and Tactical | Strategic/Tactical coordination, objective priority, rotations, prediction | The coordinator is the **delivery point** for WP-03's Phase 12 decision evaluation; WP-03's Phase 10–11 evaluations supply its baselines |
+| WP-04 Companion and Coaching | Closest overlap: contextual assistance, match awareness, coaching feedback, presentation | 12.1 is the **Phase 12 umbrella** under which WP-04's Phase 12 scope is built; WP-04's Phase 13 and 15 parts stay where they are |
+| WP-05 Adaptive and Predictive | Prediction, confidence, adaptation across contexts | **Consumes** WP-05 predictions as labelled inputs; post-match feedback feeds WP-05's evidence capture |
+
+Section 13.12's Phase 12 part (target identity and fusion) is an input to 12.1's danger and engagement warnings.
+
+**Existing code to audit and reuse first** (Section 6 execution rule):
+- `ai/StrategicAdvisor`, `ai/TacticalAdvisor`, `ai/MetaAdvisor`;
+- `universal/DecisionArbiter`, `DecisionValidator`, `TargetFusion`;
+- `ai/DecisionGuard`;
+- `game/MatchSense`, `EnemyIntel`, `MapIntel`, `MatchLog`;
+- `learning/PerformanceEvaluator`;
+- the floating panel.
+
+#### 6.1.11 Supporting phase contributions
+
+Each phase delivers its part within its own approved mission. None of these moves Phase 12 work earlier.
+
+| Phase | Deliverables for the coach / companion | Acceptance criteria |
+|---|---|---|
+| **10 — Benchmarking and Evaluation** | A versioned MOBA coaching evaluation set: strategic questions (draft, objectives, rotations), tactical moments (danger, engage or disengage) and post-match reviews, with expected answers. The harness measures reasoning quality, accuracy, latency (time to first token, time to a warning), memory, heat and battery per model, runtime and phone | Results are reproducible with recorded settings and variance, and quality and speed are reported separately. The set has a documented rubric and covers both Strategic and Tactical workloads |
+| **11 — Model-Pairing and Device-Aware Recommendations** | Coaching workload profiles (strategic: infrequent and long; tactical: frequent, short and latency-bound), and Strategic/Tactical pair recommendations per device for those profiles, from Phase 10 measurements | Each recommendation shows its evidence, trade-offs and confidence. It never silently changes the user's assignment, and the Phase 5 low-memory and heat policy is respected |
+| **12 — Strategic/Tactical Intelligence** | The Phase 12.1 deliverables above | Section 6.1.5 |
+| **13 — MLBB Companion** | The MLBB adapter's coaching data and mechanics: hero matchups, draft and composition guidance (13.3/13.4), builds, emblems (Wiki-only source, 13.1), rotations (13.5/13.6), meta (13.2), MLBB objectives, timers and danger semantics, and gameplay-state interpretation (13.12) | It passes the adapter contract tests. Every MLBB recommendation carries patch, source and freshness. The coordinator contains no MLBB logic, and the Section 5 source rules are kept |
+| **14 — Universal MOBA Expansion** | Coaching capabilities declared per adapter (which recommendation types a game supports). A second adapter's coaching data path is proven, and unsupported types are reported explicitly | The adapter conformance suite covers the coaching inputs. No game is described as supported for coaching until its adapter and workflows are validated |
+| **15 — Advanced Game Intelligence** | Advanced temporal, spatial and predictive models for the coach (enemy position and intent estimation, power-spike and objective-timing prediction) and personalization from the player's own history, with consent and local storage | Each is evaluated against the Phase 12.1 baselines with calibration and failure cases, and stays labelled Experimental until its evidence gate passes. Personalization can be switched off and its data deleted |
+| **16 — Optimization and Production Readiness** | End-to-end validation of the coach and companion on supported phones and adapters. Performance, heat and battery budgets are tuned, plus privacy, accessibility and production-readiness criteria for the coaching features | The release checklist includes the coaching features, with measured budgets, known limitations and owner sign-off |
 
 ## 7. Cross-phase UI/UX requirements
 
