@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-22", Kind.IMPROVED, "Your resource snapshot is recorded",
+            "The snapshot you uploaded (both models loaded: the app uses 2.7 GB and 3.2 GB of the phone's 11.1 GB stays " +
+                "free) is now in the Phase 5 record, with your phone's details (Android 16). Three more would complete " +
+                "the set: with nothing loaded, with screen capture on, and with a GGUF model loaded. Nothing in the app changes.",
+            pr = 87, needsDeviceCheck = true, version = "37.96"),
         Entry("2026-11-22", Kind.IMPROVED, "Foundation: LiteRT-LM on the shared model contract",
             "Behind the scenes, for Phase 6: Gemma and the small model (LiteRT-LM) can now also run through the same " +
                 "common contract the GGUF engine already uses, and one test kit checks both engines the same way. Nothing " +
