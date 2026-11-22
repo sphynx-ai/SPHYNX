@@ -37,7 +37,14 @@ class InferenceContractsTest {
         assertTrue(p.any { it.startsWith("context length 64") })
         assertTrue(p.any { it.startsWith("max output 0") })
         assertTrue(p.any { it.startsWith("threads 99") })
-        assertTrue(p.contains("image input needs a LiteRT-LM multimodal model"))
+        assertTrue(p.contains("image input needs a LiteRT-LM multimodal model or a GGUF model with its mmproj file"))
+    }
+
+    // Phase 6 S8: a GGUF model with its multimodal projector (mmproj) may take pictures
+    @Test fun aGgufModelWithItsProjectorMayWantPictures() {
+        val c = ModelConfiguration("gguf:g", "gemma-3-4b-it-Q4_K_M.gguf", BackendType.LLAMA_CPP, "/m/g.gguf", wantsVision = true,
+            accelerators = listOf(Accelerator.CPU), projector = "/m/mmproj-gemma-3-4b-it-f16.gguf")
+        assertTrue(c.problems().none { it.startsWith("image input") })
     }
 
     @Test fun fileTypeMustMatchTheBackend() {

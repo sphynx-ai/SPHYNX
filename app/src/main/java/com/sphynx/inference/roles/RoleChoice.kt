@@ -30,6 +30,7 @@ object RoleChoice {
     fun other(role: ModelRole) = if (role == ModelRole.STRATEGIC) ModelRole.TACTICAL else ModelRole.STRATEGIC
 
     /** The words on the Model page for a role's choice. */
-    fun label(role: ModelRole, value: String?, liteName: String): String =
-        ggufFile(value)?.let { "$it (GGUF, CPU" + (if (role == ModelRole.STRATEGIC) ", text only" else "") + ")" } ?: "$liteName (LiteRT-LM)"
+    fun label(role: ModelRole, value: String?, liteName: String, withPictures: Boolean = false): String =
+        ggufFile(value)?.let { "$it (GGUF, CPU" + (if (role == ModelRole.STRATEGIC) (if (withPictures) ", reads pictures" else ", text only") else "") + ")" }
+            ?: "$liteName (LiteRT-LM)"
 }

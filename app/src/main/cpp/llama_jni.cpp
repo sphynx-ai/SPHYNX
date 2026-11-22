@@ -66,7 +66,9 @@ struct SinkCall { JNIEnv * env; jobject sink; jmethodID onPiece; };
 
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_sphynx_inference_LlamaJni_nativeGenerate(JNIEnv * env, jobject, jlong h, jbyteArray jprompt,
-                                                                jint maxTokens, jfloat temperature, jint seed, jobject sink) {
+                                                                jint maxTokens, jfloat temperature, jint seed, jobject sink,
+                                                                jbyteArray jimage) {
+    const std::string image = jbytes(env, jimage);      // empty = text only (Phase 6 S8)
     SinkCall call{env, sink, nullptr};
     if (sink) {
         jclass cls = env->GetObjectClass(sink);
@@ -84,8 +86,17 @@ Java_com_sphynx_inference_LlamaJni_nativeGenerate(JNIEnv * env, jobject, jlong h
             c->env->CallVoidMethod(c->sink, c->onPiece, b);
             if (c->env->ExceptionCheck()) c->env->ExceptionClear();   // a broken sink never stops the answer
             c->env->DeleteLocalRef(b);                                 // hundreds of pieces: free each one
-        }, &call);
+        }, &call,
+        image.empty() ? nullptr : reinterpret_cast<const unsigned char *>(image.data()), image.size());
     return toBytes(env, json);
+}
+
+// Phase 6 S8: the model's multimodal projector (mmproj); returns "" when it loaded, else why not
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_sphynx_inference_LlamaJni_nativeLoadProjector(JNIEnv * env, jobject, jlong h, jstring jpath, jint threads) {
+    std::string err;
+    bool ok = sphynx_llama_load_projector(handle(h), jstr(env, jpath), threads, err);
+    return toBytes(env, ok ? std::string() : err);
 }
 
 extern "C" JNIEXPORT void JNICALL

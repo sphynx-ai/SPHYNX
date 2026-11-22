@@ -27,5 +27,6 @@ class RoleChoiceTest {
         assertEquals("Gemma 4 E2B (LiteRT-LM)", RoleChoice.label(ModelRole.STRATEGIC, null, "Gemma 4 E2B"))
         assertEquals("qwen.gguf (GGUF, CPU, text only)", RoleChoice.label(ModelRole.STRATEGIC, RoleChoice.gguf("qwen.gguf"), "x"))
         assertEquals("qwen.gguf (GGUF, CPU)", RoleChoice.label(ModelRole.TACTICAL, RoleChoice.gguf("qwen.gguf"), "x"))
+        assertEquals("gemma-3-4b.gguf (GGUF, CPU, reads pictures)", RoleChoice.label(ModelRole.STRATEGIC, RoleChoice.gguf("gemma-3-4b.gguf"), "x", withPictures = true))
     }
 }

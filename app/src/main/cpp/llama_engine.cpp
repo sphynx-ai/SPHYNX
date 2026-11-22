@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 #include "llama.h"
+#include "mtmd.h"
+#include "mtmd-helper.h"
 
 static long long nowMs() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -107,6 +109,30 @@ SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads,
     return h;
 }
 
+bool sphynx_llama_load_projector(SphynxLlama * h, const std::string & path, int threads, std::string & err) {
+    if (!h) { err = "no model loaded"; return false; }
+    if (h->vision) { mtmd_free(h->vision); h->vision = nullptr; }
+    logClear();
+    mtmd_context_params p = mtmd_context_params_default();
+    p.use_gpu = false;                         // CPU backend only in this build
+    p.n_threads = threads;
+    p.print_timings = false;
+    p.warmup = false;
+    h->vision = mtmd_init_from_file(path.c_str(), h->model, p);
+    if (!h->vision) {
+        err = "the picture part (mmproj) could not be loaded";
+        std::string t = logTail(4);
+        if (!t.empty()) err += "\n" + t;
+        return false;
+    }
+    if (!mtmd_support_vision(h->vision)) {
+        mtmd_free(h->vision); h->vision = nullptr;
+        err = "this mmproj file has no picture input (audio only?)";
+        return false;
+    }
+    return true;
+}
+
 std::string sphynx_llama_describe(const SphynxLlama * h) {
     if (!h) return "{}";
     char buf[256];
@@ -115,13 +141,15 @@ std::string sphynx_llama_describe(const SphynxLlama * h) {
     snprintf(nums, sizeof nums, "\"sizeBytes\":%llu,\"params\":%llu,\"nCtx\":%d,\"threads\":%d,\"templated\":%s",
              (unsigned long long) llama_model_size(h->model), (unsigned long long) llama_model_n_params(h->model),
              h->nCtx, h->threads, llama_model_chat_template(h->model, nullptr) ? "true" : "false");
-    return std::string("{\"model\":\"") + jsonEscape(buf) + "\"," + nums + "}";
+    std::string vision = std::string(",\"vision\":") + (h->vision ? "true" : "false");
+    return std::string("{\"model\":\"") + jsonEscape(buf) + "\"," + nums + vision + "}";
 }
 
 void sphynx_llama_cancel(SphynxLlama * h) { if (h) h->cancel.store(true); }
 
 std::string sphynx_llama_generate(SphynxLlama * h, const std::string & prompt, int maxTokens, float temperature,
-                                  uint32_t seed, void (*onPiece)(const char *, int, void *), void * user) {
+                                  uint32_t seed, void (*onPiece)(const char *, int, void *), void * user,
+                                  const unsigned char * image, size_t imageLen) {
     std::string err, stop = "error";
     long long promptMs = 0, genMs = 0, firstTokenMs = -1;
     int nPrompt = 0, nGen = 0;
@@ -134,22 +162,45 @@ std::string sphynx_llama_generate(SphynxLlama * h, const std::string & prompt, i
         // each question starts from an empty context (no memory of earlier answers)
         llama_memory_clear(llama_get_memory(h->ctx), true);
 
+        // Phase 6 S8: a picture goes in front of the question, as the model's media marker
+        const bool withImage = image && imageLen > 0;
+        if (withImage && !h->vision) { err = "this model has no picture part (mmproj) loaded"; goto done; }
+        const std::string question = withImage ? std::string(mtmd_default_marker()) + "\n" + prompt : prompt;
+
         // the model's own chat format when it has one, else the plain prompt
-        std::string text = prompt;
+        std::string text = question;
         const char * tmpl = llama_model_chat_template(h->model, nullptr);
         if (tmpl) {
-            llama_chat_message msg{"user", prompt.c_str()};
-            std::vector<char> f(prompt.size() * 2 + 512);
+            llama_chat_message msg{"user", question.c_str()};
+            std::vector<char> f(question.size() * 2 + 512);
             int n = llama_chat_apply_template(tmpl, &msg, 1, true, f.data(), (int32_t) f.size());
             if (n > (int) f.size()) { f.resize(n); n = llama_chat_apply_template(tmpl, &msg, 1, true, f.data(), (int32_t) f.size()); }
             if (n > 0) text.assign(f.data(), n);
         }
-        int n = -llama_tokenize(vocab, text.c_str(), (int32_t) text.size(), nullptr, 0, true, true);
-        if (n <= 0) { err = "the prompt could not be tokenized"; goto done; }
-        std::vector<llama_token> toks(n);
-        if (llama_tokenize(vocab, text.c_str(), (int32_t) text.size(), toks.data(), n, true, true) < 0) { err = "the prompt could not be tokenized"; goto done; }
-        nPrompt = n;
-        if (nPrompt >= h->nCtx) { err = "the prompt is " + std::to_string(nPrompt) + " tokens, the context holds " + std::to_string(h->nCtx); goto done; }
+        std::vector<llama_token> toks;
+        mtmd_input_chunks * chunks = nullptr;
+        if (withImage) {
+            // the picture is decoded (stb_image) and cut into the model's image tokens with the text around it
+            mtmd_helper_bitmap_wrapper bmp = mtmd_helper_bitmap_init_from_buf(h->vision, image, imageLen, false, mtmd_helper_init_opt_default());
+            if (!bmp.bitmap) { err = "the picture could not be read"; goto done; }
+            chunks = mtmd_input_chunks_init();
+            mtmd_input_text in{text.c_str(), text.size(), true, true};
+            const mtmd_bitmap * bitmaps[1] = {bmp.bitmap};
+            int32_t r = mtmd_tokenize(h->vision, chunks, &in, bitmaps, 1);
+            mtmd_bitmap_free(bmp.bitmap);
+            if (r != 0) { mtmd_input_chunks_free(chunks); err = "the picture and question could not be prepared (" + std::to_string(r) + ")"; goto done; }
+            nPrompt = (int) mtmd_helper_get_n_tokens(chunks);
+        } else {
+            int n = -llama_tokenize(vocab, text.c_str(), (int32_t) text.size(), nullptr, 0, true, true);
+            if (n <= 0) { err = "the prompt could not be tokenized"; goto done; }
+            toks.resize(n);
+            if (llama_tokenize(vocab, text.c_str(), (int32_t) text.size(), toks.data(), n, true, true) < 0) { err = "the prompt could not be tokenized"; goto done; }
+            nPrompt = n;
+        }
+        if (nPrompt >= h->nCtx) {
+            if (chunks) mtmd_input_chunks_free(chunks);
+            err = "the prompt is " + std::to_string(nPrompt) + " tokens, the context holds " + std::to_string(h->nCtx); goto done;
+        }
         // the answer may not run past the end of the context
         maxTokens = std::min(maxTokens, h->nCtx - nPrompt);
 
@@ -168,11 +219,24 @@ std::string sphynx_llama_generate(SphynxLlama * h, const std::string & prompt, i
         // the prompt, in batches of at most n_batch tokens
         long long tp = nowMs();
         const int nBatch = std::min(h->nCtx, 512);
-        for (int i = 0; i < nPrompt; i += nBatch) {
-            llama_batch batch = llama_batch_get_one(toks.data() + i, std::min(nBatch, nPrompt - i));
-            if (llama_decode(h->ctx, batch) != 0) {
+        if (chunks) {
+            // text and image chunks in order: the image is encoded by the projector, then decoded with the text
+            llama_pos nPast = 0;
+            int32_t r = mtmd_helper_eval_chunks(h->vision, h->ctx, chunks, 0, 0, nBatch, true, &nPast);
+            mtmd_input_chunks_free(chunks);
+            if (r != 0) {
                 if (h->cancel.load()) { stop = "cancelled"; promptMs = nowMs() - tp; goto done; }
-                err = "the prompt could not be computed"; goto done;
+                err = "the picture and question could not be computed"; goto done;
+            }
+            // the answer may not run past the end of the context (positions used by the picture included)
+            maxTokens = std::min(maxTokens, h->nCtx - (int) nPast);
+        } else {
+            for (int i = 0; i < nPrompt; i += nBatch) {
+                llama_batch batch = llama_batch_get_one(toks.data() + i, std::min(nBatch, nPrompt - i));
+                if (llama_decode(h->ctx, batch) != 0) {
+                    if (h->cancel.load()) { stop = "cancelled"; promptMs = nowMs() - tp; goto done; }
+                    err = "the prompt could not be computed"; goto done;
+                }
             }
         }
         promptMs = nowMs() - tp;
@@ -208,6 +272,7 @@ done:
 
 void sphynx_llama_free(SphynxLlama * h) {
     if (!h) return;
+    if (h->vision) mtmd_free(h->vision);
     if (h->ctx) llama_free(h->ctx);
     if (h->model) llama_model_free(h->model);
     delete h;

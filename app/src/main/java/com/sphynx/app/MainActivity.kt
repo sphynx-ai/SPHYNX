@@ -2992,8 +2992,8 @@ class MainActivity : Activity() {
             upd { b.text = (if (role == com.sphynx.ai.Roles.STRATEGIC) "Strategic job: " else "Tactical job: ") + ModelManager.choiceLabel(this, role) }
         }
         text("Tap a job to choose its model: its LiteRT-LM file (as before) or one of your GGUF models. Only one GGUF model " +
-            "runs at a time. A GGUF strategic model reads text only, so the questions with a picture (draft, loading cards, " +
-            "end screen) wait for a model that reads pictures.")
+            "runs at a time. A GGUF strategic model reads pictures (draft, loading cards, end screen) when its mmproj file is " +
+            "in the GGUF library too (add it like a model, e.g. mmproj-gemma-3-4b-it-f16.gguf); without it, it reads text only.")
 
         title("SETTINGS")
         switch("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it; reloadGemmaForGpu() }

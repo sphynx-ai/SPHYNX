@@ -37,6 +37,8 @@ class LlamaCppBackend(
 
     /** What llama.cpp says about the loaded model (model, sizeBytes, params, nCtx, threads, templated). */
     @Volatile var modelInfo: JSONObject? = null; private set
+    /** Why the model's mmproj file did not load (the model then reads text only), or null. */
+    @Volatile var projectorError: String? = null; private set
     /** llama.cpp's report of the last answer (timings, stop reason). */
     @Volatile var lastRun: JSONObject? = null; private set
 
@@ -75,8 +77,16 @@ class LlamaCppBackend(
                 st = st.moveTo(RuntimeState.FAILED, error = InferenceError.LoadFailed(native.loadError().ifBlank { "unknown reason" }))
             } else {
                 handle = h
+                // Phase 6 S8: the picture part, when the model has an mmproj file and pictures are wanted
+                var vision = false
+                val proj = config.projector
+                if (config.wantsVision && proj != null) {
+                    val why = try { native.loadProjector(h, proj, threads) } catch (t: Throwable) { t.message ?: t.toString() }
+                    vision = why.isEmpty()
+                    projectorError = why.ifEmpty { null }
+                } else projectorError = null
                 modelInfo = try { native.describe(h) } catch (t: Throwable) { null }
-                st = st.moveTo(RuntimeState.READY, accelerator = Accelerator.CPU, visionOk = false)
+                st = st.moveTo(RuntimeState.READY, accelerator = Accelerator.CPU, visionOk = vision)
             }
         }
         st
@@ -103,12 +113,15 @@ class LlamaCppBackend(
         val utf = Utf8Stream()
         val t0 = System.currentTimeMillis()
         val res = try {
-            native.generate(h, request.prompt, request.maxOutputTokens, request.temperature, id.hashCode()) { bytes ->
+            val onPiece: (ByteArray) -> Unit = { bytes ->
                 // a cancel that came just before the engine started is caught on the first piece
                 if (id in cancelled) native.cancel(h)
                 val s = utf.push(bytes)
                 if (request.stream && s.isNotEmpty()) emit(InferenceEvent.Token(id, s))
             }
+            val img = request.image
+            if (img != null) native.generateWithImage(h, request.prompt, img, request.maxOutputTokens, request.temperature, id.hashCode(), onPiece)
+            else native.generate(h, request.prompt, request.maxOutputTokens, request.temperature, id.hashCode(), onPiece)
         } catch (t: Throwable) {
             JSONObject().put("ok", false).put("error", t.message ?: t.toString()).put("stop", "error")
         }

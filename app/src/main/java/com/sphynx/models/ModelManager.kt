@@ -61,7 +61,9 @@ object ModelManager {
         com.sphynx.inference.roles.RoleChoice.ggufFile(choice(role))?.let { File(GgufLibrary.dir(ctx), it) }?.takeIf { it.isFile }
     fun choiceLabel(ctx: Context, role: com.sphynx.inference.ModelRole): String {
         val lite = if (role == com.sphynx.inference.ModelRole.STRATEGIC) strategicName() else tacticalName()
-        return com.sphynx.inference.roles.RoleChoice.label(role, chosenGguf(ctx, role)?.let { com.sphynx.inference.roles.RoleChoice.gguf(it.name) }, lite)
+        val g = chosenGguf(ctx, role)
+        return com.sphynx.inference.roles.RoleChoice.label(role, g?.let { com.sphynx.inference.roles.RoleChoice.gguf(it.name) }, lite,
+            withPictures = g != null && GgufLibrary.projectorFor(g) != null)
     }
 
     fun status(ctx: Context): String {
