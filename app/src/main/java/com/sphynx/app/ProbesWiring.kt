@@ -78,14 +78,17 @@ object ProbesWiring {
         val ai = com.sphynx.ai.AiRuntime
         val gemma = com.sphynx.ai.GemmaEngine
         val small = com.sphynx.ai.TacticalLlmEngine
-        h.strategicReady = { gemma.ready }
-        h.strategicLoading = { gemma.loading }
-        h.loadStrategic = { ctx, path, gpu, done -> ai.scope.launch { done(gemma.load(ctx, path, gpu)) } }
-        h.unloadStrategicNow = { kotlinx.coroutines.runBlocking { gemma.unload() } }
-        h.tacticalReady = { small.ready }
-        h.tacticalLoading = { small.loading }
-        h.loadTactical = { ctx, path, done -> ai.scope.launch { done(small.load(ctx, path, preferGpu = false, textOnly = true)) } }
-        h.unloadTactical = { ai.scope.launch { small.unload() } }
+        // Phase 6 S4 (ADR 0002): the models load and unload through the role router (ai/Roles), same slots and order
+        val roles = com.sphynx.ai.Roles
+        roles.gguf = { Probes.appContext()?.let { com.sphynx.models.GgufLibrary.backend(it) } }
+        h.strategicReady = { roles.ready(roles.STRATEGIC) }
+        h.strategicLoading = { roles.loading(roles.STRATEGIC) }
+        h.loadStrategic = { ctx, path, gpu, done -> roles.init(ctx); ai.scope.launch { done(roles.loadLiteRt(roles.STRATEGIC, path, gpu)) } }
+        h.unloadStrategicNow = { roles.unload(roles.STRATEGIC) }
+        h.tacticalReady = { roles.ready(roles.TACTICAL) }
+        h.tacticalLoading = { roles.loading(roles.TACTICAL) }
+        h.loadTactical = { ctx, path, done -> roles.init(ctx); ai.scope.launch { done(roles.loadLiteRt(roles.TACTICAL, path, preferGpu = false)) } }
+        h.unloadTactical = { ai.scope.launch { roles.unload(roles.TACTICAL) } }
 
         // Phase 5 (P5): the models the low-memory / heat policy may set aside and bring back (core.PressurePolicy)
         val pp = com.sphynx.core.PressurePolicy

@@ -199,12 +199,17 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
         return t.trim()
     }
 
-    private fun jpeg(b: Bitmap): ByteArray {
+    private fun jpeg(b: Bitmap): ByteArray = jpegForModel(b)
+
+    companion object {
+        /** The picture as the models get it (v37.01): at most 512 px wide, JPEG quality 70. */
+        fun jpegForModel(b: Bitmap): ByteArray {
         val w = 512
         val small = if (b.width > w) Bitmap.createScaledBitmap(b, w, (b.height * w / b.width).coerceAtLeast(1), true) else b
         val out = ByteArrayOutputStream()
         small.compress(Bitmap.CompressFormat.JPEG, 70, out)
         return out.toByteArray()
+        }
     }
 }
 

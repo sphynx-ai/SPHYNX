@@ -85,19 +85,19 @@ object ModelSpeed {
     /** Asks every loaded model the test questions RUNS times (and the strategist once with a test picture). */
     fun runTest(done: (String) -> Unit) {
         if (testRunning) { done("The speed test is already running"); return }
-        val slots = listOfNotNull(GemmaEngine.takeIf { it.ready }, TacticalLlmEngine.takeIf { it.ready })
+        val slots = listOf(Roles.STRATEGIC, Roles.TACTICAL).filter { Roles.ready(it) }
         if (slots.isEmpty()) { done("No model is loaded: load the models first (Model page)"); return }
         testRunning = true
         AiRuntime.scope.launch {
             var n = 0; var failed = 0
             try {
                 for (s in slots) for (run in 1..RUNS) for ((i, p) in TEST_PROMPTS.withIndex()) {
-                    testStatus = "${s.role}: question ${i + 1} of ${TEST_PROMPTS.size}, run $run of $RUNS"
-                    try { s.ask(p, null, 0.0, purpose = "speed test"); n++ } catch (t: Throwable) { failed++ }
+                    testStatus = "${s.name.lowercase()}: question ${i + 1} of ${TEST_PROMPTS.size}, run $run of $RUNS"
+                    try { Roles.ask(s, p, null, 0.0, purpose = "speed test"); n++ } catch (t: Throwable) { failed++ }
                 }
-                if (GemmaEngine.ready && GemmaEngine.visionOk) {
+                if (Roles.ready(Roles.STRATEGIC) && Roles.images(Roles.STRATEGIC)) {
                     testStatus = "strategic: question with a picture"
-                    try { GemmaEngine.ask("Describe this picture in one short sentence.", testPicture(), 0.0, purpose = "speed test"); n++ }
+                    try { Roles.ask(Roles.STRATEGIC, "Describe this picture in one short sentence.", testPicture(), 0.0, purpose = "speed test"); n++ }
                     catch (t: Throwable) { failed++ }
                 }
             } finally {

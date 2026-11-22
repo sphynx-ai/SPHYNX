@@ -58,18 +58,18 @@ object StrategicAdvisor {
 
     // Called about twice a second by AiRuntime. Runs at most one Gemma request.
     suspend fun tick(s: GameState, playerOn: Boolean, drafterOn: Boolean, builderOn: Boolean) {
-        if (!GemmaEngine.ready) return
+        if (!Roles.ready(Roles.STRATEGIC)) return
         val now = System.currentTimeMillis()
         // watching a live match: only read its clock (every minute or so), nothing else is ours
         if (s.phase == Phase.LIVE) {
-            if (Cfg.liveLearn && GemmaEngine.visionOk && GameStateTracker.liveClockAge() > 60_000 && now - lastClockAsk > 30_000) {
+            if (Cfg.liveLearn && Roles.images(Roles.STRATEGIC) && GameStateTracker.liveClockAge() > 60_000 && now - lastClockAsk > 30_000) {
                 lastClockAsk = now
                 readLiveClock()
             }
             return
         }
         // a new match's hero-select screen: is it RANKED (a ban stage) or STANDARD? (no switch to set)
-        if (s.phase == Phase.DRAFT && GemmaEngine.visionOk && now - lastModeCheck > 300_000) {
+        if (s.phase == Phase.DRAFT && Roles.images(Roles.STRATEGIC) && now - lastModeCheck > 300_000) {
             lastModeCheck = now
             readMatchMode()
             return
@@ -92,7 +92,7 @@ object StrategicAdvisor {
             com.sphynx.game.MatchKind.current() != com.sphynx.game.MatchKind.Kind.SOLO
         // (the loading screen: tried again 2 s after a read that did not find your name - your word)
         // the END-OF-MATCH scoreboard: the names of my team's rows (my row = my player name) - v36.87
-        if (com.sphynx.vision.EndBoard.needsName() && GemmaEngine.visionOk && now - lastLineup > 2000) {
+        if (com.sphynx.vision.EndBoard.needsName() && Roles.images(Roles.STRATEGIC) && now - lastLineup > 2000) {
             lastLineup = now
             val img = FrameHub.bitmap()
             val reply = if (img != null) ask("end scoreboard names", com.sphynx.vision.EndBoard.namePrompt(), img, 0.0) else null
@@ -103,7 +103,7 @@ object StrategicAdvisor {
             else if (names != null) Diag.info("End scoreboard: names ignored (the screen changed while reading)")
             return
         }
-        if (lineupDue && GemmaEngine.visionOk && now - lastLineup > (if (s.phase == Phase.LOADING) 2000 else 8000)) {
+        if (lineupDue && Roles.images(Roles.STRATEGIC) && now - lastLineup > (if (s.phase == Phase.LOADING) 2000 else 8000)) {
             lastLineup = now
             runLineup(s.phase)
             return
@@ -164,7 +164,7 @@ object StrategicAdvisor {
     }
 
     private suspend fun runDraft(builderOn: Boolean) {
-        if (!GemmaEngine.visionOk) { lastError = "Gemma loaded in text-only mode, so it cannot read the draft screen"; return }
+        if (!Roles.images(Roles.STRATEGIC)) { lastError = "Gemma loaded in text-only mode, so it cannot read the draft screen"; return }
         val img = FrameHub.bitmap() ?: return
         val od = onlineDraft
         val prompt = game.draftPrompt(Cfg.ranked, Cfg.draftSolo, od?.pick, od?.ban, GameStateTracker.myTeam)
@@ -297,7 +297,7 @@ object StrategicAdvisor {
     }
 
     private suspend fun runIdentify(phase: Phase) {
-        if (!GemmaEngine.visionOk) return
+        if (!Roles.images(Roles.STRATEGIC)) return
         val img = FrameHub.bitmap() ?: return
         val name = game.playerName()
         // (the cards are in random places: only the card with your name tells your hero - v36.85; or the
@@ -339,7 +339,7 @@ object StrategicAdvisor {
     }
 
     private suspend fun runScreenRead() {
-        if (!GemmaEngine.visionOk) return
+        if (!Roles.images(Roles.STRATEGIC)) return
         val img = FrameHub.bitmap() ?: return
         val prompt = game.screenReadPrompt
         val reply = ask("read items/gold", prompt, img) ?: return
@@ -395,7 +395,7 @@ object StrategicAdvisor {
         val askedAt = System.currentTimeMillis()
         return try {
             com.sphynx.core.SessionRecorder.snapBitmap("gemma-" + what.substringBefore(' '), img)
-            GemmaEngine.ask(prompt, img, temp, purpose = what).also { reply ->
+            Roles.ask(Roles.STRATEGIC, prompt, img, temp, purpose = what).also { reply ->
                 // the recording keeps what was asked and answered (owner, 2026-11-12)
                 com.sphynx.core.SessionRecorder.event(org.json.JSONObject().put("k", "gemma").put("what", what)
                     .put("ms", System.currentTimeMillis() - askedAt).put("prompt", prompt.take(1500)).put("reply", (reply ?: "").take(1500)))

@@ -30,7 +30,7 @@ object ReadinessRun {
     fun blocker(): String? = when {
         running -> "a test is already running"
         AiRuntime.playerOn -> "turn Player mode off first (the test must not compete with play)"
-        !TacticalLlmEngine.ready -> "the small tactical model is not loaded (${TacticalLlmEngine.state})"
+        !com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.TACTICAL) -> "the small tactical model is not loaded (${com.sphynx.ai.Roles.state(com.sphynx.ai.Roles.TACTICAL)})"
         ResearchMode.moments.size == 0 -> "no practice moments recorded yet"
         else -> null
     }
@@ -50,7 +50,7 @@ object ReadinessRun {
                     if (stopAsked) break
                     progress = "${i + 1} of ${scenarios.size}"
                     val t0 = System.currentTimeMillis()
-                    val reply = try { TacticalLlmEngine.ask(TacticalAdvisor.prompt(sc.prompt), null, 0.0, purpose = "readiness test") }
+                    val reply = try { com.sphynx.ai.Roles.ask(com.sphynx.ai.Roles.TACTICAL, TacticalAdvisor.prompt(sc.prompt), null, 0.0, purpose = "readiness test") }
                         catch (e: kotlinx.coroutines.CancellationException) { throw e }
                         catch (e: Exception) { null }
                     if (reply != null) replies[sc] = TacticalReadiness.Reply(reply, System.currentTimeMillis() - t0)

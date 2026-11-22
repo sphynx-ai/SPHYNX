@@ -82,7 +82,7 @@ object AiRuntime {
         val svc = AccessibilityController.instance
         // research mode (R2) only reads the scoreboard: it needs no touches either
         if (svc == null && stage != "learn" && stage != "research") return "Turn on the accessibility service first (Setup page)"
-        if (needsGemma(stage) && !GemmaEngine.ready) return "The Gemma model is not loaded (put the .litertlm file in the Sphynx-Storage/Input folder)"
+        if (needsGemma(stage) && !Roles.ready(Roles.STRATEGIC)) return "The Gemma model is not loaded (put the .litertlm file in the Sphynx-Storage/Input folder)"
         when (stage) {
             "player" -> {
                 playerOn = true
@@ -115,7 +115,7 @@ object AiRuntime {
         lastError = ""
         svc?.overlay?.let { if (!it.userHidden) it.show() }
         ensureLoops()
-        Diag.info("$stage started" + if (stage == "player" && !GemmaEngine.ready) " (rules only, no Gemma)" else "")
+        Diag.info("$stage started" + if (stage == "player" && !Roles.ready(Roles.STRATEGIC)) " (rules only, no Gemma)" else "")
         ActionExecutor.note("$stage started")
         return null
     }
@@ -152,7 +152,7 @@ object AiRuntime {
         FrameProcessor.trackMotion = false
         stopLoops()
         ActionExecutor.cancelAll()
-        GemmaEngine.cancel()
+        Roles.cancel(Roles.STRATEGIC)
         if (was) {
             Diag.info("EMERGENCY STOP ($reason)")
             ActionExecutor.note("EMERGENCY STOP ($reason)")
@@ -546,7 +546,7 @@ object AiRuntime {
         com.sphynx.game.MatchKind.current().takeIf { it != com.sphynx.game.MatchKind.Kind.UNKNOWN }?.let { sb.append(" | ").append(it.label) }
         sb.append("\nHero: ").append(GameStateTracker.verifiedHeroPanel()).append(" | spell: ").append(GameStateTracker.verifiedSpellPanel())
         if (s.phase.inMatch) sb.append("\nBuffs held: ").append(com.sphynx.vision.BuffEmblems.text())
-        sb.append("\nGemma: ").append(GemmaEngine.state)
+        sb.append("\nGemma: ").append(Roles.state(Roles.STRATEGIC))
         if (StrategicAdvisor.busyWith.isNotEmpty()) sb.append(" (").append(StrategicAdvisor.busyWith).append(")")
         sb.append(" | capture ").append("%.0f".format(FrameProcessor.processedFps)).append(" fps")
         com.sphynx.core.PhoneState.read().let { ph ->
