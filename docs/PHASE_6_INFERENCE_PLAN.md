@@ -54,7 +54,7 @@ Every step adds contract or unit tests. The phone check after S4 and S7 is a 5v5
 
 ## 5. Acceptance criteria (from the roadmap deliverables)
 
-- [ ] Inference architecture and ADR 0002 accepted by the owner (S1). **Proposed in v37.94:** `docs/adr/0002-role-model-runtime.md`.
+- [x] Inference architecture and ADR 0002 accepted by the owner (S1): proposed in v37.94, accepted 2026-11-22 (`docs/adr/0002-role-model-runtime.md`).
 - [ ] Both runtimes pass one contract test kit (load, generate, stream, cancel, unload, errors, one terminal event) (S2). **Done in code (v37.95):** `inference/LiteRtLmBackend`, `ai/LlmSlotPort`, `testing/InferenceContractKit`, `InferenceContractKitTest` (both runtimes over fakes).
 - [ ] No caller outside the router names a runtime or a slot; an `ArchitectureRulesTest` rule enforces it (S4).
 - [ ] Role, model identity and runtime are independent: any compatible model can serve either role (S3, S7).

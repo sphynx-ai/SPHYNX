@@ -7,6 +7,8 @@
 | **Owner** | Human Project Owner (final authority) |
 | **Source** | Converted from the owner's Word document *SPHYNX_AUTO_PILOT_MASTER_DEVELOPMENT_STATUS.docx* (2026-11-07). Content is preserved; sections marked *Added at conversion* are new and are labelled as such. |
 
+> **Historical record (note added 2026-11-22).** This file holds the coordination history from 2026-11-07, including an earlier milestone sequence and model names (for example the Strategic / Tactical engine sections) that predate the model-agnostic roadmap. The current phase and status are in `docs/MASTER_DEVELOPMENT_PLAN.md` (Section 3 and Section 9). Owner-confirmed checkpoint, 2026-11-22: Phases 1–5 complete, Phase 6 current.
+
 ### How to read this document — status labels
 
 | Label | Meaning |
