@@ -1,0 +1,25 @@
+{
+  "kind": "resource-baseline",
+  "t": 1795375726652,
+  "app": "37.92",
+  "device": "Xiaomi 2311DRK48G · Mediatek MT6897 · Android API 36 · arm64-v8a · RAM 11.1 GB · 8 cores up to 3.35 GHz · GPU Mali-G615 MC6 (OpenGL ES 3.2 v1.r44p1-01eac0.999bbcba36b4ca04774e2b05d5802dc0) · GGUF yes · NPU\/DSP drivers 3",
+  "state": "strategic model + tactical model",
+  "loaded": {
+    "capture": false,
+    "strategic": true,
+    "tactical": true,
+    "gguf": false
+  },
+  "phoneRamTotalMb": 11323,
+  "phoneRamAvailMb": 3236,
+  "lowMemory": false,
+  "appRamMb": 2700,
+  "appJavaMb": 9,
+  "appNativeMb": 948,
+  "appCpuPct": 0,
+  "thermal": "No thermal throttling (status 0)",
+  "thermalHeadroom": 0.7602332830429077,
+  "batteryC": 38.20000076293945,
+  "batteryPct": 96,
+  "charging": false
+}
