@@ -8,7 +8,8 @@ class InferenceRequest(
     val temperature: Float = 0.2f,
     val maxOutputTokens: Int = 256,
     val stream: Boolean = false,          // true: Token events as text arrives; false: one Completed
-    val timeoutMs: Long = 30_000L
+    val timeoutMs: Long = 30_000L,
+    val purpose: String = "other"         // what asked (draft, plan, combo ...): only for the speed records
 ) {
     fun problems(status: RuntimeStatus? = null): List<String> {
         val p = ArrayList<String>()

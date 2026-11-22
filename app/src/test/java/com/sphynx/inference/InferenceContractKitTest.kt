@@ -1,0 +1,152 @@
+package com.sphynx.inference
+
+import com.sphynx.testing.InferenceContractKit
+import org.json.JSONObject
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.io.File
+import java.io.RandomAccessFile
+import java.util.concurrent.atomic.AtomicBoolean
+
+// PHASE 6, step S2: both runtimes keep the one shared contract (ADR 0002), each over a fake engine.
+class InferenceContractKitTest {
+
+    // ---- LiteRT-LM over a fake slot ----
+
+    private class FakeSlot : LiteRtSlot {
+        @Volatile var loaded = false
+        var vision = false
+        var whereLoaded = "-"
+        val hold = AtomicBoolean(false)
+        val cancelFlag = AtomicBoolean(false)
+        var lastPreferGpu: Boolean? = null
+        var lastTextOnly: Boolean? = null
+        var lastPurpose = ""
+        override val ready get() = loaded
+        override val visionOk get() = vision
+        override val where get() = whereLoaded
+        override fun fileExists(location: String) = location.endsWith("good.litertlm")
+        override fun load(location: String, preferGpu: Boolean, textOnly: Boolean): String? {
+            lastPreferGpu = preferGpu; lastTextOnly = textOnly
+            loaded = true; vision = !textOnly; whereLoaded = if (preferGpu) "GPU" else "CPU, text only"
+            return null
+        }
+        override fun ask(prompt: String, imageJpeg: ByteArray?, temperature: Double, purpose: String, timeoutMs: Long): String {
+            lastPurpose = purpose
+            check(loaded) { "the model is not loaded" }
+            cancelFlag.set(false)
+            if (hold.getAndSet(false)) {
+                while (!cancelFlag.get()) Thread.sleep(5)
+                throw IllegalStateException("cancelled by the slot")
+            }
+            return "Farm your camps."
+        }
+        override fun cancel() { cancelFlag.set(true) }
+        override fun unload() { loaded = false; whereLoaded = "-" }
+    }
+
+    private fun liteCfg(name: String, vision: Boolean = false, accs: List<Accelerator> = listOf(Accelerator.CPU)) =
+        ModelConfiguration(id = "litertlm:$name", displayName = name, backend = BackendType.LITERT_LM, location = "/models/$name",
+            accelerators = accs, wantsVision = vision, contextTokens = 2048, maxOutputTokens = 512)
+
+    @Test fun liteRtLmKeepsTheContract() {
+        var slot = FakeSlot()
+        val h = object : InferenceContractKit.Harness {
+            override fun newBackend(): InferenceBackend { slot = FakeSlot(); return LiteRtLmBackend(slot) }
+            override fun goodConfig() = liteCfg("good.litertlm")
+            override fun badConfig() = liteCfg("missing.litertlm")
+            override fun holdNextAnswer() { slot.hold.set(true) }
+        }
+        assertEquals(emptyList<String>(), InferenceContractKit.check(h))
+    }
+
+    // the load order is the slot's own: GPU first when listed first, text only when no images are wanted
+    @Test fun liteRtLmPassesTheLoadPlanToTheSlot() {
+        val s = FakeSlot()
+        val be = LiteRtLmBackend(s)
+        val st = be.load(liteCfg("good.litertlm", vision = true, accs = listOf(Accelerator.GPU, Accelerator.CPU)))
+        assertEquals(true, s.lastPreferGpu); assertEquals(false, s.lastTextOnly)
+        assertEquals(Accelerator.GPU, st.accelerator)
+        assertTrue(st.visionOk)
+        be.load(liteCfg("good.litertlm", accs = listOf(Accelerator.CPU, Accelerator.GPU)))
+        assertEquals(false, s.lastPreferGpu); assertEquals(true, s.lastTextOnly)
+        assertEquals(Accelerator.CPU, be.status().accelerator)
+        assertFalse(be.status().visionOk)
+    }
+
+    @Test fun aGgufFileIsNotALiteRtLmModel() {
+        val be = LiteRtLmBackend(FakeSlot())
+        val c = ModelConfiguration(id = "gguf:x", displayName = "x.gguf", backend = BackendType.LLAMA_CPP, location = "/m/good.litertlm",
+            accelerators = listOf(Accelerator.CPU))
+        assertEquals("unsupported_format", be.check(c)?.code)
+    }
+
+    @Test fun purposeReachesTheSlotForTheSpeedRecords() {
+        val s = FakeSlot()
+        val be = LiteRtLmBackend(s)
+        be.load(liteCfg("good.litertlm"))
+        val done = java.util.concurrent.CountDownLatch(1)
+        be.generate(InferenceRequest("p", "plan?", purpose = "plan")) { if (it.terminal) done.countDown() }
+        assertTrue(done.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        assertEquals("plan", s.lastPurpose)
+    }
+
+    @Test fun acceleratorFromTheSlotsLabel() {
+        assertEquals(Accelerator.GPU, LiteRtLmBackend.acceleratorOf("GPU, text only"))
+        assertEquals(Accelerator.CPU, LiteRtLmBackend.acceleratorOf("CPU"))
+        assertEquals(Accelerator.CPU, LiteRtLmBackend.acceleratorOf("-"))
+        assertTrue(LiteRtLmBackend.preferGpu(listOf(Accelerator.GPU, Accelerator.CPU)))
+        assertFalse(LiteRtLmBackend.preferGpu(listOf(Accelerator.CPU, Accelerator.GPU)))
+        assertTrue(LiteRtLmBackend.preferGpu(listOf(Accelerator.GPU)))
+        assertFalse(LiteRtLmBackend.preferGpu(listOf(Accelerator.CPU)))
+    }
+
+    // ---- llama.cpp over a fake native library (the same kit) ----
+
+    private class FakeNative : LlamaNative {
+        val hold = AtomicBoolean(false)
+        val cancelFlag = AtomicBoolean(false)
+        override val unavailableReason: String? = null
+        override fun info() = "fake"
+        override fun load(path: String, contextTokens: Int, threads: Int): Long = 7L
+        override fun loadError() = ""
+        override fun describe(handle: Long): JSONObject = JSONObject().put("model", "fake")
+        override fun generate(handle: Long, prompt: String, maxTokens: Int, temperature: Float, seed: Int, onPiece: (ByteArray) -> Unit): JSONObject {
+            cancelFlag.set(false)
+            if (hold.getAndSet(false)) {
+                onPiece("Thinking".toByteArray())
+                while (!cancelFlag.get()) Thread.sleep(5)
+                return JSONObject().put("ok", true).put("stop", "cancelled")
+            }
+            onPiece("Farm ".toByteArray()); onPiece("your camps.".toByteArray())
+            return JSONObject().put("ok", true).put("stop", "eos").put("genTokens", 2)
+        }
+        override fun cancel(handle: Long) { cancelFlag.set(true) }
+        override fun free(handle: Long) {}
+    }
+
+    private val files = ArrayList<File>()
+    @After fun cleanUp() { files.forEach { it.delete() } }
+
+    private fun gguf(): File {
+        val f = File.createTempFile("model", ".gguf"); files.add(f)
+        RandomAccessFile(f, "rw").use { it.write("GGUF".toByteArray() + byteArrayOf(3, 0, 0, 0)); it.setLength(3L * 1024 * 1024) }
+        return f
+    }
+
+    @Test fun llamaCppKeepsTheContract() {
+        var native = FakeNative()
+        val good = gguf()
+        val h = object : InferenceContractKit.Harness {
+            override fun newBackend(): InferenceBackend { native = FakeNative(); return LlamaCppBackend(native) }
+            override fun goodConfig() = ModelConfiguration(id = "gguf:m", displayName = "m.gguf", backend = BackendType.LLAMA_CPP,
+                location = good.absolutePath, accelerators = listOf(Accelerator.CPU), contextTokens = 2048, maxOutputTokens = 512)
+            override fun badConfig() = goodConfig().copy(location = good.absolutePath + ".missing")
+            override fun holdNextAnswer() { native.hold.set(true) }
+        }
+        assertEquals(emptyList<String>(), InferenceContractKit.check(h))
+    }
+}
