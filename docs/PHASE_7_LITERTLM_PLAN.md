@@ -9,7 +9,7 @@
 - **Supporting roles:** Android Native/Platform Engineer; ML Model Deployment Specialist; Performance Engineer; QA Engineer.
 - **Mission:** audit the existing LiteRT-LM work and stabilize it behind the common inference interface built in Phase 6.
 - **Out of scope:**
-  - the NPU (owner, 2026-11-23: not in Phase 7);
+  - the NPU as a default (owner, 2026-11-23). It comes only as the experimental switch in step L8 (owner, 2026-11-23);
   - new model features;
   - GGUF (Phase 8);
   - the Model Lab and registry (Phase 9);
@@ -39,9 +39,10 @@
 | L4 | **A GPU failure mid-match:** the model is reloaded on the CPU **once**, and the panel and log say so. The GPU is tried again at the next start. A second failure unloads, and play goes on with the rules | Fall back to CPU once | Only after a GPU failure |
 | L5 | **Error words:** LiteRT-LM's exceptions are mapped to the shared error types (not enough memory, unsupported model, GPU unavailable, cancelled), so the Model page and the log say what to do | — | No |
 | L6 | **Newer LiteRT-LM release, in its own PR:** CI reports the newest published version, since this container can't reach Google's Maven. Its release notes are checked, the pin is raised and the build is run. It is kept only if the owner's phone test shows Gemma 4 E2B loading and answering at least as well; otherwise the pin goes back to 0.19.1 | Try newer, own PR | Possibly; decided by the phone test |
+| L8 | **Experimental NPU, behind a switch** (owner addition 2026-11-23). A Model page switch "Use the NPU (experimental)", **off by default**, tries the order **NPU, then GPU, then CPU**. An NPU build of a model is made for one chip (its file name carries the chip, e.g. `.mediatek.mt6993`; the owner's phone is an MT6897). So the NPU is tried only with a model file built for this phone's chip; any other file goes straight to the GPU, and the Model page says why. First sub-step: confirm that the pinned LiteRT-LM (0.19.1, or the L6 version) has an NPU backend on Android. If it has none, the step reports that and stops | Experimental NPU, NPU → GPU → CPU | Only with the switch on |
 | L7 | **Phase 7 phone checklist and closing record** | — | No |
 
-L6 is placed last so that L1–L5 are measured on the known-good 0.19.1 first.
+L6 and L8 come after L1–L5, so that L1–L5 are measured on the known-good 0.19.1 first. L7 closes the phase.
 
 ## 4. Acceptance criteria (roadmap deliverables)
 
@@ -49,7 +50,8 @@ L6 is placed last so that L1–L5 are measured on the known-good 0.19.1 first.
 - [ ] Load, answer (streaming), cancel, unload, errors and offline are covered by tests (contract kit) and the phone checklist (L2, L5, L7).
 - [ ] A risky load warns before it starts (L3); a GPU failure falls back to the CPU once (L4).
 - [ ] The LiteRT-LM version decision is recorded with its evidence (L6).
-- [ ] Known limitations are documented: NPU not used, one model per slot, fresh conversation per question.
+- [ ] Known limitations are documented: NPU experimental only (L8), one model per slot, fresh conversation per question.
+- [ ] The experimental NPU switch is off by default, falls back NPU → GPU → CPU, and its result on the owner's phone is recorded (L8).
 
 ## 5. Risks
 
