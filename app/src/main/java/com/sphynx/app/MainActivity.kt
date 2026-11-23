@@ -3004,7 +3004,9 @@ class MainActivity : Activity() {
         switch("Small tactical model in fights", Cfg.tacticalLlmOn) { on ->
             Cfg.tacticalLlmOn = on
             com.sphynx.ai.Roles.loadByOwner()   // a button: a model that crashed may be tried again (Phase 6 S6)
-            if (on) ModelManager.loadTactical(this) { err -> runOnUiThread { toast(err ?: "Small tactical model loaded") } }
+            if (on) afterFitCheck(com.sphynx.ai.Roles.TACTICAL) {
+                ModelManager.loadTactical(this) { err -> runOnUiThread { toast(err ?: "Small tactical model loaded") } }
+            }
             else ModelManager.unloadTactical()
         }
         // the fight-choice network: the fast numeric adviser in the same slot
@@ -3521,17 +3523,32 @@ class MainActivity : Activity() {
                 val v = values[i]
                 val why = rc.problem(role, v, ModelManager.choice(rc.other(role)))
                 if (why != null) { toast(why) } else {
+                    val before = ModelManager.choice(role)
+                    val ownMb = if (com.sphynx.ai.Roles.ready(role)) ModelManager.fileFor(this, role).length() / 1_048_576L else 0L
                     Cfg.setRaw(rc.settingKey(role), v)
-                    Thread {
+                    afterFitCheck(role, ownMb, cancelled = { Cfg.setRaw(rc.settingKey(role), before) }) { Thread {
                         com.sphynx.ai.Roles.unload(role)
                         com.sphynx.ai.Roles.loadByOwner()
                         val done: (String?) -> Unit = { err -> runOnUiThread { toast(err ?: ("Loaded: " + ModelManager.choiceLabel(this, role))) } }
                         if (role == com.sphynx.ai.Roles.STRATEGIC) ModelManager.load(this, done)
                         else if (Cfg.tacticalLlmOn) ModelManager.loadTactical(this, done)
                         else runOnUiThread { toast("Saved. Turn on the small tactical model to load it") }
-                    }.start()
+                    }.start() }
                 }
             }.setNegativeButton("Cancel", null).show()
+    }
+
+    // Phase 7 L3 (owner, 2026-11-23: "warn, let me load"): before a load the owner asked for, a model that will probably
+    // not fit next to the game asks first (core/MemoryFit). [ownMb] is what the job's current model gives back.
+    private fun afterFitCheck(role: com.sphynx.inference.ModelRole, ownMb: Long = 0L, cancelled: () -> Unit = {}, go: () -> Unit) {
+        val w = ModelManager.fitWarning(this, role, ownMb) ?: return go()
+        com.sphynx.core.Diag.log("W", "Memory check (${role.name.lowercase()}), asked: $w")
+        AlertDialog.Builder(this).setTitle("Memory may run short")
+            .setMessage("$w\n\nLoad it anyway?")
+            .setPositiveButton("Load anyway") { _, _ -> com.sphynx.core.Diag.log("I", "Memory check: loaded anyway"); go() }
+            .setNegativeButton("Cancel") { _, _ -> cancelled() }
+            .setOnCancelListener { cancelled() }
+            .show()
     }
 
     // the GPU switch changed while the model is loaded: load it again on the chosen processor (owner, 2026-11-13:
@@ -3629,9 +3646,13 @@ class MainActivity : Activity() {
         val p3Chip = (p3Head.parent as LinearLayout).getChildAt(1) as TextView
         val p3Note = cardNote(p3)
         val load = inCard(p3, "Load the strategic model (Gemma)") {
-            toast("Loading…")
             com.sphynx.ai.Roles.loadByOwner()   // a button: a model that crashed may be tried again (Phase 6 S6)
-            ModelManager.load(this) { err -> runOnUiThread { toast(err ?: "Model loaded") } }
+            val ownMb = if (com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.STRATEGIC))
+                ModelManager.fileFor(this, com.sphynx.ai.Roles.STRATEGIC).length() / 1_048_576L else 0L
+            afterFitCheck(com.sphynx.ai.Roles.STRATEGIC, ownMb) {
+                toast("Loading…")
+                ModelManager.load(this) { err -> runOnUiThread { toast(err ?: "Model loaded") } }
+            }
         }
         inCard(p3, "Get Gemma 4 E2B (2.6 GB)") { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ModelManager.MODEL_PAGE))) }
         cardNote(p3, "Put the .litertlm file in the app's folder, then Scan the folder (step 2): it is copied in. The trained " +

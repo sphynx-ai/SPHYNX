@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "A question before a model that may not fit",
+            "When you load a model by hand (the load button, the small-model switch, or the job picker), the app now first " +
+                "compares the model's size with the phone's free memory, keeping about 2.5 GB for the game. If it probably " +
+                "won't fit, it says so and asks; Load anyway still loads it. Loads at start only write the warning in the log.",
+            pr = 101, needsDeviceCheck = true, version = "38.10"),
         Entry("2026-11-23", Kind.IMPROVED, "Faster fight advice: Gemma's answers now stream",
             "The language models now write their answers word by word inside the app. The small tactical model stops as soon " +
                 "as it has named its choice (all in, poke, farm, retreat, group), so fight advice arrives sooner, on LiteRT-LM " +

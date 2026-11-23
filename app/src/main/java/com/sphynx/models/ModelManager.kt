@@ -77,9 +77,32 @@ object ModelManager {
         return if (f.exists()) "${tacticalName()} (${f.length() / 1048576} MB)" else "no small model file yet"
     }
 
+    // ---- Phase 7 L3: will the job's model fit next to the game? (core/MemoryFit; warn, never block) ----
+    fun fileFor(ctx: Context, role: com.sphynx.inference.ModelRole): File =
+        chosenGguf(ctx, role) ?: if (role == com.sphynx.inference.ModelRole.STRATEGIC) modelFile(ctx) else tacticalFile(ctx)
+
+    /** A warning when the job's model will probably not fit; null when it fits or nothing is known. */
+    fun fitWarning(ctx: Context, role: com.sphynx.inference.ModelRole, alreadyLoadedMb: Long = 0L): String? {
+        val f = fileFor(ctx, role)
+        if (!f.isFile) return null
+        val avail = try {
+            val mi = android.app.ActivityManager.MemoryInfo()
+            (ctx.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager).getMemoryInfo(mi)
+            mi.availMem / 1_048_576L
+        } catch (e: Exception) { 0L }
+        return com.sphynx.core.MemoryFit.warning(f.name, f.length(), avail, alreadyLoadedMb)
+    }
+
+    /** A load nobody pressed a button for (start, a new file): a risky load is only written in the log. */
+    private fun logFit(ctx: Context, role: com.sphynx.inference.ModelRole, loaded: Boolean) {
+        val ownMb = if (loaded) fileFor(ctx, role).length() / 1_048_576L else 0L
+        fitWarning(ctx, role, ownMb)?.let { com.sphynx.core.Diag.log("W", "Memory check (${role.name.lowercase()}): $it") }
+    }
+
     fun load(ctx: Context, done: (String?) -> Unit) {
         val f = chosenGguf(ctx, com.sphynx.inference.ModelRole.STRATEGIC) ?: modelFile(ctx)
         if (!f.exists()) { done("No model file yet (put the .litertlm file in the Sphynx-Storage/Input folder)"); return }
+        logFit(ctx, com.sphynx.inference.ModelRole.STRATEGIC, ModelHooks.strategicReady())
         if (ModelHooks.strategicLoading()) return
         ModelHooks.loadStrategic(ctx.applicationContext, f.absolutePath, Cfg.useGpu, done)   // runs in the AI's scope
     }
@@ -89,6 +112,7 @@ object ModelManager {
         val f = chosenGguf(ctx, com.sphynx.inference.ModelRole.TACTICAL) ?: tacticalFile(ctx)
         if (!f.exists()) { done("No small model file yet (put e.g. the Gemma 3 270M .litertlm file in the Sphynx-Storage/Input folder)"); return }
         if (ModelHooks.tacticalLoading() || ModelHooks.tacticalReady()) { done(null); return }
+        logFit(ctx, com.sphynx.inference.ModelRole.TACTICAL, false)
         ModelHooks.loadTactical(ctx.applicationContext, f.absolutePath, done)   // CPU, text only
     }
 
