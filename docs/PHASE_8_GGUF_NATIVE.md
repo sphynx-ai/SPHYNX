@@ -57,3 +57,11 @@
 | Gemma 3 4B + mmproj | Q4_K_M | — | — | yes (S8) | Not yet measured; G6 and G10 |
 
 G6's benchmark fills this table on the phone; G10 publishes the supported list.
+
+## 7. Native tests (G3)
+
+`tools/native-test/run.sh --tiny` builds the app's `llama_engine.cpp` with the vendored llama.cpp for a Linux x86-64 computer and runs `engine_test`. The CI job `native-tests` (workflow "Android build") runs it on every pull request. Only llama.cpp's x86 CPU code (`ggml-cpu/arch/x86`) is copied in, from the same tag, and never committed.
+
+The model is a tiny random llama-family GGUF (about 0.5 MB) made by `make_tiny_model.py` with llama.cpp's own `gguf-py`, so nothing is downloaded. Its answers are nonsense: the test checks the engine, not the words.
+
+The checks: the info line; a missing, broken or web-page file; an answer, the free and the cancel without a model; load; describe; an answer; streaming; the stop reason; greedy answers repeating exactly; a cancel from inside and from another thread; the next answer after a cancel; a prompt longer than the context; a picture without an mmproj; a missing mmproj; answering after a failed mmproj; and 20 loads and frees in a row.

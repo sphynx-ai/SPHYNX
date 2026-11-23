@@ -67,3 +67,22 @@ jobs:
           path: app/build/reports/tests/
           if-no-files-found: ignore
           retention-days: 14
+
+  # Phase 8, step G3: the app's real native engine (llama_engine.cpp + the vendored llama.cpp) built for this computer and
+  # run against a tiny random GGUF model made with llama.cpp's own gguf-py: load, streaming, greedy repeat, cancel (also
+  # from another thread), errors, a picture without an mmproj, and 20 loads and frees. No model download.
+  native-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install build tools and numpy (Ubuntu packages)
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q ninja-build cmake python3-numpy python3-yaml > /dev/null
+
+      - name: Build and run the native engine test
+        env:
+          REQUIRE_MODEL: "1"
+        run: tools/native-test/run.sh --tiny
