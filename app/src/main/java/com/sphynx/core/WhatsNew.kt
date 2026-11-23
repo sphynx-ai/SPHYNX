@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "Phase 8 is ready for your phone test",
+            "Behind the scenes: every Phase 8 step is built except the GPU one, which waits for your choice. The GGUF " +
+                "steps are: model details before loading, real engine tests on every change, a safer engine, a benchmark " +
+                "with the best thread count, a newer llama.cpp, stability checks, and pictures for the tactical model. The " +
+                "checklist for testing it all at once is in the Phase 8 plan.",
+            pr = 119, needsDeviceCheck = true, version = "38.28"),
         Entry("2026-11-23", Kind.IMPROVED, "GGUF on the GPU: checked, not added yet",
             "Behind the scenes: the GPU (Vulkan) version of the GGUF engine was built and measured. It needs about 1,300 " +
                 "GPU programs compiled while the app is built, which your phone build can't do, and it would make the app " +
