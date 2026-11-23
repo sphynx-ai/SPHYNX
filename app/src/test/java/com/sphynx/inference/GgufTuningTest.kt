@@ -49,4 +49,13 @@ class GgufTuningTest {
         assertEquals(4096L * 32 * 1024, f16 - q8)
         assertTrue(q8 < f16); assertFalse(q8 <= 0)
     }
+
+    // Phase 8 G9: the memory after each unload must come back (counted from the second unload)
+    @Test fun leakCheck() {
+        assertEquals("Load and unload 5 times: memory after unload 410 → 418 MB (+8 MB: comes back)",
+            GgufTuning.leakSummary(listOf(520, 410, 412, 415, 418)))
+        assertTrue(GgufTuning.leakSummary(listOf(520, 410, 450, 500, 560)).contains("+150 MB: possible leak"))
+        assertNull(GgufTuning.leakGrowthMb(listOf(500, 400)))
+        assertEquals(-10L, GgufTuning.leakGrowthMb(listOf(-1, 500, 410, 400)))
+    }
 }

@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.NEW, "GGUF stability checks",
+            "The GGUF benchmark card has a new button: Load and unload 20 times. It loads one GGUF model 20 times in a row " +
+                "and checks that the app's memory comes back each time. During a 5v5 with a GGUF model doing a job, the app " +
+                "also writes the memory, heat and battery temperature once a minute. Both are saved for the Debug data upload.",
+            pr = 117, needsDeviceCheck = true, version = "38.26"),
         Entry("2026-11-23", Kind.IMPROVED, "Newer llama.cpp for GGUF models (b12651)",
             "The GGUF engine is updated from llama.cpp b11900 (October) to b12651 (November 23), the newest release. It " +
                 "knows 16 more model families. Your phone test decides whether it stays: run the GGUF benchmark on the same " +

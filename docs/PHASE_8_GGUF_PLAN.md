@@ -55,7 +55,7 @@ G11 is built right after G4, on b11900. G7 comes after G2–G6 and G11, so its r
 - [ ] The llama.cpp version decision is recorded with its evidence (G7). **Upgrade in code (v38.25):** b11900 → **b12651** (`f5e6915`, 2026-11-23, the newest tag) through `tools/update-llama.sh`, which gives no change when run with b11900. The engine compiles without changes (two deprecated calls kept on purpose). The native test passes 32 of 32 in the container. 16 new model families, none removed. **Kept only if the phone test is as good** (the G6 benchmark on the same models); otherwise the pin goes back.
 - [ ] Each acceleration path is benchmarked rather than assumed: CPU threads and KV cache (G5), GPU through Vulkan (G8).
 - [ ] Both jobs read pictures when their model can (LiteRT-LM vision or GGUF + mmproj); a text-only model is marked as such in the picker (G11). **In code (v38.23):** `ai/TacticalSight` (pure rules tested), switch `Cfg.tacticalSightOn` (off by default), tactical loads with pictures through `Roles.loadLiteRt` / `ProbesWiring.loadFor` / `StepDown.configFor`, readings logged to `research/tactical_sight.jsonl` next to the detector counts (exported from the Debug data page).
-- [ ] Memory, heat and stability over a full match are measured on the phone (G9).
+- [ ] Memory, heat and stability over a full match are measured on the phone (G9). **In code (v38.26):** `models/GgufStability`: 20 load/unload cycles with the memory after each unload (`research/gguf_stability.jsonl`, `GgufTuning.leakSummary` tested), and one row a minute during a 5v5 with a GGUF job (`research/match_resources.jsonl`). Phone measurements pending.
 - [ ] A supported GGUF model list with measured figures, and troubleshooting documentation (G1, G10).
 
 ## 5. Risks
