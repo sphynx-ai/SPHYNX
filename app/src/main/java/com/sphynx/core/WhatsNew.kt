@@ -24,63 +24,69 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "Phase 7 done: your phone's NPU result",
+            "Behind the scenes: Phase 7 is closed after your phone test. Gemma ran on your phone's NPU (compiled on the " +
+                "phone, about 12 s the first time, 10 s after that), but the GPU is faster: it writes about 7.3 tokens a " +
+                "second against 5.4, and gives the first word in under half a second against about 2.3 s. Keep the NPU " +
+                "switch off for play; it stays an experiment.",
+            pr = 107, needsDeviceCheck = true, version = "38.16"),
         Entry("2026-11-23", Kind.IMPROVED, "Phase 7 is ready for your phone test",
             "Behind the scenes: every Phase 7 step is built (streamed answers, the memory question, the GPU fallback, " +
                 "plain error words, the experimental NPU for Gemma and the detectors, and the best processor per model). " +
                 "The checklist for testing it all at once is in the Phase 7 plan.",
-            pr = 106, needsDeviceCheck = true, version = "38.15"),
+            pr = 106, needsDeviceCheck = false, version = "38.15"),
         Entry("2026-11-23", Kind.NEW, "Each model picks its best processor on this phone",
             "The app now remembers, for each model file, how it did on each processor of your phone: whether it loaded, how " +
                 "long the load took and how fast it answered. Next time it tries the fastest one first, and a processor that " +
                 "failed, or closed the app while loading, is skipped until the app, the model file or LiteRT-LM changes. The " +
                 "Model page says which processor goes first and why. Your GPU and NPU switches still decide what may be tried.",
-            pr = 105, needsDeviceCheck = true, version = "38.14"),
+            pr = 105, needsDeviceCheck = false, version = "38.14"),
         Entry("2026-11-23", Kind.NEW, "Experimental: the detectors on the NPU",
             "The same Use the NPU (experimental) switch now also puts the minimap and screen detectors on the phone's NPU. " +
                 "Each is tested with one run when it loads; if the NPU can't run it, or fails later, it goes back to the CPU " +
                 "until the next start. Their status line shows where they run and the time per run, so you can compare " +
                 "with the switch off. The fight-choice network stays on the CPU.",
-            pr = 104, needsDeviceCheck = true, version = "38.13"),
+            pr = 104, needsDeviceCheck = false, version = "38.13"),
         Entry("2026-11-23", Kind.NEW, "Experimental: Gemma on the NPU",
             "A new Model page switch, Use the NPU (experimental), off by default. With it on, the strategic model is tried " +
                 "on the phone's NPU first, then the GPU, then the CPU. The phone compiles the model for its NPU while it loads, " +
                 "so the first time can take over a minute. A line under the switch says whether this phone can try it. If it " +
                 "fails, the GPU is used as before; if the app closes while compiling, it is not tried by itself again.",
-            pr = 103, needsDeviceCheck = true, version = "38.12"),
+            pr = 103, needsDeviceCheck = false, version = "38.12"),
         Entry("2026-11-23", Kind.IMPROVED, "A GPU failure mid-match moves Gemma to the CPU",
             "If Gemma's answer fails on the GPU during play, the app now loads it again on the CPU once (with pictures) " +
                 "and the floating panel says so for 2 minutes; the GPU is tried again at the next start. If it fails again " +
                 "on the CPU, it is unloaded and play goes on with the rules. Model errors now say what went wrong in plain " +
                 "words (not enough memory, a file the app can't read, the GPU stopped working) and what you can do.",
-            pr = 102, needsDeviceCheck = true, version = "38.11"),
+            pr = 102, needsDeviceCheck = false, version = "38.11"),
         Entry("2026-11-23", Kind.IMPROVED, "A question before a model that may not fit",
             "When you load a model by hand (the load button, the small-model switch, or the job picker), the app now first " +
                 "compares the model's size with the phone's free memory, keeping about 2.5 GB for the game. If it probably " +
                 "won't fit, it says so and asks; Load anyway still loads it. Loads at start only write the warning in the log.",
-            pr = 101, needsDeviceCheck = true, version = "38.10"),
+            pr = 101, needsDeviceCheck = false, version = "38.10"),
         Entry("2026-11-23", Kind.IMPROVED, "Faster fight advice: Gemma's answers now stream",
             "The language models now write their answers word by word inside the app. The small tactical model stops as soon " +
                 "as it has named its choice (all in, poke, farm, retreat, group), so fight advice arrives sooner, on LiteRT-LM " +
                 "and GGUF alike. The speed recorder now notes the time to the first word on every answer. The answers themselves " +
                 "are the same.",
-            pr = 100, needsDeviceCheck = true, version = "38.09"),
+            pr = 100, needsDeviceCheck = false, version = "38.09"),
         Entry("2026-11-23", Kind.IMPROVED, "Phase 7 starts: LiteRT-LM checked, Gemma 4 E2B supported",
             "Phase 7 has started with a check of how the app uses LiteRT-LM. The Model page now names the supported model " +
                 "(Gemma 4 E2B, tested on your phone). The app already uses the newest LiteRT-LM release (0.19.1), so there is " +
                 "nothing to upgrade.",
-            pr = 99, needsDeviceCheck = true, version = "38.08"),
+            pr = 99, needsDeviceCheck = false, version = "38.08"),
         Entry("2026-11-23", Kind.IMPROVED, "Phase 7 plan: NPU compiled on the phone, best processor per model",
             "Behind the scenes: the Phase 7 plan now has your two additions. A Use the NPU (experimental) switch, off by " +
                 "default, lets the phone compile Gemma for its NPU when it loads (the first time can take over a minute), " +
                 "falling back to the GPU and then the CPU. And the app will remember, for each model, which processor works " +
                 "best on your phone and use that one first. Waiting for your OK. Nothing in the app changes.",
-            pr = 98, needsDeviceCheck = true, version = "38.07"),
+            pr = 98, needsDeviceCheck = false, version = "38.07"),
         Entry("2026-11-23", Kind.IMPROVED, "Phase 6 finished; the plan for Phase 7 (LiteRT-LM)",
             "Your phone test of Phase 6 is recorded: the phase is complete. The Phase 7 plan is written from your answers: " +
                 "Gemma's answers will arrive word by word, a warning will come before loading a model that may not fit next " +
                 "to the game, a GPU failure in a match will fall back to the CPU once, and a newer LiteRT-LM will be tried in " +
                 "its own update. It is waiting for your OK. Nothing in the app changes.",
-            pr = 97, needsDeviceCheck = true, version = "38.06"),
+            pr = 97, needsDeviceCheck = false, version = "38.06"),
         Entry("2026-11-22", Kind.IMPROVED, "Phase 6 is built: one phone test for all of it",
             "Every step of Phase 6 is in this version: every model goes through one common part, you choose which model " +
                 "does which job (LiteRT-LM or GGUF, GGUF with pictures through its mmproj file), Step down gently switches to " +
