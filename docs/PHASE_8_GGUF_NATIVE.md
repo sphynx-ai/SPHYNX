@@ -10,7 +10,7 @@
 | Kotlin → native seam | `inference/LlamaNative` (interface), `inference/LlamaJni` (the real one) | A fake engine replaces it in the unit tests. `LlamaCpu` refuses phones without dot product / fp16 **before** the library loads |
 | JNI bridge | `cpp/llama_jni.cpp` | Turns Java arguments into C++ ones. Text crosses as UTF-8 **bytes**, never Java strings, because a piece can end halfway through a character. Load errors are kept under a mutex |
 | Portable engine | `cpp/llama_engine.cpp` / `.h` | No JNI and no Android, so it can also be built on a computer (G3). One model and one context per handle, chat template, sampler, streaming, abort callback |
-| llama.cpp | `cpp/llama.cpp/` | Vendored at tag b11900, commit `74b104c`: `ggml` CPU backend, `src/`, `tools/mtmd` for pictures |
+| llama.cpp | `cpp/llama.cpp/` | Vendored at tag **b12651**, commit `f5e6915` (G7, v38.25; was b11900 / `74b104c`): `ggml` CPU backend, `src/`, `tools/mtmd` for pictures |
 
 ## 2. Ownership and threads
 

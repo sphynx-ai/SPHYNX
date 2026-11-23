@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Upstream | https://github.com/ggml-org/llama.cpp (MIT, see `llama.cpp/LICENSE`) |
-| Pinned | tag **b11900**, commit `74b104c9ba5717116b7e65e0cd35397778653304` (26 Oct 2026) |
+| Pinned | tag **b12651**, commit `f5e6915c28f10330885fcb9243a93ae98d3115ab` (23 Nov 2026), from b11900 by Phase 8 G7 (kept only if the phone test is as good; the earlier pin was `74b104c`) |
 | Built with | NDK **29.0.14206865**, CMake **3.22.1** (the versions on the owner's Code on the Go; CI installs the same) |
 | ABI | arm64-v8a only, CPU backend only, `-march=armv8.2-a+dotprod+fp16` |
 | Output | `libsphynx_llama.so` (about 6.4 MB) |
@@ -44,7 +44,9 @@ The Kotlin side: `inference/LlamaCppBackend` (the shared `InferenceBackend` cont
 
 **Left out:** every GPU / NPU backend; the non-ARM CPU code (`ggml-cpu/arch/{x86,powerpc,riscv,s390,wasm,loongarch}`, `spacemit`); tools other than `tools/mtmd`, tests, examples, the rest of `vendor/`, `common/`; llama.cpp's own top-level `CMakeLists.txt` (`CMakeLists.txt` here sets the few variables it would have set).
 
-1. Copy the same folders from a newer tag.
+1. Run `tools/update-llama.sh <tag>` (Phase 8 G7): it copies exactly the parts listed above from a newer tag and prints the new pin. Running it with the current tag must give no change in git.
 2. Update the tag and commit here and in `CMakeLists.txt`.
 3. Check the engine still compiles against the new `llama.h` (the API changes between tags).
-4. Re-run the unit tests, then load a model and ask the test question on the phone.
+4. Copy the model family list into `inference/GgufArchitectures.kt` (GgufInfoTest says when it differs), run `tools/native-test/run.sh --tiny`, then the unit tests, then load a model and ask the test question on the phone.
+
+**Deprecated calls (b12651):** `llama_decode` and `llama_batch_get_one` are deprecated in favour of `llama_process` / `llama_batch_ext`. They still work, and the engine keeps them so that the b11900 → b12651 comparison changes only llama.cpp. The move to the new calls is left for a later update.

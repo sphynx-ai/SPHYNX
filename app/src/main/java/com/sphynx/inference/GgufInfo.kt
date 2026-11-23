@@ -44,7 +44,7 @@ data class GgufInfo(
     fun problemAsModel(): String? = when {
         isProjector -> "this is a picture projector (mmproj), not a model: keep it next to its model in the GGUF library"
         architecture !in GgufArchitectures.KNOWN ->
-            "its model family \"$architecture\" is newer than this app's llama.cpp (b11900): it can't be loaded yet"
+            "its model family \"$architecture\" is newer than this app's llama.cpp (${GgufArchitectures.LLAMA_TAG}): it can't be loaded yet"
         else -> null
     }
 
