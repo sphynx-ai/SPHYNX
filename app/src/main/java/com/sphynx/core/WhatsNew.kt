@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "Phase 8 plan: finishing the GGUF engine",
+            "Behind the scenes: the plan for finishing Phase 8 (GGUF models through llama.cpp) is approved, with your addition: both jobs read pictures. " +
+                "It covers reading a model's details before loading it, tests that run the real engine, safer native code, " +
+                "thread and memory tuning, a repeatable speed test, a newer llama.cpp, an experimental GPU switch, and a " +
+                "full-match stability check.",
+            pr = 109, needsDeviceCheck = true, version = "38.18"),
         Entry("2026-11-23", Kind.NEW, "Detectors get their own NPU switch",
             "The Model page has a new switch, Detectors on the NPU (experimental), off by default. It moves only the " +
                 "minimap and screen detectors to the NPU, so Gemma can stay on the GPU (faster on your phone) at the same " +
