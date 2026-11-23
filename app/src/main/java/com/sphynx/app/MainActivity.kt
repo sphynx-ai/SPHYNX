@@ -3002,10 +3002,22 @@ class MainActivity : Activity() {
         title("SETTINGS")
         switch("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it; reloadGemmaForGpu() }
         // Phase 7 L8 (owner, 2026-11-23): experimental, off by default; NPU, then GPU, then CPU
-        switch("Use the NPU (experimental)", Cfg.useNpu) { Cfg.useNpu = it; reloadGemmaForGpu() }
-        text("Tries the strategic model on the phone's NPU first, then the GPU, then the CPU. The phone compiles the model " +
-            "for its NPU when it loads: the first time can take over a minute. It frees the GPU for the game; it is not " +
-            "faster at writing. If it fails, the GPU or CPU is used. " + com.sphynx.core.NpuCheck.line(this), 12f, color = T.MUTED)
+        switch("Use the NPU (experimental)", Cfg.useNpu) {
+            Cfg.useNpu = it
+            reloadGemmaForGpu()
+            // L8b: the minimap and screen detectors follow the same switch (NPU through NNAPI, else the CPU)
+            Thread {
+                for (d in listOf(ObjectDetector, com.sphynx.vision.ScreenDetector)) if (d.ready) {
+                    d.forgetNpuFailure()
+                    d.load(this)
+                    Diag.info("${d.javaClass.simpleName} now on ${d.where}")
+                }
+            }.start()
+        }
+        text("Tries the strategic model on the phone's NPU first, then the GPU, then the CPU, and the minimap and screen " +
+            "detectors on the NPU, then the CPU. The phone compiles Gemma for its NPU when it loads: the first time can take " +
+            "over a minute. It frees the GPU for the game; it is not faster at writing. If it fails, the GPU or CPU is used. " +
+            "The detectors' status line shows where they run and their time per run. " + com.sphynx.core.NpuCheck.line(this), 12f, color = T.MUTED)
         switch("Small tactical model in fights", Cfg.tacticalLlmOn) { on ->
             Cfg.tacticalLlmOn = on
             com.sphynx.ai.Roles.loadByOwner()   // a button: a model that crashed may be tried again (Phase 6 S6)

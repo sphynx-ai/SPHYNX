@@ -63,3 +63,5 @@ Read on 2026-11-23 from the source: LiteRT-LM `v0.19.1`; LiteRT `main` at 69bd63
 | Risks | Open reports of NPU compile crashes on Dimensity 8300 / Android 16. A crash while loading is caught by the load sentinel (S6); a failure falls back to the GPU, then the CPU | — |
 
 The Model page line under the switch (`core/NpuCheck`) says on the phone whether the app's two libraries are there and whether the phone opens a Neuron adapter to apps.
+
+**Detectors (L8b, v38.13):** the minimap and screen detectors follow the same switch through TFLite's NNAPI delegate (`setUseNnapiCpu(false)`, fp16 allowed, sustained speed), with a first run checked at load and the CPU (2 threads) after any failure until the next start. Their status line shows where they run ("NPU (NNAPI)" or "CPU") and the time per run. The fight-choice and policy networks stay on the CPU.
