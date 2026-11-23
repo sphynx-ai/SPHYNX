@@ -55,6 +55,9 @@ class LlamaCppBackend(
         if (!f.isFile) return InferenceError.ModelNotFound(config.location)
         val head = try { f.inputStream().use { s -> ByteArray(16).let { b -> b.copyOf(maxOf(0, s.read(b))) } } } catch (e: Exception) { ByteArray(0) }
         GgufFile.checkHeader(head, f.length())?.let { return InferenceError.UnsupportedFormat(it) }
+        // Phase 8 G2: the file's own description, checked before native code opens it
+        val info = GgufInfo.read(f).getOrElse { return InferenceError.UnsupportedFormat(it.message ?: "the file can't be read") }
+        info.problemAsModel()?.let { return InferenceError.UnsupportedFormat(it) }
         val need = GgufFile.estimatedMemoryBytes(f.length(), config.contextTokens)
         val free = freeMemoryBytes()
         if (free in 0 until need) return InferenceError.NotEnoughMemory(need, free)

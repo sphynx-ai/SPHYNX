@@ -52,7 +52,7 @@ class LlamaCppBackendTest {
     private val files = ArrayList<File>()
     @After fun cleanUp() { files.forEach { it.delete() } }
 
-    private fun ggufFile(size: Long = 3L * 1024 * 1024, head: ByteArray = "GGUF".toByteArray() + byteArrayOf(3, 0, 0, 0)): File {
+    private fun ggufFile(size: Long = 3L * 1024 * 1024, head: ByteArray = com.sphynx.testing.GgufFixture.model()): File {
         val f = File.createTempFile("model", ".gguf"); files.add(f)
         RandomAccessFile(f, "rw").use { it.write(head); it.setLength(size) }
         return f

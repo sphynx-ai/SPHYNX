@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "GGUF models are checked before they load",
+            "The app now reads a GGUF file's own description before llama.cpp opens it: the model family, the " +
+                "quantization (for example Q4_K_M), its size, how much text it was trained for, and whether it has a chat " +
+                "format. The job picker shows this under each GGUF model. A broken file, an unfinished download, or a model " +
+                "family newer than the app's llama.cpp is refused with the reason, instead of failing inside the engine.",
+            pr = 111, needsDeviceCheck = true, version = "38.20"),
         Entry("2026-11-23", Kind.IMPROVED, "Phase 8 starts: how the GGUF engine fits together",
             "Behind the scenes: a document now explains how the GGUF engine (llama.cpp) is built into the app, who owns " +
                 "what, its memory, which phones it supports and what each GGUF model measured on your phone. It also lists " +
