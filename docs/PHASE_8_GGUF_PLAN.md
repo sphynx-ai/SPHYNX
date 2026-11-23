@@ -54,7 +54,7 @@ G11 is built right after G4, on b11900. G7 comes after G2–G6 and G11, so its r
 - [ ] Reproducible benchmarks with model, quantization, threads, cold/warm state and device recorded, on the owner's phone (G5, G6).
 - [ ] The llama.cpp version decision is recorded with its evidence (G7).
 - [ ] Each acceleration path is benchmarked rather than assumed: CPU threads and KV cache (G5), GPU through Vulkan (G8).
-- [ ] Both jobs read pictures when their model can (LiteRT-LM vision or GGUF + mmproj); a text-only model is marked as such in the picker (G11).
+- [ ] Both jobs read pictures when their model can (LiteRT-LM vision or GGUF + mmproj); a text-only model is marked as such in the picker (G11). **In code (v38.23):** `ai/TacticalSight` (pure rules tested), switch `Cfg.tacticalSightOn` (off by default), tactical loads with pictures through `Roles.loadLiteRt` / `ProbesWiring.loadFor` / `StepDown.configFor`, readings logged to `research/tactical_sight.jsonl` next to the detector counts (exported from the Debug data page).
 - [ ] Memory, heat and stability over a full match are measured on the phone (G9).
 - [ ] A supported GGUF model list with measured figures, and troubleshooting documentation (G1, G10).
 

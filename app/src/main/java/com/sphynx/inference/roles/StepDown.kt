@@ -36,8 +36,8 @@ object StepDown {
     }
 
     /** The configuration to load for the stepped-down model: images on only when it can read them and the role wants them. */
-    fun configFor(role: ModelRole, chosen: ModelConfiguration, visionCapable: Boolean): ModelConfiguration =
-        chosen.copy(role = role, wantsVision = role == ModelRole.STRATEGIC && visionCapable)
+    fun configFor(role: ModelRole, chosen: ModelConfiguration, visionCapable: Boolean, tacticalPictures: Boolean = false): ModelConfiguration =
+        chosen.copy(role = role, wantsVision = visionCapable && (role == ModelRole.STRATEGIC || tacticalPictures))   // G11
 
     /** The floating panel's line, e.g. "Phone under pressure: strategic job on Gemma 3n E2B (smaller) for now". */
     fun notice(role: ModelRole, chosen: ModelConfiguration?): String =

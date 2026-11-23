@@ -158,7 +158,9 @@ object Roles {
             id = "litertlm:" + role.name.lowercase() + ":" + f.name, displayName = f.name, backend = BackendType.LITERT_LM,
             location = path, sizeBytes = if (f.isFile) f.length() else -1L, role = role,
             accelerators = order,
-            wantsVision = role == ModelRole.STRATEGIC)
+            // Phase 8 G11: the tactical job reads pictures too when the owner's switch is on (and the model can)
+            wantsVision = role == ModelRole.STRATEGIC || (role == ModelRole.TACTICAL && com.sphynx.core.Cfg.tacticalSightOn &&
+                com.sphynx.core.Cfg.raw("vision_" + f.name) != "0"))
         // what the slot will really try, in its order (NPU only when first; GPU when before the CPU; then the CPU)
         val tried = listOfNotNull(Accelerator.NPU.takeIf { LiteRtLmBackend.preferNpu(order) },
             Accelerator.GPU.takeIf { LiteRtLmBackend.preferGpu(order) }, Accelerator.CPU)
@@ -182,7 +184,7 @@ object Roles {
         router.assign(a)?.let { return it }
         sentinel.loading(a.role, a.model.displayName)
         val st = try { router.load(a.role) } finally { sentinel.loaded(a.role) }
-        if (st.ready && a.backend == BackendType.LITERT_LM && a.model.wantsVision)
+        if (st.ready && a.backend == BackendType.LITERT_LM && a.model.wantsVision)   // both jobs (G11)
             com.sphynx.core.Cfg.setRaw("vision_" + a.model.displayName, if (st.visionOk) "1" else "0")
         // Phase 7 L5: the error and what to do about it
         return if (st.ready) null else (st.error?.let { com.sphynx.inference.LiteRtErrorWords.words(it) } ?: "not loaded (${st.state.label})")
@@ -234,7 +236,7 @@ object Roles {
             Diag.info("Pressure: the ${role.name.lowercase()} model is unloaded (no smaller model to step down to)")
             return
         }
-        val cfg = com.sphynx.inference.roles.StepDown.configFor(role, pick, readsPictures(pick))
+        val cfg = com.sphynx.inference.roles.StepDown.configFor(role, pick, readsPictures(pick), com.sphynx.core.Cfg.tacticalSightOn)
         val err = load(Assignment(role, cfg))
         if (err == null && role == ModelRole.STRATEGIC && !images(role)) {
             Diag.info("Pressure: ${pick.displayName} loaded without pictures, so the strategic job stays unloaded")

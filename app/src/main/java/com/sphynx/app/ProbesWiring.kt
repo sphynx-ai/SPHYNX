@@ -85,9 +85,11 @@ object ProbesWiring {
         fun loadFor(role: com.sphynx.inference.ModelRole, path: String, gpu: Boolean): String? =
             if (path.endsWith(".gguf", ignoreCase = true))
                 com.sphynx.models.GgufLibrary.config(java.io.File(path)).let { c ->
-                    // Phase 6 S8: the strategic job reads pictures through the model's mmproj file, when there is one
+                    // Phase 6 S8: the strategic job reads pictures through the model's mmproj file, when there is one;
+                    // Phase 8 G11: the tactical job too, when the owner's minimap-picture switch is on
                     roles.load(com.sphynx.inference.roles.Assignment(role,
-                        c.copy(role = role, wantsVision = role == roles.STRATEGIC && c.projector != null)))
+                        c.copy(role = role, wantsVision = c.projector != null &&
+                            (role == roles.STRATEGIC || com.sphynx.core.Cfg.tacticalSightOn))))
                 }
             else roles.loadLiteRt(role, path, gpu)
         h.loadStrategic = { ctx, path, gpu, done -> roles.init(ctx); ai.scope.launch { done(loadFor(roles.STRATEGIC, path, gpu)) } }
