@@ -17,7 +17,7 @@ class MemoryFitTest {
     @Test fun aBigModelOnAFullPhoneWarns() {
         val w = MemoryFit.warning("gemma-4-E4B.litertlm", (4.3 * gb).toLong(), availMb = 5_000)
         assertTrue(w!!.startsWith("gemma-4-E4B.litertlm needs about 4.5 GB"))
-        assertTrue(w.contains("the game would be left with about 0.3 GB"))
+        assertTrue(w.contains("the game would be left with about 0.4 GB"))
     }
 
     // replacing the job's model gives its memory back first
