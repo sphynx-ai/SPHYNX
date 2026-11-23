@@ -108,6 +108,7 @@ class LlamaCppBackend(
         st = st.moveTo(RuntimeState.BUSY)
         runningId = id
         val timedOut = AtomicBoolean(false)
+        val earlyStop = AtomicBoolean(false)
         val h = handle
         val watchdog = timer.schedule(Runnable { timedOut.set(true); native.cancel(h) }, request.timeoutMs, TimeUnit.MILLISECONDS)
         val utf = Utf8Stream()
@@ -118,6 +119,9 @@ class LlamaCppBackend(
                 if (id in cancelled) native.cancel(h)
                 val s = utf.push(bytes)
                 if (request.stream && s.isNotEmpty()) emit(InferenceEvent.Token(id, s))
+                // Phase 7 (L2): the caller has what it needs (the text so far), so the model stops here
+                val stop = request.stopWhen
+                if (stop != null && !earlyStop.get() && try { stop(utf.text()) } catch (t: Throwable) { false }) { earlyStop.set(true); native.cancel(h) }
             }
             val img = request.image
             if (img != null) native.generateWithImage(h, request.prompt, img, request.maxOutputTokens, request.temperature, id.hashCode(), onPiece)
@@ -136,6 +140,9 @@ class LlamaCppBackend(
         val stop = res.optString("stop")
         when {
             timedOut.get() -> emit(InferenceEvent.Failed(id, InferenceError.Timeout(request.timeoutMs)))
+            earlyStop.get() && !wasCancelled -> emit(InferenceEvent.Completed(id, utf.text(), GenerationStats(
+                timeToFirstTokenMs = res.optLong("firstTokenMs", -1L), totalMs = total,
+                promptTokens = res.optInt("promptTokens", -1), outputTokens = res.optInt("genTokens", -1))))
             stop == "cancelled" || (wasCancelled && !res.optBoolean("ok")) -> emit(InferenceEvent.Cancelled(id))
             !res.optBoolean("ok") -> emit(InferenceEvent.Failed(id, InferenceError.Internal(res.optString("error").ifBlank { "unknown error" })))
             else -> emit(InferenceEvent.Completed(id, utf.text(), GenerationStats(

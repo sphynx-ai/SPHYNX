@@ -20,8 +20,9 @@ class LlmSlotPort(private val slot: LlmSlot, private val ctx: () -> Context?) : 
         return runBlocking { slot.load(c, location, preferGpu, textOnly) }
     }
 
-    override fun ask(prompt: String, imageJpeg: ByteArray?, temperature: Double, purpose: String, timeoutMs: Long): String = try {
-        runBlocking { withTimeout(timeoutMs) { slot.askJpeg(prompt, null, imageJpeg, temperature, purpose) } }
+    override fun ask(prompt: String, imageJpeg: ByteArray?, temperature: Double, purpose: String, timeoutMs: Long,
+                     stopWhen: ((String) -> Boolean)?): String = try {
+        runBlocking { withTimeout(timeoutMs) { slot.askJpeg(prompt, null, imageJpeg, temperature, purpose, stopWhen) } }
     } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
         slot.cancel()
         throw java.util.concurrent.TimeoutException("no answer within $timeoutMs ms")

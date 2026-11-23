@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "Faster fight advice: Gemma's answers now stream",
+            "The language models now write their answers word by word inside the app. The small tactical model stops as soon " +
+                "as it has named its choice (all in, poke, farm, retreat, group), so fight advice arrives sooner, on LiteRT-LM " +
+                "and GGUF alike. The speed recorder now notes the time to the first word on every answer. The answers themselves " +
+                "are the same.",
+            pr = 100, needsDeviceCheck = true, version = "38.09"),
         Entry("2026-11-23", Kind.IMPROVED, "Phase 7 starts: LiteRT-LM checked, Gemma 4 E2B supported",
             "Phase 7 has started with a check of how the app uses LiteRT-LM. The Model page now names the supported model " +
                 "(Gemma 4 E2B, tested on your phone). The app already uses the newest LiteRT-LM release (0.19.1), so there is " +

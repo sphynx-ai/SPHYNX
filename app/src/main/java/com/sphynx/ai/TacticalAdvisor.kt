@@ -71,6 +71,9 @@ object TacticalAdvisor {
         "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\n" + summary +
             "\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only."
 
+    /** Phase 7 (L2): the answer so far already names its option in full (outside any thinking), so the rest is not needed. */
+    fun enough(partial: String): Boolean = !partial.contains("<think", ignoreCase = true) && parse(partial) != null
+
     // reads the first option named in the reply
     fun parse(reply: String): FightOption? {
         val u = reply.uppercase().replace('-', '_').replace(' ', '_')
@@ -94,7 +97,8 @@ object TacticalAdvisor {
         AiRuntime.scope.launch {
             try {
                 val t0 = System.currentTimeMillis()
-                val r = Roles.ask(Roles.TACTICAL, q, null, 0.0, purpose = "fight advice")
+                // Phase 7 (L2): the answer stops as soon as it names its option (no thinking text before it)
+                val r = Roles.ask(Roles.TACTICAL, q, null, 0.0, purpose = "fight advice", stopWhen = ::enough)
                 lastMs = System.currentTimeMillis() - t0
                 asked++
                 lastAnswer = r.take(40).replace('\n', ' ')

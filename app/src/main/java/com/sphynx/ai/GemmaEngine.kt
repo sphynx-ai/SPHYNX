@@ -11,6 +11,8 @@ import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.Message
+import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -126,7 +128,10 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
 
     // Phase 6 (S2): the same question with the picture already as JPEG bytes (the shared InferenceRequest carries bytes).
     // Exactly one of image / jpeg is used; the reply, sampler and speed record are the same as ask().
-    suspend fun askJpeg(prompt: String, image: Bitmap?, jpegBytes: ByteArray?, temperature: Double = 0.15, purpose: String = "other"): String = withContext(dispatcher) {
+    // Phase 7 (L2): the answer is streamed (sendMessageAsync); [stopWhen] sees the text so far and may end the answer early
+    // (the tactical adviser stops once it has read its choice). The returned text is the same cleaned reply as before.
+    suspend fun askJpeg(prompt: String, image: Bitmap?, jpegBytes: ByteArray?, temperature: Double = 0.15, purpose: String = "other",
+                        stopWhen: ((String) -> Boolean)? = null): String = withContext(dispatcher) {
         val e = engine ?: throw IllegalStateException("the $label model is not loaded")
         val t0 = System.currentTimeMillis()
         val conv = e.createConversation(
@@ -146,13 +151,14 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
                 Contents.of(Content.Text(fastPrompt))
             }
             promptChars = fastPrompt.length
-            val reply = clean(conv.sendMessage(contents).toString())
+            val streamed = stream(conv, contents, t0, stopWhen)
+            val reply = clean(streamed.text)
             lastLatencyMs = System.currentTimeMillis() - t0
             calls++
-            record(conv, purpose, withImage, promptChars, reply.length, lastLatencyMs, true, "", cold)
+            record(conv, purpose, withImage, promptChars, reply.length, lastLatencyMs, true, "", cold, streamed.firstPieceMs)
             reply
         } catch (t: Throwable) {
-            record(null, purpose, withImage, promptChars, 0, System.currentTimeMillis() - t0, false, t.message ?: t.toString(), cold)
+            record(null, purpose, withImage, promptChars, 0, System.currentTimeMillis() - t0, false, t.message ?: t.toString(), cold, null)
             throw t
         } finally {
             active = null
@@ -160,10 +166,46 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
         }
     }
 
+    private class Streamed(val text: String, val firstPieceMs: Long?)
+
+    // Phase 7 (L2): one answer through LiteRT-LM's streaming call; waits on this slot's thread (as sendMessage did) until
+    // the model is done, fails, or [stopWhen] says the text so far is enough (then the rest is cancelled)
+    private fun stream(conv: Conversation, contents: Contents, t0: Long, stopWhen: ((String) -> Boolean)?): Streamed {
+        val sb = StringBuilder()
+        val done = java.util.concurrent.CountDownLatch(1)
+        var failure: Throwable? = null
+        val stoppedEarly = java.util.concurrent.atomic.AtomicBoolean(false)
+        var first: Long? = null
+        conv.sendMessageAsync(contents, object : MessageCallback {
+            override fun onMessage(message: Message) {
+                val piece = message.toString()
+                synchronized(sb) {
+                    if (stoppedEarly.get()) return
+                    if (first == null && piece.isNotEmpty()) first = System.currentTimeMillis() - t0
+                    sb.append(piece)
+                    if (stopWhen != null && try { stopWhen(sb.toString()) } catch (t: Throwable) { false }) {
+                        stoppedEarly.set(true)
+                        try { conv.cancelProcess() } catch (t: Throwable) { }
+                        done.countDown()
+                    }
+                }
+            }
+            override fun onDone() { done.countDown() }
+            override fun onError(error: Throwable) { if (!stoppedEarly.get()) failure = error; done.countDown() }
+        })
+        // the same overall limit as a request's longest timeout (an emergency stop ends it sooner, through onError)
+        if (!done.await(10, java.util.concurrent.TimeUnit.MINUTES)) {
+            try { conv.cancelProcess() } catch (t: Throwable) { }
+            throw java.util.concurrent.TimeoutException("no answer within 10 minutes")
+        }
+        failure?.let { throw it }
+        return synchronized(sb) { Streamed(sb.toString(), first) }
+    }
+
     // the speed recorder never breaks a call: anything it cannot read is left empty
     @OptIn(com.google.ai.edge.litertlm.ExperimentalApi::class)
     private fun record(conv: Conversation?, purpose: String, image: Boolean, promptChars: Int, replyChars: Int, ms: Long,
-                       ok: Boolean, error: String, cold: Boolean) {
+                       ok: Boolean, error: String, cold: Boolean, firstPieceMs: Long?) {
         try {
             val b: com.google.ai.edge.litertlm.BenchmarkInfo? =
                 if (detailedActive && conv != null) try { conv.getBenchmarkInfo() } catch (t: Throwable) { null } else null
@@ -176,7 +218,8 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
                 if (b.lastDecodeTokenCount > 0) dt = b.lastDecodeTokenCount
                 if (b.lastDecodeTokensPerSecond > 0.0) dtps = b.lastDecodeTokensPerSecond
             }
-            ModelSpeed.call(role, purpose, backendName, image, promptChars, replyChars, ms, ok, error, cold, ttft, pt, ptps, dt, dtps)
+            // Phase 7 (L2): the time to the first word comes from the stream on every call (the benchmark figure wins when on)
+            ModelSpeed.call(role, purpose, backendName, image, promptChars, replyChars, ms, ok, error, cold, ttft ?: firstPieceMs, pt, ptps, dt, dtps)
         } catch (t: Throwable) { }
     }
 
