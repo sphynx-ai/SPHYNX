@@ -39,10 +39,11 @@
 | L4 | **A GPU failure mid-match:** the model is reloaded on the CPU **once**, and the panel and log say so. The GPU is tried again at the next start. A second failure unloads, and play goes on with the rules | Fall back to CPU once | Only after a GPU failure |
 | L5 | **Error words:** LiteRT-LM's exceptions are mapped to the shared error types (not enough memory, unsupported model, GPU unavailable, cancelled), so the Model page and the log say what to do | — | No |
 | L6 | **Newer LiteRT-LM release, in its own PR:** CI reports the newest published version, since this container can't reach Google's Maven. Its release notes are checked, the pin is raised and the build is run. It is kept only if the owner's phone test shows Gemma 4 E2B loading and answering at least as well; otherwise the pin goes back to 0.19.1 | Try newer, own PR | Possibly; decided by the phone test |
-| L8 | **Experimental NPU, behind a switch** (owner addition 2026-11-23). A Model page switch "Use the NPU (experimental)", **off by default**, tries the order **NPU, then GPU, then CPU**. An NPU build of a model is made for one chip (its file name carries the chip, e.g. `.mediatek.mt6993`; the owner's phone is an MT6897). So the NPU is tried only with a model file built for this phone's chip; any other file goes straight to the GPU, and the Model page says why. First sub-step: confirm that the pinned LiteRT-LM (0.19.1, or the L6 version) has an NPU backend on Android. If it has none, the step reports that and stops | Experimental NPU, NPU → GPU → CPU | Only with the switch on |
+| L8 | **Experimental NPU, compiled on the phone** (owner, 2026-11-23: the on-device option, "third option"). A Model page switch "Use the NPU (experimental)", **off by default**, tries the order **NPU, then GPU, then CPU** with an ordinary `.litertlm` file. LiteRT-LM compiles the model for this phone's NPU when it loads (just-in-time, with MediaTek's NeuroPilot); Google says this can take over a minute for a Gemma-size model. The Model page shows a "compiling for the NPU…" state, and the compiled result is cached where LiteRT-LM allows. First sub-step: confirm the pinned LiteRT-LM (0.19.1, or the L6 version) exposes the NPU backend with on-device compilation on Android, and which NPU runtime library the app must ship. If it does not, the step reports that and stops. Open reports describe NPU compile crashes on Dimensity 8300 / MT6897 phones with Android 16, so a failure here is expected to be possible: it falls back and is remembered (L9) | Experimental, on-device compile, NPU → GPU → CPU | Only with the switch on |
+| L9 | **Adaptive processor per model** (owner, 2026-11-23: "best processor per model"). For each model file the app remembers what happened on each processor on this phone: whether it loaded, its load time, and its answer speed from the speed records. Next time it tries the best one first: the fastest that loaded and answered. It falls back in the usual order when that one fails. A processor that crashed or failed is skipped until the app version, the model file or the LiteRT-LM version changes; the S6 load sentinel catches crashes during load. The Model page shows the choice and why (for example "GPU: 13 tok/s; NPU failed to compile on 11-23"), and the GPU switch / NPU switch still limit what may be tried. Pure choosing rule, unit-tested | Best processor per model | Load order per model, from this phone's own results |
 | L7 | **Phase 7 phone checklist and closing record** | — | No |
 
-L6 and L8 come after L1–L5, so that L1–L5 are measured on the known-good 0.19.1 first. L7 closes the phase.
+L6, L8 and L9 come after L1–L5, so that L1–L5 are measured on the known-good 0.19.1 first. L9 comes after L8 so it can include the NPU result. L7 closes the phase.
 
 ## 4. Acceptance criteria (roadmap deliverables)
 
@@ -51,7 +52,8 @@ L6 and L8 come after L1–L5, so that L1–L5 are measured on the known-good 0.1
 - [ ] A risky load warns before it starts (L3); a GPU failure falls back to the CPU once (L4).
 - [ ] The LiteRT-LM version decision is recorded with its evidence (L6).
 - [ ] Known limitations are documented: NPU experimental only (L8), one model per slot, fresh conversation per question.
-- [ ] The experimental NPU switch is off by default, falls back NPU → GPU → CPU, and its result on the owner's phone is recorded (L8).
+- [ ] The experimental NPU switch is off by default, compiles on the phone, falls back NPU → GPU → CPU, and its result on the owner's phone is recorded (L8).
+- [ ] Each model's processor is chosen from this phone's own results, a failed processor is not retried by itself, and the Model page shows why (L9).
 
 ## 5. Risks
 
