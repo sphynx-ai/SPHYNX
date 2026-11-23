@@ -24,29 +24,35 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "Phase 6 finished; the plan for Phase 7 (LiteRT-LM)",
+            "Your phone test of Phase 6 is recorded: the phase is complete. The Phase 7 plan is written from your answers: " +
+                "Gemma's answers will arrive word by word, a warning will come before loading a model that may not fit next " +
+                "to the game, a GPU failure in a match will fall back to the CPU once, and a newer LiteRT-LM will be tried in " +
+                "its own update. It is waiting for your OK. Nothing in the app changes.",
+            pr = 97, needsDeviceCheck = true, version = "38.06"),
         Entry("2026-11-22", Kind.IMPROVED, "Phase 6 is built: one phone test for all of it",
             "Every step of Phase 6 is in this version: every model goes through one common part, you choose which model " +
                 "does which job (LiteRT-LM or GGUF, GGUF with pictures through its mmproj file), Step down gently switches to " +
                 "a smaller model, and a model that crashed the app is not loaded again by itself. The checklist to test it " +
                 "all at once is in the Phase 6 plan. From now on each phase is built completely before the phone test.",
-            pr = 96, needsDeviceCheck = true, version = "38.05"),
+            pr = 96, version = "38.05"),
         Entry("2026-11-22", Kind.NEW, "GGUF models can read pictures (with their mmproj file)",
             "A GGUF model can now read pictures, so it can do the strategic job fully (draft, loading cards, end screen). " +
                 "Add the model and its mmproj file (the picture part, e.g. mmproj-gemma-3-4b-it-f16.gguf) to the GGUF library; " +
                 "the app pairs them by name and loads the picture part only for the strategic job. Without an mmproj file the " +
                 "model reads text only, as before. The app's engine is bigger, so the first build on the phone takes longer.",
-            pr = 95, needsDeviceCheck = true, version = "38.04"),
+            pr = 95, version = "38.04"),
         Entry("2026-11-22", Kind.NEW, "Model page: choose which model does which job",
             "New on the Model page, Which model does which job: tap the strategic or the tactical job to give it its usual " +
                 "LiteRT-LM model or one of your GGUF models. The choice is kept and loads by itself at the next start. Only one " +
                 "GGUF model runs at a time. A GGUF strategic model reads text only for now, so the picture questions wait for a " +
                 "model that reads pictures.",
-            pr = 94, needsDeviceCheck = true, version = "38.03"),
+            pr = 94, version = "38.03"),
         Entry("2026-11-22", Kind.IMPROVED, "A model that crashed the app is not loaded again by itself",
             "If the app stops while a model is loading (for example the GPU driver crashes on a big model), the next start " +
                 "does not load that model again by itself, so the app cannot crash in a loop. The Model page and the logs say " +
                 "which model it was; loading it by hand (a Load button, or Scan the folder) tries it again.",
-            pr = 93, needsDeviceCheck = true, version = "38.02"),
+            pr = 93, version = "38.02"),
         Entry("2026-11-22", Kind.NEW, "Step down gently now switches to a smaller model",
             "Your idea is in: with Setup > Low memory and heat > Step down gently, when the phone gets warm or low on memory " +
                 "a job's model is replaced by the next smaller model you have (LiteRT-LM files in the app or in " +
@@ -54,54 +60,54 @@ object WhatsNew {
                 "model that also reads pictures. The panel says which model is standing in, and your own model comes back " +
                 "after five quiet minutes, never in a fight. Only warn me (the default) never unloads or replaces anything, " +
                 "for testing a model at full speed.",
-            pr = 92, needsDeviceCheck = true, version = "38.01"),
+            pr = 92, version = "38.01"),
         Entry("2026-11-22", Kind.IMPROVED, "Foundation: the pages read the models through the same part",
             "Behind the scenes, for Phase 6: the Play, Model and Performance pages now show whether each job's model is " +
                 "loaded, where it runs and how fast it answered through the new part that decides which model does which job. " +
                 "With your usual models the words are the same as before. A test now keeps the rest of the app from going " +
                 "around it.",
-            pr = 91, needsDeviceCheck = true, version = "38.00"),
+            pr = 91, version = "38.00"),
         Entry("2026-11-22", Kind.IMPROVED, "Foundation: every model question goes through one part",
             "Behind the scenes, for Phase 6: loading Gemma and the small model, and every question the app asks them (draft, " +
                 "plan, combo, fight advice, the speed test, the readiness test), now goes through the new part that decides " +
                 "which model does which job. With your usual models it is the same engine, the same settings and the same " +
                 "answers. Please play a 5v5 and run the model speed test to confirm.",
-            pr = 90, needsDeviceCheck = true, version = "37.99"),
+            pr = 90, version = "37.99"),
         Entry("2026-11-22", Kind.IMPROVED, "Foundation: stepping down to a smaller model",
             "Behind the scenes, your idea for Step down gently: when the phone is low on memory or hot, instead of only " +
                 "unloading a model the app will switch that job to the next smaller model you have. The strategic job only " +
                 "takes a model that also reads pictures, and your own model comes back when the phone has recovered. This " +
                 "version adds the choosing rule; it starts working when the low-memory policy goes through the new model " +
                 "part (Phase 6, step S5). Nothing in play changes yet.",
-            pr = 89, needsDeviceCheck = true, version = "37.98"),
+            pr = 89, version = "37.98"),
         Entry("2026-11-22", Kind.IMPROVED, "Foundation: one part decides which model does which job",
             "Behind the scenes, for Phase 6: a new part holds which model does the strategic job and which does the " +
                 "tactical one, on LiteRT-LM or GGUF. It knows what each model can do (pictures or text only) and refuses a " +
                 "question a model cannot answer, saying why. Nothing uses it yet, so play is exactly as before.",
-            pr = 88, needsDeviceCheck = true, version = "37.97"),
+            pr = 88, version = "37.97"),
         Entry("2026-11-22", Kind.IMPROVED, "Your resource snapshot is recorded",
             "The snapshot you uploaded (both models loaded: the app uses 2.7 GB and 3.2 GB of the phone's 11.1 GB stays " +
                 "free) is now in the Phase 5 record, with your phone's details (Android 16). Three more would complete " +
                 "the set: with nothing loaded, with screen capture on, and with a GGUF model loaded. Nothing in the app changes.",
-            pr = 87, needsDeviceCheck = true, version = "37.96"),
+            pr = 87, version = "37.96"),
         Entry("2026-11-22", Kind.IMPROVED, "Foundation: LiteRT-LM on the shared model contract",
             "Behind the scenes, for Phase 6: Gemma and the small model (LiteRT-LM) can now also run through the same " +
                 "common contract the GGUF engine already uses, and one test kit checks both engines the same way. Nothing " +
                 "uses the new path yet, so the models load and answer exactly as before.",
-            pr = 85, needsDeviceCheck = true, version = "37.95"),
+            pr = 85, version = "37.95"),
         Entry("2026-11-22", Kind.IMPROVED, "Development: the design decision for Phase 6",
             "Behind the scenes: the written decision for Phase 6. The strategic and the tactical job are each given a model, " +
                 "and that model runs on LiteRT-LM or GGUF. One part decides which model does which job, checks what it can " +
                 "do (pictures or text only), and does not reload a model that crashed the app. It is waiting for your OK. " +
                 "Nothing in the app changes.",
-            pr = 84, needsDeviceCheck = true, version = "37.94"),
+            pr = 84, version = "37.94"),
         Entry("2026-11-22", Kind.IMPROVED, "Phase 5 finished; Phase 6 starts",
             "Your phone test of 37.91 and 37.92 is recorded and Phase 5 (reliability on Android) is closed, as you decided. " +
                 "Phase 6 starts with the plan you approved: every model through one common part, any model for either " +
                 "job (GGUF models included, with pictures through their mmproj file later), and a model that crashed the " +
                 "app while loading is not loaded again by itself. Please upload the four resource snapshots from the Debug " +
                 "data page. Nothing in the app changes.",
-            pr = 83, needsDeviceCheck = true, version = "37.93"),
+            pr = 83, version = "37.93"),
         Entry("2026-11-21", Kind.IMPROVED, "Development: the plan for Phase 6 (one way to run every model)",
             "Behind the scenes: a plan for the next phase. Every language model, LiteRT-LM or GGUF, will run through one " +
                 "common part, and the strategic and tactical jobs will be assigned to models instead of being built into " +

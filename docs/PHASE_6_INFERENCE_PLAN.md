@@ -1,6 +1,6 @@
 # Phase 6 — Model-Agnostic Unified Inference Architecture: audit and execution plan
 
-**Status:** **APPROVED by the owner 2026-11-22** (S1–S7, in order; S8 added by the owner's answer). **All steps S1–S8 built (v37.94–v38.04, each CI-checked as its own PR); the owner's phone test of the whole phase is pending** (checklist in Section 8).
+**Status:** **APPROVED by the owner 2026-11-22** (S1–S7, in order; S8 added by the owner's answer). **COMPLETE (2026-11-23):** all steps S1–S8 were built (v37.94–v38.05, each CI-checked as its own PR) and phone-tested by the owner with the Section 8 checklist ("all test are good").
 **Date:** 2026-11-21, Claude Code, by reading `sphynx-test-branch` (v37.91). No phone was used for this plan.
 
 ## 1. Role for this phase (roadmap 3.1)
@@ -60,7 +60,7 @@ Every step adds contract or unit tests. The phone check after S4 and S7 is a 5v5
 - [ ] Role, model identity and runtime are independent: any compatible model can serve either role (S3, S7). **Done in code (v38.03):** Model page "Which model does which job" (`inference/roles/RoleChoice`, `RoleChoiceTest`; `ModelManager.chosenGguf`).
 - [ ] Capability negotiation is explicit: an unsupported request is refused with a reason, not silently degraded (S3, S4). **S3 in code (v37.97):** `inference/roles/RoleRouter` (`RoleRouterTest`); callers move in S4.
 - [ ] A model that crashed the app on load is not reloaded by itself (S6). **Done in code (v38.02):** `inference/roles/LoadSentinel` (`LoadSentinelTest`), used by `ai/Roles.load`.
-- [ ] Play is unchanged with the default assignment: golden tests, plus the owner's phone test.
+- [x] Play is unchanged with the default assignment: golden tests, plus the owner's phone test (2026-11-23).
 
 ## 6. Risks
 
