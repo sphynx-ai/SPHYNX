@@ -48,7 +48,7 @@ L6, L8 and L9 come after L1–L5, so that L1–L5 are measured on the known-good
 ## 4. Acceptance criteria (roadmap deliverables)
 
 - [ ] Compatibility report and supported-model matrix, with dated measurements for Gemma 4 E2B on the owner's phone (L1). **Report in v38.08:** `docs/PHASE_7_LITERTLM_COMPAT.md`; speed rows come after the phone test.
-- [ ] Load, answer (streaming), cancel, unload, errors and offline are covered by tests (contract kit) and the phone checklist (L2, L5, L7).
+- [ ] Load, answer (streaming), cancel, unload, errors and offline are covered by tests (contract kit) and the phone checklist (L2, L5, L7). **Streaming in code (v38.09):** `LlmSlot.stream` (`sendMessageAsync`), the early stop (`InferenceRequest.stopWhen`, `TacticalAdvisor.enough`), time to the first word on every call.
 - [ ] A risky load warns before it starts (L3); a GPU failure falls back to the CPU once (L4).
 - [x] The LiteRT-LM version decision is recorded with its evidence (L6): v0.19.1 is the newest release tag on 2026-11-23, so there is no upgrade (`docs/PHASE_7_LITERTLM_COMPAT.md` §1).
 - [ ] Known limitations are documented: NPU experimental only (L8), one model per slot, fresh conversation per question.

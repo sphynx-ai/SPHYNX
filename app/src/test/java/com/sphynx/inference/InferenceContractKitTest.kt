@@ -34,8 +34,10 @@ class InferenceContractKitTest {
             loaded = true; vision = !textOnly; whereLoaded = if (preferGpu) "GPU" else "CPU, text only"
             return null
         }
-        override fun ask(prompt: String, imageJpeg: ByteArray?, temperature: Double, purpose: String, timeoutMs: Long): String {
-            lastPurpose = purpose
+        var lastStopWhen: ((String) -> Boolean)? = null
+        override fun ask(prompt: String, imageJpeg: ByteArray?, temperature: Double, purpose: String, timeoutMs: Long,
+                         stopWhen: ((String) -> Boolean)?): String {
+            lastPurpose = purpose; lastStopWhen = stopWhen
             check(loaded) { "the model is not loaded" }
             cancelFlag.set(false)
             if (hold.getAndSet(false)) {
@@ -92,6 +94,51 @@ class InferenceContractKitTest {
         be.generate(InferenceRequest("p", "plan?", purpose = "plan")) { if (it.terminal) done.countDown() }
         assertTrue(done.await(5, java.util.concurrent.TimeUnit.SECONDS))
         assertEquals("plan", s.lastPurpose)
+    }
+
+    // Phase 7 (L2): the caller's stop rule reaches the LiteRT-LM slot
+    @Test fun stopWhenReachesTheSlot() {
+        val s = FakeSlot()
+        val be = LiteRtLmBackend(s)
+        be.load(liteCfg("good.litertlm"))
+        val done = java.util.concurrent.CountDownLatch(1)
+        val rule: (String) -> Boolean = { it.contains("RETREAT") }
+        be.generate(InferenceRequest("s", "fight?", stopWhen = rule)) { if (it.terminal) done.countDown() }
+        assertTrue(done.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        assertTrue(s.lastStopWhen === rule)
+    }
+
+    // Phase 7 (L2): llama.cpp stops as soon as the caller has its answer, and it ends as Completed with the text so far
+    @Test fun llamaCppStopsEarlyWithTheTextSoFar() {
+        val good = gguf()
+        val n = object : LlamaNative {
+            val cancelFlag = AtomicBoolean(false)
+            var piecesSent = 0
+            override val unavailableReason: String? = null
+            override fun info() = "fake"
+            override fun load(path: String, contextTokens: Int, threads: Int) = 7L
+            override fun loadError() = ""
+            override fun describe(handle: Long): JSONObject = JSONObject()
+            override fun generate(handle: Long, prompt: String, maxTokens: Int, temperature: Float, seed: Int, onPiece: (ByteArray) -> Unit): JSONObject {
+                cancelFlag.set(false)
+                for (p in listOf("RET", "REAT", " because", " the enemy", " is strong")) {
+                    if (cancelFlag.get()) return JSONObject().put("ok", true).put("stop", "cancelled")
+                    onPiece(p.toByteArray()); piecesSent++
+                }
+                return JSONObject().put("ok", true).put("stop", "eos")
+            }
+            override fun cancel(handle: Long) { cancelFlag.set(true) }
+            override fun free(handle: Long) {}
+        }
+        val be = LlamaCppBackend(n)
+        be.load(ModelConfiguration(id = "gguf:m", displayName = "m.gguf", backend = BackendType.LLAMA_CPP, location = good.absolutePath,
+            accelerators = listOf(Accelerator.CPU), contextTokens = 2048, maxOutputTokens = 512))
+        val c = EventCollector("e")
+        val done = java.util.concurrent.CountDownLatch(1)
+        be.generate(InferenceRequest("e", "fight?", stopWhen = { it.contains("RETREAT") })) { c.accept(it); if (it.terminal) done.countDown() }
+        assertTrue(done.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        assertEquals("RETREAT", c.text)
+        assertEquals(2, n.piecesSent)
     }
 
     @Test fun acceleratorFromTheSlotsLabel() {

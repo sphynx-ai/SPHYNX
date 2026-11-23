@@ -9,7 +9,9 @@ class InferenceRequest(
     val maxOutputTokens: Int = 256,
     val stream: Boolean = false,          // true: Token events as text arrives; false: one Completed
     val timeoutMs: Long = 30_000L,
-    val purpose: String = "other"         // what asked (draft, plan, combo ...): only for the speed records
+    val purpose: String = "other",        // what asked (draft, plan, combo ...): only for the speed records
+    /** Phase 7 (L2): sees the answer so far; true = it is enough, stop the model (the text so far is the answer). */
+    val stopWhen: ((String) -> Boolean)? = null
 ) {
     fun problems(status: RuntimeStatus? = null): List<String> {
         val p = ArrayList<String>()

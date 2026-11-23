@@ -197,12 +197,13 @@ object Roles {
      * picture is sent only when the role's model reads pictures; callers check [images] first. Throws when the role has
      * no model loaded or the answer fails or is cancelled.
      */
-    suspend fun ask(role: ModelRole, prompt: String, image: Bitmap? = null, temperature: Double = 0.15, purpose: String = "other"): String {
+    suspend fun ask(role: ModelRole, prompt: String, image: Bitmap? = null, temperature: Double = 0.15, purpose: String = "other",
+                    stopWhen: ((String) -> Boolean)? = null): String {
         val id = role.name.lowercase() + "-" + ids.incrementAndGet()
         val jpeg = if (image != null && images(role)) LlmSlot.jpegForModel(image) else null
         val maxOut = router.status(role).config?.maxOutputTokens ?: 256
         val req = InferenceRequest(id = id, prompt = prompt, image = jpeg, temperature = temperature.toFloat().coerceIn(0f, 2f),
-            maxOutputTokens = minOf(512, maxOut).coerceAtLeast(1), timeoutMs = 600_000L, purpose = purpose)
+            maxOutputTokens = minOf(512, maxOut).coerceAtLeast(1), timeoutMs = 600_000L, purpose = purpose, stopWhen = stopWhen)
         val t0 = System.currentTimeMillis()
         val gguf = !onSlot(role)
         running[id] = role

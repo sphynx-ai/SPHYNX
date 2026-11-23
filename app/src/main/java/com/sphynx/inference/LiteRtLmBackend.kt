@@ -68,7 +68,7 @@ class LiteRtLmBackend(private val slot: LiteRtSlot) : InferenceBackend {
         var text: String? = null
         var failure: Throwable? = null
         try {
-            text = slot.ask(request.prompt, request.image, request.temperature.toDouble(), request.purpose, request.timeoutMs)
+            text = slot.ask(request.prompt, request.image, request.temperature.toDouble(), request.purpose, request.timeoutMs, request.stopWhen)
         } catch (t: Throwable) { failure = t }
         runningId = null
         val total = System.currentTimeMillis() - t0
@@ -131,7 +131,8 @@ interface LiteRtSlot {
     /** Loads the model; null when it loaded, else why not. */
     fun load(location: String, preferGpu: Boolean, textOnly: Boolean): String?
     /** One answer; [imageJpeg] is used only when the model loaded with images. Throws TimeoutException after [timeoutMs]. */
-    fun ask(prompt: String, imageJpeg: ByteArray?, temperature: Double, purpose: String, timeoutMs: Long): String
+    fun ask(prompt: String, imageJpeg: ByteArray?, temperature: Double, purpose: String, timeoutMs: Long,
+            stopWhen: ((String) -> Boolean)?): String
     fun cancel()
     fun unload()
 }
