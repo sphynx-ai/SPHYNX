@@ -66,3 +66,24 @@ G6's benchmark fills this table on the phone; G10 publishes the supported list.
 The model is a tiny random llama-family GGUF (about 0.5 MB) made by `make_tiny_model.py` with llama.cpp's own `gguf-py`, so nothing is downloaded. Its answers are nonsense: the test checks the engine, not the words.
 
 The checks: the info line; a missing, broken or web-page file; an answer, the free and the cancel without a model; load; describe; an answer; streaming; the stop reason; greedy answers repeating exactly; a cancel from inside and from another thread; the next answer after a cancel; a prompt longer than the context; a picture without an mmproj; a missing mmproj; answering after a failed mmproj; and 20 loads and frees in a row.
+
+## 8. GPU through Vulkan (G8, first sub-step): finding, 2026-11-23
+
+Built in this container from llama.cpp b12651 (`GGML_VULKAN=ON`, Ubuntu's glslc 2023.8, Vulkan and SPIR-V headers):
+
+| | |
+|---|---|
+| Build needs | `glslc` (the shader compiler) and the SPIR-V headers (`find_package(Vulkan COMPONENTS glslc REQUIRED)`, `find_package(SPIRV-Headers CONFIG REQUIRED)`), Vulkan's C++ header `vulkan.hpp`, and a host program, `vulkan-shaders-gen`, built and run during the build |
+| Generated | **1,342 SPIR-V shaders (35 MB)**, turned into **162 C++ files, 139 MB** |
+| Library | `libggml-vulkan.a` **36 MB** (x86-64, not stripped); the phone library would grow by roughly the 35 MB of shaders |
+| Result here | Builds (348 build steps) |
+
+**Why it is not in the app yet:** the owner builds the app on the phone (Code on the Go).
+- The NDK ships `glslc` only for desktop computers (Linux x86-64, macOS, Windows), so the phone cannot generate the shaders.
+- Committing the 139 MB of generated C++ instead would make the phone compile it on every clean build, and would add that much to the repository.
+- llama.cpp's Vulkan backend is also known to be slow or wrong on some Mali drivers, so even a working build has to prove itself.
+
+**Options for the owner:**
+1. Keep GGUF on the CPU; G8 stops here.
+2. Build a Vulkan test APK in CI only (GitHub's computers have glslc), download and install it for one benchmark, and keep the phone build CPU-only unless the GPU wins.
+3. Generate the shaders in CI and commit only the 35 MB of SPIR-V files, with a small change so llama.cpp reads them instead of the generated C++. That is a local change to llama.cpp that every update has to carry.
