@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "GGUF on the GPU: checked, not added yet",
+            "Behind the scenes: the GPU (Vulkan) version of the GGUF engine was built and measured. It needs about 1,300 " +
+                "GPU programs compiled while the app is built, which your phone build can't do, and it would make the app " +
+                "about 35 MB bigger. GGUF stays on the CPU for now; the options are written down for your choice.",
+            pr = 118, needsDeviceCheck = true, version = "38.27"),
         Entry("2026-11-23", Kind.NEW, "GGUF stability checks",
             "The GGUF benchmark card has a new button: Load and unload 20 times. It loads one GGUF model 20 times in a row " +
                 "and checks that the app's memory comes back each time. During a 5v5 with a GGUF model doing a job, the app " +
