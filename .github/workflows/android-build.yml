@@ -85,4 +85,5 @@ jobs:
       - name: Build and run the native engine test
         env:
           REQUIRE_MODEL: "1"
+          SANITIZE: "1"          # G4: AddressSanitizer + UndefinedBehaviorSanitizer catch a use after free or a double free
         run: tools/native-test/run.sh --tiny

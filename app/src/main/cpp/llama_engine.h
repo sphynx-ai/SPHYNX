@@ -15,6 +15,7 @@ struct SphynxLlama {
     llama_context * ctx = nullptr;
     mtmd_context * vision = nullptr;     // Phase 6 S8: the multimodal projector (mmproj), when one is loaded
     std::atomic<bool> cancel{false};
+    std::atomic<int> busy{0};            // Phase 8 G4: calls running on this handle; free waits for them
     int nCtx = 0;
     int threads = 0;
 };
@@ -47,5 +48,10 @@ std::string sphynx_llama_generate(SphynxLlama * h, const std::string & prompt, i
 
 // stops the answer that is running (a new answer starts with the flag cleared); safe from any thread
 void sphynx_llama_cancel(SphynxLlama * h);
+
+// Phase 8 G4: every call checks its handle against the handles this engine made and has not freed yet, so a late cancel,
+// a call on a freed handle or a second free returns an error (or does nothing) instead of crashing. free() stops a running
+// answer and waits for it before freeing. Out of memory comes back as "not enough memory ...", never as a crash.
+bool sphynx_llama_alive(const SphynxLlama * h);
 
 void sphynx_llama_free(SphynxLlama * h);

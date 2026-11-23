@@ -50,7 +50,7 @@ G11 is built right after G4, on b11900. G7 comes after G2–G6 and G11, so its r
 - [x] Native integration architecture, JNI boundary and supported ABI/device matrix are documented (G1): `docs/PHASE_8_GGUF_NATIVE.md` (v38.19).
 - [x] A GGUF file's metadata is read and checked before native code opens it; a broken file is refused with the reason (G2): `inference/GgufInfo` and `GgufArchitectures`, used by `LlamaCppBackend.check` and `GgufLibrary.add` (v38.20). Phone check pending.
 - [ ] Native tests run the real engine in CI: load, answer, stream, cancel, unload and errors (G3, G4). **G3 in CI (v38.21):** `tools/native-test` builds `llama_engine.cpp` and the vendored llama.cpp for the CI computer (only llama.cpp's x86 CPU code is copied from the same tag) and runs 21 checks against a tiny random model made with llama.cpp's gguf-py, so no model is downloaded. 21 of 21 passed in this container on 2026-11-23.
-- [ ] No crash from a wrong handle, unloading during an answer, or running out of memory (G4).
+- [x] No crash from a wrong handle, unloading during an answer, or running out of memory (G4): handle registry, free waits for running calls, `bad_alloc` → `NotEnoughMemory`; native tests under ASan/UBSan (v38.22).
 - [ ] Reproducible benchmarks with model, quantization, threads, cold/warm state and device recorded, on the owner's phone (G5, G6).
 - [ ] The llama.cpp version decision is recorded with its evidence (G7).
 - [ ] Each acceleration path is benchmarked rather than assumed: CPU threads and KV cache (G5), GPU through Vulkan (G8).

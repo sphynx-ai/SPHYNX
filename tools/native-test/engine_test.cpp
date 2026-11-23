@@ -49,6 +49,7 @@ int main(int argc, char ** argv) {
     CHECK(sphynx_llama_describe(nullptr) == "{}", "describe without a model");
     sphynx_llama_cancel(nullptr);
     sphynx_llama_free(nullptr);
+    CHECK(!sphynx_llama_alive(nullptr), "no handle is not alive");
     CHECK(true, "cancel and free on no model do nothing");
 
     if (model.empty()) {
@@ -101,7 +102,31 @@ int main(int argc, char ** argv) {
         bool all = true;
         for (int i = 0; i < 20 && all; i++) { std::string e2; SphynxLlama * x = sphynx_llama_load(model, 128, 2, e2); all = x != nullptr; sphynx_llama_free(x); }
         CHECK(all, "20 loads and frees in a row");
+
+        // ---- G4: handles ----
+        CHECK(sphynx_llama_alive(h), "a loaded handle is alive");
+        // free while an answer runs on another thread: the answer stops, free waits, nothing crashes
+        Pieces f;
+        std::string r6;
+        std::thread runner([&] { r6 = sphynx_llama_generate(h, "Once upon a time", 120, 0.0f, 1, collect, &f); });
+        while (f.count == 0 && r6.empty()) std::this_thread::yield();
         sphynx_llama_free(h);
+        runner.join();
+        CHECK(has(r6, "\"stop\":\"cancelled\"") || has(r6, "\"stop\":\"eos\"") || has(r6, "\"stop\":\"length\""),
+              "free during an answer stops it and waits for it");
+        CHECK(!sphynx_llama_alive(h), "a freed handle is no longer alive");
+        // every call on the freed handle is refused, not a crash
+        sphynx_llama_cancel(h);
+        CHECK(sphynx_llama_describe(h) == "{}", "describe on a freed handle");
+        CHECK(has(sphynx_llama_generate(h, "hi", 4, 0, 1, nullptr, nullptr), "no model loaded"), "an answer on a freed handle");
+        err.clear();
+        CHECK(!sphynx_llama_load_projector(h, "/tmp/x.gguf", 2, err) && err == "no model loaded", "an mmproj on a freed handle");
+        sphynx_llama_free(h);
+        CHECK(true, "a second free does nothing");
+        // a pointer this engine never made
+        SphynxLlama fake;
+        CHECK(!sphynx_llama_alive(&fake) && sphynx_llama_describe(&fake) == "{}", "a handle the engine never made is refused");
+        sphynx_llama_free(&fake);
     }
     std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
