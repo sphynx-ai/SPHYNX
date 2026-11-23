@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "Phase 7 starts: LiteRT-LM checked, Gemma 4 E2B supported",
+            "Phase 7 has started with a check of how the app uses LiteRT-LM. The Model page now names the supported model " +
+                "(Gemma 4 E2B, tested on your phone). The app already uses the newest LiteRT-LM release (0.19.1), so there is " +
+                "nothing to upgrade.",
+            pr = 99, needsDeviceCheck = true, version = "38.08"),
         Entry("2026-11-23", Kind.IMPROVED, "Phase 7 plan: NPU compiled on the phone, best processor per model",
             "Behind the scenes: the Phase 7 plan now has your two additions. A Use the NPU (experimental) switch, off by " +
                 "default, lets the phone compile Gemma for its NPU when it loads (the first time can take over a minute), " +
