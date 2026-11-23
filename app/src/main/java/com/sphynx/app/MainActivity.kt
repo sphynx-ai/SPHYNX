@@ -3037,6 +3037,23 @@ class MainActivity : Activity() {
             }
             else ModelManager.unloadTactical()
         }
+        // Phase 8 G11 (owner, 2026-11-23): the tactical model also reads the minimap picture now and then
+        switch("Tactical model reads the minimap (pictures)", Cfg.tacticalSightOn) { on ->
+            Cfg.tacticalSightOn = on
+            // the model loads again with (or without) its picture part
+            if (Cfg.tacticalLlmOn) Thread {
+                com.sphynx.ai.Roles.unload(com.sphynx.ai.Roles.TACTICAL)
+                com.sphynx.ai.Roles.loadByOwner()
+                ModelManager.loadTactical(this) { err -> runOnUiThread {
+                    toast(err ?: if (com.sphynx.ai.Roles.images(com.sphynx.ai.Roles.TACTICAL)) "Tactical model: reads pictures"
+                                 else if (on) "Tactical model: text only (this model has no picture part)" else "Tactical model: text only") } }
+            }.start()
+        }
+        text("Outside fights, every few seconds, the small tactical model also looks at the minimap picture and writes one " +
+            "line (where the enemies are, whether they are grouped, turtle or lord). That line is added to the next fight " +
+            "questions; fight advice never waits for a picture. It needs a tactical model that reads pictures: a .litertlm " +
+            "with vision, or a GGUF with its mmproj. Each reading is saved next to what the detectors saw (Debug data).",
+            12f, color = T.MUTED)
         // the fight-choice network: the fast numeric adviser in the same slot
         switch("Fight-choice network in fights (fast)", Cfg.fightNetOn) { on ->
             Cfg.fightNetOn = on
@@ -3545,8 +3562,14 @@ class MainActivity : Activity() {
         val lite = if (role == com.sphynx.ai.Roles.STRATEGIC) ModelManager.strategicName() else ModelManager.tacticalName()
         val ggufs = com.sphynx.models.GgufLibrary.models(this)
         val values = listOf(rc.LITERT) + ggufs.map { rc.gguf(it.name) }
-        val labels = listOf("$lite (LiteRT-LM file)") + ggufs.map {
-            "${it.name} (GGUF, ${it.length() / 1048576} MB)\n" + com.sphynx.models.GgufLibrary.describe(it)   // Phase 8 G2
+        // Phase 8 G11: a LiteRT-LM file known (from an earlier load) to have no picture part is marked text only
+        val liteFile = if (role == com.sphynx.ai.Roles.STRATEGIC) ModelManager.modelFile(this) else ModelManager.tacticalFile(this)
+        val liteNote = when (Cfg.raw("vision_" + liteFile.name)) { "0" -> ", text only: it has no picture part"; "1" -> ", reads pictures"; else -> "" }
+        val labels = listOf("$lite (LiteRT-LM file$liteNote)") + ggufs.map {
+            "${it.name} (GGUF, ${it.length() / 1048576} MB)\n" + com.sphynx.models.GgufLibrary.describe(it) +   // Phase 8 G2
+                // Phase 8 G11: a model without its mmproj reads text only (allowed, owner 2026-11-23)
+                (if (com.sphynx.models.GgufLibrary.projectorFor(it) == null) "\ntext only: add its mmproj file to read pictures"
+                 else "\nreads pictures (mmproj found)")
         }
         AlertDialog.Builder(this).setTitle(if (role == com.sphynx.ai.Roles.STRATEGIC) "Strategic job" else "Tactical job")
             .setItems(labels.toTypedArray()) { _, i ->

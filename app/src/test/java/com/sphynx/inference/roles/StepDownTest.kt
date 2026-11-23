@@ -65,6 +65,10 @@ class StepDownTest {
         val c = StepDown.configFor(ModelRole.STRATEGIC, n3, visionCapable = true)
         assertTrue(c.wantsVision); assertEquals(ModelRole.STRATEGIC, c.role)
         assertFalse(StepDown.configFor(ModelRole.TACTICAL, qwen, visionCapable = false).wantsVision)
+        // Phase 8 G11: the tactical job reads pictures only with the owner's switch and a model that can
+        assertFalse(StepDown.configFor(ModelRole.TACTICAL, qwen, visionCapable = true).wantsVision)
+        assertTrue(StepDown.configFor(ModelRole.TACTICAL, qwen, visionCapable = true, tacticalPictures = true).wantsVision)
+        assertFalse(StepDown.configFor(ModelRole.TACTICAL, qwen, visionCapable = false, tacticalPictures = true).wantsVision)
         assertEquals("Phone under pressure: strategic job on gemma-3n-E2B.litertlm (smaller) for now", StepDown.notice(ModelRole.STRATEGIC, n3))
         assertEquals("", StepDown.notice(ModelRole.TACTICAL, null))
     }

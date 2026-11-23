@@ -24,6 +24,14 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.NEW, "The tactical model can look at the minimap",
+            "A new Model page switch, Tactical model reads the minimap (pictures), off by default. With it on, and a " +
+                "tactical model that reads pictures (a .litertlm with vision, or a GGUF with its mmproj), the model looks at " +
+                "the minimap every few seconds outside fights and writes one line: where the enemies are, whether they are " +
+                "grouped, turtle or lord. That line goes into the next fight questions; fight advice never waits for a " +
+                "picture. The job picker now marks models that read text only. Each reading is saved next to what the " +
+                "detectors saw, so the Debug data shows whether it helps.",
+            pr = 114, needsDeviceCheck = true, version = "38.23"),
         Entry("2026-11-23", Kind.FIXED, "Safer GGUF engine",
             "The GGUF engine (llama.cpp) can no longer crash the app from a stop or unload that comes at the wrong moment: " +
                 "it now knows which models it has loaded, refuses a call on one already freed, and waits for a running " +

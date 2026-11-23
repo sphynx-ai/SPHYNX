@@ -86,13 +86,17 @@ object TacticalAdvisor {
 
     // called by the fast loop on every decision: starts a question in the background when due
     fun tick(s: GameState, p: HeroProfile) {
-        if (!active || busy || s.self == null) return
+        if (!active || s.self == null) return
+        val inFight = s.enemiesWithin(0.9f).isNotEmpty()
+        // Phase 8 G11: outside fights the model may look at the minimap now and then; a fight cancels a running look
+        TacticalSight.tick(inFight, busy, { com.sphynx.vision.ObjectDetector.latest }, { GameMemory.missing(s.ts).size })
+        if (busy || TacticalSight.running) return
         val now = System.currentTimeMillis()
         if (now - askedAt < ASK_EVERY_MS) return
-        if (s.enemiesWithin(0.9f).isEmpty()) return          // only fights need it
+        if (!inFight) return                                 // only fights need it
         busy = true
         askedAt = now
-        val q = prompt(summary(s, p))
+        val q = prompt(summary(s, p) + TacticalSight.noteNow())
         lastPrompt = q
         AiRuntime.scope.launch {
             try {

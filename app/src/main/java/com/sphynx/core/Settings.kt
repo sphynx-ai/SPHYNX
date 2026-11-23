@@ -68,6 +68,8 @@ object Cfg {
     var modelSpeedDetailed: Boolean get() = b("model_speed_detailed", false); set(v) = put("model_speed_detailed", v)
     // the small tactical language model (second slot): off until you turn it on (Model page)
     var tacticalLlmOn: Boolean get() = b("tactical_llm", false); set(v) = put("tactical_llm", v)
+    // Phase 8 G11 (owner, 2026-11-23): the tactical model also reads the minimap picture now and then; OFF on a new install
+    var tacticalSightOn: Boolean get() = b("tactical_sight", false); set(v) = put("tactical_sight", v)
     // the fight-choice network (numeric, from the tactical-network notebook) advises in fights
     var fightNetOn: Boolean get() = b("fight_net", false); set(v) = put("fight_net", v)
     // logging mode: record every engine's advice next to what is played (never acts on it)
