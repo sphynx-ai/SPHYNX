@@ -1,6 +1,6 @@
 # Phase 7 — LiteRT-LM Backend Integration and Stabilization: audit and execution plan
 
-**Status:** **APPROVED by the owner 2026-11-23** (L1–L9; the detectors are added to L8). **All steps built in code (v38.08–v38.15, PRs #99–#106); the owner's phone test of the whole phase is pending** (Section 6). The phase is not complete until that test passes.
+**Status:** **COMPLETE (2026-11-23).** All steps L1–L9 were built (v38.08–v38.15, PRs #99–#106), and the owner phone-tested them all at once ("All test is good", debug data uploaded, commit `f394bd3` on `recordings-for-debugging`). Approved by the owner 2026-11-23 (L1–L9; the detectors were added to L8).
 **Based on:** `sphynx-test-branch` at v38.05, by reading the code. No phone was used for this plan.
 
 ## 1. Role for this phase (roadmap 3.1)
@@ -47,13 +47,13 @@ L6, L8 and L9 come after L1–L5, so that L1–L5 are measured on the known-good
 
 ## 4. Acceptance criteria (roadmap deliverables)
 
-- [ ] Compatibility report and supported-model matrix, with dated measurements for Gemma 4 E2B on the owner's phone (L1). **Report in v38.08:** `docs/PHASE_7_LITERTLM_COMPAT.md`; speed rows come after the phone test.
-- [ ] Load, answer (streaming), cancel, unload, errors and offline are covered by tests (contract kit) and the phone checklist (L2, L5, L7). **Streaming in code (v38.09):** `LlmSlot.stream` (`sendMessageAsync`), the early stop (`InferenceRequest.stopWhen`, `TacticalAdvisor.enough`), time to the first word on every call.
-- [ ] A risky load warns before it starts (L3); a GPU failure falls back to the CPU once (L4). **Memory check in code (v38.10):** `core/MemoryFit` (file size + 200 MB vs free memory, 2.5 GB kept for the game), asked before loads by hand, logged for automatic ones. **GPU fallback in code (v38.11):** `inference/GpuFallback` (once per start, then unload), `LiteRtLmBackend.afterFailure`, panel line `Roles.panelLine`; error words `inference/LiteRtErrorWords` (L5).
+- [x] Compatibility report and supported-model matrix, with dated measurements for Gemma 4 E2B on the owner's phone (L1). **Report in v38.08:** `docs/PHASE_7_LITERTLM_COMPAT.md`; speed rows measured on the owner's phone on 2026-11-23 (COMPAT §3).
+- [x] Load, answer (streaming), cancel, unload, errors and offline are covered by tests (contract kit) and the phone checklist (L2, L5, L7). **Streaming in code (v38.09):** `LlmSlot.stream` (`sendMessageAsync`), the early stop (`InferenceRequest.stopWhen`, `TacticalAdvisor.enough`), time to the first word on every call.
+- [x] A risky load warns before it starts (L3); a GPU failure falls back to the CPU once (L4). **Memory check in code (v38.10):** `core/MemoryFit` (file size + 200 MB vs free memory, 2.5 GB kept for the game), asked before loads by hand, logged for automatic ones. **GPU fallback in code (v38.11):** `inference/GpuFallback` (once per start, then unload), `LiteRtLmBackend.afterFailure`, panel line `Roles.panelLine`; error words `inference/LiteRtErrorWords` (L5).
 - [x] The LiteRT-LM version decision is recorded with its evidence (L6): v0.19.1 is the newest release tag on 2026-11-23, so there is no upgrade (`docs/PHASE_7_LITERTLM_COMPAT.md` §1).
-- [ ] Known limitations are documented: NPU experimental only (L8), one model per slot, fresh conversation per question.
-- [ ] The experimental NPU switch is off by default, compiles on the phone, falls back NPU → GPU → CPU, and its result on the owner's phone is recorded (L8). **Gemma part in code (v38.12, L8a):** `Cfg.useNpu`, `LlmSlot.load(preferNpu)`, `core/NpuCheck`, findings in `docs/PHASE_7_LITERTLM_COMPAT.md` §5. **Detectors in code (v38.13, L8b):** through Android's NNAPI delegate, which is already in the app's TFLite 2.17 (on a MediaTek phone NNAPI hands the network to the NPU driver), with NNAPI's own CPU path off, a first run checked at load, and the CPU after any failure until the next start. **Method change, for the owner:** the plan said LiteRT's compiled-model path; that needs LiteRT 2.x, which replaces the app's TFLite 2.17 / LiteRT 1.4.2 used by the detectors and both fight networks, so it is left for its own upgrade. NNAPI is deprecated from Android 15 but still works.
-- [ ] Each model's processor is chosen from this phone's own results, a failed processor is not retried by itself, and the Model page shows why (L9). **In code (v38.14):** `inference/roles/ProcessorMemory` (pure, tested): per model file (name + size) and processor, loaded or failed, load time, answer speed; a failed processor is skipped until the app version, the file or LiteRT-LM changes; a crash while loading on a processor marks it (`proc_trying_*`); the CPU is never skipped. `Roles.loadLiteRt` uses the order; the Model page shows `Roles.processorLine`. A GPU failure mid-match (L4) is not counted: the GPU is tried again at the next start, as decided for L4.
+- [x] Known limitations are documented: NPU experimental only (L8), one model per slot, fresh conversation per question.
+- [x] The experimental NPU switch is off by default, compiles on the phone, falls back NPU → GPU → CPU, and its result on the owner's phone is recorded (L8). **Gemma part in code (v38.12, L8a):** `Cfg.useNpu`, `LlmSlot.load(preferNpu)`, `core/NpuCheck`, findings in `docs/PHASE_7_LITERTLM_COMPAT.md` §5. **Detectors in code (v38.13, L8b):** through Android's NNAPI delegate, which is already in the app's TFLite 2.17 (on a MediaTek phone NNAPI hands the network to the NPU driver), with NNAPI's own CPU path off, a first run checked at load, and the CPU after any failure until the next start. **Method change, for the owner:** the plan said LiteRT's compiled-model path; that needs LiteRT 2.x, which replaces the app's TFLite 2.17 / LiteRT 1.4.2 used by the detectors and both fight networks, so it is left for its own upgrade. NNAPI is deprecated from Android 15 but still works.
+- [x] Each model's processor is chosen from this phone's own results, a failed processor is not retried by itself, and the Model page shows why (L9). **In code (v38.14):** `inference/roles/ProcessorMemory` (pure, tested): per model file (name + size) and processor, loaded or failed, load time, answer speed; a failed processor is skipped until the app version, the file or LiteRT-LM changes; a crash while loading on a processor marks it (`proc_trying_*`); the CPU is never skipped. `Roles.loadLiteRt` uses the order; the Model page shows `Roles.processorLine`. A GPU failure mid-match (L4) is not counted: the GPU is tried again at the next start, as decided for L4.
 
 ## 5. Risks
 
@@ -76,3 +76,16 @@ After `git pull` on `sphynx-test-branch` and a rebuild (the app is a little bigg
 6. **NPU, detectors (L8b):** with the switch on, the minimap and screen detector status lines say "ready on NPU (NNAPI)" or "ready on CPU". Compare their "ms per run" with the switch off and on.
 7. **Turn the NPU switch off again:** everything goes back to the GPU (Gemma) and the CPU (detectors).
 8. **Logs and upload:** Debug data page > upload. The diagnostics log has the NPU lines ("compiling", "model loaded on …", "prepared for the NPU in … ms", "first run on the NPU took … ms", or the failures). Then tell me "all test are good", or what failed. The NPU result goes into `docs/PHASE_7_LITERTLM_COMPAT.md`.
+
+## 7. Closing record (2026-11-23)
+
+- **Owner phone test:** "All test is good" (2026-11-23), on v38.15, with the debug data uploaded (`f394bd3`).
+- **Device evidence:**
+  - Gemma 4 E2B loaded and answered on the **NPU** (compiled on the phone, 12.1 s the first time, 10.4 s from the cache) and on the **GPU** (4.0–4.2 s).
+  - The GPU is faster on this phone: writing 7.0–7.5 vs 5.3–5.4 tokens/s, first word 0.42–0.52 s vs 2.2–2.7 s, question with a picture 6.1 s vs 13.2 s.
+  - Figures in `docs/PHASE_7_LITERTLM_COMPAT.md` §3 and §5.
+- **Remaining unknowns** (no step left open in this phase):
+  - The detectors on the NPU (L8b) are not in the uploaded data: no detector was loaded during the test.
+  - The game's frame rate and the phone's heat during a match with Gemma on the NPU were not measured.
+  - Both can be checked in a later match. The switch stays experimental and off by default.
+- **Next:** Phase 8 continues (GGUF, already running by owner decision, MASTER section 9.1). The next phase starts with its plan for the owner's OK.

@@ -35,7 +35,15 @@
 |---|---|---|---|---|---|
 | **Gemma 4 E2B** (`litert-community/gemma-4-E2B-it-litert-lm`) | `.litertlm`, about 2.6 GB | Strategic (images) | GPU (Mali-G615) | Played in Phases 2–6, owner phone tests up to 2026-11-23. Memory: the app uses 2,700 MB with it and the small model loaded, and 3,236 of 11,323 MB stay free (snapshot `diagnostics-baseline-20261123-032846.json`, v37.92) | **Supported** (owner's phone) |
 
-**Measured speed:** load time and answer speed come from the model speed test (Model page) after L2. L2 records the time to the first word on every call, and the rows are added after the phone test. Published figures for Gemma 4 E2B on a Galaxy S26 Ultra: GPU about 3,808 tokens/s reading and 52 writing; CPU about 557 and 47 (LiteRT-LM overview). They are not from this phone.
+**Measured speed (VERIFIED, owner's phone, v38.15, 2026-11-23 19:13–19:22).** Source: `export-20261123-192222-model_speed.jsonl` and `diagnostics-20261123-192225.log` on `recordings-for-debugging` (commit `f394bd3`). Model speed test with the detailed-speed switch on, 7 answers per processor, Gemma 4 E2B, phone not throttled. Warm calls only; the first call after each load is left out.
+
+| Processor | Load | Time to the first word | Reading (tokens/s) | Writing (tokens/s) | Question with a picture (total) |
+|---|---|---|---|---|---|
+| **GPU** (Mali-G615) | 4.0–4.2 s (the very first load on this install: 50.3 s, building its cache) | **0.42–0.52 s** | 122–265 text, 355 with the picture | **7.0–7.5** | **6.1 s** |
+| **NPU** (MT6897, compiled on the phone) | 12.1 s the first time, 10.4 s from the cache | 2.2–2.7 s | 17–37 text, 47 with the picture | 5.3–5.4 | 13.2 s |
+
+**Result: on this phone the GPU is faster.** It writes about 35% faster, gives the first word about 5 times sooner, and reads about 7 times faster. Reading figures from short questions (36–77 tokens) understate both processors.
+
 
 Other files may work but are **not on the supported list** until they are tested on the phone: Gemma 4 E4B, Gemma 3n E2B, and the small Gemma 3 270M / 1B used for the tactical job.
 
@@ -64,4 +72,9 @@ Read on 2026-11-23 from the source: LiteRT-LM `v0.19.1`; LiteRT `main` at 69bd63
 
 The Model page line under the switch (`core/NpuCheck`) says on the phone whether the app's two libraries are there and whether the phone opens a Neuron adapter to apps.
 
-**Detectors (L8b, v38.13):** the minimap and screen detectors follow the same switch through TFLite's NNAPI delegate (`setUseNnapiCpu(false)`, fp16 allowed, sustained speed), with a first run checked at load and the CPU (2 threads) after any failure until the next start. Their status line shows where they run ("NPU (NNAPI)" or "CPU") and the time per run. The fight-choice and policy networks stay on the CPU.
+**Phone result (VERIFIED, 2026-11-23, v38.15).** "gemma model loaded on NPU" at 19:16:43, then again after a restart at 19:18:55, from the compiled cache. So the 2.3.0 MediaTek dispatch library works with LiteRT-LM 0.19.1, and the phone opens a Neuron adapter to apps. There was no crash and no fallback. The NPU answered every speed-test question, including the one with a picture, but more slowly than the GPU (table in section 3).
+- Not measured: the game's frame rate and the phone's heat during a match with Gemma on the NPU. Those two are what the NPU would be for: freeing the GPU for the game.
+- Not proven: whether every layer ran on the NPU. Reading at 17–47 tokens/s is below what this phone's CPU usually reaches, which suggests some layers ran elsewhere.
+- Recommendation: keep the switch off for play. L9's records start again with each app version (by design), so after an update it tries the NPU first again when the switch is on.
+
+**Detectors (L8b, v38.13; not in the uploaded data: no detector was loaded during the test, so there is no NNAPI line or time per run yet):** the minimap and screen detectors follow the same switch through TFLite's NNAPI delegate (`setUseNnapiCpu(false)`, fp16 allowed, sustained speed), with a first run checked at load and the CPU (2 threads) after any failure until the next start. Their status line shows where they run ("NPU (NNAPI)" or "CPU") and the time per run. The fight-choice and policy networks stay on the CPU.
