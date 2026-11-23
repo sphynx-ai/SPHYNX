@@ -1,0 +1,25 @@
+11-23 19:13:36 [INFO] Device profile: Xiaomi 2311DRK48G · Mediatek MT6897 · Android API 36 · arm64-v8a · RAM 11.1 GB · 8 cores up to 3.35 GHz · GPU Mali-G615 MC6 (OpenGL ES 3.2 v1.r44p1-01eac0.999bbcba36b4ca04774e2b05d5802dc0) · GGUF yes · NPU/DSP drivers 3
+11-23 19:13:36 [INFO] Start-up: 407 ms from the process start, 175 ms in Application.onCreate
+11-23 19:13:36 [INFO] Folder: nothing to read yet: allow all files access, or choose the /CodeOnTheGoProjects/Sphynx-Storage folder (Model page)
+11-23 19:13:37 [INFO] Heat: the phone reports no throttling
+11-23 19:14:12 [INFO] Folder: last scan: online data restored (7 from mlbb-learned.json), Gemma 4 E2B copied, Gemma loading, Gemini API key, Cerebras API key, Groq API key, Kaggle key, small tactical model copied (Gemma 3 270M)
+11-23 19:15:01 [INFO] gemma model loaded on GPU
+11-23 19:15:01 [INFO] Gemma loaded from the folder
+11-23 19:15:33 [INFO] App closed 11-23 19:15:29: closed by the system (other reason) (in the background, memory 2385 MB, SwipeUpClean)
+11-23 19:15:33 [INFO] Device profile: Xiaomi 2311DRK48G · Mediatek MT6897 · Android API 36 · arm64-v8a · RAM 11.1 GB · 8 cores up to 3.35 GHz · GPU Mali-G615 MC6 (OpenGL ES 3.2 v1.r44p1-01eac0.999bbcba36b4ca04774e2b05d5802dc0) · GGUF yes · NPU/DSP drivers 3
+11-23 19:15:33 [INFO] Start-up: 456 ms from the process start, 317 ms in Application.onCreate
+11-23 19:15:33 [INFO] Folder: last scan: Gemma loading
+11-23 19:15:34 [INFO] Heat: the phone reports no throttling
+11-23 19:15:38 [INFO] gemma model loaded on GPU
+11-23 19:15:38 [INFO] Gemma loaded from the folder
+11-23 19:16:43 [INFO] gemma model loaded on NPU
+11-23 19:18:44 [INFO] App closed 11-23 19:18:42: closed by the system (other reason) (in the background, memory 3904 MB, SwipeUpClean)
+11-23 19:18:44 [INFO] Device profile: Xiaomi 2311DRK48G · Mediatek MT6897 · Android API 36 · arm64-v8a · RAM 11.1 GB · 8 cores up to 3.35 GHz · GPU Mali-G615 MC6 (OpenGL ES 3.2 v1.r44p1-01eac0.999bbcba36b4ca04774e2b05d5802dc0) · GGUF yes · NPU/DSP drivers 3
+11-23 19:18:44 [INFO] Start-up: 332 ms from the process start, 212 ms in Application.onCreate
+11-23 19:18:44 [INFO] Heat: the phone reports no throttling
+11-23 19:18:44 [INFO] Folder: last scan: Gemma loading
+11-23 19:18:55 [INFO] gemma model loaded on NPU (detailed speed on)
+11-23 19:18:55 [INFO] Gemma loaded from the folder
+11-23 19:20:21 [INFO] Model speed test done: 7 answers
+11-23 19:20:45 [INFO] gemma model loaded on GPU (detailed speed on)
+11-23 19:21:42 [INFO] Model speed test done: 7 answers
