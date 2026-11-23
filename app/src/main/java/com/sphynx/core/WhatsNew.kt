@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "A GPU failure mid-match moves Gemma to the CPU",
+            "If Gemma's answer fails on the GPU during play, the app now loads it again on the CPU once (with pictures) " +
+                "and the floating panel says so for 2 minutes; the GPU is tried again at the next start. If it fails again " +
+                "on the CPU, it is unloaded and play goes on with the rules. Model errors now say what went wrong in plain " +
+                "words (not enough memory, a file the app can't read, the GPU stopped working) and what you can do.",
+            pr = 102, needsDeviceCheck = true, version = "38.11"),
         Entry("2026-11-23", Kind.IMPROVED, "A question before a model that may not fit",
             "When you load a model by hand (the load button, the small-model switch, or the job picker), the app now first " +
                 "compares the model's size with the phone's free memory, keeping about 2.5 GB for the game. If it probably " +

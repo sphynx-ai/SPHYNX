@@ -13,6 +13,8 @@ import java.util.concurrent.Executors
  *
  *  - One answer at a time; events arrive on this backend's thread.
  *  - LiteRT-LM answers in one piece here: a streaming request gets the whole text as one Token, then Completed.
+ *  - Phase 7 L4: an answer that fails on the GPU reloads the model on the CPU once per app start; a second failure
+ *    unloads it ([GpuFallback]). L5: failures are reported in the shared error words ([LiteRtErrorWords]).
  *  - Nothing here acts on the game: it only produces text.
  */
 class LiteRtLmBackend(private val slot: LiteRtSlot) : InferenceBackend {
@@ -26,6 +28,12 @@ class LiteRtLmBackend(private val slot: LiteRtSlot) : InferenceBackend {
     private val cancelled: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     override fun status(): RuntimeStatus = st
+
+    /** A line for the panel and the log when the model moved to the CPU or was unloaded (L4). Set by the app. */
+    @Volatile var onNotice: (String) -> Unit = {}
+    /** The GPU failed once since the app started, and the model was moved to the CPU (L4). */
+    @Volatile var fellBack = false
+        private set
 
     override fun check(config: ModelConfiguration): InferenceError? {
         if (config.backend != BackendType.LITERT_LM) return InferenceError.UnsupportedFormat("${config.displayName} is a ${config.backend.label} model")
@@ -45,7 +53,7 @@ class LiteRtLmBackend(private val slot: LiteRtSlot) : InferenceBackend {
             // the slot's own order: GPU first when the configuration lists it before the CPU; text only when no images
             val preferGpu = preferGpu(config.accelerators)
             val err = try { slot.load(config.location, preferGpu, textOnly = !config.wantsVision) } catch (t: Throwable) { t.message ?: t.toString() }
-            if (err != null || !slot.ready) st.moveTo(RuntimeState.FAILED, error = InferenceError.LoadFailed(err ?: "unknown reason"))
+            if (err != null || !slot.ready) st.moveTo(RuntimeState.FAILED, error = LiteRtErrorWords.forLoadMessage(err ?: "unknown reason"))
             else st.moveTo(RuntimeState.READY, accelerator = acceleratorOf(slot.where), visionOk = slot.visionOk)
         }
         st
@@ -73,11 +81,16 @@ class LiteRtLmBackend(private val slot: LiteRtSlot) : InferenceBackend {
         runningId = null
         val total = System.currentTimeMillis() - t0
         val wasCancelled = cancelled.remove(id)
+        val on = st.accelerator
         st = st.moveTo(RuntimeState.READY).copy(lastLatencyMs = total, calls = st.calls + 1)
         when {
             wasCancelled -> emit(InferenceEvent.Cancelled(id))
             failure is java.util.concurrent.TimeoutException -> emit(InferenceEvent.Failed(id, InferenceError.Timeout(request.timeoutMs)))
-            failure != null -> emit(InferenceEvent.Failed(id, InferenceError.Internal(failure.message ?: failure.toString())))
+            failure != null -> {
+                val err = LiteRtErrorWords.classify(failure, loading = false, on = on)
+                afterFailure(on, err)
+                emit(InferenceEvent.Failed(id, err))
+            }
             else -> {
                 val t = text ?: ""
                 if (request.stream && t.isNotEmpty()) emit(InferenceEvent.Token(id, t))
@@ -85,6 +98,31 @@ class LiteRtLmBackend(private val slot: LiteRtSlot) : InferenceBackend {
             }
         }
     }
+
+    // L4, on this backend's thread: reload on the CPU once, or unload after a second failure
+    private fun afterFailure(on: Accelerator?, err: InferenceError) {
+        val config = st.config ?: return
+        val job = config.role?.name?.lowercase() ?: "language"
+        when (GpuFallback.decide(on, fellBack, err)) {
+            GpuFallback.Action.NONE -> {}
+            GpuFallback.Action.RELOAD_ON_CPU -> {
+                fellBack = true
+                st = st.moveTo(RuntimeState.LOADING, config = config)
+                val loadErr = try { slot.load(config.location, preferGpu = false, textOnly = !config.wantsVision) } catch (t: Throwable) { t.message ?: t.toString() }
+                val ok = loadErr == null && slot.ready
+                st = if (ok) st.moveTo(RuntimeState.READY, accelerator = acceleratorOf(slot.where), visionOk = slot.visionOk)
+                     else st.moveTo(RuntimeState.FAILED, error = LiteRtErrorWords.forLoadMessage(loadErr ?: "unknown reason"))
+                notice(GpuFallback.reloadedNotice(job, ok, err))
+            }
+            GpuFallback.Action.UNLOAD -> {
+                try { slot.unload() } catch (t: Throwable) { }
+                st = st.moveTo(RuntimeState.UNLOADED)
+                notice(GpuFallback.unloadedNotice(job, err))
+            }
+        }
+    }
+
+    private fun notice(line: String) { try { onNotice(line) } catch (t: Throwable) { } }
 
     override fun cancel(requestId: String) {
         cancelled.add(requestId)

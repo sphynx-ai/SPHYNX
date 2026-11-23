@@ -30,15 +30,18 @@ class InferenceContractKitTest {
         override val where get() = whereLoaded
         override fun fileExists(location: String) = location.endsWith("good.litertlm")
         override fun load(location: String, preferGpu: Boolean, textOnly: Boolean): String? {
-            lastPreferGpu = preferGpu; lastTextOnly = textOnly
+            lastPreferGpu = preferGpu; lastTextOnly = textOnly; loads++
             loaded = true; vision = !textOnly; whereLoaded = if (preferGpu) "GPU" else "CPU, text only"
             return null
         }
         var lastStopWhen: ((String) -> Boolean)? = null
+        var failNext: String? = null
+        var loads = 0
         override fun ask(prompt: String, imageJpeg: ByteArray?, temperature: Double, purpose: String, timeoutMs: Long,
                          stopWhen: ((String) -> Boolean)?): String {
             lastPurpose = purpose; lastStopWhen = stopWhen
             check(loaded) { "the model is not loaded" }
+            failNext?.let { failNext = null; throw RuntimeException(it) }
             cancelFlag.set(false)
             if (hold.getAndSet(false)) {
                 while (!cancelFlag.get()) Thread.sleep(5)
@@ -66,6 +69,53 @@ class InferenceContractKitTest {
     }
 
     // the load order is the slot's own: GPU first when listed first, text only when no images are wanted
+    // Phase 7 L4: a failure on the GPU reloads the model on the CPU once; the next failure unloads it
+    @Test fun aGpuFailureFallsBackToTheCpuOnceThenUnloads() {
+        val s = FakeSlot()
+        val be = LiteRtLmBackend(s)
+        val notices = ArrayList<String>()
+        be.onNotice = { notices.add(it) }
+        be.load(liteCfg("good.litertlm", vision = true, accs = listOf(Accelerator.GPU, Accelerator.CPU)).copy(role = ModelRole.STRATEGIC))
+        assertEquals(Accelerator.GPU, be.status().accelerator)
+
+        s.failNext = "OpenCL kernel failed"
+        val first = askOnce(be)
+        assertTrue(first is InferenceEvent.Failed && first.error is InferenceError.AcceleratorFailed)
+        assertEquals(RuntimeState.READY, be.status().state)
+        assertEquals(Accelerator.CPU, be.status().accelerator)
+        assertEquals(false, s.lastPreferGpu); assertEquals(false, s.lastTextOnly)   // still with images, on the CPU
+        assertTrue(be.fellBack)
+        assertTrue(notices.single().startsWith("The strategic model failed on the GPU"))
+
+        assertTrue(askOnce(be) is InferenceEvent.Completed)                           // the CPU answers
+
+        s.failNext = "native error"
+        askOnce(be)
+        assertEquals(RuntimeState.UNLOADED, be.status().state)
+        assertFalse(s.loaded)
+        assertEquals(2, s.loads)                                                        // no second reload
+        assertTrue(notices.last().contains("unloaded"))
+    }
+
+    // a model on the CPU that fails once is left as it is (no fallback happened)
+    @Test fun aCpuFailureWithoutFallbackKeepsTheModel() {
+        val s = FakeSlot()
+        val be = LiteRtLmBackend(s)
+        be.load(liteCfg("good.litertlm"))
+        s.failNext = "something odd"
+        val e = askOnce(be)
+        assertTrue(e is InferenceEvent.Failed && e.error is InferenceError.Internal)
+        assertEquals(RuntimeState.READY, be.status().state)
+        assertEquals(1, s.loads)
+    }
+
+    private fun askOnce(be: LiteRtLmBackend): InferenceEvent {
+        val done = java.util.concurrent.LinkedBlockingQueue<InferenceEvent>()
+        be.generate(InferenceRequest(id = "q" + System.nanoTime(), prompt = "hi")) { e ->
+            if (e is InferenceEvent.Completed || e is InferenceEvent.Failed || e is InferenceEvent.Cancelled) done.add(e) }
+        return done.poll(5, java.util.concurrent.TimeUnit.SECONDS)!!
+    }
+
     @Test fun liteRtLmPassesTheLoadPlanToTheSlot() {
         val s = FakeSlot()
         val be = LiteRtLmBackend(s)
