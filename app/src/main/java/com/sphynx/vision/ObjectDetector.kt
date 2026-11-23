@@ -34,6 +34,14 @@ open class YoloDetector(
 
     private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, name) }
     @Volatile private var interpreter: Interpreter? = null
+    // Phase 7 L8b (experimental, the NPU switch): Android's NNAPI delegate, which on a MediaTek phone hands the network
+    // to MediaTek's NPU driver. Its own CPU fallback is off, so it is the NPU or it fails; a failure goes back to the CPU.
+    @Volatile private var npuDelegate: org.tensorflow.lite.nnapi.NnApiDelegate? = null
+    /** Where the network runs now: "NPU (NNAPI)" or "CPU". */
+    @Volatile var where = "CPU"
+        private set
+    @Volatile private var npuFailed = false     // a failure on the NPU since the app started: the CPU until the next start
+    private var ctxForReload: Context? = null
     @Volatile private var busy = false
     private var lastRun = 0L
 
@@ -69,9 +77,10 @@ open class YoloDetector(
     fun load(ctx: Context): String? {
         val f = modelFile(ctx)
         if (!f.exists()) return "Choose the detector file (.tflite) first"
+        ctxForReload = ctx.applicationContext
         return try {
             close()
-            val it = Interpreter(f, Interpreter.Options().setNumThreads(2))
+            val it = openInterpreter(f)
             val inT = it.getInputTensor(0)
             // channels last [1, H, W, 3] (classic TFLite export) or channels first [1, 3, H, W]
             // (newer "litert" exports from Ultralytics / PyTorch)
@@ -92,20 +101,68 @@ open class YoloDetector(
             val outCount = outShape.fold(1) { a, b -> a * b }
             outBuf = ByteBuffer.allocateDirect(outCount * (if (outType == DataType.FLOAT32) 4 else 1)).order(ByteOrder.nativeOrder())
             labels = labelsOf().split(",").map { l -> l.trim() }.filter { l -> l.isNotEmpty() }
+            if (npuDelegate != null && !warmUpOk(it)) {
+                // the NPU took the network but could not run it: back to the CPU
+                try { it.close() } catch (t: Throwable) { }
+                closeDelegate(); npuFailed = true
+                Diag.error("$name: the NPU could not run the network; it runs on the CPU until the next start")
+                return load(ctx)
+            }
             interpreter = it
-            state = "ready (${inW}x$inH, ${classCount()} classes)"
+            state = "ready on $where (${inW}x$inH, ${classCount()} classes)"
             Diag.info("$name loaded: input ${inW}x$inH $inType ${if (channelsFirstIn) "channels first" else "channels last"}, output ${outShape.joinToString("x")}")
             null
         } catch (t: Throwable) {
+            closeDelegate()
             state = "load failed (see Logs)"
             Diag.error("$name load failed", t)
             t.message ?: t.toString()
         }
     }
 
+    // the NPU when the owner's switch is on and it has not failed since the start; else 2 CPU threads, as before
+    private fun openInterpreter(f: File): Interpreter {
+        if (Cfg.useNpu && !npuFailed && android.os.Build.VERSION.SDK_INT >= 27) {
+            try {
+                val d = org.tensorflow.lite.nnapi.NnApiDelegate(org.tensorflow.lite.nnapi.NnApiDelegate.Options()
+                    .setUseNnapiCpu(false).setAllowFp16(true)
+                    .setExecutionPreference(org.tensorflow.lite.nnapi.NnApiDelegate.Options.EXECUTION_PREFERENCE_SUSTAINED_SPEED))
+                val t0 = System.currentTimeMillis()
+                val it = Interpreter(f, Interpreter.Options().addDelegate(d))
+                npuDelegate = d; where = "NPU (NNAPI)"
+                Diag.info("$name: prepared for the NPU in ${System.currentTimeMillis() - t0} ms")
+                return it
+            } catch (t: Throwable) {
+                closeDelegate(); npuFailed = true
+                Diag.error("$name: the NPU refused the network; it runs on the CPU until the next start", t)
+            }
+        }
+        where = "CPU"
+        return Interpreter(f, Interpreter.Options().setNumThreads(2))
+    }
+
+    // one run on an empty picture: NNAPI may accept a network and still fail when it first runs it
+    private fun warmUpOk(it: Interpreter): Boolean = try {
+        val ib = inBuf!!; val ob = outBuf!!
+        ib.rewind(); while (ib.hasRemaining()) ib.put(0); ib.rewind(); ob.rewind()
+        val t0 = System.currentTimeMillis()
+        it.run(ib, ob)
+        Diag.info("$name: first run on the NPU took ${System.currentTimeMillis() - t0} ms")
+        true
+    } catch (t: Throwable) { Diag.error("$name: the first run on the NPU failed", t); false }
+
+    /** The owner changed the NPU switch: forget an earlier NPU failure, so it may be tried again. */
+    fun forgetNpuFailure() { npuFailed = false }
+
+    private fun closeDelegate() {
+        try { npuDelegate?.close() } catch (t: Throwable) { }
+        npuDelegate = null; where = "CPU"
+    }
+
     fun close() {
         try { interpreter?.close() } catch (t: Throwable) { }
         interpreter = null
+        closeDelegate()
         latest = emptyList()
         state = "no detector loaded"
     }
@@ -133,6 +190,11 @@ open class YoloDetector(
             } catch (t: Throwable) {
                 Diag.error("$name run failed", t)
                 state = "error (see Logs)"
+                // L8b: a failure on the NPU moves the network to the CPU until the next start
+                if (npuDelegate != null) {
+                    npuFailed = true
+                    ctxForReload?.let { c -> worker.execute { load(c) } }
+                }
             } finally {
                 busy = false
             }

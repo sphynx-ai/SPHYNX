@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.NEW, "Experimental: the detectors on the NPU",
+            "The same Use the NPU (experimental) switch now also puts the minimap and screen detectors on the phone's NPU. " +
+                "Each is tested with one run when it loads; if the NPU can't run it, or fails later, it goes back to the CPU " +
+                "until the next start. Their status line shows where they run and the time per run, so you can compare " +
+                "with the switch off. The fight-choice network stays on the CPU.",
+            pr = 104, needsDeviceCheck = true, version = "38.13"),
         Entry("2026-11-23", Kind.NEW, "Experimental: Gemma on the NPU",
             "A new Model page switch, Use the NPU (experimental), off by default. With it on, the strategic model is tried " +
                 "on the phone's NPU first, then the GPU, then the CPU. The phone compiles the model for its NPU while it loads, " +
