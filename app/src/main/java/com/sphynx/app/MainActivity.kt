@@ -3007,10 +3007,14 @@ class MainActivity : Activity() {
         title("SETTINGS")
         switch("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it; reloadGemmaForGpu() }
         // Phase 7 L8 (owner, 2026-11-23): experimental, off by default; NPU, then GPU, then CPU
-        switch("Use the NPU (experimental)", Cfg.useNpu) {
-            Cfg.useNpu = it
-            reloadGemmaForGpu()
-            // L8b: the minimap and screen detectors follow the same switch (NPU through NNAPI, else the CPU)
+        switch("Use the NPU (experimental)", Cfg.useNpu) { Cfg.useNpu = it; reloadGemmaForGpu() }
+        text("Tries the strategic model on the phone's NPU first, then the GPU, then the CPU. The phone compiles Gemma for " +
+            "its NPU when it loads (about 12 s the first time on your phone). It frees the GPU for the game, but on your phone " +
+            "the GPU answered faster (11-23 test). If it fails, the GPU or CPU is used. " + com.sphynx.core.NpuCheck.line(this),
+            12f, color = T.MUTED)
+        // owner, 2026-11-23: the detectors have their own NPU switch, so Gemma can stay on the GPU while they try the NPU
+        switch("Detectors on the NPU (experimental)", Cfg.detectorsNpu) {
+            Cfg.detectorsNpu = it
             Thread {
                 for (d in listOf(ObjectDetector, com.sphynx.vision.ScreenDetector)) if (d.ready) {
                     d.forgetNpuFailure()
@@ -3018,11 +3022,13 @@ class MainActivity : Activity() {
                     Diag.info("${d.javaClass.simpleName} now on ${d.where}")
                 }
             }.start()
+            toast(if (it) "Detectors: trying the NPU…" else "Detectors: back on the CPU")
         }
-        text("Tries the strategic model on the phone's NPU first, then the GPU, then the CPU, and the minimap and screen " +
-            "detectors on the NPU, then the CPU. The phone compiles Gemma for its NPU when it loads: the first time can take " +
-            "over a minute. It frees the GPU for the game; it is not faster at writing. If it fails, the GPU or CPU is used. " +
-            "The detectors' status line shows where they run and their time per run. " + com.sphynx.core.NpuCheck.line(this), 12f, color = T.MUTED)
+        text("Runs the minimap and screen detectors on the phone's NPU (through Android's NNAPI), else on the CPU. Each " +
+            "is checked with one run when it loads; after a failure it goes back to the CPU until the next start. Their " +
+            "status lines in the FILES card show where they run and their time per run, so you can compare with this " +
+            "switch off. It needs the detector files (mlbb_detector.tflite, mlbb_screen_detector.tflite) in the Input folder.",
+            12f, color = T.MUTED)
         switch("Small tactical model in fights", Cfg.tacticalLlmOn) { on ->
             Cfg.tacticalLlmOn = on
             com.sphynx.ai.Roles.loadByOwner()   // a button: a model that crashed may be tried again (Phase 6 S6)

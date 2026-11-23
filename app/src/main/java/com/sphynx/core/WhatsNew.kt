@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.NEW, "Detectors get their own NPU switch",
+            "The Model page has a new switch, Detectors on the NPU (experimental), off by default. It moves only the " +
+                "minimap and screen detectors to the NPU, so Gemma can stay on the GPU (faster on your phone) at the same " +
+                "time. Use the NPU (experimental) now moves only Gemma. The detectors' lines in the FILES card show where " +
+                "they run and their time per run. They need the detector files in the Input folder.",
+            pr = 108, needsDeviceCheck = true, version = "38.17"),
         Entry("2026-11-23", Kind.IMPROVED, "Phase 7 done: your phone's NPU result",
             "Behind the scenes: Phase 7 is closed after your phone test. Gemma ran on your phone's NPU (compiled on the " +
                 "phone, about 12 s the first time, 10 s after that), but the GPU is faster: it writes about 7.3 tokens a " +
