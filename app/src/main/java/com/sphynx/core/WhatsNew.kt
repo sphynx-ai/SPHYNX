@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "Phase 7 is ready for your phone test",
+            "Behind the scenes: every Phase 7 step is built (streamed answers, the memory question, the GPU fallback, " +
+                "plain error words, the experimental NPU for Gemma and the detectors, and the best processor per model). " +
+                "The checklist for testing it all at once is in the Phase 7 plan.",
+            pr = 106, needsDeviceCheck = true, version = "38.15"),
         Entry("2026-11-23", Kind.NEW, "Each model picks its best processor on this phone",
             "The app now remembers, for each model file, how it did on each processor of your phone: whether it loaded, how " +
                 "long the load took and how fast it answered. Next time it tries the fastest one first, and a processor that " +

@@ -1,6 +1,6 @@
 # Phase 7 — LiteRT-LM Backend Integration and Stabilization: audit and execution plan
 
-**Status:** **APPROVED by the owner 2026-11-23** (L1–L9; the detectors are added to L8). IN PROGRESS: all steps are built back to back and phone-tested once at the end (continuous-phases rule).
+**Status:** **APPROVED by the owner 2026-11-23** (L1–L9; the detectors are added to L8). **All steps built in code (v38.08–v38.15, PRs #99–#106); the owner's phone test of the whole phase is pending** (Section 6). The phase is not complete until that test passes.
 **Based on:** `sphynx-test-branch` at v38.05, by reading the code. No phone was used for this plan.
 
 ## 1. Role for this phase (roadmap 3.1)
@@ -60,3 +60,19 @@ L6, L8 and L9 come after L1–L5, so that L1–L5 are measured on the known-good
 - **Streaming API differences** between LiteRT-LM versions. L2 is built on 0.19.1's own API, and L6 checks it again.
 - **Stopping early** must not cut the adviser's choice. The parser decides, and the full answer stays the fallback.
 - **The memory estimate** is only an estimate. It warns, never blocks (owner's choice), and it is checked against the snapshots.
+
+## 6. Phone checklist for the whole phase (owner tests it all at once)
+
+After `git pull` on `sphynx-test-branch` and a rebuild (the app is a little bigger: native libraries are now unpacked on install, and the MediaTek NPU libraries are in it):
+
+1. **Model page (L1, L9):** the line "Supported LiteRT-LM model: Gemma 4 E2B" and, under it, "Processor for …: Tried first: GPU. GPU: …". After the first load and a few answers it shows the load time and about how many tokens per second.
+2. **Streaming (L2):** play a 5v5 with Gemma and the small model. The draft, plan and fight advice should read as before. Fight advice should come a little faster, because the small model stops once it has its choice. Then run Model page > speed test: every call now has a time to the first word, even with the detailed-speed switch off.
+3. **Memory check (L3):** with the game open in the background, press Load the strategic model. On your phone it should load without asking. To see the question, give the strategic job a big file (for example Gemma 4 E4B), then use Cancel and Load anyway once each. Logs: "Memory check … asked" and "loaded anyway".
+4. **GPU failure (L4, L5):** this can't be forced. If it happens in a match, the panel says "… failed on the GPU … now runs on the CPU" for 2 minutes and play goes on; the next start tries the GPU again. Load errors on the Model page now end with what to do.
+5. **NPU, Gemma (L8a):** Model page, read the "NPU: …" line under "Use the NPU (experimental)" and note what it says. Turn the switch on.
+   - The model reloads and shows "compiling for the NPU…", which can take over a minute the first time. Then the status is "ready on NPU", or "ready on GPU" if the NPU failed.
+   - Ask the test question and play a short match. Note the answer speed and the phone's heat.
+   - If the app closes while compiling, start it again. The Processor line should then say "NPU: failed on …", and the model loads on the GPU.
+6. **NPU, detectors (L8b):** with the switch on, the minimap and screen detector status lines say "ready on NPU (NNAPI)" or "ready on CPU". Compare their "ms per run" with the switch off and on.
+7. **Turn the NPU switch off again:** everything goes back to the GPU (Gemma) and the CPU (detectors).
+8. **Logs and upload:** Debug data page > upload. The diagnostics log has the NPU lines ("compiling", "model loaded on …", "prepared for the NPU in … ms", "first run on the NPU took … ms", or the failures). Then tell me "all test are good", or what failed. The NPU result goes into `docs/PHASE_7_LITERTLM_COMPAT.md`.
