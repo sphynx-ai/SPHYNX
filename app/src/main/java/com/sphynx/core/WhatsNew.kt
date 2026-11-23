@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "Phase 7 plan: NPU compiled on the phone, best processor per model",
+            "Behind the scenes: the Phase 7 plan now has your two additions. A Use the NPU (experimental) switch, off by " +
+                "default, lets the phone compile Gemma for its NPU when it loads (the first time can take over a minute), " +
+                "falling back to the GPU and then the CPU. And the app will remember, for each model, which processor works " +
+                "best on your phone and use that one first. Waiting for your OK. Nothing in the app changes.",
+            pr = 98, needsDeviceCheck = true, version = "38.07"),
         Entry("2026-11-23", Kind.IMPROVED, "Phase 6 finished; the plan for Phase 7 (LiteRT-LM)",
             "Your phone test of Phase 6 is recorded: the phase is complete. The Phase 7 plan is written from your answers: " +
                 "Gemma's answers will arrive word by word, a warning will come before loading a model that may not fit next " +
