@@ -43,10 +43,10 @@ Java_com_sphynx_inference_LlamaJni_nativeInfo(JNIEnv * env, jobject) {
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_sphynx_inference_LlamaJni_nativeLoad(JNIEnv * env, jobject, jstring jpath, jint nCtx, jint threads) {
+Java_com_sphynx_inference_LlamaJni_nativeLoad(JNIEnv * env, jobject, jstring jpath, jint nCtx, jint threads, jboolean kv8) {
     sphynx_llama_init(logToAndroid);
     std::string err;
-    SphynxLlama * h = sphynx_llama_load(jstr(env, jpath), nCtx, threads, err);
+    SphynxLlama * h = sphynx_llama_load(jstr(env, jpath), nCtx, threads, err, kv8 == JNI_TRUE);
     { std::lock_guard<std::mutex> l(g_errMutex); g_loadError = h ? "" : err; }
     return reinterpret_cast<jlong>(h);
 }

@@ -3139,6 +3139,26 @@ class MainActivity : Activity() {
         }
         btn("Ask the test question") { lib.askTest(this)?.let { toast(it) } }
         btn("Stop the answer") { lib.stopTest(this) }
+
+        // Phase 8 G5/G6: the repeatable GGUF benchmark (threads, 8-bit cache), saved to the Debug data
+        val bc = card()
+        cardHeader(bc, "GGUF benchmark")
+        cardNote(bc, "Three fixed questions on one GGUF model with 4, 2 and 6 threads, then 4 threads with the 8-bit cache. " +
+            "Each setting loads fresh. It takes a few minutes; keep the app open. The fastest thread count is kept for " +
+            "that model. Every answer is saved for the Debug data upload.")
+        val bLine = cardNote(bc)
+        upd { bLine.text = com.sphynx.models.GgufBenchmark.line.ifEmpty { "Not run yet." } }
+        btn("Run the GGUF benchmark") {
+            val models = lib.models(this)
+            if (models.isEmpty()) { toast("Add a GGUF model first"); return@btn }
+            val rolesUse = listOf(com.sphynx.ai.Roles.STRATEGIC, com.sphynx.ai.Roles.TACTICAL)
+                .any { com.sphynx.ai.Roles.backend(it) == com.sphynx.inference.BackendType.LLAMA_CPP }
+            AlertDialog.Builder(this).setTitle("Benchmark which model?")
+                .setItems(models.map { it.name }.toTypedArray()) { _, i ->
+                    com.sphynx.models.GgufBenchmark.start(this, models[i], rolesUse) { msg -> runOnUiThread { toast(msg.take(120)) } }
+                        ?.let { toast(it) }
+                }.setNegativeButton("Cancel", null).show()
+        }
     }
 
 

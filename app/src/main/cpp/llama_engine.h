@@ -18,6 +18,7 @@ struct SphynxLlama {
     std::atomic<int> busy{0};            // Phase 8 G4: calls running on this handle; free waits for them
     int nCtx = 0;
     int threads = 0;
+    bool kv8 = false;                    // Phase 8 G5: the KV cache in 8 bits
 };
 
 // once per process; log receives llama.cpp warnings and errors (may be null)
@@ -28,7 +29,9 @@ std::string sphynx_llama_info();
 
 // loads the GGUF at path with a context of nCtx tokens on threads CPU threads; null on failure, and
 // err says why (llama.cpp's own last warnings and errors included)
-SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads, std::string & err);
+// Phase 8 G5: kv8 = the context's memory (KV cache) in 8 bits (q8_0, with flash attention): about half the memory of the
+// default 16 bits
+SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads, std::string & err, bool kv8 = false);
 
 // Phase 6 S8: loads the model's multimodal projector (a separate mmproj GGUF) so answers can take a picture; false on
 // failure, and err says why. The text model keeps working without it.

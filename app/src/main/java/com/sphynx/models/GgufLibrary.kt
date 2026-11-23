@@ -2,6 +2,7 @@ package com.sphynx.models
 
 import android.content.Context
 import android.net.Uri
+import com.sphynx.core.Cfg
 import com.sphynx.core.Diag
 import com.sphynx.inference.Accelerator
 import com.sphynx.inference.BackendType
@@ -64,7 +65,9 @@ object GgufLibrary {
         accelerators = listOf(Accelerator.CPU),     // CPU only in this build
         contextTokens = CONTEXT_TOKENS,
         maxOutputTokens = MAX_OUTPUT_TOKENS,
-        threads = LlamaCpu.threads(),
+        // Phase 8 G5: the thread count the benchmark found best for this file on this phone, else the default
+        threads = Cfg.raw(com.sphynx.inference.GgufTuning.threadsKey(file.name, file.length()))?.toIntOrNull()?.takeIf { it in 1..16 }
+            ?: LlamaCpu.threads(),
         projector = projectorFor(file)?.absolutePath
     )
 

@@ -17,7 +17,8 @@ data class ModelConfiguration(
     val contextTokens: Int = 4096,
     val maxOutputTokens: Int = 512,
     val threads: Int = 0,                 // 0 = runtime default
-    val projector: String? = null         // Phase 6 S8: a GGUF model's multimodal projector file (mmproj), for pictures
+    val projector: String? = null,        // Phase 6 S8: a GGUF model's multimodal projector file (mmproj), for pictures
+    val kvCache8Bit: Boolean = false      // Phase 8 G5: a GGUF model's context memory in 8 bits (about half the memory)
 ) {
     fun problems(): List<String> {
         val p = ArrayList<String>()

@@ -98,6 +98,19 @@ int main(int argc, char ** argv) {
         CHECK(!sphynx_llama_load_projector(h, "/tmp/does-not-exist-mmproj.gguf", 2, err) && !err.empty(), "a missing mmproj fails with a reason");
         CHECK(has(sphynx_llama_generate(h, "Once", 4, 0.0f, 1, nullptr, nullptr), "\"ok\":true"), "the model still answers after a failed mmproj");
 
+        // G5: the 8-bit KV cache (q8_0 with flash attention) loads and answers
+        {
+            std::string e3;
+            SphynxLlama * k = sphynx_llama_load(model, 128, 2, e3, true);
+            CHECK(k != nullptr && has(sphynx_llama_describe(k), "\"kv8\":true"), "the 8-bit KV cache loads");
+            if (k) {
+                Pieces g;
+                CHECK(has(sphynx_llama_generate(k, "Once upon a time", 8, 0.0f, 1, collect, &g), "\"ok\":true") && g.count > 0,
+                      "the 8-bit KV cache answers");
+                sphynx_llama_free(k);
+            } else std::printf("kv8 load error: %s\n", e3.c_str());
+        }
+
         // load and free 20 times: nothing may be left behind (G9 checks the memory on the phone)
         bool all = true;
         for (int i = 0; i < 20 && all; i++) { std::string e2; SphynxLlama * x = sphynx_llama_load(model, 128, 2, e2); all = x != nullptr; sphynx_llama_free(x); }
