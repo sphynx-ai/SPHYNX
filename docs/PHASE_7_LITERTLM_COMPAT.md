@@ -46,4 +46,4 @@ Other files may work but are **not on the supported list** until they are tested
 - **A fresh conversation per question:** no memory between questions, by owner decision.
 - **Pictures:** one image per question (`maxNumImages = 1`), at most 512 px wide, JPEG quality 70.
 - **Memory check before loading (L3, v38.10):** only an estimate (file size + 200 MB, 2.5 GB kept for the game); it warns and asks, never blocks.
-- **A GPU failure mid-match is not recovered:** L4 adds one CPU fallback.
+- **A GPU failure mid-match (L4, v38.11):** the model is reloaded on the CPU once per app start; a second failure unloads it. Error words and advice come from `inference/LiteRtErrorWords` (L5); its message patterns are from LiteRT-LM's native messages and are checked again against the phone's logs.

@@ -18,6 +18,9 @@ sealed class InferenceError(val code: String, val message: String, val retryable
     /** The app restarted while this model was loading: it is not loaded again by itself (load sentinel, Phase Two). */
     class CrashSuspected(modelId: String) : InferenceError("crash_suspected",
         "the app stopped while loading $modelId last time; load it by hand to try again", false)
+    /** The model loaded, but its processor (usually the GPU) stopped working while answering (Phase 7, L5). */
+    class AcceleratorFailed(val accelerator: Accelerator, detail: String) : InferenceError("accelerator_failed",
+        "the ${accelerator.name} stopped working: $detail", true)
     class Internal(detail: String) : InferenceError("internal", "runtime error: $detail", true)
 
     override fun toString(): String = "$code: $message"

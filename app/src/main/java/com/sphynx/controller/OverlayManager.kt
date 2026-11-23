@@ -509,7 +509,8 @@ class OverlayManager(private val ctx: Context) {
         comboBtn?.alpha = if (comboAllowed) 1f else 0.5f
         setBtn(comboBtn, PanelButtons.combo(comboAllowed), cmp)
         if (panel?.visibility == View.VISIBLE) setLines(AiRuntime.panelText() +
-            com.sphynx.core.PressurePolicy.panelLine().let { if (it.isEmpty()) "" else "\n$it" })   // Phase 5 (P5): low memory / heat
+            com.sphynx.core.PressurePolicy.panelLine().let { if (it.isEmpty()) "" else "\n$it" } +   // Phase 5 (P5): low memory / heat
+            com.sphynx.ai.Roles.panelLine().let { if (it.isEmpty()) "" else "\n$it" })               // Phase 7 (L4): GPU fallback
         pointer?.invalidate()
         // tell vision where our own windows are, so it ignores them
         val (rsw, rsh) = com.sphynx.core.ScreenGeom.size(ctx)

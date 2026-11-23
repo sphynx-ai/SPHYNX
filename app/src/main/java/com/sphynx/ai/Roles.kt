@@ -57,8 +57,18 @@ object Roles {
     fun crashNote(role: ModelRole): String? = sentinel.suspected(role)?.let {
         "$it stopped the app while loading last time, so it is not loaded by itself; load it by hand to try again" }
 
-    private val strategicLite by lazy { LiteRtLmBackend(LlmSlotPort(GemmaEngine) { appCtx }) }
-    private val tacticalLite by lazy { LiteRtLmBackend(LlmSlotPort(TacticalLlmEngine) { appCtx }) }
+    private val strategicLite by lazy { LiteRtLmBackend(LlmSlotPort(GemmaEngine) { appCtx }).apply { onNotice = ::fallbackNotice } }
+    private val tacticalLite by lazy { LiteRtLmBackend(LlmSlotPort(TacticalLlmEngine) { appCtx }).apply { onNotice = ::fallbackNotice } }
+
+    // Phase 7 L4: a GPU failure mid-match moved a model to the CPU (or unloaded it): the log and, for 2 minutes, the panel
+    @Volatile private var fallbackLine = ""
+    @Volatile private var fallbackUntil = 0L
+    private fun fallbackNotice(line: String) {
+        Diag.error(line)
+        fallbackLine = line; fallbackUntil = System.currentTimeMillis() + 2 * 60_000L
+    }
+    /** The floating panel's line about a GPU fallback ("" when there is nothing to say). */
+    fun panelLine(nowMs: Long = System.currentTimeMillis()): String = if (nowMs < fallbackUntil) fallbackLine else ""
 
     /** The GGUF runtime (one per app, shared with the Model page's test question). Set by the app at start. */
     @Volatile var gguf: () -> InferenceBackend? = { null }
@@ -118,7 +128,8 @@ object Roles {
         val st = try { router.load(a.role) } finally { sentinel.loaded(a.role) }
         if (st.ready && a.backend == BackendType.LITERT_LM && a.model.wantsVision)
             com.sphynx.core.Cfg.setRaw("vision_" + a.model.displayName, if (st.visionOk) "1" else "0")
-        return if (st.ready) null else (st.error?.message ?: "not loaded (${st.state.label})")
+        // Phase 7 L5: the error and what to do about it
+        return if (st.ready) null else (st.error?.let { com.sphynx.inference.LiteRtErrorWords.words(it) } ?: "not loaded (${st.state.label})")
     }
 
     fun unload(role: ModelRole) = router.unload(role)
