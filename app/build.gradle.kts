@@ -87,7 +87,7 @@ android {
         // (37.20 -> 37.21 -> ...; after 37.99 comes 38.00). Written only here: the version code follows
         // from it (37.20 -> 3720) and the app reads it through BuildConfig.VERSION_NAME (core.AppVersion).
         // The newest What's new entry carries the same version; a unit test checks they match.
-        val sphynxVersion = "38.11"
+        val sphynxVersion = "38.12"
         versionCode = sphynxVersion.split(".").let { it[0].toInt() * 100 + it[1].toInt() }
         versionName = sphynxVersion
 
@@ -143,6 +143,9 @@ android {
 
     }
     packaging {
+        // Phase 7 L8: native libraries are unpacked on install, so LiteRT-LM finds the NPU libraries in
+        // applicationInfo.nativeLibraryDir (Backend.NPU(nativeLibraryDir))
+        jniLibs { useLegacyPackaging = true }
         resources {
             resources.excludes.add("/META-INF/{AL2.0,LGPL2.1}")
             resources.excludes.add("META-INF/kotlinx_coroutines_core.version")
@@ -211,6 +214,10 @@ dependencies {
     // pinned (was latest.release, which resolved to 0.19.1 on 2026-11-07): a new LiteRT-LM release
     // can change Gemma loading / inference, so upgrades are made on purpose, in their own PR
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.19.1")
+    // Phase 7 L8 (experimental NPU, off by default): LiteRT's MediaTek dispatch library and compiler plugin, which let
+    // LiteRT-LM compile Gemma for a MediaTek NPU on the phone. Only the two .so files are wanted (not transitive), so the
+    // app's LiteRT / TFLite versions stay as they are. MediaTek's Neuron adapter itself comes from the phone (manifest).
+    implementation("com.google.ai.edge.litert:litert-npu-runtime-mediatek:2.3.0") { isTransitive = false }
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)

@@ -114,7 +114,13 @@ object Roles {
         val cfg = ModelConfiguration(
             id = "litertlm:" + role.name.lowercase() + ":" + f.name, displayName = f.name, backend = BackendType.LITERT_LM,
             location = path, sizeBytes = if (f.isFile) f.length() else -1L, role = role,
-            accelerators = if (role == ModelRole.STRATEGIC && preferGpu) listOf(Accelerator.GPU, Accelerator.CPU) else listOf(Accelerator.CPU),
+            accelerators = when {
+                // Phase 7 L8: the experimental NPU first (owner's switch, off by default), then the GPU when allowed, then the CPU
+                role == ModelRole.STRATEGIC && com.sphynx.core.Cfg.useNpu ->
+                    if (preferGpu) listOf(Accelerator.NPU, Accelerator.GPU, Accelerator.CPU) else listOf(Accelerator.NPU, Accelerator.CPU)
+                role == ModelRole.STRATEGIC && preferGpu -> listOf(Accelerator.GPU, Accelerator.CPU)
+                else -> listOf(Accelerator.CPU)
+            },
             wantsVision = role == ModelRole.STRATEGIC)
         return load(Assignment(role, cfg))
     }

@@ -3001,6 +3001,11 @@ class MainActivity : Activity() {
 
         title("SETTINGS")
         switch("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it; reloadGemmaForGpu() }
+        // Phase 7 L8 (owner, 2026-11-23): experimental, off by default; NPU, then GPU, then CPU
+        switch("Use the NPU (experimental)", Cfg.useNpu) { Cfg.useNpu = it; reloadGemmaForGpu() }
+        text("Tries the strategic model on the phone's NPU first, then the GPU, then the CPU. The phone compiles the model " +
+            "for its NPU when it loads: the first time can take over a minute. It frees the GPU for the game; it is not " +
+            "faster at writing. If it fails, the GPU or CPU is used. " + com.sphynx.core.NpuCheck.line(this), 12f, color = T.MUTED)
         switch("Small tactical model in fights", Cfg.tacticalLlmOn) { on ->
             Cfg.tacticalLlmOn = on
             com.sphynx.ai.Roles.loadByOwner()   // a button: a model that crashed may be tried again (Phase 6 S6)
@@ -3555,7 +3560,7 @@ class MainActivity : Activity() {
     // turning the switch on did nothing until the next start, so Gemma stayed on the slow CPU)
     private fun reloadGemmaForGpu() {
         if (!com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.STRATEGIC)) return
-        toast("Reloading the model on the " + (if (Cfg.useGpu) "GPU" else "CPU") + "…")
+        toast("Reloading the model on the " + (if (Cfg.useNpu) "NPU (compiling, can take over a minute)" else if (Cfg.useGpu) "GPU" else "CPU") + "…")
         com.sphynx.ai.Roles.loadByOwner()   // a button: a model that crashed may be tried again (Phase 6 S6)
         ModelManager.load(this) { err -> runOnUiThread { toast(err ?: ("Model loaded: " + com.sphynx.ai.Roles.state(com.sphynx.ai.Roles.STRATEGIC))) } }
     }

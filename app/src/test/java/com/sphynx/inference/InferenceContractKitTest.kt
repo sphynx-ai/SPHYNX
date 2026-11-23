@@ -29,8 +29,9 @@ class InferenceContractKitTest {
         override val visionOk get() = vision
         override val where get() = whereLoaded
         override fun fileExists(location: String) = location.endsWith("good.litertlm")
-        override fun load(location: String, preferGpu: Boolean, textOnly: Boolean): String? {
-            lastPreferGpu = preferGpu; lastTextOnly = textOnly; loads++
+        var lastPreferNpu: Boolean? = null
+        override fun load(location: String, preferGpu: Boolean, textOnly: Boolean, preferNpu: Boolean): String? {
+            lastPreferGpu = preferGpu; lastTextOnly = textOnly; lastPreferNpu = preferNpu; loads++
             loaded = true; vision = !textOnly; whereLoaded = if (preferGpu) "GPU" else "CPU, text only"
             return null
         }
@@ -114,6 +115,16 @@ class InferenceContractKitTest {
         be.generate(InferenceRequest(id = "q" + System.nanoTime(), prompt = "hi")) { e ->
             if (e is InferenceEvent.Completed || e is InferenceEvent.Failed || e is InferenceEvent.Cancelled) done.add(e) }
         return done.poll(5, java.util.concurrent.TimeUnit.SECONDS)!!
+    }
+
+    // Phase 7 L8: NPU first only when the configuration lists it first
+    @Test fun theNpuIsTriedFirstOnlyWhenListedFirst() {
+        val s = FakeSlot()
+        val be = LiteRtLmBackend(s)
+        be.load(liteCfg("good.litertlm", vision = true, accs = listOf(Accelerator.NPU, Accelerator.GPU, Accelerator.CPU)))
+        assertEquals(true, s.lastPreferNpu); assertEquals(true, s.lastPreferGpu)
+        be.load(liteCfg("good.litertlm", vision = true, accs = listOf(Accelerator.GPU, Accelerator.NPU, Accelerator.CPU)))
+        assertEquals(false, s.lastPreferNpu)
     }
 
     @Test fun liteRtLmPassesTheLoadPlanToTheSlot() {

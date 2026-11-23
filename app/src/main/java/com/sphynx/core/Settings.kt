@@ -60,6 +60,8 @@ object Cfg {
     // (ON also on a new install - owner, 2026-11-13: it is a speed setting, not a feature; on the CPU the line-up
     // read took 122 s and each strategy answer 12-17 s)
     var useGpu: Boolean get() = b("gpu", true); set(v) = put("gpu", v)
+    // Phase 7 L8 (owner, 2026-11-23): the strategic model on the NPU, experimental, OFF by default (NPU, GPU, CPU)
+    var useNpu: Boolean get() = b("npu", false); set(v) = put("npu", v)
     // model speed recorder: LiteRT-LM's detailed figures (tokens per second); takes effect when the models load
     var modelSpeedDetailed: Boolean get() = b("model_speed_detailed", false); set(v) = put("model_speed_detailed", v)
     // the small tactical language model (second slot): off until you turn it on (Model page)

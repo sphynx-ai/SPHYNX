@@ -56,13 +56,18 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
 
     // Loads the .litertlm model with Google's recommended fallback order:
     //   1. image + text on the GPU   2. image + text on the CPU   3. text only on the CPU
-    suspend fun load(ctx: Context, modelPath: String, preferGpu: Boolean, textOnly: Boolean = false): String? = withContext(dispatcher) {
+    // Phase 7 L8 (owner, 2026-11-23, experimental, off by default): with [preferNpu], the NPU is tried first. LiteRT-LM
+    // compiles the ordinary .litertlm for this phone's NPU while loading (its generic compiler-plugin path; the first
+    // time can take over a minute; the result is cached in cacheDir). The picture part stays on the GPU / CPU.
+    suspend fun load(ctx: Context, modelPath: String, preferGpu: Boolean, textOnly: Boolean = false,
+                     preferNpu: Boolean = false): String? = withContext(dispatcher) {
         loading = true
         state = "loading..."
         try { engine?.close() } catch (e: Throwable) { }
         engine = null
-        class Attempt(val label: String, val gpu: Boolean, val vision: Boolean)
+        class Attempt(val label: String, val gpu: Boolean, val vision: Boolean, val npu: Boolean = false)
         val attempts = ArrayList<Attempt>()
+        if (preferNpu) attempts.add(Attempt(if (textOnly) "NPU, text only" else "NPU", preferGpu, !textOnly, npu = true))
         if (!textOnly) {
             if (preferGpu) attempts.add(Attempt("GPU", true, true))
             attempts.add(Attempt("CPU", false, true))
@@ -78,18 +83,24 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
             try {
                 tried++
                 setDetailed(detailed)
-                state = "loading on ${a.label}${if (detailed) " (detailed speed on)" else ""}..."
+                state = if (a.npu) "compiling for the NPU (the first time can take over a minute)..."
+                        else "loading on ${a.label}${if (detailed) " (detailed speed on)" else ""}..."
+                val main = when {
+                    a.npu -> Backend.NPU(nativeLibraryDir = ctx.applicationInfo.nativeLibraryDir)
+                    a.gpu -> Backend.GPU()
+                    else -> Backend.CPU()
+                }
                 val cfg = if (a.vision) {
                     EngineConfig(
                         modelPath = modelPath,
-                        backend = if (a.gpu) Backend.GPU() else Backend.CPU(),
+                        backend = main,
                         visionBackend = if (a.gpu) Backend.GPU() else Backend.CPU(),
                         audioBackend = Backend.CPU(),
                         maxNumImages = 1,
                         cacheDir = ctx.cacheDir.path
                     )
                 } else {
-                    EngineConfig(modelPath = modelPath, backend = if (a.gpu) Backend.GPU() else Backend.CPU(), cacheDir = ctx.cacheDir.path)
+                    EngineConfig(modelPath = modelPath, backend = main, cacheDir = ctx.cacheDir.path)
                 }
                 val e = Engine(cfg)
                 e.initialize()

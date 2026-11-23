@@ -52,7 +52,7 @@ L6, L8 and L9 come after L1–L5, so that L1–L5 are measured on the known-good
 - [ ] A risky load warns before it starts (L3); a GPU failure falls back to the CPU once (L4). **Memory check in code (v38.10):** `core/MemoryFit` (file size + 200 MB vs free memory, 2.5 GB kept for the game), asked before loads by hand, logged for automatic ones. **GPU fallback in code (v38.11):** `inference/GpuFallback` (once per start, then unload), `LiteRtLmBackend.afterFailure`, panel line `Roles.panelLine`; error words `inference/LiteRtErrorWords` (L5).
 - [x] The LiteRT-LM version decision is recorded with its evidence (L6): v0.19.1 is the newest release tag on 2026-11-23, so there is no upgrade (`docs/PHASE_7_LITERTLM_COMPAT.md` §1).
 - [ ] Known limitations are documented: NPU experimental only (L8), one model per slot, fresh conversation per question.
-- [ ] The experimental NPU switch is off by default, compiles on the phone, falls back NPU → GPU → CPU, and its result on the owner's phone is recorded (L8).
+- [ ] The experimental NPU switch is off by default, compiles on the phone, falls back NPU → GPU → CPU, and its result on the owner's phone is recorded (L8). **Gemma part in code (v38.12, L8a):** `Cfg.useNpu`, `LlmSlot.load(preferNpu)`, `core/NpuCheck`, findings in `docs/PHASE_7_LITERTLM_COMPAT.md` §5. **Detectors (L8b)** follow in their own PR: they need LiteRT's compiled-model API (a LiteRT upgrade from 1.4.2).
 - [ ] Each model's processor is chosen from this phone's own results, a failed processor is not retried by itself, and the Model page shows why (L9).
 
 ## 5. Risks

@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.NEW, "Experimental: Gemma on the NPU",
+            "A new Model page switch, Use the NPU (experimental), off by default. With it on, the strategic model is tried " +
+                "on the phone's NPU first, then the GPU, then the CPU. The phone compiles the model for its NPU while it loads, " +
+                "so the first time can take over a minute. A line under the switch says whether this phone can try it. If it " +
+                "fails, the GPU is used as before; if the app closes while compiling, it is not tried by itself again.",
+            pr = 103, needsDeviceCheck = true, version = "38.12"),
         Entry("2026-11-23", Kind.IMPROVED, "A GPU failure mid-match moves Gemma to the CPU",
             "If Gemma's answer fails on the GPU during play, the app now loads it again on the CPU once (with pictures) " +
                 "and the floating panel says so for 2 minutes; the GPU is tried again at the next start. If it fails again " +
