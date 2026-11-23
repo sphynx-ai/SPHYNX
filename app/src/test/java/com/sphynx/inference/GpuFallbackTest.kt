@@ -13,6 +13,11 @@ class GpuFallbackTest {
     @Test fun theFirstGpuFailureReloadsOnTheCpu() =
         assertEquals(Action.RELOAD_ON_CPU, GpuFallback.decide(Accelerator.GPU, false, gpuErr))
 
+    @Test fun anNpuFailureAlsoReloadsOnTheCpu() {
+        assertEquals(Action.RELOAD_ON_CPU, GpuFallback.decide(Accelerator.NPU, false, InferenceError.AcceleratorFailed(Accelerator.NPU, "x")))
+        assertTrue(GpuFallback.reloadedNotice("strategic", true, gpuErr, Accelerator.NPU).contains("failed on the NPU"))
+    }
+
     @Test fun aFailureAfterTheFallbackUnloads() =
         assertEquals(Action.UNLOAD, GpuFallback.decide(Accelerator.CPU, true, InferenceError.Internal("x")))
 

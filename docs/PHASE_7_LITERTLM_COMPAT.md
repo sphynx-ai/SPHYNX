@@ -41,9 +41,25 @@ Other files may work but are **not on the supported list** until they are tested
 
 ## 4. Known limitations
 
-- **NPU:** not used by default. L8 adds an experimental switch; open reports describe NPU compile problems on MT6897 / Android 16 phones.
+- **NPU:** not used by default. L8 adds an experimental switch (v38.12, see section 5); open reports describe NPU compile problems on MT6897 / Android 16 phones.
 - **One model per slot:** the strategic and tactical slots each hold one model.
 - **A fresh conversation per question:** no memory between questions, by owner decision.
 - **Pictures:** one image per question (`maxNumImages = 1`), at most 512 px wide, JPEG quality 70.
 - **Memory check before loading (L3, v38.10):** only an estimate (file size + 200 MB, 2.5 GB kept for the game); it warns and asks, never blocks.
 - **A GPU failure mid-match (L4, v38.11):** the model is reloaded on the CPU once per app start; a second failure unloads it. Error words and advice come from `inference/LiteRtErrorWords` (L5); its message patterns are from LiteRT-LM's native messages and are checked again against the phone's logs.
+
+## 5. NPU (L8, first sub-step: what the pinned LiteRT-LM needs)
+
+Read on 2026-11-23 from the source: LiteRT-LM `v0.19.1`; LiteRT `main` at 69bd630; Google's `litert-samples` at e7f17f6. Google's documentation site (`ai.google.dev`) is not reachable from this container.
+
+| Question | Finding | Source |
+|---|---|---|
+| Can an ordinary `.litertlm` run on the NPU? | **Yes, compiled on the phone.** When the model has no NPU part packaged (`TF_LITE_AUX` empty), LiteRT-LM logs "Using the generic LiteRT compiler-plugin path" and compiles it for the NPU through LiteRT's compiler plugin | `runtime/executor/llm_litert_compiled_model_executor_factory.cc`, `runtime/util/litert_util.cc` |
+| Is the owner's chip covered? | **MT6897 is listed** among the devices of Google's on-device-compile (JIT) NPU sample, with MediaTek NeuroPilot SDK v8 | `samples/litert/image_segmentation/kotlin_npu/android_jit` (README, `mediatek_runtime_v8` manifest) |
+| What the app ships | `libLiteRtDispatch_MediaTek.so` and `libLiteRtCompilerPlugin_MediaTek.so` from `com.google.ai.edge.litert:litert-npu-runtime-mediatek` (Google Maven). Pinned to **2.3.0** (the version Google's sample uses), not transitive | `mediatek_runtime_common/build.gradle.kts` |
+| Where LiteRT-LM looks | `Backend.NPU(nativeLibraryDir)`; the app passes `applicationInfo.nativeLibraryDir` and unpacks its native libraries on install (`useLegacyPackaging`) | `Config.kt`, `getting_started.md` |
+| MediaTek's Neuron adapter | **Not shipped by the app.** Google's sample copies `libneuronusdk_adapter.mtk.so` out of MediaTek's NeuroPilot SDK download; redistributing it is a licensing question for the owner. Instead the app asks for the phone's own copy (`uses-native-library`, optional): LiteRT's dispatcher tries `libneuronusdk_adapter.so`, `.10/.9/.8.mtk.so`, `libneuronusdk_adapter.mtk.so`, `libneuron_adapter_mgvi.so`, `libneuron_adapter.so` | `litert/vendors/mediatek/neuron_adapter_api.cc` |
+| Version match | LiteRT-LM 0.19.1 builds on LiteRT commit `dcb657e` (2026-10-24, between the 2.3.1 and 2.3.2 releases). A dispatch library from 2.3.0 is expected to work but is **not proven**; the phone test decides | `WORKSPACE` |
+| Risks | Open reports of NPU compile crashes on Dimensity 8300 / Android 16. A crash while loading is caught by the load sentinel (S6); a failure falls back to the GPU, then the CPU | — |
+
+The Model page line under the switch (`core/NpuCheck`) says on the phone whether the app's two libraries are there and whether the phone opens a Neuron adapter to apps.

@@ -36,6 +36,12 @@
         <!-- Lets LiteRT-LM use the phone's GPU (optional: falls back to CPU) -->
         <uses-native-library android:name="libOpenCL.so" android:required="false" />
         <uses-native-library android:name="libvndksupport.so" android:required="false" />
+        <!-- Phase 7 L8 (experimental NPU): MediaTek's Neuron adapter from the phone, when the phone opens it to apps -->
+        <uses-native-library android:name="libneuronusdk_adapter.mtk.so" android:required="false" />
+        <uses-native-library android:name="libneuronusdk_adapter.8.mtk.so" android:required="false" />
+        <uses-native-library android:name="libneuronusdk_adapter.9.mtk.so" android:required="false" />
+        <uses-native-library android:name="libneuron_adapter_mgvi.so" android:required="false" />
+        <uses-native-library android:name="libneuron_adapter.so" android:required="false" />
 
         <!-- configChanges: rotating the phone no longer restarts the app -->
         <activity

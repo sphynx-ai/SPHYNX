@@ -15,9 +15,9 @@ class LlmSlotPort(private val slot: LlmSlot, private val ctx: () -> Context?) : 
     override val where: String get() = slot.backendName
     override fun fileExists(location: String): Boolean = java.io.File(location).isFile
 
-    override fun load(location: String, preferGpu: Boolean, textOnly: Boolean): String? {
+    override fun load(location: String, preferGpu: Boolean, textOnly: Boolean, preferNpu: Boolean): String? {
         val c = ctx() ?: return "the app is not started yet"
-        return runBlocking { slot.load(c, location, preferGpu, textOnly) }
+        return runBlocking { slot.load(c, location, preferGpu, textOnly, preferNpu) }
     }
 
     override fun ask(prompt: String, imageJpeg: ByteArray?, temperature: Double, purpose: String, timeoutMs: Long,

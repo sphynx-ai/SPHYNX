@@ -52,7 +52,9 @@ class LiteRtLmBackend(private val slot: LiteRtSlot) : InferenceBackend {
         st = if (problem != null) st.moveTo(RuntimeState.FAILED, error = problem) else {
             // the slot's own order: GPU first when the configuration lists it before the CPU; text only when no images
             val preferGpu = preferGpu(config.accelerators)
-            val err = try { slot.load(config.location, preferGpu, textOnly = !config.wantsVision) } catch (t: Throwable) { t.message ?: t.toString() }
+            // Phase 7 L8: the experimental NPU first, when the configuration lists it first (NPU, then GPU, then CPU)
+            val npu = preferNpu(config.accelerators)
+            val err = try { slot.load(config.location, preferGpu, textOnly = !config.wantsVision, preferNpu = npu) } catch (t: Throwable) { t.message ?: t.toString() }
             if (err != null || !slot.ready) st.moveTo(RuntimeState.FAILED, error = LiteRtErrorWords.forLoadMessage(err ?: "unknown reason"))
             else st.moveTo(RuntimeState.READY, accelerator = acceleratorOf(slot.where), visionOk = slot.visionOk)
         }
@@ -108,11 +110,11 @@ class LiteRtLmBackend(private val slot: LiteRtSlot) : InferenceBackend {
             GpuFallback.Action.RELOAD_ON_CPU -> {
                 fellBack = true
                 st = st.moveTo(RuntimeState.LOADING, config = config)
-                val loadErr = try { slot.load(config.location, preferGpu = false, textOnly = !config.wantsVision) } catch (t: Throwable) { t.message ?: t.toString() }
+                val loadErr = try { slot.load(config.location, preferGpu = false, textOnly = !config.wantsVision, preferNpu = false) } catch (t: Throwable) { t.message ?: t.toString() }
                 val ok = loadErr == null && slot.ready
                 st = if (ok) st.moveTo(RuntimeState.READY, accelerator = acceleratorOf(slot.where), visionOk = slot.visionOk)
                      else st.moveTo(RuntimeState.FAILED, error = LiteRtErrorWords.forLoadMessage(loadErr ?: "unknown reason"))
-                notice(GpuFallback.reloadedNotice(job, ok, err))
+                notice(GpuFallback.reloadedNotice(job, ok, err, on))
             }
             GpuFallback.Action.UNLOAD -> {
                 try { slot.unload() } catch (t: Throwable) { }
@@ -147,6 +149,9 @@ class LiteRtLmBackend(private val slot: LiteRtSlot) : InferenceBackend {
             return g >= 0 && (c < 0 || g < c)
         }
 
+        /** The experimental NPU first (Phase 7 L8): only when the configuration lists it first. */
+        fun preferNpu(accs: List<Accelerator>): Boolean = accs.firstOrNull() == Accelerator.NPU
+
         /** The slot reports where it loaded as a label ("GPU", "CPU, text only", ...). */
         fun acceleratorOf(where: String): Accelerator = when {
             where.startsWith("GPU", ignoreCase = true) -> Accelerator.GPU
@@ -166,8 +171,8 @@ interface LiteRtSlot {
     /** Where the model loaded ("GPU", "CPU", "CPU, text only"...), "-" when not loaded. */
     val where: String
     fun fileExists(location: String): Boolean
-    /** Loads the model; null when it loaded, else why not. */
-    fun load(location: String, preferGpu: Boolean, textOnly: Boolean): String?
+    /** Loads the model; null when it loaded, else why not. [preferNpu]: try the NPU before the GPU (Phase 7 L8). */
+    fun load(location: String, preferGpu: Boolean, textOnly: Boolean, preferNpu: Boolean): String?
     /** One answer; [imageJpeg] is used only when the model loaded with images. Throws TimeoutException after [timeoutMs]. */
     fun ask(prompt: String, imageJpeg: ByteArray?, temperature: Double, purpose: String, timeoutMs: Long,
             stopWhen: ((String) -> Boolean)?): String

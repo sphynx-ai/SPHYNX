@@ -12,14 +12,16 @@ object GpuFallback {
 
     fun decide(on: Accelerator?, alreadyFellBack: Boolean, error: InferenceError): Action = when {
         error is InferenceError.Timeout || error is InferenceError.Cancelled || error is InferenceError.InvalidRequest -> Action.NONE
-        on == Accelerator.GPU && !alreadyFellBack -> Action.RELOAD_ON_CPU
+        (on == Accelerator.GPU || on == Accelerator.NPU) && !alreadyFellBack -> Action.RELOAD_ON_CPU   // L8: the NPU too
         alreadyFellBack -> Action.UNLOAD
         else -> Action.NONE
     }
 
-    fun reloadedNotice(job: String, ok: Boolean, e: InferenceError): String =
-        if (ok) "The $job model failed on the GPU (${e.code}) and now runs on the CPU; the GPU is tried again at the next start"
-        else "The $job model failed on the GPU (${e.code}) and could not be loaded on the CPU; play goes on with the rules"
+    fun reloadedNotice(job: String, ok: Boolean, e: InferenceError, on: Accelerator? = Accelerator.GPU): String {
+        val p = on?.name ?: "GPU"
+        return if (ok) "The $job model failed on the $p (${e.code}) and now runs on the CPU; the $p is tried again at the next start"
+        else "The $job model failed on the $p (${e.code}) and could not be loaded on the CPU; play goes on with the rules"
+    }
 
     fun unloadedNotice(job: String, e: InferenceError): String =
         "The $job model failed again on the CPU (${e.code}) and was unloaded; play goes on with the rules"
