@@ -1,6 +1,6 @@
 # Phase 8 — GGUF / llama.cpp Backend Integration: audit and execution plan
 
-**Status:** **APPROVED by the owner 2026-11-23** ("approve phase 8 plan, try vulkan and newer llama.cpp"), with one addition: **both jobs use pictures** (G11). IN PROGRESS: all steps are built back to back and phone-tested once at the end (continuous-phases rule). Phase 8 has run since 2026-11-14 by owner decision (MASTER_DEVELOPMENT_PLAN section 9.1). This plan finishes it.
+**Status:** **APPROVED by the owner 2026-11-23** ("approve phase 8 plan, try vulkan and newer llama.cpp"), with one addition: **both jobs use pictures** (G11). **Built in code: G1–G7, G9, G10, G11 (v38.19–v38.28, PRs #110–#119). G8 (Vulkan) stopped at its first sub-step, waiting for the owner's choice** (`docs/PHASE_8_GGUF_NATIVE.md` §8). The owner's phone test of the whole phase is pending (Section 7). Phase 8 has run since 2026-11-14 by owner decision (MASTER_DEVELOPMENT_PLAN section 9.1).
 **Based on:** `sphynx-test-branch` at v38.17, read from the code. No phone was used for this plan.
 
 ## 1. Role for this phase (roadmap 3.1)
@@ -56,7 +56,7 @@ G11 is built right after G4, on b11900. G7 comes after G2–G6 and G11, so its r
 - [ ] Each acceleration path is benchmarked rather than assumed: CPU threads and KV cache (G5), GPU through Vulkan (G8). **G8 first sub-step done, stopped by the plan's own rule (2026-11-23):** Vulkan builds on a computer but needs glslc, SPIR-V headers and 139 MB of generated shader code, which the owner's phone build (Code on the Go) cannot produce. Findings and three options in `docs/PHASE_8_GGUF_NATIVE.md` §8, waiting for the owner's choice.
 - [ ] Both jobs read pictures when their model can (LiteRT-LM vision or GGUF + mmproj); a text-only model is marked as such in the picker (G11). **In code (v38.23):** `ai/TacticalSight` (pure rules tested), switch `Cfg.tacticalSightOn` (off by default), tactical loads with pictures through `Roles.loadLiteRt` / `ProbesWiring.loadFor` / `StepDown.configFor`, readings logged to `research/tactical_sight.jsonl` next to the detector counts (exported from the Debug data page).
 - [ ] Memory, heat and stability over a full match are measured on the phone (G9). **In code (v38.26):** `models/GgufStability`: 20 load/unload cycles with the memory after each unload (`research/gguf_stability.jsonl`, `GgufTuning.leakSummary` tested), and one row a minute during a 5v5 with a GGUF job (`research/match_resources.jsonl`). Phone measurements pending.
-- [ ] A supported GGUF model list with measured figures, and troubleshooting documentation (G1, G10).
+- [ ] A supported GGUF model list with measured figures, and troubleshooting documentation (G1, G10). **Checklist in Section 7 (v38.28)**; the list is filled from the phone's benchmark.
 
 ## 5. Risks
 
@@ -75,3 +75,20 @@ G11 is built right after G4, on b11900. G7 comes after G2–G6 and G11, so its r
 4. **Supported GGUF list:** the suggested list (Llama 3.2 1B Q4_K_M, Qwen2.5 0.5B Q4_K_M, Gemma 3 4B Q4_K_M with its mmproj), plus a small picture-reading tactical model for G11.
 5. **G5, 8-bit KV cache:** on by default only if the phone test shows no loss.
 6. **Pictures for both jobs (new, G11):** the tactical job gets a picture now and then (the minimap crop every few seconds), not with every fight answer. A model without pictures gets a warning and is still allowed.
+
+## 7. Phone checklist for the whole phase (owner tests it all at once)
+
+After `git pull` on `sphynx-test-branch` and a rebuild (v38.28). The first build takes longer: llama.cpp is new (b12651).
+
+1. **GGUF details (G2):** Model page → "Which model does which job" → a job. Each GGUF model shows a second line, for example "llama · Q4_K_M · 1B · trained for 131,072 tokens · chat format", and a third: "reads pictures (mmproj found)" or "text only: add its mmproj file". Adding a broken or half-downloaded .gguf is refused with the reason.
+2. **Newer llama.cpp (G7):** load the same GGUF models as before (Llama 3.2 1B Q4_K_M, Qwen2.5 0.5B Q4_K_M) and ask the test question. The answers should make sense, and the speed should be at least the 2026-11-14 figures (13.4 and 25.5 tokens/s writing).
+3. **GGUF benchmark (G5, G6):** Model page → GGUF benchmark → "Run the GGUF benchmark" on each of those models, with the game closed. It takes a few minutes per model; note the result line (writing speed with 2, 4 and 6 threads, and the 8-bit cache with "no loss" or "a loss").
+4. **Stability (G9):** "Load and unload 20 times" on one model. The line should end with "comes back".
+5. **Pictures for both jobs (G11):** turn on "Small tactical model in fights" and "Tactical model reads the minimap (pictures)", with a tactical model that reads pictures (a GGUF with its mmproj, for example Gemma 3 4B + `mmproj-gemma-3-4b-it-f16.gguf`, or a vision .litertlm). The toast should say "Tactical model: reads pictures". Play a 5v5: fight advice should not be slower than before. With a text-only tactical model, the toast says "text only".
+6. **A 5v5 with a GGUF job (G9):** give one job a GGUF model and play a full 5v5. No crash, no app close.
+7. **Safety (G4):** while a GGUF answer is running (test question), press Stop, unload, and load again. No crash.
+8. **Upload:** Debug data page → export research files and upload. That uploads `gguf_bench.jsonl`, `gguf_stability.jsonl`, `match_resources.jsonl` and `tactical_sight.jsonl`. Then tell me "all test are good", or what failed, and your choice for G8 (Vulkan): 1, 2 or 3.
+
+## 8. Closing record
+
+Filled in after the owner's phone test: the supported GGUF model list with measured figures (from `gguf_bench.jsonl`), the llama.cpp decision (keep b12651 or go back), the 8-bit cache decision, the tactical picture finding (from `tactical_sight.jsonl`), and the G8 choice.
