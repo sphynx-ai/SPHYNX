@@ -288,7 +288,7 @@ object AiRuntime {
                     // Phase 8 G9: one resource row a minute while a job runs on a GGUF model (5v5 only)
                     com.sphynx.models.GgufStability.matchTick(listOf(Roles.STRATEGIC, Roles.TACTICAL)
                         .filter { Roles.backend(it) == com.sphynx.inference.BackendType.LLAMA_CPP }.map { it.name.lowercase() },
-                        Roles.calls(Roles.STRATEGIC) + Roles.calls(Roles.TACTICAL))
+                        Roles.calls(Roles.STRATEGIC) + Roles.calls(Roles.TACTICAL), com.sphynx.learning.LearnGate.on())
                     // the fight-choice network (if on) advises first - it answers at once; the small
                     // model's advice is used when the network is off. Both pass the same Kotlin checks.
                     val netRaw = if (option != null && Cfg.fightNetOn && com.sphynx.learning.FightNet.usable)

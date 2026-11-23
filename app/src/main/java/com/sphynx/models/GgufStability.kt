@@ -49,9 +49,12 @@ object GgufStability {
 
     private var lastMatchRow = 0L
 
-    /** Called by the fast loop: one row a minute during a 5v5 while a job runs on a GGUF model. */
-    fun matchTick(ggufJobs: List<String>, answers: Int) {
-        if (ggufJobs.isEmpty() || !com.sphynx.learning.LearnGate.on()) return
+    /**
+     * Called by the fast loop: one row a minute during a 5v5 while a job runs on a GGUF model. [learns] is LearnGate's
+     * answer, passed in by the caller (ADR 0001: models may not use learning).
+     */
+    fun matchTick(ggufJobs: List<String>, answers: Int, learns: Boolean) {
+        if (ggufJobs.isEmpty() || !learns) return
         val now = System.currentTimeMillis()
         if (now - lastMatchRow < 60_000L) return
         lastMatchRow = now
