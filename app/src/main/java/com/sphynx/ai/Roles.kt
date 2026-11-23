@@ -42,6 +42,16 @@ object Roles {
             sentinelChecked = true
             for ((role, name) in sentinel.checkAtStart())
                 Diag.error("$name was loading for the ${role.name.lowercase()} job when the app stopped: it is not loaded by itself again (load it by hand to try again)")
+            // Phase 7 L9: the processor that was being tried when the app stopped is skipped from now on
+            for (r in ModelRole.values()) com.sphynx.core.Cfg.raw(tryingKey(r))?.let { v ->
+                val model = v.substringBeforeLast('|')
+                val acc = try { Accelerator.valueOf(v.substringAfterLast('|')) } catch (e: Exception) { null }
+                if (acc != null && acc != Accelerator.CPU) {
+                    processors.failed(model, acc)
+                    Diag.error("Processor choice: ${acc.name} is skipped for $model: the app stopped while it was loading on it")
+                }
+                com.sphynx.core.Cfg.setRawNow(tryingKey(r), null)
+            }
         }
     }
 
@@ -105,24 +115,64 @@ object Roles {
 
     // ---- loading ----
 
+    // ---- Phase 7 L9: the best processor per model, from this phone's own results (inference.roles.ProcessorMemory) ----
+
+    /** The LiteRT-LM version in app/build.gradle.kts: a new one tries every processor again. */
+    const val LITERT_LM_VERSION = "0.19.1"
+    private val processors by lazy {
+        com.sphynx.inference.roles.ProcessorMemory(object : com.sphynx.inference.roles.LoadSentinel.Store {
+            override fun get(key: String) = com.sphynx.core.Cfg.raw(key)
+            override fun setNow(key: String, value: String?) = com.sphynx.core.Cfg.setRaw(key, value)
+        }, "app ${com.sphynx.core.AppVersion.VERSION}, litertlm $LITERT_LM_VERSION") {
+            java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+        }
+    }
+    private fun tryingKey(role: ModelRole) = "proc_trying_" + role.name.lowercase()
+    private val loadedKey = ConcurrentHashMap<ModelRole, String>()
+
+    /** The processors the switches allow for [role], in the usual order. */
+    fun allowedProcessors(role: ModelRole, preferGpu: Boolean = com.sphynx.core.Cfg.useGpu): List<Accelerator> = when {
+        // Phase 7 L8: the experimental NPU first (owner's switch, off by default), then the GPU when allowed, then the CPU
+        role == ModelRole.STRATEGIC && com.sphynx.core.Cfg.useNpu ->
+            if (preferGpu) listOf(Accelerator.NPU, Accelerator.GPU, Accelerator.CPU) else listOf(Accelerator.NPU, Accelerator.CPU)
+        role == ModelRole.STRATEGIC && preferGpu -> listOf(Accelerator.GPU, Accelerator.CPU)
+        else -> listOf(Accelerator.CPU)
+    }
+
+    /** The Model page's line: which processor is tried first for [file], and why. */
+    fun processorLine(role: ModelRole, file: File): String =
+        processors.explain(com.sphynx.inference.roles.ProcessorMemory.modelKey(file.name, file.length()), allowedProcessors(role))
+
     /**
      * Loads a LiteRT-LM model file for [role] (what ModelManager did through the slots before): the strategic model GPU
      * first (when [preferGpu]) with images, the tactical model on the CPU, text only. Returns null when it loaded.
+     * Phase 7 L9: the order comes from this phone's results for this file (the best first, failed ones skipped).
      */
     fun loadLiteRt(role: ModelRole, path: String, preferGpu: Boolean): String? {
         val f = File(path)
+        val key = com.sphynx.inference.roles.ProcessorMemory.modelKey(f.name, if (f.isFile) f.length() else -1L)
+        val allowed = allowedProcessors(role, preferGpu)
+        val order = processors.order(key, allowed)
+        if (order != allowed) Diag.info("Processor choice for ${f.name}: " + processors.explain(key, allowed))
         val cfg = ModelConfiguration(
             id = "litertlm:" + role.name.lowercase() + ":" + f.name, displayName = f.name, backend = BackendType.LITERT_LM,
             location = path, sizeBytes = if (f.isFile) f.length() else -1L, role = role,
-            accelerators = when {
-                // Phase 7 L8: the experimental NPU first (owner's switch, off by default), then the GPU when allowed, then the CPU
-                role == ModelRole.STRATEGIC && com.sphynx.core.Cfg.useNpu ->
-                    if (preferGpu) listOf(Accelerator.NPU, Accelerator.GPU, Accelerator.CPU) else listOf(Accelerator.NPU, Accelerator.CPU)
-                role == ModelRole.STRATEGIC && preferGpu -> listOf(Accelerator.GPU, Accelerator.CPU)
-                else -> listOf(Accelerator.CPU)
-            },
+            accelerators = order,
             wantsVision = role == ModelRole.STRATEGIC)
-        return load(Assignment(role, cfg))
+        // what the slot will really try, in its order (NPU only when first; GPU when before the CPU; then the CPU)
+        val tried = listOfNotNull(Accelerator.NPU.takeIf { LiteRtLmBackend.preferNpu(order) },
+            Accelerator.GPU.takeIf { LiteRtLmBackend.preferGpu(order) }, Accelerator.CPU)
+        com.sphynx.core.Cfg.setRawNow(tryingKey(role), key + "|" + tried.first().name)
+        val t0 = System.currentTimeMillis()
+        val err = try { load(Assignment(role, cfg)) } finally { com.sphynx.core.Cfg.setRawNow(tryingKey(role), null) }
+        val st = router.status(role)
+        val landed = st.accelerator
+        if (err == null && st.ready && landed != null) {
+            for (a in tried.takeWhile { it != landed }) processors.failed(key, a)
+            processors.loaded(key, landed, System.currentTimeMillis() - t0)
+            loadedKey[role] = key
+        } else loadedKey.remove(role)
+        return err
     }
 
     /** Assigns and loads [a]; null when it loaded, else why not. */
@@ -238,6 +288,9 @@ object Roles {
             }.also { reply ->
                 // the LiteRT-LM slot keeps its own speed records; a GGUF role is recorded here (S5)
                 if (gguf) recordSpeed(role, purpose, jpeg != null, prompt.length, reply.length, System.currentTimeMillis() - t0, true, "")
+                // Phase 7 L9: this processor's answer speed for this model
+                else loadedKey[role]?.let { k -> router.status(role).accelerator?.let { a ->
+                    processors.answered(k, a, reply.length, System.currentTimeMillis() - t0) } }
             }
         } catch (t: Throwable) {
             if (gguf && t !is kotlinx.coroutines.CancellationException)

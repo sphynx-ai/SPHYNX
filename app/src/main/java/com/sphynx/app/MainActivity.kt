@@ -2998,6 +2998,11 @@ class MainActivity : Activity() {
         // Phase 7 (L1): the LiteRT-LM model tested on the owner's phone (docs/PHASE_7_LITERTLM_COMPAT.md)
         text("Supported LiteRT-LM model: Gemma 4 E2B (tested on this phone, GPU). Other .litertlm files may work but are not tested yet.",
             12f, color = T.MUTED, describe = false)
+        // Phase 7 (L9): which processor the strategic model tries first on this phone, and why
+        ModelManager.fileFor(this, com.sphynx.ai.Roles.STRATEGIC).takeIf { it.isFile && it.name.endsWith(".litertlm", true) }?.let { f ->
+            text("Processor for ${ModelManager.strategicName()}: " + com.sphynx.ai.Roles.processorLine(com.sphynx.ai.Roles.STRATEGIC, f),
+                12f, color = T.MUTED, describe = false)
+        }
 
         title("SETTINGS")
         switch("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it; reloadGemmaForGpu() }
