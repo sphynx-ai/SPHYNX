@@ -59,6 +59,22 @@ object GgufTuning {
             "Best: ${bestThreads(runs, cores)} threads"
     }
 
+    /**
+     * Phase 8 G9: the app's memory after each of the load/unload cycles. The first unload settles the memory (libraries
+     * and caches stay), so growth is counted from the second one; more than [LEAK_MB] is a likely leak.
+     */
+    const val LEAK_MB = 64L
+    fun leakGrowthMb(afterUnloadMb: List<Long>): Long? {
+        val m = afterUnloadMb.filter { it > 0 }
+        return if (m.size < 3) null else m.last() - m[1]
+    }
+    fun leakSummary(afterUnloadMb: List<Long>): String {
+        val g = leakGrowthMb(afterUnloadMb) ?: return "Load and unload: not enough readings"
+        val m = afterUnloadMb.filter { it > 0 }
+        return "Load and unload ${afterUnloadMb.size} times: memory after unload ${m[1]} → ${m.last()} MB " +
+            (if (g > LEAK_MB) "(+$g MB: possible leak)" else "(${if (g >= 0) "+" else ""}$g MB: comes back)")
+    }
+
     /** The settings key for a model file's remembered thread count. */
     fun threadsKey(fileName: String, sizeBytes: Long) = "gguf_threads_${fileName}_$sizeBytes"
 }
