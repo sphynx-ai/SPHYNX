@@ -1,4 +1,4 @@
-# PHASE 8, step G3: makes a tiny random llama-family GGUF model (about 0.5 MB) with llama.cpp's own gguf-py writer, so the
+# PHASE 8, step G3: makes a tiny random llama-family GGUF model (about 1 MB) with llama.cpp's own gguf-py writer, so the
 # native test needs no download. Its answers are nonsense; the test checks the engine (load, stream, cancel, free), not words.
 # Usage: python3 make_tiny_model.py <path to llama.cpp gguf-py> <out.gguf>
 import sys, numpy as np
@@ -6,7 +6,7 @@ sys.path.insert(0, sys.argv[1])
 import gguf
 out = sys.argv[2]
 w = gguf.GGUFWriter(out, "llama")
-n_embd, n_head, n_layer, n_ff, ctx = 64, 4, 2, 128, 128
+n_embd, n_head, n_layer, n_ff, ctx = 128, 4, 2, 256, 128
 toks = ["<unk>", "<s>", "</s>"] + [f"<0x{i:02X}>" for i in range(256)] + ["▁Once", "▁upon", "▁a", "▁time", "▁word", "▁the"]
 types = [2, 3, 3] + [6] * 256 + [1] * 6
 w.add_name("tiny-test"); w.add_context_length(ctx); w.add_embedding_length(n_embd); w.add_block_count(n_layer)

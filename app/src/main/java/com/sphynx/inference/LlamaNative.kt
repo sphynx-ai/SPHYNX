@@ -16,6 +16,8 @@ interface LlamaNative {
 
     /** Loads a GGUF; 0 on failure, then [loadError] says why. */
     fun load(path: String, contextTokens: Int, threads: Int): Long
+    /** Phase 8 G5: the same, with the context's memory (KV cache) in 8 bits when [kv8]. A fake engine may ignore it. */
+    fun loadWith(path: String, contextTokens: Int, threads: Int, kv8: Boolean): Long = load(path, contextTokens, threads)
     fun loadError(): String
 
     /** model, sizeBytes, params, nCtx, threads, templated. */
@@ -57,7 +59,7 @@ object LlamaJni : LlamaNative {
     override val unavailableReason: String? get() = loadFailure
 
     private external fun nativeInfo(): ByteArray
-    private external fun nativeLoad(path: String, nCtx: Int, threads: Int): Long
+    private external fun nativeLoad(path: String, nCtx: Int, threads: Int, kv8: Boolean): Long
     private external fun nativeLoadError(): ByteArray
     private external fun nativeDescribe(handle: Long): ByteArray
     private external fun nativeGenerate(handle: Long, prompt: ByteArray, maxTokens: Int, temperature: Float, seed: Int, sink: PieceSink?, image: ByteArray?): ByteArray
@@ -68,7 +70,9 @@ object LlamaJni : LlamaNative {
     private fun utf8(b: ByteArray) = String(b, Charsets.UTF_8)
 
     override fun info(): String = unavailableReason ?: utf8(nativeInfo())
-    override fun load(path: String, contextTokens: Int, threads: Int): Long = if (unavailableReason != null) 0L else nativeLoad(path, contextTokens, threads)
+    override fun load(path: String, contextTokens: Int, threads: Int): Long = loadWith(path, contextTokens, threads, false)
+    override fun loadWith(path: String, contextTokens: Int, threads: Int, kv8: Boolean): Long =
+        if (unavailableReason != null) 0L else nativeLoad(path, contextTokens, threads, kv8)
     override fun loadError(): String = unavailableReason ?: utf8(nativeLoadError())
     override fun describe(handle: Long): JSONObject = JSONObject(utf8(nativeDescribe(handle)))
     override fun generate(handle: Long, prompt: String, maxTokens: Int, temperature: Float, seed: Int, onPiece: (ByteArray) -> Unit): JSONObject =

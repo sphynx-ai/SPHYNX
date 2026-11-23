@@ -102,7 +102,7 @@ std::string sphynx_llama_info() {
     return std::string("llama.cpp ") + LLAMA_PIN_TAG + " (" + LLAMA_PIN_COMMIT + ") | " + llama_print_system_info();
 }
 
-SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads, std::string & err) {
+SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads, std::string & err, bool kv8) {
     logClear();
     llama_model_params mp = llama_model_default_params();
     mp.n_gpu_layers = 0;                       // CPU backend only in this build
@@ -119,6 +119,10 @@ SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads,
     cp.n_ctx = (uint32_t) nCtx;
     cp.n_batch = (uint32_t) std::min(nCtx, 512);
     cp.n_threads = threads; cp.n_threads_batch = threads;
+    if (kv8) {                                 // Phase 8 G5: an 8-bit V cache needs flash attention in llama.cpp
+        cp.type_k = GGML_TYPE_Q8_0; cp.type_v = GGML_TYPE_Q8_0;
+        cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;
+    }
     llama_context * ctx = nullptr;
     try { ctx = llama_init_from_model(model, cp); } catch (const std::bad_alloc &) { ctx = nullptr; }
     if (!ctx) {
@@ -129,7 +133,7 @@ SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads,
         return nullptr;
     }
     auto * h = new SphynxLlama();
-    h->model = model; h->ctx = ctx; h->nCtx = (int) llama_n_ctx(ctx); h->threads = threads;
+    h->model = model; h->ctx = ctx; h->nCtx = (int) llama_n_ctx(ctx); h->threads = threads; h->kv8 = kv8;
     // a cancel also stops a long prompt in the middle of its computation
     llama_set_abort_callback(ctx, [](void * d) { return static_cast<SphynxLlama *>(d)->cancel.load(); }, h);
     { std::lock_guard<std::mutex> l(g_regMutex); g_live.insert(h); }
@@ -172,7 +176,7 @@ std::string sphynx_llama_describe(const SphynxLlama * ch) {
     snprintf(nums, sizeof nums, "\"sizeBytes\":%llu,\"params\":%llu,\"nCtx\":%d,\"threads\":%d,\"templated\":%s",
              (unsigned long long) llama_model_size(h->model), (unsigned long long) llama_model_n_params(h->model),
              h->nCtx, h->threads, llama_model_chat_template(h->model, nullptr) ? "true" : "false");
-    std::string vision = std::string(",\"vision\":") + (h->vision ? "true" : "false");
+    std::string vision = std::string(",\"vision\":") + (h->vision ? "true" : "false") + ",\"kv8\":" + (h->kv8 ? "true" : "false");
     return std::string("{\"model\":\"") + jsonEscape(buf) + "\"," + nums + vision + "}";
 }
 

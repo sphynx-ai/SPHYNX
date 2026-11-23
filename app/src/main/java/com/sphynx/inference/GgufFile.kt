@@ -24,6 +24,6 @@ object GgufFile {
      * Memory a model needs while loaded, roughly: its file (the weights) plus the context's memory
      * and working buffers. Deliberately generous: a refused load is better than the system killing the app.
      */
-    fun estimatedMemoryBytes(fileBytes: Long, contextTokens: Int): Long =
-        (fileBytes * 1.1).toLong() + contextTokens.toLong() * 64 * 1024 + 128L * 1024 * 1024
+    fun estimatedMemoryBytes(fileBytes: Long, contextTokens: Int, kv8: Boolean = false): Long =
+        (fileBytes * 1.1).toLong() + contextTokens.toLong() * (if (kv8) 32 else 64) * 1024 + 128L * 1024 * 1024
 }

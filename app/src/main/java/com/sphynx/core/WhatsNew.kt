@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.NEW, "A GGUF benchmark, and the best thread count per model",
+            "The Model page has a GGUF benchmark. It asks one GGUF model three fixed questions with 4, 2 and 6 CPU threads, " +
+                "then with 4 threads and an 8-bit memory cache (about half the context memory), loading each setting fresh. " +
+                "It shows the writing speed of each, and keeps the fastest thread count for that model when it is clearly " +
+                "faster than 4. Every answer is saved with its speed, memory and heat for the Debug data upload. The " +
+                "8-bit cache stays off until your test shows it costs nothing.",
+            pr = 115, needsDeviceCheck = true, version = "38.24"),
         Entry("2026-11-23", Kind.NEW, "The tactical model can look at the minimap",
             "A new Model page switch, Tactical model reads the minimap (pictures), off by default. With it on, and a " +
                 "tactical model that reads pictures (a .litertlm with vision, or a GGUF with its mmproj), the model looks at " +

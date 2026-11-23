@@ -39,6 +39,8 @@ class LlamaCppBackend(
     @Volatile var modelInfo: JSONObject? = null; private set
     /** Why the model's mmproj file did not load (the model then reads text only), or null. */
     @Volatile var projectorError: String? = null; private set
+    /** Phase 8 G5: why the 8-bit KV cache was refused at the last load (it then loaded with 16 bits), or null. */
+    @Volatile var kv8Refused: String? = null; private set
     /** llama.cpp's report of the last answer (timings, stop reason). */
     @Volatile var lastRun: JSONObject? = null; private set
 
@@ -58,7 +60,7 @@ class LlamaCppBackend(
         // Phase 8 G2: the file's own description, checked before native code opens it
         val info = GgufInfo.read(f).getOrElse { return InferenceError.UnsupportedFormat(it.message ?: "the file can't be read") }
         info.problemAsModel()?.let { return InferenceError.UnsupportedFormat(it) }
-        val need = GgufFile.estimatedMemoryBytes(f.length(), config.contextTokens)
+        val need = GgufFile.estimatedMemoryBytes(f.length(), config.contextTokens, config.kvCache8Bit)
         val free = freeMemoryBytes()
         if (free in 0 until need) return InferenceError.NotEnoughMemory(need, free)
         return null
@@ -75,7 +77,13 @@ class LlamaCppBackend(
             st = st.moveTo(RuntimeState.FAILED, error = problem)
         } else {
             val threads = if (config.threads > 0) config.threads else LlamaCpu.threads()
-            val h = try { native.load(config.location, config.contextTokens, threads) } catch (t: Throwable) { 0L }
+            var h = try { native.loadWith(config.location, config.contextTokens, threads, config.kvCache8Bit) } catch (t: Throwable) { 0L }
+            // Phase 8 G5: some models can't have the 8-bit cache (llama.cpp needs attention heads a multiple of 32 wide):
+            // they load with the normal 16-bit cache instead
+            if (h == 0L && config.kvCache8Bit) {
+                kv8Refused = native.loadError().ifBlank { "unknown reason" }
+                h = try { native.loadWith(config.location, config.contextTokens, threads, false) } catch (t: Throwable) { 0L }
+            } else kv8Refused = null
             if (h == 0L) {
                 st = st.moveTo(RuntimeState.FAILED, error = nativeError(native.loadError().ifBlank { "unknown reason" }, loading = true))
             } else {
