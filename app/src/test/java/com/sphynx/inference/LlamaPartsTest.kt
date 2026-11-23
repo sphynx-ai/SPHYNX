@@ -101,4 +101,14 @@ class LlamaPartsTest {
         assertEquals("gguf", GgufLibrary.safeName(".gguf"))
         assertEquals("model.gguf", GgufLibrary.safeName(""))
     }
+
+    // Phase 8 G4: the native engine's out-of-memory is the shared NotEnoughMemory, with words that make sense
+    @Test fun nativeOutOfMemoryIsNotEnoughMemory() {
+        val e = LlamaCppBackend.nativeError("not enough memory for this answer", loading = false)
+        assertTrue(e is InferenceError.NotEnoughMemory)
+        assertEquals("the phone ran out of memory for this model", e.message)
+        assertTrue(LlamaCppBackend.nativeError("the context could not be created (not enough memory for 4096 tokens?)", true) is InferenceError.NotEnoughMemory)
+        assertTrue(LlamaCppBackend.nativeError("unknown model architecture", true) is InferenceError.LoadFailed)
+        assertTrue(LlamaCppBackend.nativeError("no model loaded", false) is InferenceError.Internal)
+    }
 }

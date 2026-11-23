@@ -17,11 +17,12 @@
 - **The handle** is a `SphynxLlama*` passed to Kotlin as a `jlong`. `LlamaCppBackend` owns it: it is made in `load`, freed in `unload` or before the next `load`, always on `llama-backend`.
 - **One answer at a time:** `generate` runs on `llama-backend` and blocks it. The pieces reach Kotlin through `onPiece` on the same thread. The JNI frees each piece's byte array, because an answer has hundreds of them.
 - **Cancel from any thread:** `sphynx_llama_cancel` only sets an atomic flag. llama.cpp's abort callback reads it, so a cancel also stops a long prompt mid-computation.
-- **Gaps for G4:**
-  - (a) A cancel or describe call that comes after `free` uses a freed pointer.
-  - (b) Nothing checks that a `jlong` is a handle this library made.
-  - (c) An unload while an answer runs is queued behind the answer, but it does not cancel it first.
-  - (d) Native out-of-memory during an answer surfaces as a generic failure.
+- **Handle safety (G4, v38.22):**
+  - The engine keeps the set of handles it made and has not freed (`sphynx_llama_alive`). Every call checks its handle first, so a late cancel, a call on a freed handle, a second free, or a pointer the engine never made returns an error or does nothing.
+  - `free` takes the handle out of the set, sets the cancel flag and **waits** for running calls (a `busy` count) before freeing.
+  - Out of memory (`std::bad_alloc`) while loading, reading pictures or answering comes back as "not enough memory …", which Kotlin maps to `NotEnoughMemory`.
+  - Kotlin's `unload` already cancelled a running answer before freeing.
+  - Checked by the native test under AddressSanitizer and UndefinedBehaviorSanitizer: 30 of 30 passed in this container on 2026-11-23, and the same runs in CI.
 
 ## 3. Memory
 

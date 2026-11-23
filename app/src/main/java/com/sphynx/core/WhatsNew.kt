@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.FIXED, "Safer GGUF engine",
+            "The GGUF engine (llama.cpp) can no longer crash the app from a stop or unload that comes at the wrong moment: " +
+                "it now knows which models it has loaded, refuses a call on one already freed, and waits for a running " +
+                "answer to stop before freeing it. If the phone runs out of memory while loading or answering, the Model " +
+                "page says so in plain words instead of the app closing.",
+            pr = 113, needsDeviceCheck = true, version = "38.22"),
         Entry("2026-11-23", Kind.IMPROVED, "The GGUF engine is now tested for real on every change",
             "Behind the scenes: every change to the app now also builds the real GGUF engine (llama.cpp) on GitHub's " +
                 "computer and runs it with a tiny test model: loading, streamed answers, stopping an answer (also from " +

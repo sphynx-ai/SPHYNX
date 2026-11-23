@@ -4,7 +4,10 @@
 #include <chrono>
 #include <cstdio>
 #include <mutex>
+#include <new>
 #include <string>
+#include <thread>
+#include <unordered_set>
 #include <vector>
 #include "llama.h"
 #include "mtmd.h"
@@ -55,6 +58,26 @@ static std::string logTail(size_t lines) {
     return s;
 }
 
+// ---- Phase 8 G4: the handles this engine made and has not freed ----
+static std::mutex g_regMutex;
+static std::unordered_set<const SphynxLlama *> g_live;
+
+bool sphynx_llama_alive(const SphynxLlama * h) {
+    std::lock_guard<std::mutex> l(g_regMutex);
+    return h && g_live.count(h) > 0;
+}
+
+// a call starts on h: false when h is not a live handle. freshAnswer clears the cancel flag under the same lock, so a
+// free() that comes right after still stops the answer.
+static bool enter(SphynxLlama * h, bool freshAnswer = false) {
+    std::lock_guard<std::mutex> l(g_regMutex);
+    if (!h || !g_live.count(h)) return false;
+    if (freshAnswer) h->cancel.store(false);
+    h->busy.fetch_add(1);
+    return true;
+}
+static void leave(SphynxLlama * h) { h->busy.fetch_sub(1); }
+
 void sphynx_llama_init(void (*log)(int level, const char * text)) {
     if (g_init) return;
     static void (*s_log)(int, const char *) = nullptr;
@@ -83,7 +106,9 @@ SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads,
     logClear();
     llama_model_params mp = llama_model_default_params();
     mp.n_gpu_layers = 0;                       // CPU backend only in this build
-    llama_model * model = llama_model_load_from_file(path.c_str(), mp);
+    llama_model * model = nullptr;
+    try { model = llama_model_load_from_file(path.c_str(), mp); }
+    catch (const std::bad_alloc &) { err = "not enough memory to load this model"; return nullptr; }
     if (!model) {
         err = "the model could not be loaded";
         std::string t = logTail(4);
@@ -94,7 +119,8 @@ SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads,
     cp.n_ctx = (uint32_t) nCtx;
     cp.n_batch = (uint32_t) std::min(nCtx, 512);
     cp.n_threads = threads; cp.n_threads_batch = threads;
-    llama_context * ctx = llama_init_from_model(model, cp);
+    llama_context * ctx = nullptr;
+    try { ctx = llama_init_from_model(model, cp); } catch (const std::bad_alloc &) { ctx = nullptr; }
     if (!ctx) {
         llama_model_free(model);
         err = "the context could not be created (not enough memory for " + std::to_string(nCtx) + " tokens?)";
@@ -106,11 +132,13 @@ SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads,
     h->model = model; h->ctx = ctx; h->nCtx = (int) llama_n_ctx(ctx); h->threads = threads;
     // a cancel also stops a long prompt in the middle of its computation
     llama_set_abort_callback(ctx, [](void * d) { return static_cast<SphynxLlama *>(d)->cancel.load(); }, h);
+    { std::lock_guard<std::mutex> l(g_regMutex); g_live.insert(h); }
     return h;
 }
 
 bool sphynx_llama_load_projector(SphynxLlama * h, const std::string & path, int threads, std::string & err) {
-    if (!h) { err = "no model loaded"; return false; }
+    if (!enter(h)) { err = "no model loaded"; return false; }
+    struct Leave { SphynxLlama * h; ~Leave() { leave(h); } } leaveOnReturn{h};
     if (h->vision) { mtmd_free(h->vision); h->vision = nullptr; }
     logClear();
     mtmd_context_params p = mtmd_context_params_default();
@@ -118,7 +146,8 @@ bool sphynx_llama_load_projector(SphynxLlama * h, const std::string & path, int 
     p.n_threads = threads;
     p.print_timings = false;
     p.warmup = false;
-    h->vision = mtmd_init_from_file(path.c_str(), h->model, p);
+    try { h->vision = mtmd_init_from_file(path.c_str(), h->model, p); }
+    catch (const std::bad_alloc &) { h->vision = nullptr; err = "not enough memory for the picture part (mmproj)"; return false; }
     if (!h->vision) {
         err = "the picture part (mmproj) could not be loaded";
         std::string t = logTail(4);
@@ -133,8 +162,10 @@ bool sphynx_llama_load_projector(SphynxLlama * h, const std::string & path, int 
     return true;
 }
 
-std::string sphynx_llama_describe(const SphynxLlama * h) {
-    if (!h) return "{}";
+std::string sphynx_llama_describe(const SphynxLlama * ch) {
+    auto * h = const_cast<SphynxLlama *>(ch);
+    if (!enter(h)) return "{}";
+    struct Leave { SphynxLlama * h; ~Leave() { leave(h); } } leaveOnReturn{h};
     char buf[256];
     llama_model_desc(h->model, buf, sizeof buf);
     char nums[256];
@@ -145,7 +176,10 @@ std::string sphynx_llama_describe(const SphynxLlama * h) {
     return std::string("{\"model\":\"") + jsonEscape(buf) + "\"," + nums + vision + "}";
 }
 
-void sphynx_llama_cancel(SphynxLlama * h) { if (h) h->cancel.store(true); }
+void sphynx_llama_cancel(SphynxLlama * h) {
+    std::lock_guard<std::mutex> l(g_regMutex);
+    if (h && g_live.count(h)) h->cancel.store(true);       // a late cancel on a freed handle does nothing
+}
 
 std::string sphynx_llama_generate(SphynxLlama * h, const std::string & prompt, int maxTokens, float temperature,
                                   uint32_t seed, void (*onPiece)(const char *, int, void *), void * user,
@@ -155,9 +189,9 @@ std::string sphynx_llama_generate(SphynxLlama * h, const std::string & prompt, i
     int nPrompt = 0, nGen = 0;
     llama_sampler * smpl = nullptr;
     long long t0 = nowMs();
-    if (!h) { err = "no model loaded"; goto done; }
-    h->cancel.store(false);
-    {
+    bool entered = enter(h, true);
+    if (!entered) { err = "no model loaded"; goto done; }
+    try {
         const llama_vocab * vocab = llama_model_get_vocab(h->model);
         // each question starts from an empty context (no memory of earlier answers)
         llama_memory_clear(llama_get_memory(h->ctx), true);
@@ -260,9 +294,12 @@ std::string sphynx_llama_generate(SphynxLlama * h, const std::string & prompt, i
             }
         }
         genMs = nowMs() - tg;
+    } catch (const std::bad_alloc &) {
+        err = "not enough memory for this answer"; stop = "error";
     }
 done:
     if (smpl) llama_sampler_free(smpl);
+    if (entered) leave(h);
     char nums[256];
     snprintf(nums, sizeof nums, "\"promptTokens\":%d,\"promptMs\":%lld,\"genTokens\":%d,\"genMs\":%lld,\"firstTokenMs\":%lld",
              nPrompt, promptMs, nGen, genMs, firstTokenMs);
@@ -271,7 +308,13 @@ done:
 }
 
 void sphynx_llama_free(SphynxLlama * h) {
-    if (!h) return;
+    {
+        std::lock_guard<std::mutex> l(g_regMutex);
+        if (!h || !g_live.count(h)) return;     // never made here, or freed already: nothing to do
+        g_live.erase(h);
+        h->cancel.store(true);                  // a running answer stops ...
+    }
+    while (h->busy.load() > 0) std::this_thread::sleep_for(std::chrono::milliseconds(1));   // ... and is waited for
     if (h->vision) mtmd_free(h->vision);
     if (h->ctx) llama_free(h->ctx);
     if (h->model) llama_model_free(h->model);

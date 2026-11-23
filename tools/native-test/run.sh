@@ -26,6 +26,10 @@ if [ "$MODEL" = "--tiny" ]; then
   MODEL="$BUILD/tiny.gguf"
   python3 "$HERE/make_tiny_model.py" "$BUILD/upstream/gguf-py" "$MODEL"
 fi
-cmake -S "$HERE" -B "$BUILD/out" -G Ninja -DCMAKE_BUILD_TYPE=Release > /dev/null
+# SANITIZE=1: AddressSanitizer + UndefinedBehaviorSanitizer (G4: a use after free or a double free stops the test)
+FLAGS=""
+[ "${SANITIZE:-0}" = "1" ] && FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
+cmake -S "$HERE" -B "$BUILD/out" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="$FLAGS" -DCMAKE_CXX_FLAGS="$FLAGS" \
+  -DCMAKE_EXE_LINKER_FLAGS="$FLAGS" > /dev/null
 cmake --build "$BUILD/out" --target engine_test -j "$(nproc)"
 "$BUILD/out/engine_test" "$MODEL"

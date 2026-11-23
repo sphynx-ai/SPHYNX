@@ -10,7 +10,8 @@ sealed class InferenceError(val code: String, val message: String, val retryable
     class BackendUnavailable(backend: BackendType) :
         InferenceError("backend_unavailable", "${backend.label} is not included in this build", false)
     class NotEnoughMemory(val neededBytes: Long, val availableBytes: Long) : InferenceError("not_enough_memory",
-        "needs about ${mb(neededBytes)} MB of memory, ${mb(availableBytes)} MB free", true)
+        if (neededBytes < 0 && availableBytes < 0) "the phone ran out of memory for this model"     // sizes unknown (native, G4)
+        else "needs about ${mb(neededBytes)} MB of memory, ${mb(availableBytes)} MB free", true)
     class LoadFailed(detail: String) : InferenceError("load_failed", "loading failed: $detail", true)
     class InvalidRequest(val reasons: List<String>) : InferenceError("invalid_request", "invalid request: " + reasons.joinToString("; "), false)
     class Timeout(ms: Long) : InferenceError("timeout", "no answer within ${ms / 1000.0} s", true)

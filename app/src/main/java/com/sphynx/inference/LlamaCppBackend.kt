@@ -77,7 +77,7 @@ class LlamaCppBackend(
             val threads = if (config.threads > 0) config.threads else LlamaCpu.threads()
             val h = try { native.load(config.location, config.contextTokens, threads) } catch (t: Throwable) { 0L }
             if (h == 0L) {
-                st = st.moveTo(RuntimeState.FAILED, error = InferenceError.LoadFailed(native.loadError().ifBlank { "unknown reason" }))
+                st = st.moveTo(RuntimeState.FAILED, error = nativeError(native.loadError().ifBlank { "unknown reason" }, loading = true))
             } else {
                 handle = h
                 // Phase 6 S8: the picture part, when the model has an mmproj file and pictures are wanted
@@ -147,7 +147,7 @@ class LlamaCppBackend(
                 timeToFirstTokenMs = res.optLong("firstTokenMs", -1L), totalMs = total,
                 promptTokens = res.optInt("promptTokens", -1), outputTokens = res.optInt("genTokens", -1))))
             stop == "cancelled" || (wasCancelled && !res.optBoolean("ok")) -> emit(InferenceEvent.Cancelled(id))
-            !res.optBoolean("ok") -> emit(InferenceEvent.Failed(id, InferenceError.Internal(res.optString("error").ifBlank { "unknown error" })))
+            !res.optBoolean("ok") -> emit(InferenceEvent.Failed(id, nativeError(res.optString("error").ifBlank { "unknown error" }, loading = false)))
             else -> emit(InferenceEvent.Completed(id, utf.text(), GenerationStats(
                 timeToFirstTokenMs = res.optLong("firstTokenMs", -1L), totalMs = total,
                 promptTokens = res.optInt("promptTokens", -1), outputTokens = res.optInt("genTokens", -1))))
@@ -172,6 +172,16 @@ class LlamaCppBackend(
     private fun <T> onWorker(f: () -> T): T = worker.submit(Callable { f() }).get()
 
     companion object {
+        /**
+         * Phase 8 G4: the engine's error text as the shared error type. Native out of memory ("not enough memory ...") is
+         * [InferenceError.NotEnoughMemory] (sizes unknown here), so the Model page says to use a smaller model.
+         */
+        fun nativeError(text: String, loading: Boolean): InferenceError = when {
+            text.contains("not enough memory", ignoreCase = true) -> InferenceError.NotEnoughMemory(-1, -1)
+            loading -> InferenceError.LoadFailed(text)
+            else -> InferenceError.Internal(text)
+        }
+
         /** One line about an answer's speed, from llama.cpp's report. */
         fun speedLine(res: JSONObject?): String {
             if (res == null) return ""
