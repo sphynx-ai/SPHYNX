@@ -38,7 +38,7 @@ class LlamaVisionTest {
     @After fun cleanUp() { files.forEach { it.delete() } }
     private fun gguf(): File {
         val f = File.createTempFile("model", ".gguf"); files.add(f)
-        RandomAccessFile(f, "rw").use { it.write("GGUF".toByteArray() + byteArrayOf(3, 0, 0, 0)); it.setLength(3L * 1024 * 1024) }
+        RandomAccessFile(f, "rw").use { it.write(com.sphynx.testing.GgufFixture.model()); it.setLength(3L * 1024 * 1024) }
         return f
     }
     private fun cfg(f: File, vision: Boolean, projector: String?) = ModelConfiguration(id = "gguf:v", displayName = "gemma-3-4b-it-Q4_K_M.gguf",

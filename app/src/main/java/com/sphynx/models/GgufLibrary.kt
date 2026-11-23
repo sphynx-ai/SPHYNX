@@ -36,6 +36,9 @@ object GgufLibrary {
     fun dir(ctx: Context): File = File(ctx.applicationContext.filesDir, "gguf").apply { mkdirs() }
 
     /** The added models, by name. */
+    /** Phase 8 G2: a model's description for the Model page ("llama · Q4_K_M · 1B · ..."), or why it can't be read. */
+    fun describe(f: File): String = com.sphynx.inference.GgufInfo.read(f).fold({ it.summary() }, { "can't be read: ${it.message}" })
+
     fun models(ctx: Context): List<File> =
         dir(ctx).listFiles { f -> f.isFile && f.name.endsWith(".gguf", ignoreCase = true) && !com.sphynx.inference.MmprojPairing.isProjector(f.name) }
             ?.sortedBy { it.name.lowercase() } ?: emptyList()
@@ -95,6 +98,14 @@ object GgufLibrary {
         val head = ByteArray(16)
         val got = cr.openInputStream(uri)?.use { s -> var n = 0; while (n < head.size) { val r = s.read(head, n, head.size - n); if (r < 0) break; n += r }; n } ?: 0
         GgufFile.checkHeader(head.copyOf(got), size)?.let { return "$name: $it" }
+        // Phase 8 G2: the file's own description, read before anything is copied; a broken file or a family the built-in
+        // llama.cpp doesn't know is refused here (a projector is fine: it goes next to its model)
+        val info = cr.openInputStream(uri)?.use { com.sphynx.inference.GgufInfo.read(it, size) }
+        info?.exceptionOrNull()?.let { return "$name: ${it.message}" }
+        info?.getOrNull()?.let { i ->
+            if (!i.isProjector) i.problemAsModel()?.let { return "$name: $it" }
+            com.sphynx.core.Diag.info("GGUF $name: ${i.summary()}")
+        }
         val dir = dir(ctx)
         if (size > 0 && dir.usableSpace < size + SPARE_BYTES)
             return "Not enough room for $name: it needs ${mb(size)} MB, ${mb(dir.usableSpace)} MB free"

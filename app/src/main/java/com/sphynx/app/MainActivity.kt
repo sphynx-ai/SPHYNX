@@ -3545,7 +3545,9 @@ class MainActivity : Activity() {
         val lite = if (role == com.sphynx.ai.Roles.STRATEGIC) ModelManager.strategicName() else ModelManager.tacticalName()
         val ggufs = com.sphynx.models.GgufLibrary.models(this)
         val values = listOf(rc.LITERT) + ggufs.map { rc.gguf(it.name) }
-        val labels = listOf("$lite (LiteRT-LM file)") + ggufs.map { "${it.name} (GGUF, ${it.length() / 1048576} MB)" }
+        val labels = listOf("$lite (LiteRT-LM file)") + ggufs.map {
+            "${it.name} (GGUF, ${it.length() / 1048576} MB)\n" + com.sphynx.models.GgufLibrary.describe(it)   // Phase 8 G2
+        }
         AlertDialog.Builder(this).setTitle(if (role == com.sphynx.ai.Roles.STRATEGIC) "Strategic job" else "Tactical job")
             .setItems(labels.toTypedArray()) { _, i ->
                 val v = values[i]
