@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "The GGUF engine is now tested for real on every change",
+            "Behind the scenes: every change to the app now also builds the real GGUF engine (llama.cpp) on GitHub's " +
+                "computer and runs it with a tiny test model: loading, streamed answers, stopping an answer (also from " +
+                "another thread), broken files, a picture without its mmproj, and 20 loads in a row. Until now the engine " +
+                "was only compiled there. Nothing changes in the app itself.",
+            pr = 112, needsDeviceCheck = true, version = "38.21"),
         Entry("2026-11-23", Kind.IMPROVED, "GGUF models are checked before they load",
             "The app now reads a GGUF file's own description before llama.cpp opens it: the model family, the " +
                 "quantization (for example Q4_K_M), its size, how much text it was trained for, and whether it has a chat " +
