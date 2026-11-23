@@ -2995,6 +2995,10 @@ class MainActivity : Activity() {
             "runs at a time. A GGUF strategic model reads pictures (draft, loading cards, end screen) when its mmproj file is " +
             "in the GGUF library too (add it like a model, e.g. mmproj-gemma-3-4b-it-f16.gguf); without it, it reads text only.")
 
+        // Phase 7 (L1): the LiteRT-LM model tested on the owner's phone (docs/PHASE_7_LITERTLM_COMPAT.md)
+        text("Supported LiteRT-LM model: Gemma 4 E2B (tested on this phone, GPU). Other .litertlm files may work but are not tested yet.",
+            12f, color = T.MUTED, describe = false)
+
         title("SETTINGS")
         switch("Strategic model on the GPU (faster)", Cfg.useGpu) { Cfg.useGpu = it; reloadGemmaForGpu() }
         switch("Small tactical model in fights", Cfg.tacticalLlmOn) { on ->
