@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.NEW, "Each model picks its best processor on this phone",
+            "The app now remembers, for each model file, how it did on each processor of your phone: whether it loaded, how " +
+                "long the load took and how fast it answered. Next time it tries the fastest one first, and a processor that " +
+                "failed, or closed the app while loading, is skipped until the app, the model file or LiteRT-LM changes. The " +
+                "Model page says which processor goes first and why. Your GPU and NPU switches still decide what may be tried.",
+            pr = 105, needsDeviceCheck = true, version = "38.14"),
         Entry("2026-11-23", Kind.NEW, "Experimental: the detectors on the NPU",
             "The same Use the NPU (experimental) switch now also puts the minimap and screen detectors on the phone's NPU. " +
                 "Each is tested with one run when it loads; if the NPU can't run it, or fails later, it goes back to the CPU " +
