@@ -77,4 +77,6 @@ The Model page line under the switch (`core/NpuCheck`) says on the phone whether
 - Not proven: whether every layer ran on the NPU. Reading at 17–47 tokens/s is below what this phone's CPU usually reaches, which suggests some layers ran elsewhere.
 - Recommendation: keep the switch off for play. L9's records start again with each app version (by design), so after an update it tries the NPU first again when the switch is on.
 
+**Own switch (owner, 2026-11-23, v38.17):** the detectors now have their own switch, "Detectors on the NPU (experimental)" (`Cfg.detectorsNpu`, off by default), so Gemma can stay on the GPU. "Use the NPU" moves only Gemma.
+
 **Detectors (L8b, v38.13; not in the uploaded data: no detector was loaded during the test, so there is no NNAPI line or time per run yet):** the minimap and screen detectors follow the same switch through TFLite's NNAPI delegate (`setUseNnapiCpu(false)`, fp16 allowed, sustained speed), with a first run checked at load and the CPU (2 threads) after any failure until the next start. Their status line shows where they run ("NPU (NNAPI)" or "CPU") and the time per run. The fight-choice and policy networks stay on the CPU.

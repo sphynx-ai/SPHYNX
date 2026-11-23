@@ -34,7 +34,7 @@ open class YoloDetector(
 
     private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, name) }
     @Volatile private var interpreter: Interpreter? = null
-    // Phase 7 L8b (experimental, the NPU switch): Android's NNAPI delegate, which on a MediaTek phone hands the network
+    // Phase 7 L8b (experimental, the "Detectors on the NPU" switch, owner 2026-11-23): Android's NNAPI delegate, which on a MediaTek phone hands the network
     // to MediaTek's NPU driver. Its own CPU fallback is off, so it is the NPU or it fails; a failure goes back to the CPU.
     @Volatile private var npuDelegate: org.tensorflow.lite.nnapi.NnApiDelegate? = null
     /** Where the network runs now: "NPU (NNAPI)" or "CPU". */
@@ -122,7 +122,7 @@ open class YoloDetector(
 
     // the NPU when the owner's switch is on and it has not failed since the start; else 2 CPU threads, as before
     private fun openInterpreter(f: File): Interpreter {
-        if (Cfg.useNpu && !npuFailed && android.os.Build.VERSION.SDK_INT >= 27) {
+        if (Cfg.detectorsNpu && !npuFailed && android.os.Build.VERSION.SDK_INT >= 27) {
             try {
                 val d = org.tensorflow.lite.nnapi.NnApiDelegate(org.tensorflow.lite.nnapi.NnApiDelegate.Options()
                     .setUseNnapiCpu(false).setAllowFp16(true)
