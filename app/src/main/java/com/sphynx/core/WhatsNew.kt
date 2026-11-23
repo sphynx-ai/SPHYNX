@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "Phase 8 starts: how the GGUF engine fits together",
+            "Behind the scenes: a document now explains how the GGUF engine (llama.cpp) is built into the app, who owns " +
+                "what, its memory, which phones it supports and what each GGUF model measured on your phone. It also lists " +
+                "four safety gaps that the next steps close.",
+            pr = 110, needsDeviceCheck = true, version = "38.19"),
         Entry("2026-11-23", Kind.IMPROVED, "Phase 8 plan: finishing the GGUF engine",
             "Behind the scenes: the plan for finishing Phase 8 (GGUF models through llama.cpp) is approved, with your addition: both jobs read pictures. " +
                 "It covers reading a model's details before loading it, tests that run the real engine, safer native code, " +

@@ -47,7 +47,7 @@ G11 is built right after G4, on b11900. G7 comes after G2–G6 and G11, so its r
 
 ## 4. Acceptance criteria (roadmap deliverables)
 
-- [ ] Native integration architecture, JNI boundary and supported ABI/device matrix are documented (G1).
+- [x] Native integration architecture, JNI boundary and supported ABI/device matrix are documented (G1): `docs/PHASE_8_GGUF_NATIVE.md` (v38.19).
 - [ ] A GGUF file's metadata is read and checked before native code opens it; a broken file is refused with the reason (G2).
 - [ ] Native tests run the real engine in CI: load, answer, stream, cancel, unload and errors (G3, G4).
 - [ ] No crash from a wrong handle, unloading during an answer, or running out of memory (G4).
