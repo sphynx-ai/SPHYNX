@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-23", Kind.IMPROVED, "Newer llama.cpp for GGUF models (b12651)",
+            "The GGUF engine is updated from llama.cpp b11900 (October) to b12651 (November 23), the newest release. It " +
+                "knows 16 more model families. Your phone test decides whether it stays: run the GGUF benchmark on the same " +
+                "models as before; if it is slower or answers worse, the app goes back to b11900.",
+            pr = 116, needsDeviceCheck = true, version = "38.25"),
         Entry("2026-11-23", Kind.NEW, "A GGUF benchmark, and the best thread count per model",
             "The Model page has a GGUF benchmark. It asks one GGUF model three fixed questions with 4, 2 and 6 CPU threads, " +
                 "then with 4 threads and an 8-bit memory cache (about half the context memory), loading each setting fresh. " +

@@ -77,4 +77,10 @@ class GgufInfoTest {
         val names = Regex("\"([^\"]+)\"").findAll(block).map { it.groupValues[1] }.filter { it != "clip" && it != "(unknown)" }.toSet()
         assertEquals(names, GgufArchitectures.KNOWN)
     }
+
+    @Test fun theTagNamedInMessagesIsTheBuiltInOne() {
+        val cmake = listOf("src/main/cpp/CMakeLists.txt", "app/src/main/cpp/CMakeLists.txt").map { File(it) }.first { it.isFile }.readText()
+        val tag = Regex("set\\(LLAMA_PIN_TAG +\"([^\"]+)\"\\)").find(cmake)!!.groupValues[1]
+        assertEquals(tag, GgufArchitectures.LLAMA_TAG)
+    }
 }

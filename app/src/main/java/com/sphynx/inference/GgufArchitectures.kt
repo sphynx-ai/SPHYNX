@@ -2,29 +2,34 @@ package com.sphynx.inference
 
 // THE MODEL FAMILIES THE BUILT-IN llama.cpp CAN RUN (Phase 8, step G2). A GGUF file names its family in
 // `general.architecture`; a family that is not here was made for a newer llama.cpp, and loading it would only fail inside
-// native code. Copied from LLM_ARCH_NAMES in the vendored `cpp/llama.cpp/src/llama-arch.cpp` (tag b11900, 163 names).
-// GgufArchitecturesTest checks this list against that file, so a llama.cpp update (G7) that adds families fails CI until
-// the list is copied again.
+// native code. Copied from LLM_ARCH_NAMES in the vendored `cpp/llama.cpp/src/llama-arch.cpp` (tag [LLAMA_TAG], 179 names).
+// GgufInfoTest checks this list against that file, so a llama.cpp update (G7) that adds families fails CI until the list
+// is copied again (tools/update-llama.sh prints the steps).
 object GgufArchitectures {
+    /** The vendored llama.cpp tag (the same as LLAMA_PIN_TAG in app/src/main/cpp/CMakeLists.txt; GgufInfoTest checks). */
+    const val LLAMA_TAG = "b12651"
+
     val KNOWN: Set<String> = setOf(
         "llama", "llama4", "deci", "falcon", "grok", "gpt2", "gptj", "gptneox", "mpt", "baichuan", "starcoder",
         "refact", "bert", "modern-bert", "nomic-bert", "nomic-bert-moe", "neo-bert", "jina-bert-v2", "jina-bert-v3",
         "eurobert", "bloom", "stablelm", "qwen", "qwen2", "qwen2moe", "qwen2vl", "sensenova_u1", "qwen3", "flint",
-        "qwen3moe", "qwen3next", "qwen3vl", "qwen3vlmoe", "qwen35", "qwen35moe", "clef", "vllm-decision2",
-        "qwen4exp", "phi2", "phi3", "phimoe", "plamo", "plamo2", "plamo3", "codeshell", "orion", "internlm2",
-        "minicpm", "minicpm3", "gemma", "gemma2", "gemma3", "gemma3n", "gemma4", "gemma4-assistant",
+        "qwen3moe", "clover_moe", "qwen3next", "qwen3vl", "qwen3vlmoe", "qwen35", "qwen35moe", "clef",
+        "vllm-decision2", "qwen4exp", "phi2", "phi3", "phimoe", "plamo", "plamo2", "plamo3", "codeshell", "orion",
+        "internlm2", "minicpm", "minicpm3", "gemma", "gemma2", "gemma3", "gemma3n", "gemma4", "gemma4-assistant",
         "gemma-embedding", "gemma-embedding2", "starcoder2", "mamba", "mamba2", "maple", "jamba", "falcon-h1",
         "xverse", "command-r", "cohere2", "cohere2moe", "dbrx", "olmo", "olmo2", "olmoe", "muse-glimmer",
         "muse-spark", "openelm", "arctic", "deepseek", "deepseek2", "deepseek2-ocr", "deepseek32", "deepseek4",
-        "deepseek41", "chatglm", "glm4", "glm4moe", "glm-dsa", "bitnet", "t5", "t5encoder", "jais", "jais2",
-        "nemotron", "nemotron_h", "nemotron_h_moe", "exaone", "exaone4", "exaone-moe", "rwkv6", "rwkv6qwen2",
-        "rwkv7", "arwkv7", "granite", "granitemoe", "granitehybrid", "graniteswitch", "granite_swa", "chameleon",
-        "wavtokenizer-dec", "plm", "bailingmoe", "bailingmoe2", "bailingmoe3", "dots1", "dots3note", "arcee",
-        "afmoe", "laguna", "ernie4_5", "ernie4_5-moe", "hunyuan-moe", "hunyuan-dense", "hunyuan_vl", "hy_v3",
-        "hy_v4", "smollm3", "gpt-oss", "lfm2", "lfm2moe", "dream", "smallthinker", "llada", "llada-moe", "seed_oss",
-        "grovemoe", "apertus", "minimax-01", "hrm_text", "minimax-m2", "minimax-m3", "cogvlm", "rnd1",
-        "pangu-embedded", "mistral3", "eagle3", "dflash", "mistral4", "paddleocr", "mimo2", "step35", "spark2_5",
-        "llama-embed", "maincoder", "maion-coder", "kimi-linear", "kimi-k3", "glm5-next", "talkie", "mellum",
-        "nanbeige", "qwen3tts", "pockettts", "k2-horizon", "beam", "kolibri1"
+        "deepseek41", "xing4_0", "chatglm", "glm4", "glm4moe", "glm-dsa", "bitnet", "t5", "t5encoder", "jais",
+        "jais2", "nemotron", "nemotron_h", "nemotron_h_moe", "metis16", "exaone", "exaone4", "exaone-moe", "rwkv6",
+        "rwkv6qwen2", "rwkv7", "arwkv7", "granite", "granitemoe", "granitehybrid", "graniteswitch", "granite_swa",
+        "chameleon", "wavtokenizer-dec", "plm", "bailingmoe", "bailingmoe2", "bailingmoe3", "dots1", "dots3note",
+        "arcee", "afmoe", "laguna", "ernie4_5", "ernie4_5-moe", "hunyuan-moe", "hunyuan-dense", "hunyuan_vl",
+        "hy_v3", "hy_v4", "smollm3", "gpt-oss", "lfm2", "lfm2moe", "lfm3", "zaya1", "dream", "smallthinker", "llada",
+        "llada-moe", "seed_oss", "grovemoe", "apertus", "minimax-01", "hrm_text", "limite", "minimax-m2",
+        "minimax-m3", "cogvlm", "rnd1", "pangu-embedded", "mistral3", "eagle3", "dflash", "mistral4",
+        "mistral-large4", "paddleocr", "mimo2", "step35", "spark2_5", "llama-embed", "maincoder", "maion-coder",
+        "kimi-linear", "kimi-k3", "kimi-k31", "glm5-next", "talkie", "mellum", "nanbeige", "qwen3tts", "pockettts",
+        "moshi", "zonos3", "kokoro", "tiny-voca", "k2-horizon", "beam", "kolibri1", "ricursive", "inkling2",
+        "inkling2_loop", "domynedge"
     )
 }
