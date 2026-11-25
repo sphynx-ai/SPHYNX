@@ -28,6 +28,8 @@ val hasValidSigningProps = keystorePropsFile.exists().also { exists ->
 
 android {
     namespace = "com.sphynx"
+    // Phase 8 G8: true only for CI's Vulkan test APK (gradlew -PsphynxVulkan=true)
+    val vulkanTest = (project.findProperty("sphynxVulkan") as String?) == "true"
     compileSdk = 36
 
     // PHASE 8 (GGUF backend): llama.cpp built from source (app/src/main/cpp). The NDK and CMake versions are
@@ -87,7 +89,7 @@ android {
         // (37.20 -> 37.21 -> ...; after 37.99 comes 38.00). Written only here: the version code follows
         // from it (37.20 -> 3720) and the app reads it through BuildConfig.VERSION_NAME (core.AppVersion).
         // The newest What's new entry carries the same version; a unit test checks they match.
-        val sphynxVersion = "38.29"
+        val sphynxVersion = "38.30"
         versionCode = sphynxVersion.split(".").let { it[0].toInt() * 100 + it[1].toInt() }
         versionName = sphynxVersion
 
@@ -103,7 +105,19 @@ android {
             cmake {
                 abiFilters("arm64-v8a")
                 arguments("-DANDROID_STL=c++_static")
+                // Phase 8 G8 (owner, 2026-11-25, option 2): the Vulkan TEST build, made only by CI (workflow
+                // vulkan-test-apk.yml) with -PsphynxVulkan=true and the shader tools it installs; never on the phone
+                if (vulkanTest) arguments("-DSPHYNX_VULKAN=ON",
+                    "-DVulkan_INCLUDE_DIR=" + (System.getenv("SPHYNX_VULKAN_INCLUDE") ?: ""),
+                    "-DVulkan_GLSLC_EXECUTABLE=" + (System.getenv("SPHYNX_GLSLC") ?: "glslc"),
+                    "-DSPIRV-Headers_DIR=" + (System.getenv("SPHYNX_SPIRV_HEADERS_DIR") ?: ""))
             }
+        }
+        // the test build installs NEXT TO the owner's app (its own id and data; its version ends in -vulkan-test), so the
+        // real app is not replaced
+        if (vulkanTest) {
+            applicationIdSuffix = ".vulkantest"
+            versionNameSuffix = "-vulkan-test"
         }
     }
 

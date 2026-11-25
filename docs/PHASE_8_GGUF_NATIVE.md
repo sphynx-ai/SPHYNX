@@ -87,3 +87,9 @@ Built in this container from llama.cpp b12651 (`GGML_VULKAN=ON`, Ubuntu's glslc 
 1. Keep GGUF on the CPU; G8 stops here.
 2. Build a Vulkan test APK in CI only (GitHub's computers have glslc), download and install it for one benchmark, and keep the phone build CPU-only unless the GPU wins.
 3. Generate the shaders in CI and commit only the 35 MB of SPIR-V files, with a small change so llama.cpp reads them instead of the generated C++. That is a local change to llama.cpp that every update has to carry.
+
+**Owner's choice (2026-11-25): option 2.** CI builds a Vulkan **test** APK (workflow `vulkan-test-apk.yml`, v38.30).
+- How it builds: `-PsphynxVulkan=true`, with glslc from Ubuntu, the newest Vulkan-Headers tag, SPIR-V headers built in the run, and ggml-vulkan copied from the pinned llama.cpp tag.
+- How it installs: id `com.sphynx.vulkantest`, version ending in `-vulkan-test`, next to the normal app.
+- What it does: in that build, `sphynx_llama_has_gpu()` is true when the phone offers a Vulkan GPU. The GGUF benchmark then adds a run with every layer on the GPU (`gpu: true` rows), reported apart from the thread settings.
+- The normal app and the phone build stay CPU-only.

@@ -52,22 +52,27 @@ object GgufBenchmark {
         val info = GgufInfo.read(file).getOrNull()
         val be = GgufLibrary.backend(c)
         val cores = Runtime.getRuntime().availableProcessors()
-        val settings = listOf(4 to false, 2 to false, 6 to false, 4 to true).filter { it.first <= cores }
+        // Phase 8 G8: the Vulkan test build adds a GPU run (4 threads for the parts that stay on the CPU)
+        val gpuToo = be.hasGpu()
+        val settings = (listOf(Triple(4, false, false), Triple(2, false, false), Triple(6, false, false), Triple(4, true, false)) +
+            (if (gpuToo) listOf(Triple(4, false, true)) else emptyList())).filter { it.first <= cores }
         val runs = ArrayList<GgufTuning.Run>()
-        for ((threads, kv8) in settings) {
-            line = "Benchmark: $threads threads${if (kv8) ", 8-bit cache" else ""}, loading…"
+        for ((threads, kv8, gpu) in settings) {
+            val what = "$threads threads${if (kv8) ", 8-bit cache" else ""}${if (gpu) ", GPU" else ""}"
+            line = "Benchmark: $what, loading…"
             val t0 = System.currentTimeMillis()
-            val st = be.load(GgufLibrary.config(file).copy(threads = threads, kvCache8Bit = kv8))
+            val base = GgufLibrary.config(file).copy(threads = threads, kvCache8Bit = kv8)
+            val st = be.load(if (gpu) base.copy(accelerators = listOf(com.sphynx.inference.Accelerator.GPU, com.sphynx.inference.Accelerator.CPU)) else base)
             val loadMs = System.currentTimeMillis() - t0
             if (!st.ready) { row(c, file, info, threads, kv8, null, loadMs, st.error?.message ?: "did not load"); continue }
             if (kv8 && be.kv8Refused != null) {      // this model can't have the 8-bit cache: nothing to compare
                 row(c, file, info, threads, kv8, null, loadMs, "8-bit cache refused: " + be.kv8Refused); continue
             }
             QUESTIONS.forEachIndexed { i, q ->
-                line = "Benchmark: $threads threads${if (kv8) ", 8-bit cache" else ""}, question ${i + 1} of ${QUESTIONS.size}…"
-                val r = ask(be, q, threads, kv8, cold = i == 0)
+                line = "Benchmark: $what, question ${i + 1} of ${QUESTIONS.size}…"
+                val r = ask(be, q, threads, kv8, cold = i == 0)?.copy(gpu = gpu)
                 if (r != null) runs.add(r)
-                row(c, file, info, threads, kv8, r, if (i == 0) loadMs else -1, if (r == null) "no answer" else "")
+                row(c, file, info, threads, kv8, r, if (i == 0) loadMs else -1, if (r == null) "no answer" else "", gpu)
             }
         }
         be.unload()
@@ -90,13 +95,14 @@ object GgufBenchmark {
             res.optLong("genMs"), res.optLong("firstTokenMs", -1L), text)
     }
 
-    private fun row(c: Context, file: File, info: GgufInfo?, threads: Int, kv8: Boolean, r: GgufTuning.Run?, loadMs: Long, error: String) {
+    private fun row(c: Context, file: File, info: GgufInfo?, threads: Int, kv8: Boolean, r: GgufTuning.Run?, loadMs: Long, error: String,
+                    gpu: Boolean = false) {
         try {
             val snap = com.sphynx.core.DeviceStats.sample(c)
             val ph = com.sphynx.core.PhoneState.read()
             val o = JSONObject().put("t", System.currentTimeMillis()).put("app", com.sphynx.core.AppVersion.VERSION)
                 .put("model", file.name).put("sizeMb", file.length() / 1048576).put("arch", info?.architecture ?: "")
-                .put("quant", info?.quantization ?: "").put("threads", threads).put("kv8", kv8).put("loadMs", loadMs)
+                .put("quant", info?.quantization ?: "").put("threads", threads).put("kv8", kv8).put("gpu", gpu).put("loadMs", loadMs)
                 .put("error", error)
             if (r != null) o.put("cold", r.cold).put("promptTokens", r.promptTokens).put("promptTps", r.promptTps)
                 .put("genTokens", r.genTokens).put("genTps", r.genTps).put("firstTokenMs", r.firstTokenMs)

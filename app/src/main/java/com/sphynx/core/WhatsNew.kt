@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-25", Kind.NEW, "A Vulkan test app for GGUF on the GPU",
+            "Your choice for the GPU: GitHub now builds a separate Vulkan test app every time the GGUF engine changes. It " +
+                "installs next to Sphynx (its version ends in -vulkan-test), so your normal app and its data stay as they are. " +
+                "In the test app the GGUF benchmark adds one more run with the model on the GPU, so you can compare it with " +
+                "the CPU. Your normal app stays on the CPU.",
+            pr = 121, needsDeviceCheck = true, version = "38.30"),
         Entry("2026-11-25", Kind.FIXED, "The small tactical model works again with the minimap switch on",
             "Found in your 11-25 debug data: with Tactical model reads the minimap on, a text-only tactical model (Gemma 3 " +
                 "270M) loaded as if it could read pictures, and then every question failed, fight advice too. The app now " +

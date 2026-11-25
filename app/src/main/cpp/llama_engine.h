@@ -19,6 +19,7 @@ struct SphynxLlama {
     int nCtx = 0;
     int threads = 0;
     bool kv8 = false;                    // Phase 8 G5: the KV cache in 8 bits
+    int gpuLayers = 0;                   // Phase 8 G8: layers on the GPU (Vulkan test build only)
 };
 
 // once per process; log receives llama.cpp warnings and errors (may be null)
@@ -31,7 +32,12 @@ std::string sphynx_llama_info();
 // err says why (llama.cpp's own last warnings and errors included)
 // Phase 8 G5: kv8 = the context's memory (KV cache) in 8 bits (q8_0, with flash attention): about half the memory of the
 // default 16 bits
-SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads, std::string & err, bool kv8 = false);
+SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads, std::string & err, bool kv8 = false,
+                                int gpuLayers = 0);
+
+// Phase 8 G8 (owner, 2026-11-25: a Vulkan test build made by CI): true when this library has a GPU backend (Vulkan) and the
+// phone offers a GPU device to it. The normal build has none, so gpuLayers is ignored there.
+bool sphynx_llama_has_gpu();
 
 // Phase 6 S8: loads the model's multimodal projector (a separate mmproj GGUF) so answers can take a picture; false on
 // failure, and err says why. The text model keeps working without it.

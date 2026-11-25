@@ -39,6 +39,15 @@ set(GGML_BUILD_EXAMPLES   OFF CACHE BOOL "" FORCE)
 # (LlamaCpu, /proc/cpuinfo) before it loads this library at all.
 set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod+fp16" CACHE STRING "" FORCE)
 
+# Phase 8 G8 (owner, 2026-11-25, option 2): the Vulkan TEST build, made only by CI (vulkan-test-apk.yml). It needs the
+# ggml-vulkan sources (CI copies them from the same llama.cpp tag; they are not vendored), the host shader compiler glslc,
+# Vulkan's C++ headers and the SPIR-V headers, all passed in by CI. The phone's normal build never sets SPHYNX_VULKAN.
+option(SPHYNX_VULKAN "Vulkan test build (CI only)" OFF)
+if (SPHYNX_VULKAN)
+    set(GGML_VULKAN ON CACHE BOOL "" FORCE)
+    message(STATUS "Sphynx: Vulkan TEST build (glslc ${Vulkan_GLSLC_EXECUTABLE}, headers ${Vulkan_INCLUDE_DIR})")
+endif()
+
 add_subdirectory(${LLAMA_DIR}/ggml ggml)
 add_subdirectory(${LLAMA_DIR}/src  llama)
 
