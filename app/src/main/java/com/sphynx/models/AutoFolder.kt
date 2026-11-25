@@ -415,6 +415,8 @@ object AutoFolder {
                 busy = false
             }
             Diag.info("Folder: $status")
+            // Phase 9 M1: the model registry follows the files
+            try { ModelRegistry.refresh(ctx) } catch (t: Throwable) { Diag.error("Model registry", t) }
             done?.invoke(status)
         }.start()
     }

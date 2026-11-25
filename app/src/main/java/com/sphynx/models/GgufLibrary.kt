@@ -133,6 +133,7 @@ object GgufLibrary {
         } finally {
             if (part.exists()) part.delete()
         }
+        try { ModelRegistry.refresh(ctx) } catch (t: Throwable) { }     // Phase 9 M1
         return "Added $name (${mb(target.length())} MB)"
     }
 
@@ -171,7 +172,9 @@ object GgufLibrary {
     /** Removes an added model (unloaded first if it is the loaded one); true when it is gone. */
     fun remove(ctx: Context, file: File): Boolean {
         if (loadedFile(ctx) == file) unload(ctx)
-        return file.parentFile == dir(ctx) && file.delete()
+        val gone = file.parentFile == dir(ctx) && file.delete()
+        if (gone) try { ModelRegistry.refresh(ctx) } catch (t: Throwable) { }     // Phase 9 M1
+        return gone
     }
 
     // ---- the test question on the Model page (same question as the 2026-11-14 spike runs) ----

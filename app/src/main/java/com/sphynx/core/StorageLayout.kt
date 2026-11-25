@@ -43,6 +43,7 @@ object StorageLayout {
             // what the app and its trainings make
             n.endsWith(".csv") || n.endsWith(".pt") || n.endsWith(".pth") || n.endsWith(".onnx") -> OUTPUT
             n.endsWith("_report.json") || n.startsWith("tactical_llm_trainable") -> OUTPUT
+            n == "sphynx-model-registry.json" -> OUTPUT                     // Phase 9 M1: the model registry's copy
             n.startsWith("mlbb-") && (n.endsWith(".json") || n.endsWith(".zip")) -> OUTPUT
             else -> null
         }

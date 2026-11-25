@@ -26,7 +26,7 @@ class StorageLayoutTest {
         for (n in listOf("mlbb-my-play-20261114-101010.csv", "mlbb-fights-20261114.csv", "mlbb-minimap-dataset-20261114-1010.zip",
                 "mlbb-screen-dataset-20261114-1010.zip", "minimap_detector_best.pt", "screen_detector_best.pt",
                 "minimap_detector_report.json", "tactical_llm_trainable.zip", "mlbb-online-meta.json",
-                "mlbb-online-skills.json", "mlbb-scenery-sync.json", "mlbb-learned.json"))
+                "mlbb-online-skills.json", "mlbb-scenery-sync.json", "mlbb-learned.json", "sphynx-model-registry.json"))
             assertEquals(n, StorageLayout.OUTPUT, StorageLayout.areaFor(n))
     }
 
