@@ -2944,7 +2944,7 @@ class MainActivity : Activity() {
         val free = try { filesDir.usableSpace } catch (e: Exception) { -1L }
         val dirs = listOf(filesDir, com.sphynx.models.AutoFolder.liteLibrary(this), com.sphynx.models.GgufLibrary.dir(this))
         val files = dirs.flatMap { d -> (d.listFiles()?.filter { it.isFile } ?: emptyList()).map { f ->
-            ms.FileInfo(f.absolutePath, f.name, f.length(), f.lastModified()) } }
+            com.sphynx.models.ModelStorage.FileInfo(f.absolutePath, f.name, f.length(), f.lastModified()) } }
         val left = ms.leftovers(files, recs.map { it.fileName }.toSet(), System.currentTimeMillis()) {
             java.io.File(it.path).parentFile == filesDir }
         val cd = card()
