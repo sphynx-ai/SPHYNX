@@ -1,6 +1,6 @@
 # Phase 9 — Model Lab and Model Management: audit and execution plan
 
-**Status:** **APPROVED by the owner 2026-11-25.** The owner said "Finish all steps and proceed to next phase after everything is done" and answered the questionnaire (section 6), which adds M9 (downloads). IN PROGRESS: all steps are built back to back and phone-tested once at the end (continuous-phases rule). Phase 8's two re-tests (the Vulkan test APK, tactical pictures after #120) run alongside this phase.
+**Status:** **APPROVED by the owner 2026-11-25. All steps M1–M9 built in code (v38.34–v38.42, PRs #125–#133); the owner's phone test of the whole phase is pending (section 8).** The owner said "Finish all steps and proceed to next phase after everything is done" and answered the questionnaire (section 6), which adds M9 (downloads). IN PROGRESS: all steps are built back to back and phone-tested once at the end (continuous-phases rule). Phase 8's two re-tests (the Vulkan test APK, tactical pictures after #120) run alongside this phase.
 **Based on:** `sphynx-test-branch` at v38.31, read from the code. No phone was used for this plan.
 
 ## 1. Role for this phase (roadmap 3.1)
@@ -47,7 +47,7 @@
 - [ ] The existing choosers and memories use the registry; old settings are migrated without loss (M6). **In code (v38.39):** `ModelRecord.facts` and `ModelRecord.Fact` (VISION, THREADS, PROCESSORS, with the old key of each), `ModelRecord.migrate` (tested: the old keys and the SHA-256 move in, nothing is lost through a save and a scan), `ModelRegistry.fact` / `setFact` (read the record, else the old key; write both for one version). Processor memory (`Roles`), picture ability (`Roles`, Model page), the best thread count (`GgufLibrary`, `GgufBenchmark`) use them. The load sentinel and the job choices stay in their own keys: they describe a job, not a model file.
 - [ ] The registry can be exported for debugging without folder names (M7). **In code (v38.40):** `models/ModelRegistryExport` (paths cut to file names before the JSON is written; tested), the Debug data page's "Export the model registry now" (`diagnostics-model-registry-<time>.json` in Recordings, uploaded and deleted by the debug-data rule).
 - [ ] Downloads show size and hash first, resume, verify the hash, and never start by themselves (M9). **In code (v38.41):** `assets/model_catalog.json` (11 models, each pinned to a Hugging Face commit with its size and SHA-256, none gated; rebuilt by `tools/model-catalog/build.py`), `models/ModelCatalog` (parse with safe names only, https to huggingface.co / hf.co only, resume and reply rules, verify; tested, including that every mmproj in the list pairs with its model), `models/ModelDownloader` (`.part` file, Range resume, every redirect checked, pause, room check, Wi-Fi warning, SHA-256 before the file gets its name; GGUF into the library through `GgufLibrary.addFile`, `.litertlm` through the folder scan), the Model page's DOWNLOAD A MODEL card. A downloaded file stays in Input as the original, so it takes room twice, like a file put there by hand.
-- [ ] Tests for the schema, validation, migration and profiles; a user guide (M1–M9).
+- [ ] Tests for the schema, validation, migration and profiles; a user guide (M1–M9). **In code (v38.42):** `ModelRecordTest`, `ModelSettingsTest`, `ModelStorageTest`, `ModelRegistryExportTest`, `ModelCatalogTest`, `RoleChoiceTest`, the `LiteRtLmFile` and `FileHash` tests; the user guide `docs/PHASE_9_MODEL_LAB_GUIDE.md`.
 
 ## 5. Risks
 
@@ -61,3 +61,36 @@
 2. **Downloads:** yes, from Hugging Face (M9), with the size and hash shown first.
 3. **Deleting:** only the app's copy; the original in `Sphynx-Storage/Input` stays.
 4. **Per-model settings:** all of them (context length, temperature, threads, 8-bit cache, processor order, pictures), with today's values as the defaults.
+
+## 7. Phone checklist (one test for the whole phase)
+
+Update the app (`git pull` on `sphynx-test-branch`, rebuild; version 38.42), then:
+
+1. **Model Lab (M1, M3):** the Model page starts with MODEL LAB. Each model has a card: LiteRT-LM files, GGUF files and mmproj files. The cards in use come first and show their job and "loaded on GPU/CPU/NPU". A model copied after v38.35 shows a fingerprint.
+2. **Several `.litertlm` (M2):** put a third `.litertlm` in `Sphynx-Storage/Input` and tap *Scan the folder now*. It gets its own card, and the two job files stay. *Give it a job…* → Tactical loads it. Then give the job back to the usual file.
+3. **Broken file (M2):** a renamed non-model file (for example a `.txt` renamed to `test.litertlm`) is refused at the scan, with the reason in the log.
+4. **Settings (M4):** *Settings…* on the strategic model → temperature 0.3 → reload; it answers as before. Context length is refused on a LiteRT-LM file, with the reason. Clear the setting (empty) again.
+5. **Delete (M3):** *Delete the app's copy* on a model with no job asks first and removes the card. The file in Input stays, and *Scan the folder now* does not copy it back.
+6. **Storage (M5):** the STORAGE card shows the models' MB and the free MB. No leftovers on a clean phone.
+7. **Migration (M6):** after the update, the processor choice of the strategic model and the GGUF thread count are the same as before (the Model page still names the tried-first processor and the benchmark's best threads).
+8. **Export (M7):** Debug data → *Export the model registry now* → upload. The file `diagnostics-model-registry-*.json` arrives on `recordings-for-debugging`, has no folder names, and is gone from the phone.
+9. **Download (M9):** DOWNLOAD A MODEL → SmolVLM 256M → the question shows two files, each with its size and SHA-256 (and a mobile-data warning off Wi-Fi) → *Model and picture part*. Tap *Pause the download* midway, then download again: it goes on from there. At the end, the GGUF library shows the model with its picture part, and the Lab has two new cards.
+10. **Guide (M8):** `docs/PHASE_9_MODEL_LAB_GUIDE.md` matches what the app shows.
+
+Phase 8's two open re-tests can be done in the same session: the Vulkan test APK benchmark, and tactical pictures after #120.
+
+## 8. Closing record
+
+| Step | Version | PR | State |
+|---|---|---|---|
+| M1 registry | 38.34 | #125 | In code, CI green |
+| M2 import and validation | 38.35 | #126 | In code, CI green |
+| M4 per-model settings | 38.36 | #127 | In code, CI green |
+| M3 Model Lab page | 38.37 | #128 | In code, CI green |
+| M5 storage | 38.38 | #129 | In code |
+| M6 registry facts and migration | 38.39 | #130 | In code |
+| M7 registry export | 38.40 | #131 | In code |
+| M9 Hugging Face downloads | 38.41 | #132 | In code |
+| M8 guide, checklist, closing record | 38.42 | #133 | In code |
+
+Verification so far: CI (unit tests, build, native tests) for each PR. No phone test yet: every What's new entry has `needsDeviceCheck = true` until the owner's test (section 7). The download list's sizes and hashes were read from the Hugging Face API on 2026-11-25; no download has run on a phone yet.
