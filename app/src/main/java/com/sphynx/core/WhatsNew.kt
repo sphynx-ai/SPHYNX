@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-25", Kind.FIXED, "What the app learns about a model lives in its Model Lab record",
+            "What the app learnt about each model on this phone (whether it reads pictures, the best thread count from the " +
+                "GGUF benchmark, which processor loaded it and how fast it answered, and its fingerprint) now lives in the " +
+                "model's record in the Model Lab instead of loose settings. Your earlier results move in by themselves; " +
+                "the old settings are still written for this version, so nothing is lost if you go back. Nothing plays " +
+                "differently.",
+            pr = 130, needsDeviceCheck = true, version = "38.39"),
         Entry("2026-11-25", Kind.NEW, "Model storage in the Model Lab",
             "The Model Lab starts with a STORAGE card: how much room the models take (by format), how much is free, a " +
                 "warning when the phone is running out of room for another model, and the files nothing uses any more " +

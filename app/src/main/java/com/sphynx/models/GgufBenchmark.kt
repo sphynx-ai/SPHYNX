@@ -77,7 +77,7 @@ object GgufBenchmark {
         }
         be.unload()
         val best = GgufTuning.bestThreads(runs, cores)
-        Cfg.setRaw(GgufTuning.threadsKey(file.name, file.length()), best.toString())
+        ModelRegistry.setFact(file.name, file.length(), ModelRecord.Fact.THREADS, best.toString())   // Phase 9 M6
         return GgufTuning.summary(runs, cores)
     }
 

@@ -65,7 +65,7 @@ object GgufLibrary {
         contextTokens = CONTEXT_TOKENS,
         maxOutputTokens = MAX_OUTPUT_TOKENS,
         // Phase 8 G5: the thread count the benchmark found best for this file on this phone, else the default
-        threads = Cfg.raw(com.sphynx.inference.GgufTuning.threadsKey(file.name, file.length()))?.toIntOrNull()?.takeIf { it in 1..16 }
+        threads = ModelRegistry.fact(file.name, file.length(), ModelRecord.Fact.THREADS)?.toIntOrNull()?.takeIf { it in 1..16 }
             ?: LlamaCpu.threads(),
         projector = projectorFor(file)?.absolutePath
     )
