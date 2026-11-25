@@ -23,18 +23,22 @@ object ModelRegistry {
     fun scanFiles(ctx: Context): List<ModelRecord> {
         val out = ArrayList<ModelRecord>()
         val app = ctx.applicationContext
-        app.filesDir.listFiles()?.filter { it.isFile && it.name.endsWith(".litertlm", true) }?.forEach { f ->
+        val lite = (app.filesDir.listFiles()?.toList() ?: emptyList()) + (AutoFolder.liteLibrary(app).listFiles()?.toList() ?: emptyList())
+        lite.filter { it.isFile && it.name.endsWith(".litertlm", true) }.forEach { f ->
             val pics = Cfg.raw("vision_" + f.name)?.let { it == "1" }
-            out.add(ModelRecord(id = ModelRecord.idFor(f.name, f.length(), null), fileName = f.name,
+            val sha = Cfg.raw(com.sphynx.core.FileHash.key(f.name, f.length()))
+            out.add(ModelRecord(id = ModelRecord.idFor(f.name, f.length(), sha), fileName = f.name, sha256 = sha,
                 format = ModelRecord.Format.LITERT_LM, sizeBytes = f.length(), family = "gemma".takeIf { f.name.contains("gemma", true) },
-                pictures = pics, originalName = originalLiteName(f.name), addedAt = f.lastModified()))
+                pictures = pics, originalName = originalLiteName(f.name) ?: f.name.takeIf { f.parentFile?.name == "litertlm" },
+                addedAt = f.lastModified()))
         }
         val gg = try { GgufLibrary.dir(app) } catch (e: Exception) { null }
         gg?.listFiles()?.filter { it.isFile && it.name.endsWith(".gguf", true) }?.forEach { f ->
             val info = com.sphynx.inference.GgufInfo.read(f).getOrNull()
             val proj = info?.isProjector == true
             val fmt = ModelRecord.formatOf(f.name, proj) ?: return@forEach
-            out.add(ModelRecord(id = ModelRecord.idFor(f.name, f.length(), null), fileName = f.name, format = fmt,
+            val sha = Cfg.raw(com.sphynx.core.FileHash.key(f.name, f.length()))
+            out.add(ModelRecord(id = ModelRecord.idFor(f.name, f.length(), sha), fileName = f.name, format = fmt, sha256 = sha,
                 sizeBytes = f.length(), family = info?.architecture, quantization = info?.quantization?.takeIf { info.fileType != null },
                 sizeLabel = info?.sizeLabel, contextLength = info?.contextLength,
                 pictures = if (fmt == ModelRecord.Format.GGUF) GgufLibrary.projectorFor(f) != null else null,

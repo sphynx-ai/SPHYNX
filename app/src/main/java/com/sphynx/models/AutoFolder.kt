@@ -159,23 +159,32 @@ object AutoFolder {
     }
     private fun remember(kind: String, e: Entry) = Cfg.setRaw("auto_sig_$kind", "${e.name}:${e.size}:${e.modified}")
 
+    // Phase 9 M2: the copy also works out the file's SHA-256 (kept for the model registry); a .litertlm is checked
+    // first (its 8-letter mark, its size), and a copy that would fill the phone is refused
     private fun copy(e: Entry, dst: File, progress: (Long) -> Unit = {}) {
-        val tmp = File(dst.parentFile, dst.name + ".tmp")
-        (e.open() ?: throw IllegalStateException("cannot open ${e.name}")).use { input ->
-            tmp.outputStream().use { out ->
-                val buf = ByteArray(1 shl 20)
-                var total = 0L
-                while (true) {
-                    val n = input.read(buf)
-                    if (n <= 0) break
-                    out.write(buf, 0, n); total += n
-                    progress(total)
-                }
+        if (e.name.endsWith(".litertlm", true)) {
+            val head = (e.open() ?: throw IllegalStateException("cannot open ${e.name}")).use { s ->
+                val b = ByteArray(16); var n = 0
+                while (n < b.size) { val r = s.read(b, n, b.size - n); if (r < 0) break; n += r }
+                b.copyOf(n)
             }
+            com.sphynx.inference.LiteRtLmFile.checkHeader(head, e.size)?.let { throw IllegalStateException("${e.name}: $it") }
+        }
+        val room = dst.parentFile?.usableSpace ?: -1L
+        if (e.size > 0 && room in 0 until e.size + 256L * 1024 * 1024)
+            throw IllegalStateException("not enough room for ${e.name}: it needs ${e.size / 1048576} MB, ${room / 1048576} MB free")
+        val tmp = File(dst.parentFile, dst.name + ".tmp")
+        val sha = (e.open() ?: throw IllegalStateException("cannot open ${e.name}")).use { input ->
+            tmp.outputStream().use { out -> com.sphynx.core.FileHash.copyAndHash(input, out, progress) }
         }
         dst.delete()
         if (!tmp.renameTo(dst)) throw IllegalStateException("could not save ${dst.name}")
+        // only model files keep their hash (never anything about a key file: owner rule on keys)
+        if (dst.name.endsWith(".litertlm", true)) Cfg.setRaw(com.sphynx.core.FileHash.key(dst.name, dst.length()), sha)
     }
+
+    /** Phase 9 M2 (owner, 2026-11-25: keep every .litertlm): the LiteRT-LM files that are not the two in use. */
+    fun liteLibrary(ctx: Context): File = File(ctx.applicationContext.filesDir, "litertlm").apply { mkdirs() }
 
     // "policy_Chou.tflite" -> "chou", "policy_all.tflite" -> "all"
     private fun policyKey(fileName: String): String {
@@ -262,7 +271,16 @@ object AutoFolder {
                                     if (Cfg.tacticalLlmOn && !ModelHooks.tacticalReady())
                                         ModelManager.loadTactical(app) { err -> Diag.info(if (err == null) "Small tactical model loaded" else "Small model load: $err") }
                                 }
-                                n.endsWith(".litertlm") && e !== bigModel -> found.add("${e.name} skipped (a newer model is used)")
+                                // Phase 9 M2 (owner, 2026-11-25): every other .litertlm is kept in the app's LiteRT-LM library
+                                n.endsWith(".litertlm") && e !== bigModel -> {
+                                    val dst = File(liteLibrary(app), ModelManager.safeFileName(e.name))
+                                    if (changed("lite_" + dst.name, e, dst)) {
+                                        status = "copying ${e.name}..."
+                                        copy(e, dst) { b -> status = "copying ${e.name}... ${b / 1048576} MB" }
+                                        remember("lite_" + dst.name, e)
+                                        found.add("${ModelManager.prettyName(e.name)} kept in the library")
+                                    }
+                                }
                                 n.endsWith(".litertlm") -> {
                                     val dst = ModelManager.modelFile(app)
                                     var fresh = false

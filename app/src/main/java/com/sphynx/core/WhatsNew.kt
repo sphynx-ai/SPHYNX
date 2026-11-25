@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-25", Kind.IMPROVED, "Every LiteRT-LM file is kept, and every model is checked",
+            "Your choice: every .litertlm in Sphynx-Storage/Input is now kept, not only the two in use. The others go to the " +
+                "app's LiteRT-LM library, ready for the Model Lab. Before a .litertlm is copied, the app checks that it really is " +
+                "one (not a web page, an unfinished download or an old .task zip) and that the phone has room. Every model copy " +
+                "now gets its fingerprint (SHA-256), and a GGUF file already added under another name is not added twice.",
+            pr = 126, needsDeviceCheck = true, version = "38.35"),
         Entry("2026-11-25", Kind.IMPROVED, "The app keeps a list of its models",
             "Behind the scenes, the first step of the Model Lab: the app now keeps one record for every model file it " +
                 "holds (LiteRT-LM and GGUF, with their mmproj files): format, family, quantization, size, whether it reads " +

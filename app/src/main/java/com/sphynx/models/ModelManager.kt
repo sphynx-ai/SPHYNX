@@ -41,6 +41,9 @@ object ModelManager {
             else -> 1
         }
     }
+    /** A file name that can't reach another folder ("a/b c.litertlm" -> "b_c.litertlm"). */
+    fun safeFileName(raw: String): String = GgufLibrary.safeName(raw)
+
     fun prettyName(name: String): String {
         val n = name.lowercase()
         return when {
