@@ -171,8 +171,7 @@ object AutoFolder {
             com.sphynx.inference.LiteRtLmFile.checkHeader(head, e.size)?.let { throw IllegalStateException("${e.name}: $it") }
         }
         val room = dst.parentFile?.usableSpace ?: -1L
-        if (e.size > 0 && room in 0 until e.size + 256L * 1024 * 1024)
-            throw IllegalStateException("not enough room for ${e.name}: it needs ${e.size / 1048576} MB, ${room / 1048576} MB free")
+        ModelStorage.copyProblem(e.size, room)?.let { throw IllegalStateException("not enough room for ${e.name}: $it") }
         val tmp = File(dst.parentFile, dst.name + ".tmp")
         val sha = (e.open() ?: throw IllegalStateException("cannot open ${e.name}")).use { input ->
             tmp.outputStream().use { out -> com.sphynx.core.FileHash.copyAndHash(input, out, progress) }

@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-25", Kind.NEW, "Model storage in the Model Lab",
+            "The Model Lab starts with a STORAGE card: how much room the models take (by format), how much is free, a " +
+                "warning when the phone is running out of room for another model, and the files nothing uses any more " +
+                "(a copy that broke off, a model the app no longer lists), which you can delete after a question. A copy " +
+                "still running is never counted. Both kinds of copy now keep the same 256 MB spare.",
+            pr = 129, needsDeviceCheck = true, version = "38.38"),
         Entry("2026-11-25", Kind.NEW, "The Model Lab",
             "The Model page now starts with the Model Lab: one card for every model the app holds (LiteRT-LM, GGUF and " +
                 "mmproj files), with its family, quantization, size, whether it reads pictures, where it came from, its " +
