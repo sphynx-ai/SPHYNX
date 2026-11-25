@@ -24,7 +24,7 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
-        Entry("2026-11-25", Kind.FIX, "What the app learns about a model lives in its Model Lab record",
+        Entry("2026-11-25", Kind.FIXED, "What the app learns about a model lives in its Model Lab record",
             "What the app learnt about each model on this phone (whether it reads pictures, the best thread count from the " +
                 "GGUF benchmark, which processor loaded it and how fast it answered, and its fingerprint) now lives in the " +
                 "model's record in the Model Lab instead of loose settings. Your earlier results move in by themselves; " +
