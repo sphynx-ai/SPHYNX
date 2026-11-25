@@ -22,7 +22,6 @@ object GgufLibrary {
 
     const val CONTEXT_TOKENS = 2048
     const val MAX_OUTPUT_TOKENS = 512
-    private const val SPARE_BYTES = 200L * 1024 * 1024   // room left on the phone after a copy
 
     @Volatile var busy = false; private set
     @Volatile var status = ""; private set
@@ -110,8 +109,7 @@ object GgufLibrary {
             com.sphynx.core.Diag.info("GGUF $name: ${i.summary()}")
         }
         val dir = dir(ctx)
-        if (size > 0 && dir.usableSpace < size + SPARE_BYTES)
-            return "Not enough room for $name: it needs ${mb(size)} MB, ${mb(dir.usableSpace)} MB free"
+        ModelStorage.copyProblem(size, dir.usableSpace)?.let { return "Not enough room for $name: $it" }
         val target = File(dir, name)
         val part = File(dir, "$name.part")
         try {

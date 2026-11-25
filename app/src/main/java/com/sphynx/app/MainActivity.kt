@@ -2903,6 +2903,7 @@ class MainActivity : Activity() {
     private fun modelLab() {
         title("MODEL LAB")
         val recs = try { com.sphynx.models.ModelRegistry.refresh(this) } catch (t: Throwable) { com.sphynx.models.ModelRegistry.records }
+        labStorage(recs)       // Phase 9 M5
         if (recs.isEmpty()) {
             text("No model yet. Put a .litertlm or .gguf file in Sphynx-Storage/Input, or add a GGUF model below.", 13f, color = T.MUTED, describe = false)
             return
@@ -2933,6 +2934,30 @@ class MainActivity : Activity() {
             if (job == null && labDeletable(r)) inCard(cd, "Delete the app's copy") {
                 confirm("Delete the app's copy of ${r.fileName} (${r.sizeBytes / 1048576} MB)? A file in Sphynx-Storage/Input stays " +
                     "there and is not copied again unless it changes.", "Delete") { labDelete(r) }
+            }
+        }
+    }
+
+    // Phase 9 M5: the room the models take, the room left, and leftover files offered for deletion
+    private fun labStorage(recs: List<com.sphynx.models.ModelRecord>) {
+        val ms = com.sphynx.models.ModelStorage
+        val free = try { filesDir.usableSpace } catch (e: Exception) { -1L }
+        val dirs = listOf(filesDir, com.sphynx.models.AutoFolder.liteLibrary(this), com.sphynx.models.GgufLibrary.dir(this))
+        val files = dirs.flatMap { d -> (d.listFiles()?.filter { it.isFile } ?: emptyList()).map { f ->
+            com.sphynx.models.ModelStorage.FileInfo(f.absolutePath, f.name, f.length(), f.lastModified()) } }
+        val left = ms.leftovers(files, recs.map { it.fileName }.toSet(), System.currentTimeMillis()) {
+            java.io.File(it.path).parentFile == filesDir }
+        val cd = card()
+        val warn = ms.roomWarning(free)
+        cardHeader(cd, "STORAGE", if (warn != null) "low" else "ok", if (warn != null) T.RED else T.GREEN)
+        cardNote(cd, listOfNotNull(ms.summary(recs, free), warn,
+            if (left.isEmpty()) "No leftover files" else "Leftover files: " + left.joinToString(", ") { "${it.name} (${ms.mb(it.size)} MB)" },
+        ).joinToString("\n"))
+        if (left.isNotEmpty()) inCard(cd, "Delete ${left.size} leftover file" + (if (left.size > 1) "s" else "") + " (${ms.mb(left.sumOf { it.size })} MB)") {
+            confirm("Delete these files? No model record points to them:\n" + left.joinToString("\n") { it.name }, "Delete") {
+                val gone = left.count { java.io.File(it.path).delete() }
+                Diag.info("Model Lab: deleted $gone of ${left.size} leftover files")
+                toast("Deleted $gone of ${left.size}"); show("model")
             }
         }
     }
