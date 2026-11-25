@@ -3609,6 +3609,24 @@ class MainActivity : Activity() {
             }.start()
         }
 
+        // Phase 9 M7: the model registry (no folder names), into Recordings, uploaded with the debug data
+        btn("Export the model registry now (every model, its settings and what was learnt)") {
+            Thread {
+                val msg = try {
+                    val recs = com.sphynx.models.ModelRegistry.refresh(this)
+                    val roles = listOf(com.sphynx.ai.Roles.STRATEGIC, com.sphynx.ai.Roles.TACTICAL)
+                    val jobs = roles.associate { it.name.lowercase() to ModelManager.choiceLabel(this, it) }
+                    val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
+                    val f = java.io.File(cacheDir, com.sphynx.models.ModelRegistryExport.fileName(stamp))
+                    f.writeText(com.sphynx.models.ModelRegistryExport.text(recs, com.sphynx.core.AppVersion.VERSION, jobs,
+                        com.sphynx.models.ModelStorage.summary(recs, try { filesDir.usableSpace } catch (e: Exception) { -1L }),
+                        System.currentTimeMillis()))
+                    "${recs.size} models. " + com.sphynx.core.SessionRecorder.exportFile(this, f, "application/json").also { f.delete() }
+                } catch (e: Exception) { "Export failed: ${e.message}" }
+                runOnUiThread { toast(msg.take(200)) }
+            }.start()
+        }
+
         // Phase 5: resource baselines (idle, capture on, Gemma loaded, GGUF loaded) - one snapshot per tap
         btn("Save a resource snapshot now (memory, CPU, heat, what is loaded)") {
             Thread {

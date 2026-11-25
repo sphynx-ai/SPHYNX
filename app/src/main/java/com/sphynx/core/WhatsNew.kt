@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-25", Kind.NEW, "Export the model registry for debugging",
+            "The Debug data page can save the Model Lab's registry now: every model with its details, its own settings " +
+                "and what the app learnt about it, the two jobs and the storage line. It goes into Recordings and is " +
+                "uploaded with the other debug data, then deleted from the phone. It names files only, never a folder " +
+                "on the phone.",
+            pr = 131, needsDeviceCheck = true, version = "38.40"),
         Entry("2026-11-25", Kind.FIXED, "What the app learns about a model lives in its Model Lab record",
             "What the app learnt about each model on this phone (whether it reads pictures, the best thread count from the " +
                 "GGUF benchmark, which processor loaded it and how fast it answered, and its fingerprint) now lives in the " +
