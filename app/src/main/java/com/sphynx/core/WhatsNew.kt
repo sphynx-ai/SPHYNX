@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-25", Kind.IMPROVED, "The app keeps a list of its models",
+            "Behind the scenes, the first step of the Model Lab: the app now keeps one record for every model file it " +
+                "holds (LiteRT-LM and GGUF, with their mmproj files): format, family, quantization, size, whether it reads " +
+                "pictures and where it came from. It is updated after every folder scan and GGUF change, and copied to " +
+                "Sphynx-Storage/Output so a reinstall finds it again. Nothing changes on the pages yet.",
+            pr = 125, needsDeviceCheck = true, version = "38.34"),
         Entry("2026-11-25", Kind.IMPROVED, "Phase 9 starts: the Model Lab",
             "Behind the scenes: the Model Lab plan is approved with your answers. It keeps every LiteRT-LM file, offers " +
                 "downloads from Hugging Face (size and fingerprint shown first), deletes only the app's copy, and has every " +
