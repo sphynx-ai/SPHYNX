@@ -58,4 +58,12 @@ class GgufTuningTest {
         assertNull(GgufTuning.leakGrowthMb(listOf(500, 400)))
         assertEquals(-10L, GgufTuning.leakGrowthMb(listOf(-1, 500, 410, 400)))
     }
+
+    // Phase 8 G8: a GPU run (Vulkan test build) is reported on its own and never counts as a thread setting
+    @Test fun aGpuRunIsReportedApart() {
+        val runs = listOf(r(4, 22.0), r(2, 17.0), r(6, 11.0), r(4, 18.5, kv8 = true), r(4, 30.0).copy(gpu = true))
+        assertEquals(4, GgufTuning.bestThreads(runs, cores = 8))
+        assertTrue(GgufTuning.summary(runs, cores = 8).contains("; GPU (Vulkan) 30.0."))
+        assertEquals(true, GgufTuning.kv8NoLoss(listOf(r(4, 13.0), r(4, 12.8, kv8 = true), r(4, 5.0).copy(gpu = true))))
+    }
 }

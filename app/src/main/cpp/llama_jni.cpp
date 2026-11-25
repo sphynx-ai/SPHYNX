@@ -43,12 +43,19 @@ Java_com_sphynx_inference_LlamaJni_nativeInfo(JNIEnv * env, jobject) {
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_sphynx_inference_LlamaJni_nativeLoad(JNIEnv * env, jobject, jstring jpath, jint nCtx, jint threads, jboolean kv8) {
+Java_com_sphynx_inference_LlamaJni_nativeLoad(JNIEnv * env, jobject, jstring jpath, jint nCtx, jint threads, jboolean kv8,
+                                              jint gpuLayers) {
     sphynx_llama_init(logToAndroid);
     std::string err;
-    SphynxLlama * h = sphynx_llama_load(jstr(env, jpath), nCtx, threads, err, kv8 == JNI_TRUE);
+    SphynxLlama * h = sphynx_llama_load(jstr(env, jpath), nCtx, threads, err, kv8 == JNI_TRUE, gpuLayers);
     { std::lock_guard<std::mutex> l(g_errMutex); g_loadError = h ? "" : err; }
     return reinterpret_cast<jlong>(h);
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_sphynx_inference_LlamaJni_nativeHasGpu(JNIEnv *, jobject) {
+    sphynx_llama_init(logToAndroid);
+    return sphynx_llama_has_gpu() ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL

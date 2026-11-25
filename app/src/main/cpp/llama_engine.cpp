@@ -102,10 +102,19 @@ std::string sphynx_llama_info() {
     return std::string("llama.cpp ") + LLAMA_PIN_TAG + " (" + LLAMA_PIN_COMMIT + ") | " + llama_print_system_info();
 }
 
-SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads, std::string & err, bool kv8) {
+bool sphynx_llama_has_gpu() {
+    for (size_t i = 0; i < ggml_backend_dev_count(); i++) {
+        auto t = ggml_backend_dev_type(ggml_backend_dev_get(i));
+        if (t == GGML_BACKEND_DEVICE_TYPE_GPU || t == GGML_BACKEND_DEVICE_TYPE_IGPU) return true;
+    }
+    return false;
+}
+
+SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads, std::string & err, bool kv8, int gpuLayers) {
     logClear();
     llama_model_params mp = llama_model_default_params();
-    mp.n_gpu_layers = 0;                       // CPU backend only in this build
+    // the CPU unless this is the Vulkan test build and the caller asks for the GPU (Phase 8 G8)
+    mp.n_gpu_layers = sphynx_llama_has_gpu() ? gpuLayers : 0;
     llama_model * model = nullptr;
     try { model = llama_model_load_from_file(path.c_str(), mp); }
     catch (const std::bad_alloc &) { err = "not enough memory to load this model"; return nullptr; }
@@ -133,7 +142,7 @@ SphynxLlama * sphynx_llama_load(const std::string & path, int nCtx, int threads,
         return nullptr;
     }
     auto * h = new SphynxLlama();
-    h->model = model; h->ctx = ctx; h->nCtx = (int) llama_n_ctx(ctx); h->threads = threads; h->kv8 = kv8;
+    h->model = model; h->ctx = ctx; h->nCtx = (int) llama_n_ctx(ctx); h->threads = threads; h->kv8 = kv8; h->gpuLayers = mp.n_gpu_layers;
     // a cancel also stops a long prompt in the middle of its computation
     llama_set_abort_callback(ctx, [](void * d) { return static_cast<SphynxLlama *>(d)->cancel.load(); }, h);
     { std::lock_guard<std::mutex> l(g_regMutex); g_live.insert(h); }
@@ -176,7 +185,8 @@ std::string sphynx_llama_describe(const SphynxLlama * ch) {
     snprintf(nums, sizeof nums, "\"sizeBytes\":%llu,\"params\":%llu,\"nCtx\":%d,\"threads\":%d,\"templated\":%s",
              (unsigned long long) llama_model_size(h->model), (unsigned long long) llama_model_n_params(h->model),
              h->nCtx, h->threads, llama_model_chat_template(h->model, nullptr) ? "true" : "false");
-    std::string vision = std::string(",\"vision\":") + (h->vision ? "true" : "false") + ",\"kv8\":" + (h->kv8 ? "true" : "false");
+    std::string vision = std::string(",\"vision\":") + (h->vision ? "true" : "false") + ",\"kv8\":" + (h->kv8 ? "true" : "false") +
+        ",\"gpuLayers\":" + std::to_string(h->gpuLayers);
     return std::string("{\"model\":\"") + jsonEscape(buf) + "\"," + nums + vision + "}";
 }
 

@@ -33,3 +33,4 @@ Thumbs.db
 # Phase 8 G3: the native test copies llama.cpp's x86 CPU code here for the CI computer only; build output
 app/src/main/cpp/llama.cpp/ggml/src/ggml-cpu/arch/x86/
 tools/native-test/build/
+app/src/main/cpp/llama.cpp/ggml/src/ggml-vulkan/

@@ -46,6 +46,9 @@ class LlamaCppBackend(
 
     override fun status(): RuntimeStatus = st
 
+    /** Phase 8 G8: this build can put a GGUF model on the GPU (the Vulkan test build made by CI). */
+    fun hasGpu(): Boolean = try { native.hasGpu() } catch (t: Throwable) { false }
+
     override fun check(config: ModelConfiguration): InferenceError? {
         if (config.backend != BackendType.LLAMA_CPP) return InferenceError.UnsupportedFormat("${config.displayName} is a ${config.backend.label} model")
         native.unavailableReason?.let { return InferenceError.LoadFailed(it) }
@@ -77,12 +80,14 @@ class LlamaCppBackend(
             st = st.moveTo(RuntimeState.FAILED, error = problem)
         } else {
             val threads = if (config.threads > 0) config.threads else LlamaCpu.threads()
-            var h = try { native.loadWith(config.location, config.contextTokens, threads, config.kvCache8Bit) } catch (t: Throwable) { 0L }
+            // Phase 8 G8: all layers on the GPU when the configuration lists the GPU first and this is the Vulkan test build
+            val gpuLayers = if (config.accelerators.firstOrNull() == Accelerator.GPU && native.hasGpu()) 999 else 0
+            var h = try { native.loadWith(config.location, config.contextTokens, threads, config.kvCache8Bit, gpuLayers) } catch (t: Throwable) { 0L }
             // Phase 8 G5: some models can't have the 8-bit cache (llama.cpp needs attention heads a multiple of 32 wide):
             // they load with the normal 16-bit cache instead
             if (h == 0L && config.kvCache8Bit) {
                 kv8Refused = native.loadError().ifBlank { "unknown reason" }
-                h = try { native.loadWith(config.location, config.contextTokens, threads, false) } catch (t: Throwable) { 0L }
+                h = try { native.loadWith(config.location, config.contextTokens, threads, false, gpuLayers) } catch (t: Throwable) { 0L }
             } else kv8Refused = null
             if (h == 0L) {
                 st = st.moveTo(RuntimeState.FAILED, error = nativeError(native.loadError().ifBlank { "unknown reason" }, loading = true))
@@ -97,7 +102,7 @@ class LlamaCppBackend(
                     projectorError = why.ifEmpty { null }
                 } else projectorError = null
                 modelInfo = try { native.describe(h) } catch (t: Throwable) { null }
-                st = st.moveTo(RuntimeState.READY, accelerator = Accelerator.CPU, visionOk = vision)
+                st = st.moveTo(RuntimeState.READY, accelerator = if (gpuLayers > 0) Accelerator.GPU else Accelerator.CPU, visionOk = vision)
             }
         }
         st
