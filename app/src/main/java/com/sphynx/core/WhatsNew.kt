@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-25", Kind.NEW, "The Model Lab",
+            "The Model page now starts with the Model Lab: one card for every model the app holds (LiteRT-LM, GGUF and " +
+                "mmproj files), with its family, quantization, size, whether it reads pictures, where it came from, its " +
+                "fingerprint, and the job it does. From the card you can give it the strategic or tactical job (any kept " +
+                ".litertlm too), change its own settings, and delete the app's copy. A file in Sphynx-Storage/Input stays " +
+                "there and is not copied back unless it changes. The cards in use come first.",
+            pr = 128, needsDeviceCheck = true, version = "38.37"),
         Entry("2026-11-25", Kind.IMPROVED, "Settings per model (ready for the Model Lab)",
             "Behind the scenes: each model can now have its own settings: context length, temperature, threads and the " +
                 "8-bit cache (GGUF), which processors it may use, and whether its picture part loads. Each value is checked " +
