@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-25", Kind.IMPROVED, "Phase 9 plan: the Model Lab",
+            "Behind the scenes: the plan for Phase 9 is written for your OK. It covers one list of every model with its " +
+                "details and state, checks for every file before it loads, more than two LiteRT-LM files, settings per " +
+                "model, storage use, and a short guide. It has four questions for you.",
+            pr = 123, needsDeviceCheck = true, version = "38.32"),
         Entry("2026-11-25", Kind.IMPROVED, "Phase 8 results from your phone",
             "Behind the scenes: from your 11-25 upload. The new llama.cpp writes Llama 3.2 1B at 22 tokens a second " +
                 "(13.4 before) even with your phone hot; 4 threads is best; the 8-bit cache cost 16% speed, so it stays off; " +
