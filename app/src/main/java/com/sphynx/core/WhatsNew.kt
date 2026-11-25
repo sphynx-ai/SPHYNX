@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-25", Kind.IMPROVED, "Phase 8 results from your phone",
+            "Behind the scenes: from your 11-25 upload. The new llama.cpp writes Llama 3.2 1B at 22 tokens a second " +
+                "(13.4 before) even with your phone hot; 4 threads is best; the 8-bit cache cost 16% speed, so it stays off; " +
+                "loading and unloading 20 times left no memory behind. Two checks remain: the Vulkan test app on the GPU, " +
+                "and the tactical minimap pictures after today's fix.",
+            pr = 122, needsDeviceCheck = true, version = "38.31"),
         Entry("2026-11-25", Kind.NEW, "A Vulkan test app for GGUF on the GPU",
             "Your choice for the GPU: GitHub now builds a separate Vulkan test app every time the GGUF engine changes. It " +
                 "installs next to Sphynx (its version ends in -vulkan-test), so your normal app and its data stay as they are. " +
@@ -42,29 +48,29 @@ object WhatsNew {
                 "steps are: model details before loading, real engine tests on every change, a safer engine, a benchmark " +
                 "with the best thread count, a newer llama.cpp, stability checks, and pictures for the tactical model. The " +
                 "checklist for testing it all at once is in the Phase 8 plan.",
-            pr = 119, needsDeviceCheck = true, version = "38.28"),
+            pr = 119, needsDeviceCheck = false, version = "38.28"),
         Entry("2026-11-23", Kind.IMPROVED, "GGUF on the GPU: checked, not added yet",
             "Behind the scenes: the GPU (Vulkan) version of the GGUF engine was built and measured. It needs about 1,300 " +
                 "GPU programs compiled while the app is built, which your phone build can't do, and it would make the app " +
                 "about 35 MB bigger. GGUF stays on the CPU for now; the options are written down for your choice.",
-            pr = 118, needsDeviceCheck = true, version = "38.27"),
+            pr = 118, needsDeviceCheck = false, version = "38.27"),
         Entry("2026-11-23", Kind.NEW, "GGUF stability checks",
             "The GGUF benchmark card has a new button: Load and unload 20 times. It loads one GGUF model 20 times in a row " +
                 "and checks that the app's memory comes back each time. During a 5v5 with a GGUF model doing a job, the app " +
                 "also writes the memory, heat and battery temperature once a minute. Both are saved for the Debug data upload.",
-            pr = 117, needsDeviceCheck = true, version = "38.26"),
+            pr = 117, needsDeviceCheck = false, version = "38.26"),
         Entry("2026-11-23", Kind.IMPROVED, "Newer llama.cpp for GGUF models (b12651)",
             "The GGUF engine is updated from llama.cpp b11900 (October) to b12651 (November 23), the newest release. It " +
                 "knows 16 more model families. Your phone test decides whether it stays: run the GGUF benchmark on the same " +
                 "models as before; if it is slower or answers worse, the app goes back to b11900.",
-            pr = 116, needsDeviceCheck = true, version = "38.25"),
+            pr = 116, needsDeviceCheck = false, version = "38.25"),
         Entry("2026-11-23", Kind.NEW, "A GGUF benchmark, and the best thread count per model",
             "The Model page has a GGUF benchmark. It asks one GGUF model three fixed questions with 4, 2 and 6 CPU threads, " +
                 "then with 4 threads and an 8-bit memory cache (about half the context memory), loading each setting fresh. " +
                 "It shows the writing speed of each, and keeps the fastest thread count for that model when it is clearly " +
                 "faster than 4. Every answer is saved with its speed, memory and heat for the Debug data upload. The " +
                 "8-bit cache stays off until your test shows it costs nothing.",
-            pr = 115, needsDeviceCheck = true, version = "38.24"),
+            pr = 115, needsDeviceCheck = false, version = "38.24"),
         Entry("2026-11-23", Kind.NEW, "The tactical model can look at the minimap",
             "A new Model page switch, Tactical model reads the minimap (pictures), off by default. With it on, and a " +
                 "tactical model that reads pictures (a .litertlm with vision, or a GGUF with its mmproj), the model looks at " +
@@ -72,36 +78,36 @@ object WhatsNew {
                 "grouped, turtle or lord. That line goes into the next fight questions; fight advice never waits for a " +
                 "picture. The job picker now marks models that read text only. Each reading is saved next to what the " +
                 "detectors saw, so the Debug data shows whether it helps.",
-            pr = 114, needsDeviceCheck = true, version = "38.23"),
+            pr = 114, needsDeviceCheck = false, version = "38.23"),
         Entry("2026-11-23", Kind.FIXED, "Safer GGUF engine",
             "The GGUF engine (llama.cpp) can no longer crash the app from a stop or unload that comes at the wrong moment: " +
                 "it now knows which models it has loaded, refuses a call on one already freed, and waits for a running " +
                 "answer to stop before freeing it. If the phone runs out of memory while loading or answering, the Model " +
                 "page says so in plain words instead of the app closing.",
-            pr = 113, needsDeviceCheck = true, version = "38.22"),
+            pr = 113, needsDeviceCheck = false, version = "38.22"),
         Entry("2026-11-23", Kind.IMPROVED, "The GGUF engine is now tested for real on every change",
             "Behind the scenes: every change to the app now also builds the real GGUF engine (llama.cpp) on GitHub's " +
                 "computer and runs it with a tiny test model: loading, streamed answers, stopping an answer (also from " +
                 "another thread), broken files, a picture without its mmproj, and 20 loads in a row. Until now the engine " +
                 "was only compiled there. Nothing changes in the app itself.",
-            pr = 112, needsDeviceCheck = true, version = "38.21"),
+            pr = 112, needsDeviceCheck = false, version = "38.21"),
         Entry("2026-11-23", Kind.IMPROVED, "GGUF models are checked before they load",
             "The app now reads a GGUF file's own description before llama.cpp opens it: the model family, the " +
                 "quantization (for example Q4_K_M), its size, how much text it was trained for, and whether it has a chat " +
                 "format. The job picker shows this under each GGUF model. A broken file, an unfinished download, or a model " +
                 "family newer than the app's llama.cpp is refused with the reason, instead of failing inside the engine.",
-            pr = 111, needsDeviceCheck = true, version = "38.20"),
+            pr = 111, needsDeviceCheck = false, version = "38.20"),
         Entry("2026-11-23", Kind.IMPROVED, "Phase 8 starts: how the GGUF engine fits together",
             "Behind the scenes: a document now explains how the GGUF engine (llama.cpp) is built into the app, who owns " +
                 "what, its memory, which phones it supports and what each GGUF model measured on your phone. It also lists " +
                 "four safety gaps that the next steps close.",
-            pr = 110, needsDeviceCheck = true, version = "38.19"),
+            pr = 110, needsDeviceCheck = false, version = "38.19"),
         Entry("2026-11-23", Kind.IMPROVED, "Phase 8 plan: finishing the GGUF engine",
             "Behind the scenes: the plan for finishing Phase 8 (GGUF models through llama.cpp) is approved, with your addition: both jobs read pictures. " +
                 "It covers reading a model's details before loading it, tests that run the real engine, safer native code, " +
                 "thread and memory tuning, a repeatable speed test, a newer llama.cpp, an experimental GPU switch, and a " +
                 "full-match stability check.",
-            pr = 109, needsDeviceCheck = true, version = "38.18"),
+            pr = 109, needsDeviceCheck = false, version = "38.18"),
         Entry("2026-11-23", Kind.NEW, "Detectors get their own NPU switch",
             "The Model page has a new switch, Detectors on the NPU (experimental), off by default. It moves only the " +
                 "minimap and screen detectors to the NPU, so Gemma can stay on the GPU (faster on your phone) at the same " +
