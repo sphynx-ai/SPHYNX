@@ -1,6 +1,6 @@
 # Phase 9 — Model Lab and Model Management: audit and execution plan
 
-**Status:** PROPOSED (2026-11-25), waiting for the owner's OK. Phase 8 is phone-tested (closing record `docs/PHASE_8_GGUF_PLAN.md` §8). Its two re-tests (the Vulkan test APK, tactical pictures after #120) run alongside this phase.
+**Status:** **APPROVED by the owner 2026-11-25.** The owner said "Finish all steps and proceed to next phase after everything is done" and answered the questionnaire (section 6), which adds M9 (downloads). IN PROGRESS: all steps are built back to back and phone-tested once at the end (continuous-phases rule). Phase 8's two re-tests (the Vulkan test APK, tactical pictures after #120) run alongside this phase.
 **Based on:** `sphynx-test-branch` at v38.31, read from the code. No phone was used for this plan.
 
 ## 1. Role for this phase (roadmap 3.1)
@@ -11,7 +11,6 @@
 - **Out of scope:**
   - benchmarks across models and their ranking (Phase 10);
   - which models to pair on which phone (Phase 11);
-  - downloads inside the app (see decision 2).
 
 ## 2. What exists (verified by reading the code)
 
@@ -35,6 +34,7 @@
 | M5 | **Storage:** how much each model takes, the space left, a warning before a copy that would fill the phone, and files no record points to (leftovers) offered for deletion | No |
 | M6 | **Lifecycle integration:** the job picker, step-down (Phase 6 S5), the load sentinel (S6) and processor memory (L9) read and write the registry instead of loose settings keys. The old keys are migrated once and kept as a fallback for one version | No (same behaviour) |
 | M7 | **Export for debugging:** the registry (without paths that name the owner's account) is exported to Recordings and uploaded (debug-data rule) | No |
+| M9 | **Downloads from Hugging Face** (owner, 2026-11-25). The Lab has a short list of known-good models (the supported LiteRT-LM and GGUF files, with their mmproj files). Each entry shows its size and Hugging Face's SHA-256 **before** the download starts. Downloads go into `Sphynx-Storage/Input`, can resume, warn when the phone is not on Wi-Fi, and are checked against the hash before the Lab takes the file. Nothing downloads by itself. The list sits in the app's assets and is updated by PR, never fetched from elsewhere. The only network hosts are huggingface.co and its file servers. Offline, the Lab works as before | Only when the owner starts a download |
 | M8 | **User guide and closing record:** a short guide (adding a model, which file goes where, mmproj files, reading the Lab), the phone checklist and the closing record | No |
 
 ## 4. Acceptance criteria (roadmap deliverables)
@@ -45,7 +45,8 @@
 - [ ] Per-model configuration profiles with safe limits; the defaults keep today's behaviour (M4).
 - [ ] Storage use is explicit and leftover files can be removed (M5).
 - [ ] The existing choosers and memories use the registry; old settings are migrated without loss (M6).
-- [ ] Tests for the schema, validation, migration and profiles; a user guide (M1–M8).
+- [ ] Downloads show size and hash first, resume, verify the hash, and never start by themselves (M9).
+- [ ] Tests for the schema, validation, migration and profiles; a user guide (M1–M9).
 
 ## 5. Risks
 
@@ -53,9 +54,9 @@
 - **SHA-256 of a 2.6 GB file** takes several seconds on the phone. It is computed once, during the copy, in the background.
 - **More than one `.litertlm`:** today's slot names (`gemma-strategic`, `gemma-tactical`) are referenced in many places. M2 keeps those names for the two files in use and stores the others under their own names.
 
-## 6. Owner decisions needed
+## 6. Owner decisions (2026-11-25)
 
-1. **Several LiteRT-LM files:** keep every `.litertlm` from the Input folder (more storage), or keep only the two in use, as today?
-2. **Downloads:** add model downloads inside the app (from Hugging Face, with the hash shown), or keep today's way (put the file in the Input folder, or pick it)? The roadmap says to avoid opaque downloads.
-3. **Deleting:** may the Lab also delete the original in `Sphynx-Storage/Input`, or only the app's copy?
-4. **Per-model settings (M4):** which ones should the owner see: all of the list above, or only context length and temperature?
+1. **Several LiteRT-LM files:** keep every `.litertlm` from the Input folder, each listed and assignable.
+2. **Downloads:** yes, from Hugging Face (M9), with the size and hash shown first.
+3. **Deleting:** only the app's copy; the original in `Sphynx-Storage/Input` stays.
+4. **Per-model settings:** all of them (context length, temperature, threads, 8-bit cache, processor order, pictures), with today's values as the defaults.
