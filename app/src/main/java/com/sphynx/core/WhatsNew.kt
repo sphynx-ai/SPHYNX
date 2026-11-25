@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-25", Kind.NEW, "Model Lab guide and phone checklist",
+            "A short guide to the Model Lab is in docs/PHASE_9_MODEL_LAB_GUIDE.md: adding a model (download, the Input " +
+                "folder, a GGUF file), which file goes where, picture parts (mmproj), reading a card, and freeing room. " +
+                "The phone checklist for the whole of Phase 9 is in docs/PHASE_9_MODEL_LAB_PLAN.md, section 7.",
+            pr = 133, needsDeviceCheck = true, version = "38.42"),
         Entry("2026-11-25", Kind.NEW, "Download a model from Hugging Face",
             "The Model page has DOWNLOAD A MODEL: a short list of models known to work with Sphynx (LiteRT-LM and GGUF, " +
                 "with and without pictures). Each one shows its size and its Hugging Face fingerprint (SHA-256) before " +
