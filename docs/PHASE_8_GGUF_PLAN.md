@@ -1,6 +1,6 @@
 # Phase 8 — GGUF / llama.cpp Backend Integration: audit and execution plan
 
-**Status:** **APPROVED by the owner 2026-11-23** ("approve phase 8 plan, try vulkan and newer llama.cpp"), with one addition: **both jobs use pictures** (G11). **Built in code: G1–G7, G9, G10, G11 (v38.19–v38.28, PRs #110–#119). G8 (Vulkan) stopped at its first sub-step, waiting for the owner's choice** (`docs/PHASE_8_GGUF_NATIVE.md` §8). The owner's phone test of the whole phase is pending (Section 7). Phase 8 has run since 2026-11-14 by owner decision (MASTER_DEVELOPMENT_PLAN section 9.1).
+**Status:** **Phone-tested by the owner (2026-11-25, "All tests is good", v38.28); closing record in Section 8.** All steps are built (v38.19–v38.30, PRs #110–#121). **Two device checks remain open**, both re-tests: the GPU benchmark with the CI-built Vulkan test APK (G8), and tactical minimap pictures after fix #120 (G11). They run alongside the next phase. Approved by the owner 2026-11-23 ("approve phase 8 plan, try vulkan and newer llama.cpp"), with the addition G11. Phase 8 has run since 2026-11-14 by owner decision (MASTER_DEVELOPMENT_PLAN section 9.1).
 **Based on:** `sphynx-test-branch` at v38.17, read from the code. No phone was used for this plan.
 
 ## 1. Role for this phase (roadmap 3.1)
@@ -49,14 +49,14 @@ G11 is built right after G4, on b11900. G7 comes after G2–G6 and G11, so its r
 
 - [x] Native integration architecture, JNI boundary and supported ABI/device matrix are documented (G1): `docs/PHASE_8_GGUF_NATIVE.md` (v38.19).
 - [x] A GGUF file's metadata is read and checked before native code opens it; a broken file is refused with the reason (G2): `inference/GgufInfo` and `GgufArchitectures`, used by `LlamaCppBackend.check` and `GgufLibrary.add` (v38.20). Phone check pending.
-- [ ] Native tests run the real engine in CI: load, answer, stream, cancel, unload and errors (G3, G4). **G3 in CI (v38.21):** `tools/native-test` builds `llama_engine.cpp` and the vendored llama.cpp for the CI computer (only llama.cpp's x86 CPU code is copied from the same tag) and runs 21 checks against a tiny random model made with llama.cpp's gguf-py, so no model is downloaded. 21 of 21 passed in this container on 2026-11-23.
+- [x] Native tests run the real engine in CI: load, answer, stream, cancel, unload and errors (G3, G4). **G3 in CI (v38.21):** `tools/native-test` builds `llama_engine.cpp` and the vendored llama.cpp for the CI computer (only llama.cpp's x86 CPU code is copied from the same tag) and runs 21 checks against a tiny random model made with llama.cpp's gguf-py, so no model is downloaded. 21 of 21 passed in this container on 2026-11-23.
 - [x] No crash from a wrong handle, unloading during an answer, or running out of memory (G4): handle registry, free waits for running calls, `bad_alloc` → `NotEnoughMemory`; native tests under ASan/UBSan (v38.22).
-- [ ] Reproducible benchmarks with model, quantization, threads, cold/warm state and device recorded, on the owner's phone (G5, G6). **In code (v38.24):** `models/GgufBenchmark` (Model page card), rows in `research/gguf_bench.jsonl`, choices in `inference/GgufTuning` (tested). 8-bit KV cache in the engine (`kv8`, q8_0 + flash attention), with a fall-back to 16 bits for models that can't have it (found by the native test: attention heads must be a multiple of 32 wide). Phone measurements pending.
-- [ ] The llama.cpp version decision is recorded with its evidence (G7). **Upgrade in code (v38.25):** b11900 → **b12651** (`f5e6915`, 2026-11-23, the newest tag) through `tools/update-llama.sh`, which gives no change when run with b11900. The engine compiles without changes (two deprecated calls kept on purpose). The native test passes 32 of 32 in the container. 16 new model families, none removed. **Kept only if the phone test is as good** (the G6 benchmark on the same models); otherwise the pin goes back.
+- [x] Reproducible benchmarks with model, quantization, threads, cold/warm state and device recorded, on the owner's phone (G5, G6). **In code (v38.24):** `models/GgufBenchmark` (Model page card), rows in `research/gguf_bench.jsonl`, choices in `inference/GgufTuning` (tested). 8-bit KV cache in the engine (`kv8`, q8_0 + flash attention), with a fall-back to 16 bits for models that can't have it (found by the native test: attention heads must be a multiple of 32 wide). Phone measurements pending.
+- [x] The llama.cpp version decision is recorded with its evidence (G7). **Upgrade in code (v38.25):** b11900 → **b12651** (`f5e6915`, 2026-11-23, the newest tag) through `tools/update-llama.sh`, which gives no change when run with b11900. The engine compiles without changes (two deprecated calls kept on purpose). The native test passes 32 of 32 in the container. 16 new model families, none removed. **Kept only if the phone test is as good** (the G6 benchmark on the same models); otherwise the pin goes back.
 - [ ] Each acceleration path is benchmarked rather than assumed: CPU threads and KV cache (G5), GPU through Vulkan (G8). **G8 first sub-step done, stopped by the plan's own rule (2026-11-23):** Vulkan builds on a computer but needs glslc, SPIR-V headers and 139 MB of generated shader code, which the owner's phone build (Code on the Go) cannot produce. Findings and three options in `docs/PHASE_8_GGUF_NATIVE.md` §8. **Owner chose option 2 (2026-11-25):** a CI-built Vulkan test APK (v38.30); its benchmark on the phone decides.
 - [ ] Both jobs read pictures when their model can (LiteRT-LM vision or GGUF + mmproj); a text-only model is marked as such in the picker (G11). **In code (v38.23):** `ai/TacticalSight` (pure rules tested), switch `Cfg.tacticalSightOn` (off by default), tactical loads with pictures through `Roles.loadLiteRt` / `ProbesWiring.loadFor` / `StepDown.configFor`, readings logged to `research/tactical_sight.jsonl` next to the detector counts (exported from the Debug data page).
-- [ ] Memory, heat and stability over a full match are measured on the phone (G9). **In code (v38.26):** `models/GgufStability`: 20 load/unload cycles with the memory after each unload (`research/gguf_stability.jsonl`, `GgufTuning.leakSummary` tested), and one row a minute during a 5v5 with a GGUF job (`research/match_resources.jsonl`). Phone measurements pending.
-- [ ] A supported GGUF model list with measured figures, and troubleshooting documentation (G1, G10). **Checklist in Section 7 (v38.28)**; the list is filled from the phone's benchmark.
+- [x] Memory, heat and stability over a full match are measured on the phone (G9). **In code (v38.26):** `models/GgufStability`: 20 load/unload cycles with the memory after each unload (`research/gguf_stability.jsonl`, `GgufTuning.leakSummary` tested), and one row a minute during a 5v5 with a GGUF job (`research/match_resources.jsonl`). Phone measurements pending.
+- [x] A supported GGUF model list with measured figures, and troubleshooting documentation (G1, G10). **Checklist in Section 7 (v38.28)**; the list is filled from the phone's benchmark.
 
 ## 5. Risks
 
@@ -89,6 +89,35 @@ After `git pull` on `sphynx-test-branch` and a rebuild (v38.28). The first build
 7. **Safety (G4):** while a GGUF answer is running (test question), press Stop, unload, and load again. No crash.
 8. **Upload:** Debug data page → export research files and upload. That uploads `gguf_bench.jsonl`, `gguf_stability.jsonl`, `match_resources.jsonl` and `tactical_sight.jsonl`. Then tell me "all test are good", or what failed, and your choice for G8 (Vulkan): 1, 2 or 3.
 
-## 8. Closing record
+## 8. Closing record (2026-11-25)
 
-Filled in after the owner's phone test: the supported GGUF model list with measured figures (from `gguf_bench.jsonl`), the llama.cpp decision (keep b12651 or go back), the 8-bit cache decision, the tactical picture finding (from `tactical_sight.jsonl`), and the G8 choice.
+**Owner phone test:** "All tests is good" (2026-11-25), on v38.28. The debug upload is `42a4c90` on `recordings-for-debugging` (gguf_bench, gguf_stability, match_resources, model_speed and the diagnostics log).
+
+**Conditions:**
+- The phone reported **severe thermal throttling** (Android thermal status 3) for the whole session, from 13:20, with the battery at 40–42 °C.
+- Gemma 4 E2B was loaded on the GPU during the GGUF runs.
+- So the figures below are the phone under heat, not its best.
+
+| Finding | Evidence | Decision |
+|---|---|---|
+| **llama.cpp b12651 (G7)** | Llama 3.2 1B Q4_K_M, 4 threads, warm: **21.8–22.1 tokens/s** writing (b11900 on 2026-11-14: 13.4, also with Gemma loaded); reading 81–85 tokens/s; first word 0.35–0.44 s; load 2.3 s | **Keep b12651** |
+| **Threads (G5)** | 2 threads 17.0 tokens/s; 4 threads **22.0**; 6 threads **6.0**, and one question gave no answer in 200 s. The two extra threads land on the slower cores | **4 threads** (the default), kept by the benchmark |
+| **8-bit KV cache (G5)** | 18.1–18.9 tokens/s against 22.0 (**84%**); same answers | **Stays off** (owner rule: on only with no loss) |
+| **Stability (G9)** | 20 loads and unloads: app memory after each unload **2,122 MB every time** (+0 MB); load 2.29–2.57 s | **No leak** |
+| **A 5v5 with a GGUF job (G9)** | Strategic job on Llama 3.2 1B: answers in 5.6–10.1 s; app 958–962 MB; app CPU 5–34%; no crash | **Works** |
+| **GGUF details (G2)** | The log shows "llama · Q4_K_M · 1B · trained for 131,072 tokens · chat format" and "qwen2 · Q4_K_M · 630M · trained for 32,768 tokens · chat format" | Works |
+| **Tactical pictures (G11)** | **A bug:** Gemma 3 270M (text only) reloaded with a picture part, and every tactical question failed (13:46–13:50). It was not visible on the phone because play falls back to the rules | **Fixed in #120 (v38.29); re-test** |
+| **Speed records** | A GGUF job was recorded under the LiteRT-LM name ("Gemma 4 E2B") | Fixed in #120 |
+| **GPU / Vulkan (G8)** | The phone build can't make it; the owner chose option 2 | **CI Vulkan test APK (#121, v38.30); benchmark on the phone** |
+
+**Supported GGUF list (owner's phone):**
+
+| Model | File | Measured | Status |
+|---|---|---|---|
+| Llama 3.2 1B Instruct | Q4_K_M, 770 MB | 22.0 tokens/s writing (4 threads, b12651, throttled), load 2.3 s | **Supported** |
+| Qwen2.5 0.5B Instruct | Q4_K_M, 468 MB | Loads in 1.0 s; not benchmarked on b12651 (25.5 tokens/s on b11900, 2026-11-14) | Supported (load checked) |
+| Gemma 3 4B + mmproj | Q4_K_M | Not tested | Not on the list yet |
+
+**Open (re-tests, next to the next phase):**
+1. Install the Vulkan test APK and run the GGUF benchmark: does the GPU row beat 22 tokens/s?
+2. Turn on "Tactical model reads the minimap": a text-only tactical model must keep answering, and a picture-reading one must write readings (`tactical_sight.jsonl`).
