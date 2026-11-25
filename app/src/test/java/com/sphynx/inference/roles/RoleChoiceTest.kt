@@ -29,4 +29,15 @@ class RoleChoiceTest {
         assertEquals("qwen.gguf (GGUF, CPU)", RoleChoice.label(ModelRole.TACTICAL, RoleChoice.gguf("qwen.gguf"), "x"))
         assertEquals("gemma-3-4b.gguf (GGUF, CPU, reads pictures)", RoleChoice.label(ModelRole.STRATEGIC, RoleChoice.gguf("gemma-3-4b.gguf"), "x", withPictures = true))
     }
+
+    // Phase 9 M3: a .litertlm from the app's LiteRT-LM library can do a job
+    @Test fun aLibraryLiteRtLmFile() {
+        assertEquals("gemma-3n-E2B.litertlm", RoleChoice.liteFile(RoleChoice.lite("gemma-3n-E2B.litertlm")))
+        assertEquals(null, RoleChoice.liteFile(RoleChoice.LITERT))
+        assertEquals(null, RoleChoice.liteFile(RoleChoice.gguf("x.gguf")))
+        assertEquals(null, RoleChoice.ggufFile(RoleChoice.lite("x.litertlm")))
+        assertEquals("gemma-3n-E2B.litertlm (LiteRT-LM)", RoleChoice.label(ModelRole.STRATEGIC, RoleChoice.lite("gemma-3n-E2B.litertlm"), "Gemma"))
+        // a library file and a GGUF can share the two jobs
+        assertEquals(null, RoleChoice.problem(ModelRole.TACTICAL, RoleChoice.lite("a.litertlm"), RoleChoice.gguf("b.gguf")))
+    }
 }

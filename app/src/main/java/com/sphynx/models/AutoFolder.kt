@@ -274,7 +274,10 @@ object AutoFolder {
                                 // Phase 9 M2 (owner, 2026-11-25): every other .litertlm is kept in the app's LiteRT-LM library
                                 n.endsWith(".litertlm") && e !== bigModel -> {
                                     val dst = File(liteLibrary(app), ModelManager.safeFileName(e.name))
-                                    if (changed("lite_" + dst.name, e, dst)) {
+                                    // deleted in the Model Lab (owner: only the app's copy): not copied again until the
+                                    // file in Input changes
+                                    if (Cfg.raw("lab_deleted_" + dst.name) == "${e.name}:${e.size}:${e.modified}") { }
+                                    else if (changed("lite_" + dst.name, e, dst)) {
                                         status = "copying ${e.name}..."
                                         copy(e, dst) { b -> status = "copying ${e.name}... ${b / 1048576} MB" }
                                         remember("lite_" + dst.name, e)

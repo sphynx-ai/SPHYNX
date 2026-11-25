@@ -9,6 +9,8 @@ object RoleChoice {
 
     const val LITERT = "litertlm"
     private const val GGUF = "gguf:"
+    // Phase 9 M3: a LiteRT-LM file from the app's LiteRT-LM library (not the job's own file)
+    private const val LITE_FILE = "litertlm:"
 
     fun settingKey(role: ModelRole) = "role_model_" + role.name.lowercase()
 
@@ -16,6 +18,12 @@ object RoleChoice {
     fun ggufFile(value: String?): String? = value?.takeIf { it.startsWith(GGUF) }?.removePrefix(GGUF)?.trim()?.takeIf { it.isNotEmpty() }
 
     fun gguf(fileName: String) = GGUF + fileName
+
+    /** Phase 9 M3: the library .litertlm file chosen for a role, or null (the job's own file, a GGUF, unknown values). */
+    fun liteFile(value: String?): String? =
+        value?.takeIf { it.startsWith(LITE_FILE) }?.removePrefix(LITE_FILE)?.trim()?.takeIf { it.isNotEmpty() }
+
+    fun lite(fileName: String) = LITE_FILE + fileName
 
     /**
      * Why choosing [value] for [role] is not allowed, or null. Phase 6 runs one GGUF model at a time, so the two jobs
@@ -32,5 +40,6 @@ object RoleChoice {
     /** The words on the Model page for a role's choice. */
     fun label(role: ModelRole, value: String?, liteName: String, withPictures: Boolean = false): String =
         ggufFile(value)?.let { "$it (GGUF, CPU" + (if (role == ModelRole.STRATEGIC) (if (withPictures) ", reads pictures" else ", text only") else "") + ")" }
+            ?: liteFile(value)?.let { "$it (LiteRT-LM)" }
             ?: "$liteName (LiteRT-LM)"
 }

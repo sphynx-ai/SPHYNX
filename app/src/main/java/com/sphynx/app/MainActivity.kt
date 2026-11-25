@@ -2897,7 +2897,117 @@ class MainActivity : Activity() {
     //  MODEL
     // =====================================================================
 
+    // =====================================================================
+    //  PHASE 9 M3: THE MODEL LAB - every model the app holds, its details, its job, its settings
+    // =====================================================================
+    private fun modelLab() {
+        title("MODEL LAB")
+        val recs = try { com.sphynx.models.ModelRegistry.refresh(this) } catch (t: Throwable) { com.sphynx.models.ModelRegistry.records }
+        if (recs.isEmpty()) {
+            text("No model yet. Put a .litertlm or .gguf file in Sphynx-Storage/Input, or add a GGUF model below.", 13f, color = T.MUTED, describe = false)
+            return
+        }
+        val roles = listOf(com.sphynx.ai.Roles.STRATEGIC, com.sphynx.ai.Roles.TACTICAL)
+        fun jobOf(r: com.sphynx.models.ModelRecord): String? = roles.firstOrNull { role ->
+            val f = ModelManager.fileFor(this, role); f.name == r.fileName && f.length() == r.sizeBytes
+        }?.name?.lowercase()
+        for (r in recs.sortedWith(compareBy({ jobOf(it) == null }, { it.format.ordinal }, { it.fileName }))) {
+            val cd = card()
+            val job = jobOf(r)
+            cardHeader(cd, r.fileName, job ?: r.format.label, if (job != null) T.GOLD else T.ACCENT)
+            val loaded = job?.let { j -> val role = roles.first { it.name.lowercase() == j }
+                if (com.sphynx.ai.Roles.ready(role)) "loaded on " + com.sphynx.ai.Roles.where(role) else "not loaded" }
+            cardNote(cd, listOfNotNull(
+                r.summary(),
+                r.contextLength?.let { "trained for $it tokens" },
+                r.projectorFor?.let { "picture part of $it" },
+                "from: " + r.source.label + (r.originalName?.let { " ($it)" } ?: ""),
+                "fingerprint: " + (r.sha256?.take(16)?.plus("…") ?: "not yet (copied before v38.35)"),
+                job?.let { "job: $it, $loaded" },
+                r.settings.takeIf { it.isNotEmpty() }?.entries?.joinToString(", ") { "${it.key} ${it.value}" }?.let { "own settings: $it" },
+            ).joinToString("\n"))
+            if (r.format != com.sphynx.models.ModelRecord.Format.MMPROJ) {
+                inCard(cd, "Give it a job…") { labJob(r) }
+                inCard(cd, "Settings…") { labSettings(r) }
+            }
+            if (job == null && labDeletable(r)) inCard(cd, "Delete the app's copy") {
+                confirm("Delete the app's copy of ${r.fileName} (${r.sizeBytes / 1048576} MB)? A file in Sphynx-Storage/Input stays " +
+                    "there and is not copied again unless it changes.", "Delete") { labDelete(r) }
+            }
+        }
+    }
+
+    // the job's own two files come back from Input at every scan, so only library copies and GGUF files are deleted here
+    private fun labDeletable(r: com.sphynx.models.ModelRecord): Boolean =
+        r.fileName != ModelManager.modelFile(this).name && r.fileName != ModelManager.tacticalFile(this).name
+
+    private fun labFile(r: com.sphynx.models.ModelRecord): java.io.File? = listOf(
+        java.io.File(filesDir, r.fileName), java.io.File(com.sphynx.models.AutoFolder.liteLibrary(this), r.fileName),
+        java.io.File(com.sphynx.models.GgufLibrary.dir(this), r.fileName)).firstOrNull { it.isFile && it.length() == r.sizeBytes }
+
+    private fun labJob(r: com.sphynx.models.ModelRecord) {
+        val rc = com.sphynx.inference.roles.RoleChoice
+        val f = labFile(r) ?: run { toast("The file is gone"); return }
+        val value = when {
+            r.format == com.sphynx.models.ModelRecord.Format.GGUF -> rc.gguf(r.fileName)
+            f.parentFile?.name == "litertlm" -> rc.lite(r.fileName)
+            else -> rc.LITERT                                   // a job's own file
+        }
+        val roles = listOf(com.sphynx.ai.Roles.STRATEGIC, com.sphynx.ai.Roles.TACTICAL)
+        AlertDialog.Builder(this).setTitle("Which job for ${r.fileName}?")
+            .setItems(arrayOf("Strategic job", "Tactical job")) { _, i ->
+                val role = roles[i]
+                rc.problem(role, value, ModelManager.choice(rc.other(role)))?.let { toast(it); return@setItems }
+                if (role == com.sphynx.ai.Roles.STRATEGIC && r.pictures == false)
+                    toast("Note: ${r.fileName} reads text only, so the draft and screen reading are off")
+                val before = ModelManager.choice(role)
+                val ownMb = if (com.sphynx.ai.Roles.ready(role)) ModelManager.fileFor(this, role).length() / 1_048_576L else 0L
+                Cfg.setRaw(rc.settingKey(role), value)
+                afterFitCheck(role, ownMb, cancelled = { Cfg.setRaw(rc.settingKey(role), before) }) { Thread {
+                    com.sphynx.ai.Roles.unload(role)
+                    com.sphynx.ai.Roles.loadByOwner()
+                    val done: (String?) -> Unit = { err -> runOnUiThread { toast(err ?: ("Loaded: " + ModelManager.choiceLabel(this, role))); show("model") } }
+                    if (role == com.sphynx.ai.Roles.STRATEGIC) ModelManager.load(this, done)
+                    else if (Cfg.tacticalLlmOn) ModelManager.loadTactical(this, done)
+                    else runOnUiThread { toast("Saved. Turn on the small tactical model to load it") }
+                }.start() }
+            }.setNegativeButton("Cancel", null).show()
+    }
+
+    private fun labSettings(r: com.sphynx.models.ModelRecord) {
+        val ms = com.sphynx.models.ModelSettings
+        val names = mapOf(ms.CONTEXT to "Context length (tokens)", ms.TEMPERATURE to "Temperature (0 to 1.5)", ms.THREADS to "Threads (1 to 8)",
+            ms.KV8 to "8-bit cache (true / false)", ms.PROCESSORS to "Processors in order (e.g. GPU,CPU)", ms.PICTURES to "Picture part (true / false)")
+        val keys = ms.ALL.filter { k -> ms.problem(k, when (k) { ms.KV8, ms.PICTURES -> "true"; ms.PROCESSORS -> "CPU"; ms.TEMPERATURE -> "0.2"; ms.THREADS -> "4"; else -> "4096" }, r.format) == null }
+        val labels = keys.map { k -> names[k] + ": " + (r.settings[k] ?: "default") }.toTypedArray()
+        AlertDialog.Builder(this).setTitle("Settings of ${r.fileName}")
+            .setItems(labels) { _, i ->
+                val k = keys[i]
+                val input = android.widget.EditText(this).apply { setText(r.settings[k] ?: ""); hint = "empty = default"; setSingleLine() }
+                AlertDialog.Builder(this).setTitle(names[k]).setView(input)
+                    .setPositiveButton("Save") { _, _ ->
+                        val why = com.sphynx.models.ModelRegistry.setSetting(this, r.id, k, input.text.toString())
+                        toast(why ?: "Saved: it is used the next time this model loads"); if (why == null) show("model")
+                    }.setNegativeButton("Cancel", null).show()
+            }.setNegativeButton("Close", null).show()
+    }
+
+    private fun labDelete(r: com.sphynx.models.ModelRecord) {
+        val f = labFile(r) ?: run { toast("The file is gone"); return }
+        val ok = if (r.format == com.sphynx.models.ModelRecord.Format.LITERT_LM) {
+            // remember the Input file it came from, so the next scan does not copy it back (owner: only the app's copy)
+            Cfg.raw("auto_sig_lite_" + f.name)?.let { Cfg.setRaw("lab_deleted_" + f.name, it) }
+            f.delete()
+        } else com.sphynx.models.GgufLibrary.remove(this, f)
+        Cfg.setRaw(com.sphynx.core.FileHash.key(r.fileName, r.sizeBytes), null)
+        try { com.sphynx.models.ModelRegistry.refresh(this) } catch (t: Throwable) { }
+        Diag.info("Model Lab: deleted the app's copy of ${r.fileName}: $ok")
+        toast(if (ok) "Deleted ${r.fileName}" else "Could not delete ${r.fileName}")
+        show("model")
+    }
+
     private fun modelPage() {
+        modelLab()      // Phase 9 M3
         title("FILES")
         text("Put files in Sphynx-Storage/Input (Sphynx-Storage is at the top of the phone's storage, next to Download; the app saves what it makes in Output and Recordings); the app loads them by itself:\n• Gemma 4 E2B (.litertlm) – strategy\n• Gemma 3 270M (.litertlm) – fight advice (optional)\n• mlbb_policies.zip – tactical networks\n• detectors (.tflite + labels) – minimap and screen\n• groq_key.txt – online meta", 13f)
         val mcard = card()
