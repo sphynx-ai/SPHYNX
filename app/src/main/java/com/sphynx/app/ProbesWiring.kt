@@ -84,7 +84,9 @@ object ProbesWiring {
         // a .gguf path is the owner's GGUF choice for the job (Phase 6 S7), anything else the job's LiteRT-LM file
         fun loadFor(role: com.sphynx.inference.ModelRole, path: String, gpu: Boolean): String? =
             if (path.endsWith(".gguf", ignoreCase = true))
-                com.sphynx.models.GgufLibrary.config(java.io.File(path)).let { c ->
+                // Phase 9 M4: the model's own settings from the registry (none = as before)
+                com.sphynx.models.ModelSettings.apply(com.sphynx.models.GgufLibrary.config(java.io.File(path)),
+                    com.sphynx.models.ModelRegistry.settingsFor(java.io.File(path))).let { c ->
                     // Phase 6 S8: the strategic job reads pictures through the model's mmproj file, when there is one;
                     // Phase 8 G11: the tactical job too, when the owner's minimap-picture switch is on
                     roles.load(com.sphynx.inference.roles.Assignment(role,

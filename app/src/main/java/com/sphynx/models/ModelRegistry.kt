@@ -54,6 +54,24 @@ object ModelRegistry {
         return Cfg.raw(key)?.substringBefore(':')
     }
 
+    /** Phase 9 M4: the model's own settings (empty = today's defaults), found by file name and size. */
+    fun settingsFor(fileName: String, sizeBytes: Long): Map<String, String> =
+        records.firstOrNull { it.fileName == fileName && it.sizeBytes == sizeBytes }?.settings ?: emptyMap()
+    fun settingsFor(file: File): Map<String, String> = settingsFor(file.name, file.length())
+
+    /** Changes one setting of the model [id]; the reason when the value is refused, else null. */
+    @Synchronized
+    fun setSetting(ctx: Context, id: String, key: String, value: String): String? {
+        val r = records.firstOrNull { it.id == id } ?: return "no such model"
+        val next = ModelSettings.change(r.settings, key, value, r.format).getOrElse { return it.message }
+        records = records.map { if (it.id == id) it.copy(settings = next) else it }
+        val text = ModelRecord.encodeAll(records)
+        try { file(ctx).writeText(text) } catch (e: Exception) { return "could not save: ${e.message}" }
+        writeBackup(text)
+        Diag.info("Model settings: ${r.fileName} $key = ${value.ifEmpty { "(default)" }}")
+        return null
+    }
+
     /** Rebuilds the registry from the files, keeps what was known, and saves it. Safe to call often. */
     @Synchronized
     fun refresh(ctx: Context): List<ModelRecord> {

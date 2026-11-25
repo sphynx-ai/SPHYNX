@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-25", Kind.IMPROVED, "Settings per model (ready for the Model Lab)",
+            "Behind the scenes: each model can now have its own settings: context length, temperature, threads and the " +
+                "8-bit cache (GGUF), which processors it may use, and whether its picture part loads. Each value is checked " +
+                "against safe limits. None is set yet, so every model runs exactly as before; the Model Lab page will let " +
+                "you change them.",
+            pr = 127, needsDeviceCheck = true, version = "38.36"),
         Entry("2026-11-25", Kind.IMPROVED, "Every LiteRT-LM file is kept, and every model is checked",
             "Your choice: every .litertlm in Sphynx-Storage/Input is now kept, not only the two in use. The others go to the " +
                 "app's LiteRT-LM library, ready for the Model Lab. Before a .litertlm is copied, the app checks that it really is " +
