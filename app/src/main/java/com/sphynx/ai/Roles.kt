@@ -128,6 +128,13 @@ object Roles {
         }
     }
     private fun tryingKey(role: ModelRole) = "proc_trying_" + role.name.lowercase()
+
+    /** Phase 9 M4: the settings of the model serving [role] now (empty when none or not loaded). */
+    private fun loadedSettings(role: ModelRole): Map<String, String> {
+        val loc = router.assignment(role)?.model?.location ?: return emptyMap()
+        val f = File(loc)
+        return if (f.isFile) com.sphynx.models.ModelRegistry.settingsFor(f) else emptyMap()
+    }
     private val loadedKey = ConcurrentHashMap<ModelRole, String>()
 
     /** The processors the switches allow for [role], in the usual order. */
@@ -151,7 +158,9 @@ object Roles {
     fun loadLiteRt(role: ModelRole, path: String, preferGpu: Boolean): String? {
         val f = File(path)
         val key = com.sphynx.inference.roles.ProcessorMemory.modelKey(f.name, if (f.isFile) f.length() else -1L)
-        val allowed = allowedProcessors(role, preferGpu)
+        // Phase 9 M4: the model's own settings (processor order, pictures); none = as before
+        val own = com.sphynx.models.ModelRegistry.settingsFor(f.name, if (f.isFile) f.length() else -1L)
+        val allowed = com.sphynx.models.ModelSettings.processors(own) ?: allowedProcessors(role, preferGpu)
         val order = processors.order(key, allowed)
         if (order != allowed) Diag.info("Processor choice for ${f.name}: " + processors.explain(key, allowed))
         val cfg = ModelConfiguration(
@@ -159,8 +168,9 @@ object Roles {
             location = path, sizeBytes = if (f.isFile) f.length() else -1L, role = role,
             accelerators = order,
             // Phase 8 G11: the tactical job reads pictures too when the owner's switch is on (and the model can)
-            wantsVision = role == ModelRole.STRATEGIC || (role == ModelRole.TACTICAL && com.sphynx.core.Cfg.tacticalSightOn &&
-                com.sphynx.core.Cfg.raw("vision_" + f.name) != "0"))
+            wantsVision = own[com.sphynx.models.ModelSettings.PICTURES] != "false" &&
+                (role == ModelRole.STRATEGIC || (role == ModelRole.TACTICAL && com.sphynx.core.Cfg.tacticalSightOn &&
+                com.sphynx.core.Cfg.raw("vision_" + f.name) != "0")))
         // what the slot will really try, in its order (NPU only when first; GPU when before the CPU; then the CPU)
         val tried = listOfNotNull(Accelerator.NPU.takeIf { LiteRtLmBackend.preferNpu(order) },
             Accelerator.GPU.takeIf { LiteRtLmBackend.preferGpu(order) }, Accelerator.CPU)
@@ -272,7 +282,9 @@ object Roles {
         val id = role.name.lowercase() + "-" + ids.incrementAndGet()
         val jpeg = if (image != null && images(role)) LlmSlot.jpegForModel(image) else null
         val maxOut = router.status(role).config?.maxOutputTokens ?: 256
-        val req = InferenceRequest(id = id, prompt = prompt, image = jpeg, temperature = temperature.toFloat().coerceIn(0f, 2f),
+        // Phase 9 M4: a model's own temperature setting replaces the adviser's
+        val temp = com.sphynx.models.ModelSettings.temperature(loadedSettings(role), temperature)
+        val req = InferenceRequest(id = id, prompt = prompt, image = jpeg, temperature = temp.toFloat().coerceIn(0f, 2f),
             maxOutputTokens = minOf(512, maxOut).coerceAtLeast(1), timeoutMs = 600_000L, purpose = purpose, stopWhen = stopWhen)
         val t0 = System.currentTimeMillis()
         val gguf = !onSlot(role)
