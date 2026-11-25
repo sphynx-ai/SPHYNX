@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-25", Kind.IMPROVED, "Phase 9 starts: the Model Lab",
+            "Behind the scenes: the Model Lab plan is approved with your answers. It keeps every LiteRT-LM file, offers " +
+                "downloads from Hugging Face (size and fingerprint shown first), deletes only the app's copy, and has every " +
+                "per-model setting.",
+            pr = 124, needsDeviceCheck = true, version = "38.33"),
         Entry("2026-11-25", Kind.IMPROVED, "Phase 9 plan: the Model Lab",
             "Behind the scenes: the plan for Phase 9 is written for your OK. It covers one list of every model with its " +
                 "details and state, checks for every file before it loads, more than two LiteRT-LM files, settings per " +
