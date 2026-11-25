@@ -180,6 +180,7 @@ object Roles {
     /** Assigns and loads [a]; null when it loaded, else why not. */
     fun load(a: Assignment): String? {
         val owner = byOwner.also { byOwner = false }
+        if (a.role == ModelRole.TACTICAL) TacticalSight.resetFailures()     // a new load may read pictures again
         sentinel.refusal(a.role, a.model.displayName, owner)?.let { e -> Diag.info("Not loaded: " + e.message); return e.message }
         router.assign(a)?.let { return it }
         sentinel.loading(a.role, a.model.displayName)

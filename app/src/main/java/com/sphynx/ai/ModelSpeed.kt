@@ -50,8 +50,12 @@ object ModelSpeed {
         } catch (t: Throwable) { Diag.error("Model speed", t) }
     }
 
-    fun modelName(slot: String): String = if (slot == "strategic") com.sphynx.models.ModelManager.strategicName()
-        else com.sphynx.models.ModelManager.tacticalName()
+    // (2026-11-25 fix: a job on a GGUF model was recorded under the LiteRT-LM file's name, e.g. "Gemma 4 E2B")
+    fun modelName(slot: String): String {
+        val role = if (slot == "strategic") Roles.STRATEGIC else Roles.TACTICAL
+        return Roles.modelName(role) ?: if (slot == "strategic") com.sphynx.models.ModelManager.strategicName()
+            else com.sphynx.models.ModelManager.tacticalName()
+    }
 
     fun load(slot: String, backend: String, ms: Long, ok: Boolean, error: String, detailed: Boolean, attempts: Int) {
         val ph = com.sphynx.core.PhoneState.read()
