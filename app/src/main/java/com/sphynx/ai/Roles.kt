@@ -121,8 +121,13 @@ object Roles {
     const val LITERT_LM_VERSION = "0.19.1"
     private val processors by lazy {
         com.sphynx.inference.roles.ProcessorMemory(object : com.sphynx.inference.roles.LoadSentinel.Store {
-            override fun get(key: String) = com.sphynx.core.Cfg.raw(key)
-            override fun setNow(key: String, value: String?) = com.sphynx.core.Cfg.setRaw(key, value)
+            // Phase 9 M6: the record lives in the model registry ("proc_<file>:<size>" names the model)
+            private fun split(key: String): Pair<String, Long> = key.removePrefix("proc_").let { k ->
+                k.substringBeforeLast(':') to (k.substringAfterLast(':').toLongOrNull() ?: -1L) }
+            override fun get(key: String) = split(key).let { (n, sz) ->
+                com.sphynx.models.ModelRegistry.fact(n, sz, com.sphynx.models.ModelRecord.Fact.PROCESSORS) }
+            override fun setNow(key: String, value: String?) = split(key).let { (n, sz) ->
+                com.sphynx.models.ModelRegistry.setFact(n, sz, com.sphynx.models.ModelRecord.Fact.PROCESSORS, value) }
         }, "app ${com.sphynx.core.AppVersion.VERSION}, litertlm $LITERT_LM_VERSION") {
             java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
         }
@@ -170,7 +175,7 @@ object Roles {
             // Phase 8 G11: the tactical job reads pictures too when the owner's switch is on (and the model can)
             wantsVision = own[com.sphynx.models.ModelSettings.PICTURES] != "false" &&
                 (role == ModelRole.STRATEGIC || (role == ModelRole.TACTICAL && com.sphynx.core.Cfg.tacticalSightOn &&
-                com.sphynx.core.Cfg.raw("vision_" + f.name) != "0")))
+                com.sphynx.models.ModelRegistry.fact(f.name, if (f.isFile) f.length() else -1L, com.sphynx.models.ModelRecord.Fact.VISION) != "0")))
         // what the slot will really try, in its order (NPU only when first; GPU when before the CPU; then the CPU)
         val tried = listOfNotNull(Accelerator.NPU.takeIf { LiteRtLmBackend.preferNpu(order) },
             Accelerator.GPU.takeIf { LiteRtLmBackend.preferGpu(order) }, Accelerator.CPU)
@@ -196,7 +201,7 @@ object Roles {
         sentinel.loading(a.role, a.model.displayName)
         val st = try { router.load(a.role) } finally { sentinel.loaded(a.role) }
         if (st.ready && a.backend == BackendType.LITERT_LM && a.model.wantsVision)   // both jobs (G11)
-            com.sphynx.core.Cfg.setRaw("vision_" + a.model.displayName, if (st.visionOk) "1" else "0")
+            com.sphynx.models.ModelRegistry.setFact(a.model.displayName, a.model.sizeBytes, com.sphynx.models.ModelRecord.Fact.VISION, if (st.visionOk) "1" else "0")
         // Phase 7 L5: the error and what to do about it
         return if (st.ready) null else (st.error?.let { com.sphynx.inference.LiteRtErrorWords.words(it) } ?: "not loaded (${st.state.label})")
     }
@@ -212,7 +217,7 @@ object Roles {
     /** Does this model read pictures? Known from an earlier load on this phone, else from its name (Gemma 3n / 4). */
     fun readsPictures(c: ModelConfiguration): Boolean {
         if (c.backend != BackendType.LITERT_LM) return c.projector != null    // GGUF: through its mmproj file (S8)
-        com.sphynx.core.Cfg.raw("vision_" + c.displayName)?.let { return it == "1" }
+        com.sphynx.models.ModelRegistry.fact(c.displayName, c.sizeBytes, com.sphynx.models.ModelRecord.Fact.VISION)?.let { return it == "1" }
         val n = c.displayName.lowercase()
         return n.contains("3n") || n.contains("gemma-4") || n.contains("gemma4") || n.contains("gemma_4") || c.id.startsWith("litertlm:strategic")
     }

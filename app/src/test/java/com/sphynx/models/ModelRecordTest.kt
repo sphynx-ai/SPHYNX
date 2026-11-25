@@ -61,4 +61,30 @@ class ModelRecordTest {
     @Test fun summaryLine() {
         assertTrue(llama.summary().startsWith("Llama-3.2-1B.gguf · GGUF · llama · Q4_K_M · 1B · 770 MB · text only"))
     }
+
+    // Phase 9 M6: the loose keys move into the record without loss
+    @Test fun theOldKeysMoveIn() {
+        val sha = "a".repeat(64)
+        val gemma = ModelRecord("gemma-tactical.litertlm:600", "gemma-tactical.litertlm", Format.LITERT_LM, 600)
+        val old = mapOf("vision_gemma-tactical.litertlm" to "0", "proc_gemma-tactical.litertlm:600" to "GPU|1|900|12.000|3|s|d",
+            "sha256_gemma-tactical.litertlm:600" to sha, "gguf_threads_gemma-tactical.litertlm_600" to "")
+        val m = ModelRecord.migrate(gemma, old::get)
+        assertEquals(mapOf("vision" to "0", "processors" to "GPU|1|900|12.000|3|s|d"), m.facts)
+        assertEquals(sha, m.sha256); assertEquals(sha, m.id); assertEquals(false, m.pictures)
+        // nothing there: the same record; the threads key of a GGUF file
+        assertTrue(ModelRecord.migrate(gemma) { null } === gemma)
+        val t = ModelRecord.migrate(llama, mapOf("gguf_threads_Llama-3.2-1B.gguf_807403520" to "4")::get)
+        assertEquals("4", t.facts["threads"]); assertEquals(false, t.pictures)
+        // an old key there is never older than the record in this version: it wins; facts survive a save and a scan
+        val again = ModelRecord.migrate(m, mapOf("vision_gemma-tactical.litertlm" to "1")::get)
+        assertEquals("1", again.facts["vision"])
+        val kept = ModelRecord.merge(ModelRecord.decodeAll(ModelRecord.encodeAll(listOf(again))), listOf(gemma.copy(sha256 = sha, id = sha)))
+        assertEquals(again.facts, kept.single().facts)
+    }
+
+    @Test fun theOldThreadsKeyIsTheOneTheTuningUsed() {
+        assertEquals(com.sphynx.inference.GgufTuning.threadsKey("x.gguf", 7), ModelRecord.Fact.THREADS.legacyKey("x.gguf", 7))
+        assertEquals(com.sphynx.inference.roles.ProcessorMemory.modelKey("x.gguf", 7).let { "proc_$it" },
+            ModelRecord.Fact.PROCESSORS.legacyKey("x.gguf", 7))
+    }
 }

@@ -29,7 +29,23 @@ data class ModelRecord(
     val addedAt: Long = 0L,
     /** Per-model settings (M4); empty = today's defaults. */
     val settings: Map<String, String> = emptyMap(),
+    /** What the app learnt about the model on this phone (M6): see [Fact]. */
+    val facts: Map<String, String> = emptyMap(),
 ) {
+    /**
+     * Phase 9 M6: the learnt facts that used to be loose settings keys, with the key each one had (kept as a fallback
+     * for one version, then dropped). VISION "1"/"0" (Phase 8 G11), THREADS the best thread count (G5), PROCESSORS the
+     * load and speed record per processor (Phase 7 L9, ProcessorMemory's text).
+     */
+    enum class Fact(val key: String) {
+        VISION("vision"), THREADS("threads"), PROCESSORS("processors");
+        fun legacyKey(fileName: String, sizeBytes: Long): String = when (this) {
+            VISION -> "vision_$fileName"
+            THREADS -> "gguf_threads_${fileName}_$sizeBytes"
+            PROCESSORS -> "proc_$fileName:$sizeBytes"
+        }
+    }
+
     enum class Format(val label: String) { LITERT_LM("LiteRT-LM"), GGUF("GGUF"), MMPROJ("GGUF picture projector") }
     enum class Source(val label: String) { INPUT_FOLDER("Input folder"), PICKED("picked file"), DOWNLOAD("download"), UNKNOWN("unknown") }
 
@@ -44,6 +60,7 @@ data class ModelRecord(
         .putOpt("sizeLabel", sizeLabel).putOpt("contextLength", contextLength).putOpt("pictures", pictures)
         .putOpt("projectorFor", projectorFor).put("source", source.name).putOpt("originalName", originalName)
         .put("addedAt", addedAt).put("settings", JSONObject(settings as Map<*, *>))
+        .put("facts", JSONObject(facts as Map<*, *>))
 
     companion object {
         const val SCHEMA = 1
@@ -61,6 +78,7 @@ data class ModelRecord(
 
         fun fromJson(o: JSONObject): ModelRecord? = try {
             val st = o.optJSONObject("settings")
+            val fa = o.optJSONObject("facts")
             ModelRecord(
                 id = o.getString("id"), fileName = o.getString("fileName"), format = Format.valueOf(o.getString("format")),
                 sizeBytes = o.getLong("sizeBytes"), sha256 = o.optString("sha256").ifEmpty { null },
@@ -72,6 +90,7 @@ data class ModelRecord(
                 source = try { Source.valueOf(o.optString("source", "UNKNOWN")) } catch (e: Exception) { Source.UNKNOWN },
                 originalName = o.optString("originalName").ifEmpty { null }, addedAt = o.optLong("addedAt"),
                 settings = st?.keys()?.asSequence()?.associateWith { st.getString(it) } ?: emptyMap(),
+                facts = fa?.keys()?.asSequence()?.associateWith { fa.getString(it) } ?: emptyMap(),
             )
         } catch (e: Exception) { null }
 
@@ -101,7 +120,21 @@ data class ModelRecord(
                 sha256 = f.sha256 ?: old.sha256, id = f.sha256 ?: old.sha256 ?: f.id,
                 pictures = f.pictures ?: old.pictures, source = if (f.source == Source.UNKNOWN) old.source else f.source,
                 originalName = f.originalName ?: old.originalName, addedAt = if (old.addedAt > 0) old.addedAt else f.addedAt,
-                settings = old.settings + f.settings)
+                settings = old.settings + f.settings, facts = old.facts + f.facts)
+        }
+
+        /**
+         * Phase 9 M6: moves the loose settings keys of [r] into the record ([raw] reads a key). In this version every
+         * change is written to the old key too, so an old key that is there is never older than the record and wins
+         * (it may have been written before the registry was read). The old keys are only read, never removed. Pure.
+         */
+        fun migrate(r: ModelRecord, raw: (String) -> String?): ModelRecord {
+            val found = Fact.values().mapNotNull { f -> raw(f.legacyKey(r.fileName, r.sizeBytes))?.takeIf { it.isNotEmpty() }?.let { f.key to it } }.toMap()
+            val sha = r.sha256 ?: raw("sha256_${r.fileName}:${r.sizeBytes}")?.takeIf { it.length == 64 }
+            val facts = r.facts + found
+            val pics = facts[Fact.VISION.key]?.let { it == "1" } ?: r.pictures
+            return if (facts == r.facts && sha == r.sha256 && pics == r.pictures) r
+                else r.copy(facts = facts, sha256 = sha, id = sha ?: r.id, pictures = pics)
         }
     }
 }

@@ -25,7 +25,7 @@ object ModelRegistry {
         val app = ctx.applicationContext
         val lite = (app.filesDir.listFiles()?.toList() ?: emptyList()) + (AutoFolder.liteLibrary(app).listFiles()?.toList() ?: emptyList())
         lite.filter { it.isFile && it.name.endsWith(".litertlm", true) }.forEach { f ->
-            val pics = Cfg.raw("vision_" + f.name)?.let { it == "1" }
+            val pics = Cfg.raw(ModelRecord.Fact.VISION.legacyKey(f.name, f.length()))?.let { it == "1" }
             val sha = Cfg.raw(com.sphynx.core.FileHash.key(f.name, f.length()))
             out.add(ModelRecord(id = ModelRecord.idFor(f.name, f.length(), sha), fileName = f.name, sha256 = sha,
                 format = ModelRecord.Format.LITERT_LM, sizeBytes = f.length(), family = "gemma".takeIf { f.name.contains("gemma", true) },
@@ -54,6 +54,39 @@ object ModelRegistry {
         return Cfg.raw(key)?.substringBefore(':')
     }
 
+    @Volatile private var app: Context? = null
+
+    // a file name and size match a record; a size below zero (not known) matches by name only
+    private fun recordFor(fileName: String, sizeBytes: Long) =
+        records.firstOrNull { it.fileName == fileName && (sizeBytes < 0 || it.sizeBytes == sizeBytes) }
+
+    /** Phase 9 M6: a learnt fact of the model, from its record, else from the old settings key (one version). */
+    fun fact(fileName: String, sizeBytes: Long, f: ModelRecord.Fact): String? =
+        recordFor(fileName, sizeBytes)?.facts?.get(f.key)
+            ?: Cfg.raw(f.legacyKey(fileName, sizeBytes.coerceAtLeast(0)))?.takeIf { it.isNotEmpty() }
+
+    /** Saves a learnt fact in the model's record; the old key is still written for one version, so going back loses nothing. */
+    @Synchronized
+    fun setFact(fileName: String, sizeBytes: Long, f: ModelRecord.Fact, value: String?) {
+        Cfg.setRaw(f.legacyKey(fileName, sizeBytes.coerceAtLeast(0)), value)
+        val r = recordFor(fileName, sizeBytes) ?: return
+        val next = if (value == null) r.facts - f.key else r.facts + (f.key to value)
+        if (next == r.facts) return
+        records = records.map { if (it === r) it.copy(facts = next,
+            pictures = if (f == ModelRecord.Fact.VISION && value != null) value == "1" else it.pictures) else it }
+        save()
+    }
+
+    @Volatile private var lastBackup = 0L
+
+    // facts change after every answer (the speed record), so the copy in Output is written at most once a minute
+    private fun save() {
+        val text = ModelRecord.encodeAll(records)
+        try { app?.let { file(it).writeText(text) } } catch (e: Exception) { Diag.error("Model registry not saved", e) }
+        val now = System.currentTimeMillis()
+        if (now - lastBackup > 60_000) { lastBackup = now; writeBackup(text) }
+    }
+
     /** Phase 9 M4: the model's own settings (empty = today's defaults), found by file name and size. */
     fun settingsFor(fileName: String, sizeBytes: Long): Map<String, String> =
         records.firstOrNull { it.fileName == fileName && it.sizeBytes == sizeBytes }?.settings ?: emptyMap()
@@ -75,11 +108,12 @@ object ModelRegistry {
     /** Rebuilds the registry from the files, keeps what was known, and saves it. Safe to call often. */
     @Synchronized
     fun refresh(ctx: Context): List<ModelRecord> {
+        app = ctx.applicationContext
         val known = ModelRecord.decodeAll(try { file(ctx).takeIf { it.isFile }?.readText() } catch (e: Exception) { null })
             .ifEmpty { ModelRecord.decodeAll(readBackup()) }
         val merged = ModelRecord.merge(known, scanFiles(ctx).map { r ->
             if (r.format == ModelRecord.Format.LITERT_LM && r.originalName != null) r.copy(source = ModelRecord.Source.INPUT_FOLDER) else r
-        })
+        }).map { ModelRecord.migrate(it, Cfg::raw) }       // M6: the loose keys move in (and stay one version)
         records = merged
         val text = ModelRecord.encodeAll(merged)
         try { file(ctx).writeText(text) } catch (e: Exception) { Diag.error("Model registry not saved", e) }

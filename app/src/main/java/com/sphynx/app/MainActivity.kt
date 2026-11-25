@@ -3735,7 +3735,7 @@ class MainActivity : Activity() {
         val values = listOf(rc.LITERT) + ggufs.map { rc.gguf(it.name) }
         // Phase 8 G11: a LiteRT-LM file known (from an earlier load) to have no picture part is marked text only
         val liteFile = if (role == com.sphynx.ai.Roles.STRATEGIC) ModelManager.modelFile(this) else ModelManager.tacticalFile(this)
-        val liteNote = when (Cfg.raw("vision_" + liteFile.name)) { "0" -> ", text only: it has no picture part"; "1" -> ", reads pictures"; else -> "" }
+        val liteNote = when (com.sphynx.models.ModelRegistry.fact(liteFile.name, if (liteFile.isFile) liteFile.length() else -1L, com.sphynx.models.ModelRecord.Fact.VISION)) { "0" -> ", text only: it has no picture part"; "1" -> ", reads pictures"; else -> "" }
         val labels = listOf("$lite (LiteRT-LM file$liteNote)") + ggufs.map {
             "${it.name} (GGUF, ${it.length() / 1048576} MB)\n" + com.sphynx.models.GgufLibrary.describe(it) +   // Phase 8 G2
                 // Phase 8 G11: a model without its mmproj reads text only (allowed, owner 2026-11-23)
