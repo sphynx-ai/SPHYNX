@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-25", Kind.FIXED, "The small tactical model works again with the minimap switch on",
+            "Found in your 11-25 debug data: with Tactical model reads the minimap on, a text-only tactical model (Gemma 3 " +
+                "270M) loaded as if it could read pictures, and then every question failed, fight advice too. The app now " +
+                "opens one test conversation while loading, so such a model loads text only and keeps answering. A minimap " +
+                "picture that fails 3 times in a row is no longer retried every 5 seconds. The speed records now name the " +
+                "GGUF model that does a job (they said Gemma 4 E2B for your Llama).",
+            pr = 120, needsDeviceCheck = true, version = "38.29"),
         Entry("2026-11-23", Kind.IMPROVED, "Phase 8 is ready for your phone test",
             "Behind the scenes: every Phase 8 step is built except the GPU one, which waits for your choice. The GGUF " +
                 "steps are: model details before loading, real engine tests on every change, a safer engine, a benchmark " +

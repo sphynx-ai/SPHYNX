@@ -104,6 +104,15 @@ open class LlmSlot(private val label: String, threadPriority: Int) {
                 }
                 val e = Engine(cfg)
                 e.initialize()
+                // Phase 8 fix (owner's phone, 2026-11-25): an engine set up with a picture / audio part can initialize
+                // for a model that has none (Gemma 3 270M), and then every conversation fails ("tf_lite_audio_encoder_hw
+                // not found"). One conversation is opened now, so such a model falls back to the next attempt (text only).
+                try {
+                    e.createConversation(ConversationConfig(samplerConfig = SamplerConfig(topK = 16, topP = 0.85, temperature = 0.1))).close()
+                } catch (t: Throwable) {
+                    try { e.close() } catch (x: Throwable) { }
+                    throw IllegalStateException("${a.label}: a conversation could not be opened (${t.message})", t)
+                }
                 engine = e
                 visionOk = a.vision
                 backendName = a.label

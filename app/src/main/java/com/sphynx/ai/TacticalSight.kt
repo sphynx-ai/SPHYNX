@@ -49,6 +49,11 @@ object TacticalSight {
     @Volatile var looks = 0; private set
     @Volatile var lastMs = 0L; private set
     @Volatile private var lastLookAt = 0L
+    // 2026-11-25 fix: a model that keeps failing is not asked every 5 s; after 3 failures in a row the looks stop
+    // until the tactical model loads again (the log said the same error every 5 s for 4 minutes)
+    @Volatile var failuresInARow = 0; private set
+    const val MAX_FAILURES = 3
+    fun resetFailures() { failuresInARow = 0 }
     @Volatile private var job: Job? = null
     val running: Boolean get() = job?.isActive == true
 
@@ -61,6 +66,7 @@ object TacticalSight {
     fun tick(inFight: Boolean, adviceBusy: Boolean, detections: () -> List<com.sphynx.vision.Detection>, missing: () -> Int) {
         if (inFight) { job?.let { if (it.isActive) it.cancel() }; return }
         val now = System.currentTimeMillis()
+        if (failuresInARow >= MAX_FAILURES) return
         if (!shouldLook(now, lastLookAt, inFight, adviceBusy || running, canSee)) return
         val frame = com.sphynx.capture.FrameHub.bitmap() ?: return
         lastLookAt = now
@@ -74,11 +80,14 @@ object TacticalSight {
                 reading = r.lineSequence().firstOrNull { it.isNotBlank() }?.trim()?.take(200) ?: ""
                 readingAt = System.currentTimeMillis()
                 looks++
+                failuresInARow = 0
                 record(reading, lastMs, detections(), missing())
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (t: Throwable) {
-                Diag.error("Tactical model, minimap picture", t)
+                failuresInARow++
+                Diag.error("Tactical model, minimap picture" +
+                    (if (failuresInARow >= MAX_FAILURES) " (stopped after $MAX_FAILURES failures; it starts again when the model loads)" else ""), t)
             }
         }
     }
