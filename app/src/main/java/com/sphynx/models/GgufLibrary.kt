@@ -115,21 +115,21 @@ object GgufLibrary {
         val target = File(dir, name)
         val part = File(dir, "$name.part")
         try {
-            cr.openInputStream(uri)!!.use { input ->
+            // Phase 9 M2: the SHA-256 is worked out during the copy
+            val sha = cr.openInputStream(uri)!!.use { input ->
                 part.outputStream().use { out ->
-                    val buf = ByteArray(1 shl 20)
-                    var copied = 0L
-                    while (true) {
-                        val r = input.read(buf)
-                        if (r < 0) break
-                        out.write(buf, 0, r)
-                        copied += r
+                    com.sphynx.core.FileHash.copyAndHash(input, out) { copied ->
                         status = if (size > 0) "Copying $name: ${copied * 100 / size}%" else "Copying $name: ${mb(copied)} MB"
                     }
                 }
             }
+            // the same model already in the library under another name: not kept twice
+            ModelRegistry.records.firstOrNull { it.sha256 == sha && it.fileName != name }?.let { dup ->
+                return "$name is the same file as ${dup.fileName}, which is already added"
+            }
             if (target.exists()) target.delete()
             if (!part.renameTo(target)) return "Could not save $name"
+            Cfg.setRaw(com.sphynx.core.FileHash.key(target.name, target.length()), sha)
         } finally {
             if (part.exists()) part.delete()
         }

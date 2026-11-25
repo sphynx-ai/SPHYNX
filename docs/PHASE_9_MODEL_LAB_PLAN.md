@@ -40,7 +40,7 @@
 ## 4. Acceptance criteria (roadmap deliverables)
 
 - [ ] Model metadata schema and registry for both formats, with provenance, format, quantization, requirements and limitations (M1). **In code (v38.34):** `models/ModelRecord` (schema 1, pure, tested) and `models/ModelRegistry` (`files/model_registry.json`, copy `Output/sphynx-model-registry.json`), refreshed after every folder scan and GGUF add/remove.
-- [ ] Integrity and compatibility are checked before loading; broken, half-copied and duplicate files are handled (M2).
+- [ ] Integrity and compatibility are checked before loading; broken, half-copied and duplicate files are handled (M2). **In code (v38.35):** `inference/LiteRtLmFile` (the `LITERTLM` mark, tested), `core/FileHash` (SHA-256 during the copy, tested), a room check before copying, duplicate GGUF refused by hash, extra `.litertlm` files kept in `files/litertlm/`.
 - [ ] A Model Lab page shows every model with its state and offers the lifecycle actions (M3).
 - [ ] Per-model configuration profiles with safe limits; the defaults keep today's behaviour (M4).
 - [ ] Storage use is explicit and leftover files can be removed (M5).
