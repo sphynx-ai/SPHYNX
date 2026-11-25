@@ -2962,6 +2962,50 @@ class MainActivity : Activity() {
         }
     }
 
+    // Phase 9 M9: downloads from the built-in list (Hugging Face), only when the owner taps one
+    private fun labDownloads() {
+        title("DOWNLOAD A MODEL", Capability.NEEDS_INTERNET)
+        val dl = com.sphynx.models.ModelDownloader
+        val cd = card()
+        val st = cardText(cd, 13f)
+        upd { st.text = dl.status.ifEmpty { "Nothing is downloaded by itself. The list is built into the app; files come from Hugging Face only." } }
+        inCard(cd, "Choose a model to download…") {
+            if (dl.busy) { toast("A download is already running"); return@inCard }
+            val list = dl.catalog(this)
+            if (list.isEmpty()) { toast("The download list could not be read"); return@inCard }
+            val labels = list.map { e -> e.line() + (if (dl.have(e.model)) "\n(already in the app)" else "") }.toTypedArray()
+            AlertDialog.Builder(this).setTitle("Download from Hugging Face")
+                .setItems(labels) { _, i -> labDownloadAsk(list[i]) }.setNegativeButton("Cancel", null).show()
+        }
+        inCard(cd, "Pause the download") {
+            if (!dl.busy) toast("No download is running") else { dl.cancel(); toast("Pausing: download it again to go on from there") }
+        }
+        text("A download goes into Sphynx-Storage/Input and is checked against the list's fingerprint (SHA-256) before the " +
+            "app takes it. A GGUF model's picture part (mmproj) can come with it and pairs by itself. A broken-off download " +
+            "goes on from where it stopped.")
+    }
+
+    private fun labDownloadAsk(e: com.sphynx.models.ModelCatalog.Entry) {
+        val dl = com.sphynx.models.ModelDownloader
+        val ms = com.sphynx.models.ModelStorage
+        val net = dl.unmetered(this)
+        if (net == null) { toast("No internet connection"); return }
+        fun about(f: com.sphynx.models.ModelCatalog.File, what: String) =
+            "$what: ${f.saveAs}\n${ms.mb(f.size)} MB · SHA-256 ${f.sha256}" + (if (dl.have(f)) "\n(already in the app)" else "")
+        val msg = listOfNotNull(e.note.ifEmpty { null }, "From huggingface.co/${e.repo} (licence: ${e.license ?: "see the model page"})",
+            about(e.model, "Model"), e.mmproj?.let { about(it, "Picture part") },
+            if (!net) "You are not on Wi-Fi: this uses ${ms.mb(e.totalBytes)} MB of mobile data." else null,
+        ).joinToString("\n\n")
+        val go: (Boolean) -> Unit = { withMm ->
+            dl.start(this, e, withMm) { m -> runOnUiThread { toast(m.take(240)); show("model") } }
+            toast("Download started")
+        }
+        val b = AlertDialog.Builder(this).setTitle(e.title).setMessage(msg).setNegativeButton("Cancel", null)
+        if (e.mmproj != null) b.setPositiveButton("Model and picture part") { _, _ -> go(true) }.setNeutralButton("Model only") { _, _ -> go(false) }
+        else b.setPositiveButton("Download") { _, _ -> go(false) }
+        b.show()
+    }
+
     // the job's own two files come back from Input at every scan, so only library copies and GGUF files are deleted here
     private fun labDeletable(r: com.sphynx.models.ModelRecord): Boolean =
         r.fileName != ModelManager.modelFile(this).name && r.fileName != ModelManager.tacticalFile(this).name
@@ -3033,6 +3077,7 @@ class MainActivity : Activity() {
 
     private fun modelPage() {
         modelLab()      // Phase 9 M3
+        labDownloads()  // Phase 9 M9
         title("FILES")
         text("Put files in Sphynx-Storage/Input (Sphynx-Storage is at the top of the phone's storage, next to Download; the app saves what it makes in Output and Recordings); the app loads them by itself:\n• Gemma 4 E2B (.litertlm) – strategy\n• Gemma 3 270M (.litertlm) – fight advice (optional)\n• mlbb_policies.zip – tactical networks\n• detectors (.tflite + labels) – minimap and screen\n• groq_key.txt – online meta", 13f)
         val mcard = card()
