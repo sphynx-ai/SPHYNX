@@ -24,6 +24,14 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-25", Kind.NEW, "Download a model from Hugging Face",
+            "The Model page has DOWNLOAD A MODEL: a short list of models known to work with Sphynx (LiteRT-LM and GGUF, " +
+                "with and without pictures). Each one shows its size and its Hugging Face fingerprint (SHA-256) before " +
+                "anything downloads, and warns when you are not on Wi-Fi. A GGUF model with a picture part offers its " +
+                "mmproj file too, and the two pair by themselves. The file goes into Sphynx-Storage/Input, goes on from " +
+                "where it stopped after a break or a pause, and is checked against the fingerprint before the app takes " +
+                "it. Nothing downloads by itself; the list is built into the app.",
+            pr = 132, needsDeviceCheck = true, version = "38.41"),
         Entry("2026-11-25", Kind.NEW, "Export the model registry for debugging",
             "The Debug data page can save the Model Lab's registry now: every model with its details, its own settings " +
                 "and what the app learnt about it, the two jobs and the storage line. It goes into Recordings and is " +

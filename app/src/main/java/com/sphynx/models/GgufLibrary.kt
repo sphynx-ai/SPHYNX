@@ -85,6 +85,16 @@ object GgufLibrary {
         }.apply { name = "gguf-add" }.start()
     }
 
+    /** Phase 9 M9: adds a file the app already has (a download in Sphynx-Storage/Input); the message, as [add] gives it. */
+    fun addFile(ctx: Context, file: File): String {
+        if (busy) return "A model is already being added"
+        busy = true
+        val msg = try { copyIn(ctx.applicationContext, file.name, file.length()) { file.inputStream() } }
+            catch (t: Throwable) { "Could not add the model: ${t.message ?: t}" }
+        status = msg; busy = false; Diag.info("GGUF: $msg")
+        return msg
+    }
+
     private fun copyIn(ctx: Context, uri: Uri): String {
         val cr = ctx.contentResolver
         var name = "model.gguf"
@@ -95,14 +105,18 @@ object GgufLibrary {
                 if (!it.isNull(1)) size = it.getLong(1)
             }
         }
-        name = safeName(name)
+        return copyIn(ctx, name, size) { cr.openInputStream(uri) }
+    }
+
+    private fun copyIn(ctx: Context, name0: String, size: Long, open: () -> java.io.InputStream?): String {
+        val name = safeName(name0)
         if (!name.endsWith(".gguf", ignoreCase = true)) return "$name is not a .gguf file"
         val head = ByteArray(16)
-        val got = cr.openInputStream(uri)?.use { s -> var n = 0; while (n < head.size) { val r = s.read(head, n, head.size - n); if (r < 0) break; n += r }; n } ?: 0
+        val got = open()?.use { s -> var n = 0; while (n < head.size) { val r = s.read(head, n, head.size - n); if (r < 0) break; n += r }; n } ?: 0
         GgufFile.checkHeader(head.copyOf(got), size)?.let { return "$name: $it" }
         // Phase 8 G2: the file's own description, read before anything is copied; a broken file or a family the built-in
         // llama.cpp doesn't know is refused here (a projector is fine: it goes next to its model)
-        val info = cr.openInputStream(uri)?.use { com.sphynx.inference.GgufInfo.read(it, size) }
+        val info = open()?.use { com.sphynx.inference.GgufInfo.read(it, size) }
         info?.exceptionOrNull()?.let { return "$name: ${it.message}" }
         info?.getOrNull()?.let { i ->
             if (!i.isProjector) i.problemAsModel()?.let { return "$name: $it" }
@@ -114,7 +128,7 @@ object GgufLibrary {
         val part = File(dir, "$name.part")
         try {
             // Phase 9 M2: the SHA-256 is worked out during the copy
-            val sha = cr.openInputStream(uri)!!.use { input ->
+            val sha = (open() ?: throw IllegalStateException("cannot open $name")).use { input ->
                 part.outputStream().use { out ->
                     com.sphynx.core.FileHash.copyAndHash(input, out) { copied ->
                         status = if (size > 0) "Copying $name: ${copied * 100 / size}%" else "Copying $name: ${mb(copied)} MB"

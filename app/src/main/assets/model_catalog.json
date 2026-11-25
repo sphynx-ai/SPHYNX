@@ -1,0 +1,170 @@
+{
+ "schema": 1,
+ "checked": "2026-11-25",
+ "models": [
+  {
+   "id": "gemma4-e2b",
+   "title": "Gemma 4 E2B (LiteRT-LM)",
+   "repo": "litert-community/gemma-4-E2B-it-litert-lm",
+   "revision": "2e12bfd869b2962984f97a1f2a26807316d534cc",
+   "license": "apache-2.0",
+   "job": "strategic",
+   "pictures": true,
+   "note": "The strategic model Sphynx is built around: reads pictures. Needs about 3 GB of free memory.",
+   "file": "gemma-4-E2B-it.litertlm",
+   "size": 2588147712,
+   "sha256": "181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c"
+  },
+  {
+   "id": "qwen3-0.6b-lite",
+   "title": "Qwen3 0.6B (LiteRT-LM)",
+   "repo": "litert-community/Qwen3-0.6B",
+   "revision": "8d42ab5f1db14cad987fac57aeb17d070f9e180d",
+   "license": "apache-2.0",
+   "job": "tactical",
+   "pictures": false,
+   "note": "A small text-only model for the tactical job.",
+   "file": "Qwen3-0.6B.litertlm",
+   "size": 613722264,
+   "sha256": "c5f39b4191926786c3e6668b62af4d6eb15248dfc7a5348252a9b406f33f2108"
+  },
+  {
+   "id": "qwen2.5-1.5b-lite",
+   "title": "Qwen2.5 1.5B (LiteRT-LM)",
+   "repo": "litert-community/Qwen2.5-1.5B-Instruct",
+   "revision": "60257f9f1d00ca1f24cc5ce3b829b4139be1ca2b",
+   "license": "apache-2.0",
+   "job": "strategic",
+   "pictures": false,
+   "note": "Text only; a strategic model for phones without room for Gemma 4.",
+   "file": "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
+   "size": 1597922856,
+   "sha256": "c4a9b7289365ab80fe599b844b77ad253eb3c53fb0e5d963d699146a6f01255e"
+  },
+  {
+   "id": "smolvlm-256m",
+   "title": "SmolVLM 256M (GGUF, pictures)",
+   "repo": "ggml-org/SmolVLM-256M-Instruct-GGUF",
+   "revision": "b9e4379657e1450d04d02eec8e345667265b0a00",
+   "license": "apache-2.0",
+   "job": "tactical",
+   "pictures": true,
+   "note": "The smallest model that reads pictures; for the tactical job.",
+   "file": "SmolVLM-256M-Instruct-Q8_0.gguf",
+   "size": 175054528,
+   "sha256": "2a31195d3769c0b0fd0a4906201666108834848db768af11de1d2cef7cd35e65",
+   "mmproj": {
+    "file": "mmproj-SmolVLM-256M-Instruct-Q8_0.gguf",
+    "size": 103769856,
+    "sha256": "7e943f7c53f0382a6fc41b6ee0c2def63ba4fded9ab8ed039cc9e2ab905e0edd"
+   }
+  },
+  {
+   "id": "smolvlm2-500m",
+   "title": "SmolVLM2 500M (GGUF, pictures)",
+   "repo": "ggml-org/SmolVLM2-500M-Video-Instruct-GGUF",
+   "revision": "ccd7aae53bcb1997355c2f094959e72b3642ce17",
+   "license": "apache-2.0",
+   "job": "tactical",
+   "pictures": true,
+   "note": "A small model that reads pictures; for the tactical job.",
+   "file": "SmolVLM2-500M-Video-Instruct-Q8_0.gguf",
+   "size": 436808704,
+   "sha256": "6f67b8036b2469fcd71728702720c6b51aebd759b78137a8120733b4d66438bc",
+   "mmproj": {
+    "file": "mmproj-SmolVLM2-500M-Video-Instruct-Q8_0.gguf",
+    "size": 108785184,
+    "sha256": "921dc7e259f308e5b027111fa185efcbf33db13f6e35749ddf7f5cdb60ef520b"
+   }
+  },
+  {
+   "id": "qwen2.5-0.5b",
+   "title": "Qwen2.5 0.5B (GGUF)",
+   "repo": "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+   "revision": "9217f5db79a29953eb74d5343926648285ec7e67",
+   "license": "apache-2.0",
+   "job": "tactical",
+   "pictures": false,
+   "note": "A small, fast text-only model.",
+   "file": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+   "size": 491400032,
+   "sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db"
+  },
+  {
+   "id": "gemma3-1b",
+   "title": "Gemma 3 1B (GGUF)",
+   "repo": "ggml-org/gemma-3-1b-it-GGUF",
+   "revision": "f9c28bcd85737ffc5aef028638d3341d49869c27",
+   "license": "gemma",
+   "job": "tactical",
+   "pictures": false,
+   "note": "Text only.",
+   "file": "gemma-3-1b-it-Q4_K_M.gguf",
+   "size": 806058240,
+   "sha256": "8ccc5cd1f1b3602548715ae25a66ed73fd5dc68a210412eea643eb20eb75a135"
+  },
+  {
+   "id": "llama3.2-1b",
+   "title": "Llama 3.2 1B (GGUF)",
+   "repo": "bartowski/Llama-3.2-1B-Instruct-GGUF",
+   "revision": "067b946cf014b7c697f3654f621d577a3e3afd1c",
+   "license": "llama3.2",
+   "job": "tactical",
+   "pictures": false,
+   "note": "Text only. Llama 3.2 licence.",
+   "file": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+   "size": 807694464,
+   "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"
+  },
+  {
+   "id": "qwen3-1.7b",
+   "title": "Qwen3 1.7B (GGUF)",
+   "repo": "unsloth/Qwen3-1.7B-GGUF",
+   "revision": "d7f544eead698dbd1f15126ef60b45a1e1933222",
+   "license": "apache-2.0",
+   "job": "strategic",
+   "pictures": false,
+   "note": "Text only; a stronger small strategic model.",
+   "file": "Qwen3-1.7B-Q4_K_M.gguf",
+   "size": 1107409472,
+   "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897"
+  },
+  {
+   "id": "qwen2.5-vl-3b",
+   "title": "Qwen2.5-VL 3B (GGUF, pictures)",
+   "repo": "ggml-org/Qwen2.5-VL-3B-Instruct-GGUF",
+   "revision": "5037fcf163dd95d1e41d1974465f0898ed108ca2",
+   "license": "apache-2.0",
+   "job": "strategic",
+   "pictures": true,
+   "note": "Reads pictures; for phones with 8 GB of memory or more.",
+   "file": "Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf",
+   "size": 1929901056,
+   "sha256": "d02fe9b69ad8cadbbd228e387667af66612c44bed29ffc8eb1e7caf9ac486c12",
+   "mmproj": {
+    "file": "mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf",
+    "size": 844757728,
+    "sha256": "980c9b2f78c04e6cff93d277ada09e768394f112d75db3b4e9dea8a69f9fb904"
+   }
+  },
+  {
+   "id": "gemma3-4b",
+   "title": "Gemma 3 4B (GGUF, pictures)",
+   "repo": "ggml-org/gemma-3-4b-it-GGUF",
+   "revision": "d0976223747697cb51e056d85c532013931fe52e",
+   "license": "gemma",
+   "job": "strategic",
+   "pictures": true,
+   "note": "Reads pictures; for phones with 8 GB of memory or more.",
+   "file": "gemma-3-4b-it-Q4_K_M.gguf",
+   "size": 2489757856,
+   "sha256": "882e8d2db44dc554fb0ea5077cb7e4bc49e7342a1f0da57901c0802ea21a0863",
+   "mmproj": {
+    "file": "mmproj-model-f16.gguf",
+    "size": 851251104,
+    "sha256": "8c0fb064b019a6972856aaae2c7e4792858af3ca4561be2dbf649123ba6c40cb",
+    "saveAs": "mmproj-gemma-3-4b-it-f16.gguf"
+   }
+  }
+ ]
+}
