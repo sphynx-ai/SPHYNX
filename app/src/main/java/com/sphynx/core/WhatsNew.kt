@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-27", Kind.NEW, "Slower or worse than before",
+            "The first good test of a model on your phone becomes its baseline. A later test of the same model, set, " +
+                "processor and settings (for example after an app update) shows a REGRESSION card when its usable answer " +
+                "is more than 15% slower, or its quality is clearly lower. It only tells you: nothing is changed.",
+            pr = 141, needsDeviceCheck = true, version = "38.50"),
         Entry("2026-11-27", Kind.NEW, "The model test report",
             "The EVALUATION card now shows the newest test runs: what was tested (model, processor, app version), its " +
                 "QUALITY (share of best, acceptable and unsafe answers, with how sure each figure is) and its SPEED (the " +
