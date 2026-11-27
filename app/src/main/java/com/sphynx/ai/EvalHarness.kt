@@ -90,6 +90,50 @@ object EvalHarness {
         }
     }
 
+    /**
+     * Phase 10 E8: the sustained run. The tactical set again and again at the in-match pace (a question at most every
+     * 330 ms, as TacticalAdvisor asks in a fight) for [minutes]; it stops at the severe heat status.
+     */
+    fun startSustained(ctx: Context, minutes: Int, done: (String) -> Unit) {
+        if (running) { done("An evaluation is already running"); return }
+        val app = ctx.applicationContext
+        val set = loadSet(app, SETS[0]).getOrElse { done("The fight test can't be read: ${it.message}"); return }
+        val info = runInfo(app, set, Roles.TACTICAL, 0, EvalRecord.KIND_SUSTAINED) ?: run { done("Load a model for the tactical job first"); return }
+        running = true; stop = false
+        job = AiRuntime.scope.launch {
+            val msg = try { runSustained(app, set, info, minutes) } catch (t: Throwable) { "Heat test stopped: ${t.message ?: t}" }
+            status = msg; running = false
+            Diag.info("Heat test ${info.runId}: $msg")
+            done(msg)
+        }
+    }
+
+    private suspend fun runSustained(ctx: Context, set: EvalSet, info: EvalRecord.RunInfo, minutes: Int): String {
+        val t0 = System.currentTimeMillis()
+        val end = t0 + minutes * 60_000L
+        val samples = ArrayList<EvalRecord.Sample>()
+        var i = 0
+        try {
+            samples.add(sample(ctx, set, set.items.first(), Roles.TACTICAL, -1, true, t0).copy(itemId = WARMUP))
+            while (!stop && System.currentTimeMillis() < end) {
+                val askAt = System.currentTimeMillis()
+                val item = set.items[i % set.items.size]
+                samples.add(sample(ctx, set, item, Roles.TACTICAL, i / set.items.size, false, t0))
+                i++
+                val left = (end - System.currentTimeMillis()) / 1000
+                status = "Heat test: ${samples.size - 1} answers, ${left / 60}:%02d left".format(left % 60)
+                if (thermal(ctx.getSystemService(android.os.PowerManager::class.java)) >= com.sphynx.universal.eval.EvalSustained.HOT) {
+                    stop = true; Diag.info("Heat test stopped: the phone is too hot")
+                }
+                val wait = com.sphynx.universal.eval.EvalSustained.PACE_MS - (System.currentTimeMillis() - askAt)
+                if (wait > 0) kotlinx.coroutines.delay(wait)
+            }
+        } finally {
+            save(ctx, info, samples)
+        }
+        return com.sphynx.universal.eval.EvalSustained.analyse(samples, info.conditions.charging).text()
+    }
+
     // one sample: ask, time, score, measure
     private suspend fun sample(ctx: Context, set: EvalSet, item: EvalSet.Item, role: ModelRole, repeat: Int, cold: Boolean, t0: Long): EvalRecord.Sample {
         val pm = ctx.getSystemService(android.os.PowerManager::class.java)
