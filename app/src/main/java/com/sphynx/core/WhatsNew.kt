@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-27", Kind.IMPROVED, "Phase 10 plan: benchmarking and evaluation",
+            "Behind the scenes: the plan for the next phase is written, for your OK. Sphynx will get fixed sets of " +
+                "fight moments, strategy questions and match reviews with expected answers, and a test you start " +
+                "yourself that asks a model each of them several times. It reports how good the answers are and how " +
+                "fast they come, side by side, with how sure each figure is, and checks heat and battery over a longer " +
+                "run. Nothing changes in the app yet.",
+            pr = 134, needsDeviceCheck = true, version = "38.43"),
         Entry("2026-11-25", Kind.NEW, "Model Lab guide and phone checklist",
             "A short guide to the Model Lab is in docs/PHASE_9_MODEL_LAB_GUIDE.md: adding a model (download, the Input " +
                 "folder, a GGUF file), which file goes where, picture parts (mmproj), reading a card, and freeing room. " +

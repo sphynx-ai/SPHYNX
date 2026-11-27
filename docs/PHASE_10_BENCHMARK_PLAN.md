@@ -1,0 +1,72 @@
+# Phase 10 — Model Benchmarking and Evaluation: audit and execution plan
+
+**Status:** **PROPOSED (v38.43), waiting for the owner's OK.** Phase 9 is built (v38.34–v38.42, PRs #125–#133), and its phone test runs alongside this plan.
+**Based on:** `sphynx-test-branch` at v38.42, read from the code. No phone was used for this plan.
+
+## 1. Role for this phase (roadmap 3.1)
+
+- **Primary role:** AI Evaluation Scientist and Mobile Performance Benchmarking Engineer.
+- **Supporting roles:** ML Evaluation Researcher; Android Performance Engineer; Data Analyst/Statistician; QA Engineer.
+- **Mission:** repeatable, fair evaluations of Strategic and Tactical model and runtime set-ups on the owner's phone, with quality and speed reported apart.
+- **Standards (roadmap):**
+  - versioned evaluation sets and controlled conditions;
+  - every run records the model, quantization, backend, processor, phone, Android version, settings, cold or warm, the number of samples and the spread;
+  - no ranking from runs that cannot be compared.
+- **Out of scope:**
+  - which pair of models to recommend on which phone (Phase 11);
+  - judging decisions inside real matches (Phase 12);
+  - training or changing models.
+
+## 2. What exists (verified by reading the code)
+
+| Part | State |
+|---|---|
+| GGUF benchmark (Phase 8 G5/G6) | `models/GgufBenchmark`: 3 fixed questions on one GGUF model, greedy, each setting loaded fresh; rows in `research/gguf_bench.jsonl` with tokens/s, time to the first word, memory and heat. **GGUF only, speed only, no quality score, no spread** |
+| Speed records | `ai/ModelSpeed` / `ModelSpeedLog`: every load and every answer in real use (`research/model_speed.jsonl`). Real use, not controlled conditions |
+| LiteRT-LM figures | `GemmaEngine` can read LiteRT-LM's own benchmark numbers (prefill / decode speed, time to the first word) |
+| Resources | `core/DeviceStats` (memory, CPU), `core/DeviceInfo.power` (heat, battery), `core/ResourceBaseline` (one snapshot per tap) |
+| Tactical answer | `ai/TacticalAdvisor`: a fixed prompt from a fight summary, answered with ONE of ALL_IN, POKE, FARM, RETREAT, GROUP, RULES (`parse`), so it can be scored exactly |
+| Strategic answers | `ai/StrategyGame` (MLBB: `adapters/mlbb/MlbbStrategy`): plan, draft, build and lineup prompts with their own parsers |
+| Practice scorecards | `research/PracticeBenchmark`: per-match scorecards vs Computer. Judges whole matches, not models |
+| Gaps | No evaluation set with expected answers. No quality score for any model. No common harness across both backends. No repeats, spread or confidence. No controlled-conditions check. No sustained heat and battery run. No regression thresholds. No reproducibility guide |
+
+## 3. Plan (one PR each, version +1 each; built back to back after the owner's OK, one phone test at the end)
+
+| Step | Work | Changes play? |
+|---:|---|---|
+| E1 | **Protocol and result schema:** the benchmark protocol (`docs/PHASE_10_BENCHMARK_PROTOCOL.md`). One run record holds the model's fingerprint, file, format, quantization, backend, processor, phone model, Android version, app version, runtime version, the model's own settings, the set and its version, cold or warm, the conditions at the start, and each sample. A **comparability key** says which runs may be compared: same set version, same phone, same settings and same runtime. Pure statistics: mean, median, 90th percentile, spread, 95% confidence interval (bootstrap). All pure and unit-tested | No |
+| E2 | **Evaluation sets (versioned, in the MLBB adapter's assets):** **Tactical:** about 40 fight moments written in the exact `TacticalAdvisor` summary format, each with its best option, the options that are also acceptable, and the unsafe ones (for example ALL_IN at 10% HP under an enemy tower). **Strategic:** about 30 questions on the draft, objectives (turtle, lord), rotations and builds, using the app's own prompts, each with a rubric. **Post-match review:** about 10 short match summaries with the points a good review must name. A pure checker refuses a broken set. The universal schema stays in the core; the MLBB content stays in the adapter | No |
+| E3 | **Scoring (pure, tested):** **Tactical:** the answer's format (one option?), best / acceptable / wrong / **unsafe**. **Strategic and review:** does the app's parser accept the answer, which required points it names, which forbidden claims it makes (for example a hero or item that doesn't exist in MLBB, checked against `MlbbKnowledge`). Deterministic: no second model judges, so a score never depends on the network or another model. Quality is never mixed with speed | No |
+| E4 | **Harness (both backends):** runs a set on one model from the Model Lab, LiteRT-LM or GGUF, in the job the set is for. The model's job is restored afterwards. Greedy (temperature 0) and the same order every time. One warm-up answer is not counted. Each question is asked **N times** (default 3). Measures the time to the first word, the time to a usable answer (tactical: until the option is named, `TacticalAdvisor.enough`), the whole answer's time, reading and writing tokens/s, the app's and the phone's memory, heat status and battery temperature. A **conditions check** at the start: not in a match, screen capture off, battery at least 30% or charging, heat no worse than "light". A run outside these conditions is kept but marked and never ranked. It can be stopped. It never runs by itself | No (only when the owner starts it) |
+| E5 | **Results:** raw rows in `research/eval_runs.jsonl` (one per answer) and one summary per run. Exported to Recordings and uploaded by the debug-data rule (big runs one per file). They stay in the app until uploaded | No |
+| E6 | **Report in the app:** an EVALUATION card on the Model page. Per model and job it shows quality (scores with their interval) and speed (median and 90th-percentile times, tokens/s) **side by side, never as one number**. Two runs are compared only when their comparability key matches; otherwise the card says why they can't be compared. The "?" help bubbles explain each figure | No |
+| E7 | **Regression thresholds:** the first good run of a model on this phone becomes its baseline. A later run (a new app version, runtime or setting) is flagged when its median time to a usable answer is more than 15% slower, or its quality interval lies wholly below the baseline's. Thresholds are in the protocol and unit-tested. They only report: nothing is changed by itself | No |
+| E8 | **Sustained heat and battery run:** a longer, optional run (default 10 minutes) that repeats the tactical set at the in-match pace (3 questions a second, as `TacticalAdvisor`). It records how speed falls as the phone heats up (throttling), the heat status over time, and the battery used per minute. It stops early at the "severe" heat status (Phase 5 heat policy) | No |
+| E9 | **Reproducibility guide and closing record:** how to repeat a run (conditions, settings, set version), how to read the report, the phone checklist and the closing record, with the owner's first measured results | No |
+
+## 4. Acceptance criteria (roadmap deliverables)
+
+- [ ] A benchmark protocol and a versioned result schema with a comparability rule (E1).
+- [ ] Versioned Strategic, Tactical and post-match evaluation sets, with a documented rubric (E2).
+- [ ] Deterministic scoring that keeps quality and speed apart (E3).
+- [ ] A harness for both backends that records model, quantization, backend, processor, phone, settings, cold or warm, sample count and spread (E4).
+- [ ] Raw results kept and exported for debugging (E5).
+- [ ] A report with confidence intervals that never ranks runs that can't be compared (E6).
+- [ ] Regression thresholds (E7).
+- [ ] Heat and battery under sustained load (E8).
+- [ ] A reproducibility guide; tests for the schema, statistics, sets and scoring (E9).
+
+## 5. Risks
+
+- **Expected answers are judgement:** the right fight option or draft answer is MOBA knowledge, not a fact. I write the first version from MLBB knowledge and the app's own rules (`MlbbTacticalRules`), and mark each item's reason. The owner reviews the sets before they count, and a later set version can correct them.
+- **One phone:** results are from the owner's phone only. Each record holds the phone, so a second phone can be added later without mixing results.
+- **Heat and battery:** a sustained run warms the phone. It stops at "severe" and is never started by itself.
+- **Small samples:** 3 repeats of 40 questions gives wide intervals. The report shows the interval instead of hiding it. More repeats are a setting.
+- **Greedy is not identical every time:** GPU answers can differ slightly between runs. That is why repeats are made and the spread is shown.
+
+## 6. Questions for the owner
+
+1. **Expected answers:** shall I write the first evaluation sets myself, for you to review in the app or in the file before they count?
+2. **Which models:** which models should the first runs cover? For example, Gemma 4 E2B on the GPU and the CPU for the strategic job, and Gemma 3 270M, Qwen3 0.6B and SmolVLM 256M for the tactical job.
+3. **Sustained run:** is 10 minutes the right length, and should it run only while charging?
+4. **Repeats:** 3 repeats per question by default (about 5–15 minutes per model), or more for tighter intervals?
