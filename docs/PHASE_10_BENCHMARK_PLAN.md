@@ -1,6 +1,6 @@
 # Phase 10 — Model Benchmarking and Evaluation: audit and execution plan
 
-**Status:** **PROPOSED (v38.43), waiting for the owner's OK.** Phase 9 is built (v38.34–v38.42, PRs #125–#133), and its phone test runs alongside this plan.
+**Status:** **APPROVED by the owner 2026-11-27** with the answers in section 6. IN PROGRESS: all steps are built back to back and phone-tested once at the end (continuous-phases rule). Phase 9 is built (v38.34–v38.42, PRs #125–#133), and its phone test runs alongside this plan.
 **Based on:** `sphynx-test-branch` at v38.42, read from the code. No phone was used for this plan.
 
 ## 1. Role for this phase (roadmap 3.1)
@@ -46,7 +46,7 @@
 
 ## 4. Acceptance criteria (roadmap deliverables)
 
-- [ ] A benchmark protocol and a versioned result schema with a comparability rule (E1).
+- [ ] A benchmark protocol and a versioned result schema with a comparability rule (E1). **In code (v38.44):** `docs/PHASE_10_BENCHMARK_PROTOCOL.md`, `universal/eval/EvalRecord` (run, sample, conditions, comparability key, JSON lines; tested), `universal/eval/EvalStats` (median, 90th percentile, spread, fixed-seed bootstrap and Wilson intervals; tested).
 - [ ] Versioned Strategic, Tactical and post-match evaluation sets, with a documented rubric (E2).
 - [ ] Deterministic scoring that keeps quality and speed apart (E3).
 - [ ] A harness for both backends that records model, quantization, backend, processor, phone, settings, cold or warm, sample count and spread (E4).
@@ -64,9 +64,9 @@
 - **Small samples:** 3 repeats of 40 questions gives wide intervals. The report shows the interval instead of hiding it. More repeats are a setting.
 - **Greedy is not identical every time:** GPU answers can differ slightly between runs. That is why repeats are made and the spread is shown.
 
-## 6. Questions for the owner
+## 6. Owner decisions (2026-11-27)
 
-1. **Expected answers:** shall I write the first evaluation sets myself, for you to review in the app or in the file before they count?
-2. **Which models:** which models should the first runs cover? For example, Gemma 4 E2B on the GPU and the CPU for the strategic job, and Gemma 3 270M, Qwen3 0.6B and SmolVLM 256M for the tactical job.
-3. **Sustained run:** is 10 minutes the right length, and should it run only while charging?
-4. **Repeats:** 3 repeats per question by default (about 5–15 minutes per model), or more for tighter intervals?
+1. **Expected answers:** I write the first evaluation sets (with each item's reason); the owner reviews them before their scores count.
+2. **First runs:** Gemma 4 E2B on the GPU and on the CPU (strategic job). The tactical set can still run on any model, but these are the runs that make the first results.
+3. **Sustained run:** 10 minutes, on battery, so battery use is measured. It stops at the "severe" heat status.
+4. **Repeats:** 3 per question (the default; not changed by the owner).

@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-27", Kind.IMPROVED, "Benchmark rules",
+            "Behind the scenes: the rules for testing models are written (docs/PHASE_10_BENCHMARK_PROTOCOL.md). Every " +
+                "test will record the model, its file, the processor, the phone, the settings and the phone's state, and " +
+                "two tests are only compared when all of that matches. Speeds are given as the middle and the slow end " +
+                "with how sure they are; quality is never mixed with speed. Nothing changes in the app yet.",
+            pr = 135, needsDeviceCheck = true, version = "38.44"),
         Entry("2026-11-27", Kind.IMPROVED, "Phase 10 plan: benchmarking and evaluation",
             "Behind the scenes: the plan for the next phase is written, for your OK. Sphynx will get fixed sets of " +
                 "fight moments, strategy questions and match reviews with expected answers, and a test you start " +
