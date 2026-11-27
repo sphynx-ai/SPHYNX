@@ -136,8 +136,24 @@ object EvalHarness {
 
     @Synchronized
     private fun save(ctx: Context, info: EvalRecord.RunInfo, samples: List<EvalRecord.Sample>) {
-        try { file(ctx).appendText(EvalRecord.lines(info, samples).joinToString("\n", postfix = "\n")) }
-        catch (e: Exception) { Diag.error("Evaluation not saved", e) }
+        val text = EvalRecord.lines(info, samples).joinToString("\n", postfix = "\n")
+        try { file(ctx).appendText(text) } catch (e: Exception) { Diag.error("Evaluation not saved", e) }
+        // Phase 10 E5: each run also goes into Recordings at once, so the automatic upload takes it (debug-data rule)
+        try { exportText(ctx, "diagnostics-eval-${info.runId}.jsonl", text) } catch (e: Exception) { Diag.error("Evaluation export", e) }
+    }
+
+    private fun exportText(ctx: Context, name: String, text: String): String {
+        val f = File(ctx.cacheDir, name)
+        f.writeText(text)
+        return try { com.sphynx.core.SessionRecorder.exportFile(ctx, f, "application/json") } finally { f.delete() }
+    }
+
+    /** Phase 10 E5: every run kept on the phone, as one file in Recordings (the Debug data page's button). */
+    fun exportAll(ctx: Context): String {
+        val f = file(ctx)
+        if (!f.isFile || f.length() == 0L) return "No test results yet"
+        val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
+        return "${runs(ctx).size} test runs. " + exportText(ctx, "diagnostics-eval-all-$stamp.jsonl", f.readText())
     }
 
     /** Every run kept on the phone, with its samples. */
