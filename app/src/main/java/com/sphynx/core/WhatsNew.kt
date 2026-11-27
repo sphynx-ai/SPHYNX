@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-27", Kind.NEW, "Scoring the test answers",
+            "Behind the scenes: Sphynx can now score a model's answer to a test question by fixed rules, with no second " +
+                "model and no internet: a fight answer is best, acceptable, wrong or unsafe; a plan is read from its JSON; " +
+                "a coaching answer scores the points it names, and a forbidden claim (like a wrong item) makes it unsafe, " +
+                "unless it is said with \"don't\". The speed of an answer is never part of its score.",
+            pr = 137, needsDeviceCheck = true, version = "38.46"),
         Entry("2026-11-27", Kind.NEW, "Test questions for the models",
             "Behind the scenes: Sphynx now has fixed test questions for its models: 40 fight moments (asked exactly the " +
                 "way the fight model is asked in a match), 15 in-match plans and 15 coaching questions for the strategy " +

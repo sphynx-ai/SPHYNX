@@ -3,6 +3,7 @@ package com.sphynx.adapters.mlbb
 import com.sphynx.ai.TacticalAdvisor
 import com.sphynx.game.HeroDb
 import com.sphynx.learning.FightOption
+import com.sphynx.universal.eval.EvalScoring
 import com.sphynx.universal.eval.EvalSet
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -40,8 +41,11 @@ class MlbbEvalSetsTest {
             assertEquals("${o.getString("id")}: $name", name, HeroDb.match(name))
             assertEquals("${o.getString("id")}: $name's role", HeroDb.role(name).name.lowercase(), m.groupValues[2])
         }
-        // every option the set uses is one the app reads from a fight answer
-        for (f in FightOption.values()) assertEquals(f, TacticalAdvisor.parse(f.name))
+        // the app's own reading of a fight answer and the scorer's agree on every option
+        for (f in FightOption.values()) {
+            assertEquals(f, TacticalAdvisor.parse(f.name))
+            assertEquals(f.name, EvalScoring.firstOption(f.name, FightOption.values().map { it.name }))
+        }
     }
 
     @Test fun theStrategicPlansUseTheAppsPromptAndPlans() {
@@ -72,6 +76,23 @@ class MlbbEvalSetsTest {
                         w.split(' ').none { it in notHeroes } && words.matches(w) && w !in setOf("EXP"))
                         assertTrue("$n: $w is not a hero", w in known)
                 }
+            }
+        }
+    }
+
+    // Phase 10 E3: each set's own expected answers score as expected
+    @Test fun theExpectedAnswersScoreBest() {
+        for (n in names) {
+            val set = EvalSet.parse(text(n)).getOrThrow()
+            for (it in set.items) when (it.kind) {
+                EvalSet.Kind.CHOICE -> {
+                    assertEquals(it.id, EvalScoring.Verdict.BEST, EvalScoring.score(it, it.best.first()).verdict)
+                    for (u in it.unsafe) assertEquals(it.id, EvalScoring.Verdict.UNSAFE, EvalScoring.score(it, u).verdict)
+                }
+                EvalSet.Kind.PLAN -> assertEquals(it.id, EvalScoring.Verdict.BEST,
+                    EvalScoring.score(it, "{\"plan\":\"${it.best.first()}\",\"aggression\":0.5}").verdict)
+                EvalSet.Kind.RUBRIC -> assertEquals(it.id, EvalScoring.Verdict.BEST,
+                    EvalScoring.score(it, it.must.joinToString(". ") { g -> g.first() }).verdict)
             }
         }
     }
