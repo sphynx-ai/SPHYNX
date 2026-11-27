@@ -1,0 +1,752 @@
+{
+ "schema": 1,
+ "id": "mlbb-strategic",
+ "version": 1,
+ "game": "mlbb",
+ "role": "strategic",
+ "reviewed": false,
+ "maxTokens": 160,
+ "about": "Plan items are asked in the exact form the strategic model is asked (MlbbStrategy.strategyPrompt) and scored on the JSON plan; rubric items are coaching questions scored by the points they must name (each list is alternatives) and the claims they must not make.",
+ "items": [
+  {
+   "id": "s01",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Layla (marksman, Gold lane). State: phase=in game, my HP 100%, enemy heroes on screen 0, allies near 0, enemy minions 4, enemies on minimap 2, lane Gold lane, match time 3:00, items 1, gold 300. Time 3:00. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "farm"
+   ],
+   "ok": [
+    "push"
+   ],
+   "unsafe": [
+    "fight"
+   ],
+   "why": "Early game, nobody near, a wave to farm: farm."
+  },
+  {
+   "id": "s02",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Tigreal (tank, Roam). State: phase=in game, my HP 90%, enemy heroes on screen 0, allies near 4, enemy minions 0, enemies on minimap 2, enemies dead 3 (alive 2), allies dead 0, lord HP 100%, lane Roam, match time 8:05. Time 8:05. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "push"
+   ],
+   "ok": [
+    "fight",
+    "group"
+   ],
+   "unsafe": [
+    "retreat"
+   ],
+   "why": "Three enemies dead with the whole team together: push (or take the lord)."
+  },
+  {
+   "id": "s03",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Miya (marksman, Gold lane). State: phase=in game, my HP 30%, enemy heroes on screen 3 (HP 90%/80%/100%), allies near 0, enemy minions 2, enemies on minimap 3, lane Gold lane, match time 14:00, items 4, gold 800. Time 14:00. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "retreat"
+   ],
+   "ok": [
+    "group"
+   ],
+   "unsafe": [
+    "fight",
+    "push"
+   ],
+   "why": "30% HP and three healthy enemies on screen alone."
+  },
+  {
+   "id": "s04",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Balmond (fighter, EXP lane). State: phase=in game, my HP 80%, enemy heroes on screen 0, allies near 0, enemy minions 6, enemies on minimap 0, lane EXP lane, match time 10:00, items 3, gold 500. Time 10:00. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "push"
+   ],
+   "ok": [
+    "farm"
+   ],
+   "unsafe": [],
+   "why": "A big wave and no enemy anywhere on the map: push the tower."
+  },
+  {
+   "id": "s05",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Khufra (tank, Roam). State: phase=in game, my HP 90%, enemy heroes on screen 2 (HP 40%/50%), allies near 3, enemy minions 3, enemies on minimap 2, lane Roam, match time 12:00, items 3, gold 400. Time 12:00. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "fight"
+   ],
+   "ok": [
+    "group"
+   ],
+   "unsafe": [
+    "retreat"
+   ],
+   "why": "A healthy tank with three allies against two hurt enemies."
+  },
+  {
+   "id": "s06",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Layla (marksman, Gold lane). State: phase=in game, my HP 60%, enemy heroes on screen 0, allies near 3, enemy minions 0, enemies on minimap 5, lord HP 80%, lane Gold lane, match time 18:00, items 5, gold 900. Time 18:00. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "group"
+   ],
+   "ok": [
+    "fight",
+    "defend"
+   ],
+   "unsafe": [
+    "farm"
+   ],
+   "why": "The enemies are at the lord: join the team to contest it."
+  },
+  {
+   "id": "s07",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Gusion (assassin, Jungle). State: phase=in game, my HP 100%, enemy heroes on screen 0, allies near 0, enemy minions 0, enemies on minimap 1, enemies dead 2 (alive 3), allies dead 0, lane Jungle, match time 7:00, items 3, gold 600. Time 7:00. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "push"
+   ],
+   "ok": [
+    "farm",
+    "fight"
+   ],
+   "unsafe": [
+    "retreat"
+   ],
+   "why": "Two enemies dead: use the time to push."
+  },
+  {
+   "id": "s08",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Moskov (marksman, Gold lane). State: phase=in game, my HP 40%, enemy heroes on screen 0, allies near 0, enemy minions 0, enemies on minimap 0, enemies dead 0 (alive 5), allies dead 3, lane Gold lane, match time 20:00, items 5, gold 1200. Time 20:00. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "defend"
+   ],
+   "ok": [
+    "retreat",
+    "group"
+   ],
+   "unsafe": [
+    "push",
+    "fight"
+   ],
+   "why": "Three allies dead and every enemy hidden: hold the base."
+  },
+  {
+   "id": "s09",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Nana (mage, Mid lane). State: phase=in game, my HP 100%, enemy heroes on screen 1 (HP 100%), allies near 0, enemy minions 5, enemies on minimap 1, lane Mid lane, match time 1:00, items 1, gold 150. Time 1:00. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "farm"
+   ],
+   "ok": [
+    "push"
+   ],
+   "unsafe": [],
+   "why": "Level 1 mid lane: farm the wave."
+  },
+  {
+   "id": "s10",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Chou (fighter, EXP lane). State: phase=in game, my HP 15%, enemy heroes on screen 1 (HP 60%), allies near 0, enemy minions 3, enemies on minimap 1, lane EXP lane, match time 9:00, items 3, gold 600. Time 9:00. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "retreat"
+   ],
+   "ok": [
+    "group"
+   ],
+   "unsafe": [
+    "fight",
+    "push"
+   ],
+   "why": "15% HP: go back."
+  },
+  {
+   "id": "s11",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Angela (support, Roam). State: phase=in game, my HP 90%, enemy heroes on screen 3 (HP 70%/60%/80%), allies near 3, enemy minions 2, enemies on minimap 3, lane Roam, match time 15:00, items 4, gold 500. Time 15:00. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "group"
+   ],
+   "ok": [
+    "fight"
+   ],
+   "unsafe": [
+    "farm"
+   ],
+   "why": "A support in a team fight stays with the team."
+  },
+  {
+   "id": "s12",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Hayabusa (assassin, Jungle). State: phase=in game, my HP 100%, enemy heroes on screen 0, allies near 0, enemy minions 5, enemies on minimap 2, lane Jungle, match time 16:00, items 5, gold 700. Time 16:00. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "push"
+   ],
+   "ok": [
+    "farm"
+   ],
+   "unsafe": [],
+   "why": "A healthy assassin with a wave and the enemies far away: split push."
+  },
+  {
+   "id": "s13",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Esmeralda (mage, EXP lane). State: phase=in game, my HP 70%, enemy heroes on screen 1 (HP 30%), allies near 1, enemy minions 3, enemies on minimap 1, lane EXP lane, match time 4:00, items 2, gold 300. Time 4:00. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "fight"
+   ],
+   "ok": [
+    "push"
+   ],
+   "unsafe": [
+    "retreat"
+   ],
+   "why": "A 30% enemy and an ally: fight."
+  },
+  {
+   "id": "s14",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Clint (marksman, Gold lane). State: phase=in game, my HP 100%, enemy heroes on screen 0, allies near 0, enemy minions 4, enemies on minimap 0, enemies dead 0 (alive 5), allies dead 2, lane Gold lane, match time 23:00, items 6, gold 1500. Time 23:00. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "group"
+   ],
+   "ok": [
+    "defend",
+    "retreat"
+   ],
+   "unsafe": [
+    "push"
+   ],
+   "why": "Late game, two allies dead and every enemy hidden: a lone marksman must not push."
+  },
+  {
+   "id": "s15",
+   "kind": "plan",
+   "prompt": "MLBB strategy for Atlas (tank, Roam). State: phase=in game, my HP 80%, enemy heroes on screen 5 (HP 80%/85%/80%/75%/80%), allies near 4, enemy minions 2, enemies on minimap 5, lane Roam, match time 11:00, items 3, gold 300. Time 11:00. Do not think; reply JSON only: {\"plan\":\"farm|push|fight|retreat|group|defend\",\"aggression\":0.5,\"focus\":\"weakest|nearest\",\"note\":\"max 6 words\"}",
+   "field": "plan",
+   "options": [
+    "farm",
+    "push",
+    "fight",
+    "retreat",
+    "group",
+    "defend"
+   ],
+   "best": [
+    "fight"
+   ],
+   "ok": [
+    "group"
+   ],
+   "unsafe": [
+    "farm"
+   ],
+   "why": "Five enemies grouped in front of a full team: Atlas engages."
+  },
+  {
+   "id": "r01",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. The enemy has Fanny, Ling and Lancelot, three assassins that dash a lot. Name one hero for our last pick that counters them, and why. Answer in at most three sentences.",
+   "must": [
+    [
+     "Khufra",
+     "Minsitthar",
+     "Kaja",
+     "Chou",
+     "Saber",
+     "Franco",
+     "Phoveus"
+    ],
+    [
+     "dash",
+     "blink",
+     "mobility",
+     "lock",
+     "stun",
+     "suppress",
+     "crowd control",
+     "control",
+     "stop"
+    ]
+   ],
+   "mustNot": [],
+   "why": "Khufra, Minsitthar, Kaja and Phoveus punish or stop dashes; Chou, Saber and Franco lock a single target."
+  },
+  {
+   "id": "r02",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. When does the Lord first appear, and when should a team take it? Answer in at most three sentences.",
+   "must": [
+    [
+     "8:00",
+     "8 min",
+     "eight min",
+     "8th min",
+     "minute 8"
+    ],
+    [
+     "enemies dead",
+     "enemy is dead",
+     "enemies are dead",
+     "won a fight",
+     "win a fight",
+     "after a team fight",
+     "advantage",
+     "numbers",
+     "pick"
+    ]
+   ],
+   "mustNot": [],
+   "why": "The Lord appears at 8:00; take it when enemies are dead or the team has the numbers."
+  },
+  {
+   "id": "r03",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. Our team is 5,000 gold behind at 12 minutes. What should we do? Answer in at most three sentences.",
+   "must": [
+    [
+     "defend",
+     "turret",
+     "tower",
+     "safe"
+    ],
+    [
+     "together",
+     "group",
+     "as a team"
+    ],
+    [
+     "pick",
+     "catch",
+     "mistake",
+     "wait",
+     "late game",
+     "scale",
+     "objective"
+    ]
+   ],
+   "mustNot": [
+    "dive",
+    "split push alone"
+   ],
+   "why": "Behind: defend towers together and wait for a pick or a mistake; never dive or split alone."
+  },
+  {
+   "id": "r04",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. What does the Turtle give the team, and when does it first appear? Answer in at most three sentences.",
+   "must": [
+    [
+     "gold",
+     "experience",
+     "exp",
+     "shield"
+    ],
+    [
+     "2:00",
+     "2 min",
+     "two min",
+     "minute 2"
+    ]
+   ],
+   "mustNot": [],
+   "why": "The Turtle gives gold and experience (and a shield to the one who kills it); it first appears at 2:00."
+  },
+  {
+   "id": "r05",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. The enemy has three magic damage heroes: Eudora, Kagura and Lunox. Which defensive item should our tank buy first? Answer in at most three sentences.",
+   "must": [
+    [
+     "Athena's Shield",
+     "Athena",
+     "Radiant Armor",
+     "Oracle"
+    ]
+   ],
+   "mustNot": [
+    "Antique Cuirass",
+    "Blade Armor",
+    "Dominance Ice"
+   ],
+   "why": "Magic defence (Athena's Shield, Radiant Armor, Oracle); the physical defence items are wrong here."
+  },
+  {
+   "id": "r06",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. The enemy has Estes and Esmeralda, who heal a lot. What should our marksman buy against them? Answer in at most three sentences.",
+   "must": [
+    [
+     "Sea Halberd",
+     "anti-heal",
+     "antiheal",
+     "healing reduction",
+     "reduce healing",
+     "reduces healing"
+    ]
+   ],
+   "mustNot": [],
+   "why": "Healing reduction (Sea Halberd for a marksman)."
+  },
+  {
+   "id": "r07",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. As a roamer at 1:30, after helping the gold lane, where should you go next and why? Answer in at most three sentences.",
+   "must": [
+    [
+     "mid",
+     "turtle",
+     "jungle",
+     "EXP"
+    ],
+    [
+     "vision",
+     "scout",
+     "help",
+     "gank",
+     "objective",
+     "rotate"
+    ]
+   ],
+   "mustNot": [],
+   "why": "Rotate to mid, the jungle or the turtle to give vision and help."
+  },
+  {
+   "id": "r08",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. The enemy marksman is fed with 8 kills. As our tank, what is your job in team fights? Answer in at most three sentences.",
+   "must": [
+    [
+     "marksman",
+     "carry",
+     "backline"
+    ],
+    [
+     "protect",
+     "peel",
+     "stun",
+     "lock",
+     "engage",
+     "initiate",
+     "focus",
+     "catch"
+    ]
+   ],
+   "mustNot": [],
+   "why": "Lock down or keep away the fed marksman."
+  },
+  {
+   "id": "r09",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. The enemy jungler has been missing from the map for 20 seconds. What should an EXP laner do? Answer in at most three sentences.",
+   "must": [
+    [
+     "back",
+     "careful",
+     "safe",
+     "retreat",
+     "tower",
+     "bush",
+     "ward",
+     "cautious"
+    ],
+    [
+     "missing",
+     "jungler",
+     "gank",
+     "ambush"
+    ]
+   ],
+   "mustNot": [
+    "dive the tower",
+    "tower dive"
+   ],
+   "why": "Play safe near the tower and expect a gank; never dive."
+  },
+  {
+   "id": "r10",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. Our team has Tigreal, Lunox and Granger. Which jungler should we pick to fit, and why? Answer in at most three sentences.",
+   "must": [
+    [
+     "Ling",
+     "Fanny",
+     "Lancelot",
+     "Hayabusa",
+     "Gusion",
+     "Karina",
+     "Saber",
+     "Natalia",
+     "Aamon",
+     "Benedetta",
+     "Yi Sun-shin",
+     "Fredrinn",
+     "Barats",
+     "Baxia",
+     "Akai",
+     "Balmond",
+     "Alucard",
+     "Martis",
+     "Roger",
+     "Leomord",
+     "Freya",
+     "Yin",
+     "Joy",
+     "Nolan",
+     "Hanzo",
+     "Helcurt",
+     "Harley",
+     "Julian",
+     "Alpha",
+     "Dyrroth",
+     "Aulus",
+     "Thamuz",
+     "Hilda",
+     "Bane",
+     "Suyou"
+    ],
+    [
+     "burst",
+     "damage",
+     "physical",
+     "engage",
+     "mobility",
+     "objective",
+     "Retribution",
+     "jungle"
+    ]
+   ],
+   "mustNot": [],
+   "why": "Any real jungler with a reason (the team lacks a physical jungler)."
+  },
+  {
+   "id": "r11",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. Why should a team not chase into the fog after winning a fight? Answer in at most three sentences.",
+   "must": [
+    [
+     "ambush",
+     "bush",
+     "vision",
+     "fog",
+     "unseen",
+     "respawn",
+     "trap"
+    ],
+    [
+     "objective",
+     "tower",
+     "turtle",
+     "lord",
+     "push"
+    ]
+   ],
+   "mustNot": [],
+   "why": "Chasing blind risks an ambush; take an objective instead."
+  },
+  {
+   "id": "r12",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. When should a jungler use Retribution? Answer in at most three sentences.",
+   "must": [
+    [
+     "turtle",
+     "lord",
+     "buff",
+     "creep",
+     "monster"
+    ],
+    [
+     "steal",
+     "secure",
+     "last hit",
+     "finish",
+     "kill"
+    ]
+   ],
+   "mustNot": [],
+   "why": "To secure the last hit on the turtle, lord or buffs."
+  },
+  {
+   "id": "r13",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. The enemy has Khufra and Atlas, who stun and pull. Which battle spell helps our marksman most? Answer in at most three sentences.",
+   "must": [
+    [
+     "Purify"
+    ]
+   ],
+   "mustNot": [],
+   "why": "Purify removes the crowd control."
+  },
+  {
+   "id": "r14",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. At 18 minutes the enemy base turret is open and two enemies are dead for 25 seconds. What should we do? Answer in at most three sentences.",
+   "must": [
+    [
+     "push",
+     "base",
+     "turret",
+     "throne",
+     "end"
+    ]
+   ],
+   "mustNot": [
+    "farm the jungle",
+    "go back to farm"
+   ],
+   "why": "Push the base and end."
+  },
+  {
+   "id": "r15",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player. Our gold laner keeps dying to ganks. Give two pieces of advice. Answer in at most three sentences.",
+   "must": [
+    [
+     "ward",
+     "vision",
+     "map",
+     "minimap"
+    ],
+    [
+     "bush",
+     "tower",
+     "safe",
+     "back",
+     "position",
+     "positioning"
+    ]
+   ],
+   "mustNot": [],
+   "why": "Watch the minimap and play nearer the tower."
+  }
+ ]
+}
