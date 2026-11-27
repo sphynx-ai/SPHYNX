@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-27", Kind.NEW, "Heat and battery test",
+            "The EVALUATION card can run a 10-minute heat and battery test: the fight model is asked the fight " +
+                "questions again and again at the speed of a real fight. The report shows how much slower it answers in " +
+                "the last minute than in the first (throttling), the battery used per minute (not while charging), how " +
+                "much warmer the battery got and the highest heat status. It stops by itself if the phone gets too hot.",
+            pr = 142, needsDeviceCheck = true, version = "38.51"),
         Entry("2026-11-27", Kind.NEW, "Slower or worse than before",
             "The first good test of a model on your phone becomes its baseline. A later test of the same model, set, " +
                 "processor and settings (for example after an app update) shows a REGRESSION card when its usable answer " +

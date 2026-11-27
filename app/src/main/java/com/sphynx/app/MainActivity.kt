@@ -3013,6 +3013,22 @@ class MainActivity : Activity() {
                     }.setNegativeButton("Cancel", null).show()
             }.setNegativeButton("Cancel", null).show()
         }
+        // Phase 10 E8 (owner, 2026-11-27: 10 minutes, on battery)
+        inCard(cd, "Run the 10-minute heat and battery test…") {
+            if (ev.running) { toast("A test is already running"); return@inCard }
+            if (!com.sphynx.ai.Roles.ready(com.sphynx.ai.Roles.TACTICAL)) { toast("Load a model for the tactical job first"); return@inCard }
+            val c = ev.conditions(this)
+            AlertDialog.Builder(this).setTitle("Heat and battery test")
+                .setMessage("Asks ${com.sphynx.models.ModelManager.choiceLabel(this, com.sphynx.ai.Roles.TACTICAL)} the fight questions " +
+                    "again and again at the speed of a fight for 10 minutes, and measures how it slows as the phone warms up and " +
+                    "how much battery it uses. The phone will get warm; the test stops by itself if it gets too hot." +
+                    (if (c.charging == true) "\n\nThe phone is charging: unplug it to measure the battery." else "") +
+                    (c.problems().takeIf { it.isNotEmpty() }?.let { "\n\nNot under the test's conditions (${it.joinToString()}): kept but never ranked." } ?: ""))
+                .setPositiveButton("Start") { _, _ ->
+                    ev.startSustained(this, com.sphynx.universal.eval.EvalSustained.MINUTES) { m -> runOnUiThread { toast(m.take(240)); show("model") } }
+                    toast("Heat test started")
+                }.setNegativeButton("Cancel", null).show()
+        }
         inCard(cd, "Stop the test") { if (!ev.running) toast("No test is running") else { ev.stop(); toast("Stopping: the answers so far are kept") } }
         // Phase 10 E6: the report: the newest runs, quality and speed side by side, and a comparison of two
         val runs = try { ev.runs(this) } catch (t: Throwable) { emptyList() }
@@ -3031,7 +3047,10 @@ class MainActivity : Activity() {
             val c = card()
             val when_ = java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.US).format(java.util.Date(sm.run.startedAt))
             cardHeader(c, "TEST · " + sm.run.role.uppercase(java.util.Locale.US), when_, if (sm.rankable) T.ACCENT else T.GOLD)
-            cardNote(c, rep.text(sm, reviewed[sm.run.setId] == true))
+            cardNote(c, if (sm.run.kind == com.sphynx.universal.eval.EvalRecord.KIND_SUSTAINED)
+                    sm.run.fileName + " · " + sm.run.backend + "/" + (sm.run.processor ?: "?") + "\n" +
+                    com.sphynx.universal.eval.EvalSustained.analyse(runs.first { it.first.runId == sm.run.runId }.second, sm.run.conditions.charging).text()
+                else rep.text(sm, reviewed[sm.run.setId] == true))
         }
         if (sums.size >= 2) inCard(cd, "Compare two test runs…") {
             val labels = sums.map { "${it.run.setId} · ${it.run.processor ?: "?"} · app ${it.run.appVersion} · " +
