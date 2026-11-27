@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-27", Kind.IMPROVED, "How to test a model",
+            "A short guide explains how to run a model test so it can be repeated, and how to read the report " +
+                "(docs/PHASE_10_BENCHMARK_GUIDE.md). The phone checklist for the whole of Phase 10 is in " +
+                "docs/PHASE_10_BENCHMARK_PLAN.md, section 7.",
+            pr = 143, needsDeviceCheck = true, version = "38.52"),
         Entry("2026-11-27", Kind.NEW, "Heat and battery test",
             "The EVALUATION card can run a 10-minute heat and battery test: the fight model is asked the fight " +
                 "questions again and again at the speed of a real fight. The report shows how much slower it answers in " +
