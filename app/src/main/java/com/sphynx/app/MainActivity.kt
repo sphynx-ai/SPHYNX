@@ -3020,6 +3020,13 @@ class MainActivity : Activity() {
         val rep = com.sphynx.universal.eval.EvalReport
         val reviewed = ev.SETS.mapNotNull { ev.loadSet(this, it).getOrNull() }.associate { it.id to it.reviewed }
         val sums = runs.map { (r, ss) -> rep.summarize(r, ss) }.sortedByDescending { it.run.startedAt }
+        // Phase 10 E7: a later comparable run slower or worse than its baseline (only reported, nothing changes)
+        val flags = com.sphynx.universal.eval.EvalRegression.flags(sums)
+        if (flags.isNotEmpty()) {
+            val c = card()
+            cardHeader(c, "REGRESSION", "${flags.size}", T.RED)
+            cardNote(c, flags.take(4).joinToString("\n") { it.text() })
+        }
         for (sm in sums.take(6)) {
             val c = card()
             val when_ = java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.US).format(java.util.Date(sm.run.startedAt))
