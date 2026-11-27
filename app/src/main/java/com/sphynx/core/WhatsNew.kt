@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-27", Kind.NEW, "Test questions for the models",
+            "Behind the scenes: Sphynx now has fixed test questions for its models: 40 fight moments (asked exactly the " +
+                "way the fight model is asked in a match), 15 in-match plans and 15 coaching questions for the strategy " +
+                "model, and 10 short match reviews, each with its expected answer and the reason. They are in the app " +
+                "for you to review (docs/PHASE_10_EVAL_SETS.md); their scores count once you have. Nothing is asked yet.",
+            pr = 136, needsDeviceCheck = true, version = "38.45"),
         Entry("2026-11-27", Kind.IMPROVED, "Benchmark rules",
             "Behind the scenes: the rules for testing models are written (docs/PHASE_10_BENCHMARK_PROTOCOL.md). Every " +
                 "test will record the model, its file, the processor, the phone, the settings and the phone's state, and " +

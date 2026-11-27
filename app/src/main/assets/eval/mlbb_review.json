@@ -1,0 +1,226 @@
+{
+ "schema": 1,
+ "id": "mlbb-review",
+ "version": 1,
+ "game": "mlbb",
+ "role": "strategic",
+ "reviewed": false,
+ "maxTokens": 200,
+ "about": "Short match summaries; a good review names the points each lists (each list is alternatives).",
+ "items": [
+  {
+   "id": "v01",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player after a match. Match: Hero Layla, gold lane, defeat, 6 kills 9 deaths 4 assists. 5 of the 9 deaths were alone in the enemy jungle after 12:00. The enemy took the lord twice. Write a short review: what went wrong or right, and one thing to do next time. At most four sentences.",
+   "must": [
+    [
+     "alone",
+     "solo",
+     "without the team",
+     "without your team",
+     "isolated",
+     "by yourself"
+    ],
+    [
+     "jungle",
+     "position",
+     "enemy side",
+     "fog",
+     "vision"
+    ],
+    [
+     "lord"
+    ]
+   ],
+   "mustNot": [],
+   "why": "The review must name the points the match shows."
+  },
+  {
+   "id": "v02",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player after a match. Match: Hero Tigreal, roam, victory, 1 kill 4 deaths 18 assists. Started 4 team fights with ultimate and Flicker and won 3 of them. Few vision wards. Write a short review: what went wrong or right, and one thing to do next time. At most four sentences.",
+   "must": [
+    [
+     "engage",
+     "initiat",
+     "ultimate",
+     "fight",
+     "Flicker"
+    ],
+    [
+     "vision",
+     "ward",
+     "map",
+     "scout"
+    ]
+   ],
+   "mustNot": [],
+   "why": "The review must name the points the match shows."
+  },
+  {
+   "id": "v03",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player after a match. Match: Hero Fanny, jungle, defeat, 2 kills 8 deaths 3 assists. Energy was often empty in fights. The enemy took the turtle 3 times out of 3. Write a short review: what went wrong or right, and one thing to do next time. At most four sentences.",
+   "must": [
+    [
+     "energy",
+     "blue",
+     "cable"
+    ],
+    [
+     "turtle",
+     "objective"
+    ]
+   ],
+   "mustNot": [],
+   "why": "The review must name the points the match shows."
+  },
+  {
+   "id": "v04",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player after a match. Match: Hero Miya, gold lane, victory, 12 kills 3 deaths 7 assists. Most damage in the match. Items: Windtalker, Demon Hunter Sword, Corrosion Scythe, Golden Staff. All 3 deaths came from Saber's ultimate. Write a short review: what went wrong or right, and one thing to do next time. At most four sentences.",
+   "must": [
+    [
+     "Saber",
+     "assassin",
+     "burst",
+     "ultimate"
+    ],
+    [
+     "Wind of Nature",
+     "Purify",
+     "defensive",
+     "Immortality",
+     "Athena",
+     "Rose Gold Meteor",
+     "defence",
+     "defense"
+    ]
+   ],
+   "mustNot": [],
+   "why": "The review must name the points the match shows."
+  },
+  {
+   "id": "v05",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player after a match. Match: Hero Eudora, mid lane, defeat, 3 kills 6 deaths 2 assists. Low damage. Took no part in 6 of 9 team fights. 30 minions farmed by 10:00. Write a short review: what went wrong or right, and one thing to do next time. At most four sentences.",
+   "must": [
+    [
+     "team fight",
+     "rotate",
+     "rotation",
+     "join",
+     "help",
+     "group"
+    ],
+    [
+     "farm",
+     "minion",
+     "wave"
+    ]
+   ],
+   "mustNot": [],
+   "why": "The review must name the points the match shows."
+  },
+  {
+   "id": "v06",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player after a match. Match: Hero Chou, EXP lane, victory, 8 kills 5 deaths 10 assists. Lost the EXP lane tower at 5:00 while ganking mid; later carried the fights. Write a short review: what went wrong or right, and one thing to do next time. At most four sentences.",
+   "must": [
+    [
+     "tower",
+     "lane"
+    ],
+    [
+     "gank",
+     "rotation",
+     "timing",
+     "wave"
+    ]
+   ],
+   "mustNot": [],
+   "why": "The review must name the points the match shows."
+  },
+  {
+   "id": "v07",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player after a match. Match: Hero Lesley, gold lane, defeat, 4 kills 2 deaths 1 assist. Few deaths but only 12% of the team's damage. Stayed in lane while the team fought for the lord at 10:00, 14:00 and 18:00. Write a short review: what went wrong or right, and one thing to do next time. At most four sentences.",
+   "must": [
+    [
+     "lord",
+     "objective"
+    ],
+    [
+     "group",
+     "join",
+     "team",
+     "rotate"
+    ]
+   ],
+   "mustNot": [],
+   "why": "The review must name the points the match shows."
+  },
+  {
+   "id": "v08",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player after a match. Match: Hero Angela, roam, victory, 0 kills 2 deaths 22 assists. Ultimate used on the marksman in 7 fights; healed 30,000. Write a short review: what went wrong or right, and one thing to do next time. At most four sentences.",
+   "must": [
+    [
+     "ultimate",
+     "heal",
+     "marksman",
+     "carry",
+     "protect",
+     "support"
+    ]
+   ],
+   "mustNot": [],
+   "why": "The review must name the points the match shows."
+  },
+  {
+   "id": "v09",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player after a match. Match: Hero Balmond, jungle, defeat, 5 kills 7 deaths 6 assists. Retribution missed on the lord at 16:30 and the enemy stole it; after that the enemy pushed to the base. Write a short review: what went wrong or right, and one thing to do next time. At most four sentences.",
+   "must": [
+    [
+     "Retribution",
+     "steal",
+     "smite",
+     "last hit"
+    ],
+    [
+     "lord"
+    ]
+   ],
+   "mustNot": [],
+   "why": "The review must name the points the match shows."
+  },
+  {
+   "id": "v10",
+   "kind": "rubric",
+   "prompt": "You coach a Mobile Legends: Bang Bang player after a match. Match: Hero Kagura, mid lane, defeat, 1 kill 7 deaths 4 assists. Died 5 times to Lancelot. Bought no defensive item. Used Flicker to chase. Write a short review: what went wrong or right, and one thing to do next time. At most four sentences.",
+   "must": [
+    [
+     "Lancelot",
+     "assassin"
+    ],
+    [
+     "defensive",
+     "Winter",
+     "Athena",
+     "Immortality",
+     "item",
+     "defence",
+     "defense"
+    ],
+    [
+     "Flicker",
+     "escape",
+     "spell"
+    ]
+   ],
+   "mustNot": [],
+   "why": "The review must name the points the match shows."
+  }
+ ]
+}

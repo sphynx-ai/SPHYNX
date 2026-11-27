@@ -47,7 +47,7 @@
 ## 4. Acceptance criteria (roadmap deliverables)
 
 - [ ] A benchmark protocol and a versioned result schema with a comparability rule (E1). **In code (v38.44):** `docs/PHASE_10_BENCHMARK_PROTOCOL.md`, `universal/eval/EvalRecord` (run, sample, conditions, comparability key, JSON lines; tested), `universal/eval/EvalStats` (median, 90th percentile, spread, fixed-seed bootstrap and Wilson intervals; tested).
-- [ ] Versioned Strategic, Tactical and post-match evaluation sets, with a documented rubric (E2).
+- [ ] Versioned Strategic, Tactical and post-match evaluation sets, with a documented rubric (E2). **In code (v38.45):** `assets/eval/mlbb_tactical.json` (40), `mlbb_strategic.json` (15 plans, 15 coaching questions), `mlbb_review.json` (10), all version 1, not yet reviewed by the owner; written by `tools/eval-sets/build.py`; form `universal/eval/EvalSet` (checked: tested); `MlbbEvalSetsTest` (exact match prompts, real heroes and roles, the app's plan reader); rubric `docs/PHASE_10_EVAL_SETS.md`.
 - [ ] Deterministic scoring that keeps quality and speed apart (E3).
 - [ ] A harness for both backends that records model, quantization, backend, processor, phone, settings, cold or warm, sample count and spread (E4).
 - [ ] Raw results kept and exported for debugging (E5).

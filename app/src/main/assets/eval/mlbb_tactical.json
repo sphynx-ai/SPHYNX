@@ -1,0 +1,939 @@
+{
+ "schema": 1,
+ "id": "mlbb-tactical",
+ "version": 1,
+ "game": "mlbb",
+ "role": "tactical",
+ "reviewed": false,
+ "maxTokens": 16,
+ "about": "Fight moments in the exact form the tactical model is asked (TacticalAdvisor.summary/prompt). best = the expected option, ok = also acceptable, unsafe = an answer that could get the hero killed; anything else is wrong.",
+ "items": [
+  {
+   "id": "t01",
+   "kind": "choice",
+   "summary": "hero Layla (marksman, ranged), Gold lane, time 6:10\nme: HP 15%, level 7, ready: s1, spell Flicker used\nenemies close: 2 (HP 80% 90%), nearest in reach\nallies close: 0, minions: 2, under enemy tower: no, enemies missing from map: 1",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Layla (marksman, ranged), Gold lane, time 6:10\nme: HP 15%, level 7, ready: s1, spell Flicker used\nenemies close: 2 (HP 80% 90%), nearest in reach\nallies close: 0, minions: 2, under enemy tower: no, enemies missing from map: 1\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "RETREAT"
+   ],
+   "ok": [
+    "GROUP"
+   ],
+   "unsafe": [
+    "ALL_IN",
+    "FARM"
+   ],
+   "why": "15% HP, two healthy enemies in reach, no allies and Flicker used: leave now."
+  },
+  {
+   "id": "t02",
+   "kind": "choice",
+   "summary": "hero Layla (marksman, ranged), Gold lane, time 4:30\nme: HP 90%, level 5, ready: s1 s2 ult, spell Flicker ready\nenemies close: 1 (HP 20%), nearest in reach\nallies close: 1, minions: 3, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Layla (marksman, ranged), Gold lane, time 4:30\nme: HP 90%, level 5, ready: s1 s2 ult, spell Flicker ready\nenemies close: 1 (HP 20%), nearest in reach\nallies close: 1, minions: 3, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "POKE"
+   ],
+   "unsafe": [],
+   "why": "A lone enemy at 20% in reach, full HP and every skill ready: take the kill."
+  },
+  {
+   "id": "t03",
+   "kind": "choice",
+   "summary": "hero Tigreal (tank, melee), Roam, time 8:00\nme: HP 85%, level 9, ready: s1 s2 ult, spell Flicker ready\nenemies close: 3 (HP 70% 60% 50%), nearest in reach\nallies close: 3, minions: 4, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Tigreal (tank, melee), Roam, time 8:00\nme: HP 85%, level 9, ready: s1 s2 ult, spell Flicker ready\nenemies close: 3 (HP 70% 60% 50%), nearest in reach\nallies close: 3, minions: 4, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "GROUP",
+    "RULES"
+   ],
+   "unsafe": [
+    "FARM"
+   ],
+   "why": "The tank has ultimate and Flicker with three allies against three grouped, hurt enemies: start the fight."
+  },
+  {
+   "id": "t04",
+   "kind": "choice",
+   "summary": "hero Fanny (assassin, melee), Jungle, time 3:00\nme: HP 40%, level 4, ready: s2, spell Retribution ready\nenemies close: 2 (HP 100% 100%), nearest outside reach\nallies close: 0, minions: 0, under enemy tower: no, enemies missing from map: 2",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Fanny (assassin, melee), Jungle, time 3:00\nme: HP 40%, level 4, ready: s2, spell Retribution ready\nenemies close: 2 (HP 100% 100%), nearest outside reach\nallies close: 0, minions: 0, under enemy tower: no, enemies missing from map: 2\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "RETREAT"
+   ],
+   "ok": [
+    "GROUP"
+   ],
+   "unsafe": [
+    "ALL_IN"
+   ],
+   "why": "40% HP, no ultimate, two full-HP enemies coming and two more missing."
+  },
+  {
+   "id": "t05",
+   "kind": "choice",
+   "summary": "hero Eudora (mage, ranged), Mid lane, time 2:30\nme: HP 30%, level 3, ready: s1, spell Flicker ready\nenemies close: 1 (HP 90%), nearest in reach\nallies close: 0, minions: 0, under enemy tower: yes, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Eudora (mage, ranged), Mid lane, time 2:30\nme: HP 30%, level 3, ready: s1, spell Flicker ready\nenemies close: 1 (HP 90%), nearest in reach\nallies close: 0, minions: 0, under enemy tower: yes, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "RETREAT"
+   ],
+   "ok": [
+    "GROUP"
+   ],
+   "unsafe": [
+    "ALL_IN"
+   ],
+   "why": "30% HP under the enemy tower with no minions to take its shots, against a healthy enemy."
+  },
+  {
+   "id": "t06",
+   "kind": "choice",
+   "summary": "hero Miya (marksman, ranged), Gold lane, time 12:00\nme: HP 70%, level 12, ready: s1 s2 ult, spell Purify ready\nenemies close: 2 (HP 60% 55%), nearest in reach\nallies close: 3, minions: 5, under enemy tower: no, enemies missing from map: 0\nscores: attack 0.65, retreat 0.25, risk 0.35",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Miya (marksman, ranged), Gold lane, time 12:00\nme: HP 70%, level 12, ready: s1 s2 ult, spell Purify ready\nenemies close: 2 (HP 60% 55%), nearest in reach\nallies close: 3, minions: 5, under enemy tower: no, enemies missing from map: 0\nscores: attack 0.65, retreat 0.25, risk 0.35\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "POKE"
+   ],
+   "ok": [
+    "ALL_IN",
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "A marksman in a team fight with three allies: keep hitting from range."
+  },
+  {
+   "id": "t07",
+   "kind": "choice",
+   "summary": "hero Balmond (fighter, melee), EXP lane, time 5:00\nme: HP 55%, level 6, ready: s1 ult, spell Petrify ready\nenemies close: 1 (HP 40%), nearest in reach\nallies close: 0, minions: 4, under enemy tower: no, enemies missing from map: 0\nscores: attack 0.60, retreat 0.30, risk 0.30",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Balmond (fighter, melee), EXP lane, time 5:00\nme: HP 55%, level 6, ready: s1 ult, spell Petrify ready\nenemies close: 1 (HP 40%), nearest in reach\nallies close: 0, minions: 4, under enemy tower: no, enemies missing from map: 0\nscores: attack 0.60, retreat 0.30, risk 0.30\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "Balmond's ultimate finishes a 40% enemy in reach; no one else is around."
+  },
+  {
+   "id": "t08",
+   "kind": "choice",
+   "summary": "hero Alucard (fighter, melee), EXP lane, time 1:40\nme: HP 100%, level 2, ready: s1 s2, spell Execute ready\nenemies close: 1 (HP 95%), nearest outside reach\nallies close: 0, minions: 6, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Alucard (fighter, melee), EXP lane, time 1:40\nme: HP 100%, level 2, ready: s1 s2, spell Execute ready\nenemies close: 1 (HP 95%), nearest outside reach\nallies close: 0, minions: 6, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "FARM"
+   ],
+   "ok": [
+    "RULES",
+    "POKE"
+   ],
+   "unsafe": [],
+   "why": "Level 2, the enemy is healthy and out of reach: take the minion wave."
+  },
+  {
+   "id": "t09",
+   "kind": "choice",
+   "summary": "hero Lesley (marksman, ranged), Gold lane, time 15:30\nme: HP 25%, level 13, ready: s2 ult, spell Flicker ready\nenemies close: 3 (HP 100% 90% 80%), nearest outside reach\nallies close: 1, minions: 2, under enemy tower: no, enemies missing from map: 2",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Lesley (marksman, ranged), Gold lane, time 15:30\nme: HP 25%, level 13, ready: s2 ult, spell Flicker ready\nenemies close: 3 (HP 100% 90% 80%), nearest outside reach\nallies close: 1, minions: 2, under enemy tower: no, enemies missing from map: 2\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "RETREAT"
+   ],
+   "ok": [
+    "GROUP"
+   ],
+   "unsafe": [
+    "ALL_IN",
+    "FARM"
+   ],
+   "why": "25% HP, three healthy enemies coming and two missing: get out."
+  },
+  {
+   "id": "t10",
+   "kind": "choice",
+   "summary": "hero Khufra (tank, melee), Roam, time 9:20\nme: HP 90%, level 10, ready: s1 s2 ult, spell Flicker ready\nenemies close: 2 (HP 45% 100%), nearest in reach\nallies close: 2, minions: 3, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Khufra (tank, melee), Roam, time 9:20\nme: HP 90%, level 10, ready: s1 s2 ult, spell Flicker ready\nenemies close: 2 (HP 45% 100%), nearest in reach\nallies close: 2, minions: 3, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "GROUP",
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "A healthy tank with every skill and two allies against two enemies, one hurt: engage."
+  },
+  {
+   "id": "t11",
+   "kind": "choice",
+   "summary": "hero Lancelot (assassin, melee), Jungle, time 7:40\nme: HP 80%, level 9, ready: s1 s2 ult, spell Retribution ready\nenemies close: 1 (HP 25%), nearest in reach\nallies close: 0, minions: 0, under enemy tower: no, enemies missing from map: 3",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Lancelot (assassin, melee), Jungle, time 7:40\nme: HP 80%, level 9, ready: s1 s2 ult, spell Retribution ready\nenemies close: 1 (HP 25%), nearest in reach\nallies close: 0, minions: 0, under enemy tower: no, enemies missing from map: 3\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "A 25% enemy alone in reach of an assassin with every skill: a quick kill."
+  },
+  {
+   "id": "t12",
+   "kind": "choice",
+   "summary": "hero Lancelot (assassin, melee), Jungle, time 7:40\nme: HP 80%, level 9, ready: none, spell Retribution ready\nenemies close: 3 (HP 25% 100% 100%), nearest in reach\nallies close: 0, minions: 0, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Lancelot (assassin, melee), Jungle, time 7:40\nme: HP 80%, level 9, ready: none, spell Retribution ready\nenemies close: 3 (HP 25% 100% 100%), nearest in reach\nallies close: 0, minions: 0, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "RETREAT"
+   ],
+   "ok": [
+    "GROUP"
+   ],
+   "unsafe": [
+    "ALL_IN"
+   ],
+   "why": "Every skill on cooldown and two healthy enemies next to the hurt one: an assassin without skills can't fight."
+  },
+  {
+   "id": "t13",
+   "kind": "choice",
+   "summary": "hero Nana (mage, ranged), Mid lane, time 10:00\nme: HP 50%, level 10, ready: s1 s2 ult, spell Flicker used\nenemies close: 1 (HP 70%), nearest outside reach\nallies close: 1, minions: 4, under enemy tower: no, enemies missing from map: 2",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Nana (mage, ranged), Mid lane, time 10:00\nme: HP 50%, level 10, ready: s1 s2 ult, spell Flicker used\nenemies close: 1 (HP 70%), nearest outside reach\nallies close: 1, minions: 4, under enemy tower: no, enemies missing from map: 2\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "POKE"
+   ],
+   "ok": [
+    "RULES"
+   ],
+   "unsafe": [
+    "ALL_IN"
+   ],
+   "why": "A mage at half HP, Flicker used, two enemies missing: hit from range, don't dive."
+  },
+  {
+   "id": "t14",
+   "kind": "choice",
+   "summary": "hero Granger (marksman, ranged), Gold lane, time 3:10\nme: HP 100%, level 4, ready: s1 s2 ult\nenemies close: 1 (HP 100%), nearest outside reach\nallies close: 0, minions: 5, under enemy tower: no, enemies missing from map: 1",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Granger (marksman, ranged), Gold lane, time 3:10\nme: HP 100%, level 4, ready: s1 s2 ult\nenemies close: 1 (HP 100%), nearest outside reach\nallies close: 0, minions: 5, under enemy tower: no, enemies missing from map: 1\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "FARM"
+   ],
+   "ok": [
+    "POKE",
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "Early game, both healthy, the enemy out of reach: farm the wave."
+  },
+  {
+   "id": "t15",
+   "kind": "choice",
+   "summary": "hero Franco (tank, melee), Roam, time 6:00\nme: HP 70%, level 7, ready: s1 ult, spell Flicker ready\nenemies close: 1 (HP 50%), nearest outside reach\nallies close: 2, minions: 2, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Franco (tank, melee), Roam, time 6:00\nme: HP 70%, level 7, ready: s1 ult, spell Flicker ready\nenemies close: 1 (HP 50%), nearest outside reach\nallies close: 2, minions: 2, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "Franco has his hook and ultimate with two allies, and a lone enemy at half HP: catch it."
+  },
+  {
+   "id": "t16",
+   "kind": "choice",
+   "summary": "hero Chou (fighter, melee), EXP lane, time 11:00\nme: HP 20%, level 11, ready: s2, spell Flicker ready\nenemies close: 1 (HP 60%), nearest in reach\nallies close: 0, minions: 3, under enemy tower: yes, enemies missing from map: 1",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Chou (fighter, melee), EXP lane, time 11:00\nme: HP 20%, level 11, ready: s2, spell Flicker ready\nenemies close: 1 (HP 60%), nearest in reach\nallies close: 0, minions: 3, under enemy tower: yes, enemies missing from map: 1\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "RETREAT"
+   ],
+   "ok": [
+    "GROUP"
+   ],
+   "unsafe": [
+    "ALL_IN"
+   ],
+   "why": "20% HP under the enemy tower: back off."
+  },
+  {
+   "id": "t17",
+   "kind": "choice",
+   "summary": "hero Angela (support, ranged), Roam, time 13:00\nme: HP 90%, level 12, ready: s1 s2 ult\nenemies close: 2 (HP 80% 70%), nearest in reach\nallies close: 2, minions: 3, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Angela (support, ranged), Roam, time 13:00\nme: HP 90%, level 12, ready: s1 s2 ult\nenemies close: 2 (HP 80% 70%), nearest in reach\nallies close: 2, minions: 3, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "GROUP"
+   ],
+   "ok": [
+    "POKE",
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "A support stays with her allies in a fight."
+  },
+  {
+   "id": "t18",
+   "kind": "choice",
+   "summary": "hero Hayabusa (assassin, melee), Jungle, time 16:00\nme: HP 65%, level 14, ready: s1 s2 ult, spell Retribution ready\nenemies close: 2 (HP 30% 35%), nearest in reach\nallies close: 1, minions: 0, under enemy tower: no, enemies missing from map: 0\nscores: attack 0.70, retreat 0.20, risk 0.30",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Hayabusa (assassin, melee), Jungle, time 16:00\nme: HP 65%, level 14, ready: s1 s2 ult, spell Retribution ready\nenemies close: 2 (HP 30% 35%), nearest in reach\nallies close: 1, minions: 0, under enemy tower: no, enemies missing from map: 0\nscores: attack 0.70, retreat 0.20, risk 0.30\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "Two hurt enemies in reach, every skill ready and an ally: Hayabusa's ultimate cleans up."
+  },
+  {
+   "id": "t19",
+   "kind": "choice",
+   "summary": "hero Karrie (marksman, ranged), Gold lane, time 18:30\nme: HP 45%, level 14, ready: s1 s2 ult, spell Purify ready\nenemies close: 4 (HP 90% 85% 80% 75%), nearest outside reach\nallies close: 0, minions: 3, under enemy tower: no, enemies missing from map: 1",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Karrie (marksman, ranged), Gold lane, time 18:30\nme: HP 45%, level 14, ready: s1 s2 ult, spell Purify ready\nenemies close: 4 (HP 90% 85% 80% 75%), nearest outside reach\nallies close: 0, minions: 3, under enemy tower: no, enemies missing from map: 1\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "RETREAT"
+   ],
+   "ok": [
+    "GROUP"
+   ],
+   "unsafe": [
+    "ALL_IN",
+    "FARM"
+   ],
+   "why": "Four enemies coming at a lone marksman at 45%."
+  },
+  {
+   "id": "t20",
+   "kind": "choice",
+   "summary": "hero Esmeralda (mage, melee), EXP lane, time 8:30\nme: HP 75%, level 9, ready: s1 s2 ult, spell Flicker ready\nenemies close: 1 (HP 55%), nearest in reach\nallies close: 0, minions: 3, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Esmeralda (mage, melee), EXP lane, time 8:30\nme: HP 75%, level 9, ready: s1 s2 ult, spell Flicker ready\nenemies close: 1 (HP 55%), nearest in reach\nallies close: 0, minions: 3, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "RULES",
+    "POKE"
+   ],
+   "unsafe": [],
+   "why": "A one-on-one with more HP and every skill ready."
+  },
+  {
+   "id": "t21",
+   "kind": "choice",
+   "summary": "hero Kagura (mage, ranged), Mid lane, time 5:30\nme: HP 35%, level 6, ready: s2, spell Flicker ready\nenemies close: 1 (HP 100%), nearest in reach\nallies close: 0, minions: 2, under enemy tower: no, enemies missing from map: 1",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Kagura (mage, ranged), Mid lane, time 5:30\nme: HP 35%, level 6, ready: s2, spell Flicker ready\nenemies close: 1 (HP 100%), nearest in reach\nallies close: 0, minions: 2, under enemy tower: no, enemies missing from map: 1\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "RETREAT"
+   ],
+   "ok": [
+    "GROUP"
+   ],
+   "unsafe": [
+    "ALL_IN"
+   ],
+   "why": "A healthy enemy is on a 35% mage without her ultimate."
+  },
+  {
+   "id": "t22",
+   "kind": "choice",
+   "summary": "hero Gusion (assassin, melee), Jungle, time 9:50\nme: HP 70%, level 10, ready: s1 s2 ult\nenemies close: 1 (HP 10%), nearest in reach\nallies close: 0, minions: 0, under enemy tower: yes, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Gusion (assassin, melee), Jungle, time 9:50\nme: HP 70%, level 10, ready: s1 s2 ult\nenemies close: 1 (HP 10%), nearest in reach\nallies close: 0, minions: 0, under enemy tower: yes, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "POKE"
+   ],
+   "unsafe": [],
+   "why": "A 10% enemy in reach: one quick combo kills it even under the tower at this level."
+  },
+  {
+   "id": "t23",
+   "kind": "choice",
+   "summary": "hero Moskov (marksman, ranged), Gold lane, time 7:00\nme: HP 60%, level 8, ready: s1 s2 ult\nenemies close: 2 (HP 100% 100%), nearest in reach\nallies close: 3, minions: 4, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Moskov (marksman, ranged), Gold lane, time 7:00\nme: HP 60%, level 8, ready: s1 s2 ult\nenemies close: 2 (HP 100% 100%), nearest in reach\nallies close: 3, minions: 4, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "POKE"
+   ],
+   "ok": [
+    "GROUP",
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "A marksman with three allies: keep hitting from behind them."
+  },
+  {
+   "id": "t24",
+   "kind": "choice",
+   "summary": "hero Grock (tank, melee), Roam, time 2:20\nme: HP 100%, level 3, ready: s1 s2, spell Flicker ready\nenemies close: 1 (HP 100%), nearest outside reach\nallies close: 1, minions: 6, under enemy tower: no, enemies missing from map: 2",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Grock (tank, melee), Roam, time 2:20\nme: HP 100%, level 3, ready: s1 s2, spell Flicker ready\nenemies close: 1 (HP 100%), nearest outside reach\nallies close: 1, minions: 6, under enemy tower: no, enemies missing from map: 2\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "GROUP"
+   ],
+   "ok": [
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "A roaming tank stays with the ally he is helping."
+  },
+  {
+   "id": "t25",
+   "kind": "choice",
+   "summary": "hero Zilong (fighter, melee), EXP lane, time 20:00\nme: HP 50%, level 15, ready: s1 s2 ult, spell Execute ready\nenemies close: 1 (HP 15%), nearest in reach\nallies close: 0, minions: 0, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Zilong (fighter, melee), EXP lane, time 20:00\nme: HP 50%, level 15, ready: s1 s2 ult, spell Execute ready\nenemies close: 1 (HP 15%), nearest in reach\nallies close: 0, minions: 0, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "A 15% enemy alone in reach, with Execute ready."
+  },
+  {
+   "id": "t26",
+   "kind": "choice",
+   "summary": "hero Beatrix (marksman, ranged), Gold lane, time 9:00\nme: HP 30%, level 9, ready: s1 s2 ult, spell Flicker ready\nenemies close: 1 (HP 100%), nearest in reach\nallies close: 1, minions: 2, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Beatrix (marksman, ranged), Gold lane, time 9:00\nme: HP 30%, level 9, ready: s1 s2 ult, spell Flicker ready\nenemies close: 1 (HP 100%), nearest in reach\nallies close: 1, minions: 2, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "RETREAT"
+   ],
+   "ok": [
+    "GROUP"
+   ],
+   "unsafe": [
+    "FARM"
+   ],
+   "why": "A healthy assassin on a 30% marksman: get away, towards the ally."
+  },
+  {
+   "id": "t27",
+   "kind": "choice",
+   "summary": "hero Yu Zhong (fighter, melee), EXP lane, time 12:30\nme: HP 80%, level 12, ready: s1 s2 ult, spell Petrify ready\nenemies close: 3 (HP 60% 50% 70%), nearest in reach\nallies close: 3, minions: 2, under enemy tower: no, enemies missing from map: 0\nscores: attack 0.70, retreat 0.20, risk 0.30",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Yu Zhong (fighter, melee), EXP lane, time 12:30\nme: HP 80%, level 12, ready: s1 s2 ult, spell Petrify ready\nenemies close: 3 (HP 60% 50% 70%), nearest in reach\nallies close: 3, minions: 2, under enemy tower: no, enemies missing from map: 0\nscores: attack 0.70, retreat 0.20, risk 0.30\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "RULES",
+    "GROUP"
+   ],
+   "unsafe": [],
+   "why": "A healthy fighter with every skill and three allies against hurt enemies."
+  },
+  {
+   "id": "t28",
+   "kind": "choice",
+   "summary": "hero Harith (mage, ranged), Mid lane, time 6:40\nme: HP 20%, level 7, ready: s1, spell Flicker ready\nenemies close: 1 (HP 50%), nearest in reach\nallies close: 0, minions: 2, under enemy tower: yes, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Harith (mage, ranged), Mid lane, time 6:40\nme: HP 20%, level 7, ready: s1, spell Flicker ready\nenemies close: 1 (HP 50%), nearest in reach\nallies close: 0, minions: 2, under enemy tower: yes, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "RETREAT"
+   ],
+   "ok": [
+    "GROUP"
+   ],
+   "unsafe": [
+    "ALL_IN"
+   ],
+   "why": "20% HP under the enemy tower."
+  },
+  {
+   "id": "t29",
+   "kind": "choice",
+   "summary": "hero Atlas (tank, melee), Roam, time 14:00\nme: HP 85%, level 12, ready: s1 s2 ult, spell Flicker ready\nenemies close: 5 (HP 90% 80% 70% 60% 85%), nearest in reach\nallies close: 4, minions: 3, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Atlas (tank, melee), Roam, time 14:00\nme: HP 85%, level 12, ready: s1 s2 ult, spell Flicker ready\nenemies close: 5 (HP 90% 80% 70% 60% 85%), nearest in reach\nallies close: 4, minions: 3, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "Five enemies grouped in reach, ultimate and Flicker ready, four allies: Atlas's ultimate fight."
+  },
+  {
+   "id": "t30",
+   "kind": "choice",
+   "summary": "hero Clint (marksman, ranged), Gold lane, time 1:30\nme: HP 95%, level 2, ready: s1 s2\nenemies close: 1 (HP 70%), nearest in reach\nallies close: 0, minions: 5, under enemy tower: no, enemies missing from map: 1",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Clint (marksman, ranged), Gold lane, time 1:30\nme: HP 95%, level 2, ready: s1 s2\nenemies close: 1 (HP 70%), nearest in reach\nallies close: 0, minions: 5, under enemy tower: no, enemies missing from map: 1\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "POKE"
+   ],
+   "ok": [
+    "FARM",
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "Early lane: hit the hurt enemy from range between minions."
+  },
+  {
+   "id": "t31",
+   "kind": "choice",
+   "summary": "hero Ling (assassin, melee), Jungle, time 11:10\nme: HP 55%, level 11, ready: s1 s2 ult, spell Retribution ready\nenemies close: 3 (HP 100% 100% 90%), nearest in reach\nallies close: 0, minions: 0, under enemy tower: no, enemies missing from map: 2",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Ling (assassin, melee), Jungle, time 11:10\nme: HP 55%, level 11, ready: s1 s2 ult, spell Retribution ready\nenemies close: 3 (HP 100% 100% 90%), nearest in reach\nallies close: 0, minions: 0, under enemy tower: no, enemies missing from map: 2\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "RETREAT"
+   ],
+   "ok": [
+    "GROUP"
+   ],
+   "unsafe": [
+    "ALL_IN"
+   ],
+   "why": "Three healthy enemies on a 55% assassin."
+  },
+  {
+   "id": "t32",
+   "kind": "choice",
+   "summary": "hero Valir (mage, ranged), Mid lane, time 8:20\nme: HP 90%, level 9, ready: s1 s2 ult\nenemies close: 1 (HP 35%), nearest in reach\nallies close: 0, minions: 4, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Valir (mage, ranged), Mid lane, time 8:20\nme: HP 90%, level 9, ready: s1 s2 ult\nenemies close: 1 (HP 35%), nearest in reach\nallies close: 0, minions: 4, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "POKE"
+   ],
+   "unsafe": [],
+   "why": "A 35% enemy alone in reach of a healthy mage with every skill."
+  },
+  {
+   "id": "t33",
+   "kind": "choice",
+   "summary": "hero Estes (support, ranged), Roam, time 17:00\nme: HP 70%, level 13, ready: s1 s2 ult\nenemies close: 2 (HP 60% 50%), nearest in reach\nallies close: 3, minions: 2, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Estes (support, ranged), Roam, time 17:00\nme: HP 70%, level 13, ready: s1 s2 ult\nenemies close: 2 (HP 60% 50%), nearest in reach\nallies close: 3, minions: 2, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "GROUP"
+   ],
+   "ok": [
+    "RULES",
+    "POKE"
+   ],
+   "unsafe": [],
+   "why": "A healer stays with the team."
+  },
+  {
+   "id": "t34",
+   "kind": "choice",
+   "summary": "hero Hanabi (marksman, ranged), Gold lane, time 22:00\nme: HP 100%, level 15, ready: s1 s2 ult\nenemies close: 1 (HP 100%), nearest outside reach\nallies close: 0, minions: 6, under enemy tower: no, enemies missing from map: 4",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Hanabi (marksman, ranged), Gold lane, time 22:00\nme: HP 100%, level 15, ready: s1 s2 ult\nenemies close: 1 (HP 100%), nearest outside reach\nallies close: 0, minions: 6, under enemy tower: no, enemies missing from map: 4\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "GROUP"
+   ],
+   "ok": [
+    "RETREAT"
+   ],
+   "unsafe": [
+    "ALL_IN"
+   ],
+   "why": "Late game, four enemies missing from the map: a lone marksman goes back to the team."
+  },
+  {
+   "id": "t35",
+   "kind": "choice",
+   "summary": "hero Paquito (fighter, melee), EXP lane, time 3:40\nme: HP 85%, level 4, ready: s1 s2 ult, spell Petrify ready\nenemies close: 1 (HP 45%), nearest in reach\nallies close: 0, minions: 4, under enemy tower: no, enemies missing from map: 0\nscores: attack 0.66, retreat 0.22, risk 0.28",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Paquito (fighter, melee), EXP lane, time 3:40\nme: HP 85%, level 4, ready: s1 s2 ult, spell Petrify ready\nenemies close: 1 (HP 45%), nearest in reach\nallies close: 0, minions: 4, under enemy tower: no, enemies missing from map: 0\nscores: attack 0.66, retreat 0.22, risk 0.28\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "POKE",
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "Early lane, more HP, every skill against a 45% enemy."
+  },
+  {
+   "id": "t36",
+   "kind": "choice",
+   "summary": "hero Brody (marksman, ranged), Gold lane, time 10:30\nme: HP 40%, level 10, ready: s2 ult\nenemies close: 2 (HP 100% 100%), nearest in reach\nallies close: 0, minions: 3, under enemy tower: yes, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Brody (marksman, ranged), Gold lane, time 10:30\nme: HP 40%, level 10, ready: s2 ult\nenemies close: 2 (HP 100% 100%), nearest in reach\nallies close: 0, minions: 3, under enemy tower: yes, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "RETREAT"
+   ],
+   "ok": [
+    "GROUP"
+   ],
+   "unsafe": [
+    "ALL_IN"
+   ],
+   "why": "Two healthy enemies on a 40% marksman under their tower."
+  },
+  {
+   "id": "t37",
+   "kind": "choice",
+   "summary": "hero Saber (assassin, melee), Roam, time 5:20\nme: HP 95%, level 6, ready: s1 s2 ult, spell Flicker ready\nenemies close: 1 (HP 55%), nearest in reach\nallies close: 0, minions: 0, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Saber (assassin, melee), Roam, time 5:20\nme: HP 95%, level 6, ready: s1 s2 ult, spell Flicker ready\nenemies close: 1 (HP 55%), nearest in reach\nallies close: 0, minions: 0, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "A lone enemy at 55%: Saber's ultimate locks it."
+  },
+  {
+   "id": "t38",
+   "kind": "choice",
+   "summary": "hero Aldous (fighter, melee), EXP lane, time 25:00\nme: HP 90%, level 15, ready: s1 ult\nenemies close: 1 (HP 30%), nearest outside reach\nallies close: 0, minions: 0, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Aldous (fighter, melee), EXP lane, time 25:00\nme: HP 90%, level 15, ready: s1 ult\nenemies close: 1 (HP 30%), nearest outside reach\nallies close: 0, minions: 0, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "A 30% enemy alone: Aldous's ultimate reaches it from far away."
+  },
+  {
+   "id": "t39",
+   "kind": "choice",
+   "summary": "hero Cyclops (mage, ranged), Mid lane, time 4:50\nme: HP 50%, level 5, ready: s1 s2, spell Flicker ready\nenemies close: 1 (HP 50%), nearest in reach\nallies close: 0, minions: 3, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Cyclops (mage, ranged), Mid lane, time 4:50\nme: HP 50%, level 5, ready: s1 s2, spell Flicker ready\nenemies close: 1 (HP 50%), nearest in reach\nallies close: 0, minions: 3, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "POKE"
+   ],
+   "ok": [
+    "RULES",
+    "ALL_IN"
+   ],
+   "unsafe": [],
+   "why": "An even mid lane without the ultimate: trade from range."
+  },
+  {
+   "id": "t40",
+   "kind": "choice",
+   "summary": "hero Belerick (tank, melee), EXP lane, time 13:40\nme: HP 60%, level 12, ready: s1 s2 ult, spell Vengeance ready\nenemies close: 2 (HP 80% 75%), nearest in reach\nallies close: 2, minions: 2, under enemy tower: no, enemies missing from map: 0",
+   "prompt": "You play Mobile Legends: Bang Bang. Choose the best action for this fight moment.\nhero Belerick (tank, melee), EXP lane, time 13:40\nme: HP 60%, level 12, ready: s1 s2 ult, spell Vengeance ready\nenemies close: 2 (HP 80% 75%), nearest in reach\nallies close: 2, minions: 2, under enemy tower: no, enemies missing from map: 0\nOptions: ALL_IN, POKE, FARM, RETREAT, GROUP, RULES\nAnswer with one option only.",
+   "options": [
+    "ALL_IN",
+    "POKE",
+    "FARM",
+    "RETREAT",
+    "GROUP",
+    "RULES"
+   ],
+   "best": [
+    "ALL_IN"
+   ],
+   "ok": [
+    "GROUP",
+    "RULES"
+   ],
+   "unsafe": [],
+   "why": "The tank's taunt with two allies close starts the fight."
+  }
+ ]
+}
