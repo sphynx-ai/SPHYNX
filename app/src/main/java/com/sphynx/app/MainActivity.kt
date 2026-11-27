@@ -3014,6 +3014,31 @@ class MainActivity : Activity() {
             }.setNegativeButton("Cancel", null).show()
         }
         inCard(cd, "Stop the test") { if (!ev.running) toast("No test is running") else { ev.stop(); toast("Stopping: the answers so far are kept") } }
+        // Phase 10 E6: the report: the newest runs, quality and speed side by side, and a comparison of two
+        val runs = try { ev.runs(this) } catch (t: Throwable) { emptyList() }
+        if (runs.isEmpty()) return
+        val rep = com.sphynx.universal.eval.EvalReport
+        val reviewed = ev.SETS.mapNotNull { ev.loadSet(this, it).getOrNull() }.associate { it.id to it.reviewed }
+        val sums = runs.map { (r, ss) -> rep.summarize(r, ss) }.sortedByDescending { it.run.startedAt }
+        for (sm in sums.take(6)) {
+            val c = card()
+            val when_ = java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.US).format(java.util.Date(sm.run.startedAt))
+            cardHeader(c, "TEST · " + sm.run.role.uppercase(java.util.Locale.US), when_, if (sm.rankable) T.ACCENT else T.GOLD)
+            cardNote(c, rep.text(sm, reviewed[sm.run.setId] == true))
+        }
+        if (sums.size >= 2) inCard(cd, "Compare two test runs…") {
+            val labels = sums.map { "${it.run.setId} · ${it.run.processor ?: "?"} · app ${it.run.appVersion} · " +
+                java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.US).format(java.util.Date(it.run.startedAt)) }.toTypedArray()
+            val picked = BooleanArray(labels.size)
+            AlertDialog.Builder(this).setTitle("Pick two runs").setMultiChoiceItems(labels, picked) { _, i, on -> picked[i] = on }
+                .setPositiveButton("Compare") { _, _ ->
+                    val two = picked.indices.filter { picked[it] }
+                    if (two.size != 2) { toast("Pick exactly two runs"); return@setPositiveButton }
+                    AlertDialog.Builder(this).setTitle("Comparison")
+                        .setMessage(rep.compare(sums[two[1]], sums[two[0]]))     // older first
+                        .setPositiveButton("OK", null).show()
+                }.setNegativeButton("Cancel", null).show()
+        }
     }
 
     private fun labDownloadAsk(e: com.sphynx.models.ModelCatalog.Entry) {

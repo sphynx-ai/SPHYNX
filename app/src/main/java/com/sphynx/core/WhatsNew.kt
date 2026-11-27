@@ -24,6 +24,14 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-27", Kind.NEW, "The model test report",
+            "The EVALUATION card now shows the newest test runs: what was tested (model, processor, app version), its " +
+                "QUALITY (share of best, acceptable and unsafe answers, with how sure each figure is) and its SPEED (the " +
+                "middle and the slow end of the times), always side by side and never as one number. The warm-up answer " +
+                "is shown apart as the cold start. Compare two test runs says which scores higher and which is faster, but " +
+                "only when the two tests can be compared (same set, model file, processor, phone and settings); otherwise " +
+                "it says why not.",
+            pr = 140, needsDeviceCheck = true, version = "38.49"),
         Entry("2026-11-27", Kind.NEW, "Model test results go to your debug data",
             "Each model test is saved into Recordings when it ends (diagnostics-eval-...jsonl) and uploaded with the " +
                 "other debug data, then deleted from the phone. The Debug data page can also export every test kept on " +
