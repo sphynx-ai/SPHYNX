@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-27", Kind.NEW, "Model test results go to your debug data",
+            "Each model test is saved into Recordings when it ends (diagnostics-eval-...jsonl) and uploaded with the " +
+                "other debug data, then deleted from the phone. The Debug data page can also export every test kept on " +
+                "the phone at once. The app keeps its own copy for the test report.",
+            pr = 139, needsDeviceCheck = true, version = "38.48"),
         Entry("2026-11-27", Kind.NEW, "Test a model",
             "The Model page has an EVALUATION card. Run a test asks the model doing a job now one of the three test " +
                 "sets (fight moments, strategy, match reviews), each question 3 times, greedy, after one warm-up answer. " +

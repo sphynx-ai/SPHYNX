@@ -3686,6 +3686,14 @@ class MainActivity : Activity() {
             }.start()
         }
 
+        // Phase 10 E5: the model test results (each run is also saved into Recordings when it ends)
+        btn("Export the model test results now (every run kept on the phone)") {
+            Thread {
+                val msg = try { com.sphynx.ai.EvalHarness.exportAll(this) } catch (e: Exception) { "Export failed: ${e.message}" }
+                runOnUiThread { toast(msg.take(200)) }
+            }.start()
+        }
+
         // Phase 9 M7: the model registry (no folder names), into Recordings, uploaded with the debug data
         btn("Export the model registry now (every model, its settings and what was learnt)") {
             Thread {
