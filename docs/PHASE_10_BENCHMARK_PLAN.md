@@ -1,6 +1,6 @@
 # Phase 10 — Model Benchmarking and Evaluation: audit and execution plan
 
-**Status:** **APPROVED by the owner 2026-11-27** with the answers in section 6. IN PROGRESS: all steps are built back to back and phone-tested once at the end (continuous-phases rule). Phase 9 is built (v38.34–v38.42, PRs #125–#133), and its phone test runs alongside this plan.
+**Status:** **APPROVED by the owner 2026-11-27** with the answers in section 6. **All steps E1–E9 built in code (v38.44–v38.52, PRs #135–#143); the owner's phone test of the whole phase and the owner's review of the evaluation sets are pending (section 7).** Phase 9 is built (v38.34–v38.42, PRs #125–#133), and its phone test runs alongside this plan.
 **Based on:** `sphynx-test-branch` at v38.42, read from the code. No phone was used for this plan.
 
 ## 1. Role for this phase (roadmap 3.1)
@@ -54,7 +54,7 @@
 - [ ] A report with confidence intervals that never ranks runs that can't be compared (E6). **In code (v38.49):** `universal/eval/EvalReport` (run summary: best / acceptable / unsafe / no-answer shares with Wilson intervals, mean score with a bootstrap interval, usable / first-word / whole-answer times as median and 90th percentile, the warm-up as the cold start, the conditions; `compare` only for comparable runs under good conditions, quality by non-overlapping intervals, speed by the median ratio; tested), the EVALUATION card's newest runs and *Compare two test runs*. A set not yet reviewed by the owner is shown with "these scores don't count yet".
 - [ ] Regression thresholds (E7). **In code (v38.50):** `universal/eval/EvalRegression` (baseline = the first rankable run of each comparable group; flagged when the median usable answer is more than 15% slower or the score interval lies wholly below the baseline's; tested), the REGRESSION card on the Model page.
 - [ ] Heat and battery under sustained load (E8). **In code (v38.51):** `EvalHarness.startSustained` (the tactical set at the in-match pace, at most one question every 330 ms, 10 minutes by the owner's decision, stopped at the severe heat status, kind `sustained` so it is never compared with set runs), `universal/eval/EvalSustained` (per-minute median usable answer, first-to-last-minute slowdown, battery % per minute only when not charging, battery temperature rise, highest heat status; tested), the EVALUATION card's *Run the 10-minute heat and battery test*.
-- [ ] A reproducibility guide; tests for the schema, statistics, sets and scoring (E9).
+- [ ] A reproducibility guide; tests for the schema, statistics, sets and scoring (E9). **In code (v38.52):** `docs/PHASE_10_BENCHMARK_GUIDE.md`; tests `EvalRecordTest`, `EvalStatsTest`, `EvalSetTest`, `EvalScoringTest`, `EvalReportTest`, `EvalRegressionTest`, `EvalSustainedTest`, `MlbbEvalSetsTest`.
 
 ## 5. Risks
 
@@ -70,3 +70,37 @@
 2. **First runs:** Gemma 4 E2B on the GPU and on the CPU (strategic job). The tactical set can still run on any model, but these are the runs that make the first results.
 3. **Sustained run:** 10 minutes, on battery, so battery use is measured. It stops at the "severe" heat status.
 4. **Repeats:** 3 per question (the default; not changed by the owner).
+
+## 7. Phone checklist (one test for the whole phase)
+
+Update the app (`git pull` on `sphynx-test-branch`, rebuild; version 38.52), then follow `docs/PHASE_10_BENCHMARK_GUIDE.md`:
+
+1. **Review the sets (E2):** read `docs/PHASE_10_EVAL_SETS.md` and the three files (or `tools/eval-sets/build.py`). Tell me which expected answers to change. Until then, the report marks the scores as not counting yet.
+2. **Conditions (E4):** start a test while screen capture is on, or with the battery below 30%: the question says it will be marked. Cancel.
+3. **Strategy test, GPU (E4, E6):** Gemma 4 E2B with processors `GPU,CPU` → *Run a test…* → *Strategy plans and coaching* → Start. A new card shows QUALITY and SPEED lines and "Conditions: as the protocol asks".
+4. **Strategy test, CPU (E4, E6):** processors `CPU` → reload → the same test. *Compare two test runs* on the two: it says "can't be compared: different processor", which is right, since the processor is part of the key. Then *Compare* two runs of the same processor; if there is only one, run the GPU test twice. It names which scores higher, or "no clear difference", and the speed difference.
+5. **Match reviews (E4):** *Match reviews* on the GPU.
+6. **Fight test (E4):** give a tactical model (Gemma 3 270M) the tactical job → *Fight moments*. The usable answer should be much shorter than the whole answer.
+7. **Stop (E4):** start any test, then *Stop the test*: a card shows the answers so far.
+8. **Heat test (E8):** unplug the phone → *Run the 10-minute heat and battery test…* → wait 10 minutes. The card shows the slowdown, battery % per minute, the temperature rise and the highest heat status.
+9. **Regression (E7):** after the next app update, run the GPU strategy test again. If it is more than 15% slower, a REGRESSION card appears; if not, no card.
+10. **Export (E5):** Debug data → upload. The `diagnostics-eval-*.jsonl` files arrive on `recordings-for-debugging` and are gone from the phone. *Export the model test results now* saves all runs in one file.
+
+The measured figures from checks 3–8 become the first results in section 8.
+
+## 8. Closing record
+
+| Step | Version | PR | State |
+|---|---|---|---|
+| Plan | 38.43 | #134 | Merged (approved 2026-11-27) |
+| E1 protocol, record, statistics | 38.44 | #135 | Merged |
+| E2 evaluation sets and rubric | 38.45 | #136 | In code |
+| E3 scoring | 38.46 | #137 | In code |
+| E4 harness | 38.47 | #138 | In code |
+| E5 results export | 38.48 | #139 | In code |
+| E6 report | 38.49 | #140 | In code |
+| E7 regression thresholds | 38.50 | #141 | In code |
+| E8 heat and battery test | 38.51 | #142 | In code |
+| E9 guide, checklist, closing record | 38.52 | #143 | In code |
+
+So far the phase has only been verified by CI: unit tests, build and native tests for each PR. No test has run on a phone, so there are **no measured results yet**. Every What's new entry has `needsDeviceCheck = true` until the owner's test. The evaluation sets are version 1, not yet reviewed by the owner.
