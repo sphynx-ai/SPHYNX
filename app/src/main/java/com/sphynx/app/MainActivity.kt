@@ -2985,6 +2985,37 @@ class MainActivity : Activity() {
             "goes on from where it stopped.")
     }
 
+    // Phase 10 E4: the evaluation harness, started only by the owner
+    private fun labEvaluation() {
+        title("EVALUATION")
+        val ev = com.sphynx.ai.EvalHarness
+        val cd = card()
+        val st = cardText(cd, 13f)
+        upd { st.text = ev.status.ifEmpty { "Tests the model doing a job now with fixed questions (docs/PHASE_10_EVAL_SETS.md)." } }
+        inCard(cd, "Run a test…") {
+            if (ev.running) { toast("A test is already running"); return@inCard }
+            val names = arrayOf("Fight moments (tactical job, 40 questions)", "Strategy plans and coaching (strategic job, 30)",
+                "Match reviews (strategic job, 10)")
+            AlertDialog.Builder(this).setTitle("Which test?").setItems(names) { _, i ->
+                val asset = ev.SETS[i]
+                val set = ev.loadSet(this, asset).getOrElse { toast("The test can't be read: ${it.message}"); return@setItems }
+                val role = ev.roleOf(set)
+                if (!com.sphynx.ai.Roles.ready(role)) { toast("Load a model for the ${set.role} job first"); return@setItems }
+                val c = ev.conditions(this)
+                val warn = c.problems().takeIf { it.isNotEmpty() }?.let { "\n\nNot under the test's conditions (${it.joinToString()}): the result is kept but never ranked." } ?: ""
+                AlertDialog.Builder(this).setTitle(names[i])
+                    .setMessage("Asks ${com.sphynx.models.ModelManager.choiceLabel(this, role)} on ${com.sphynx.ai.Roles.processor(role) ?: "?"} " +
+                        "each of ${set.items.size} questions 3 times, greedy, plus one warm-up answer. Keep the app open; it can take " +
+                        "several minutes." + warn)
+                    .setPositiveButton("Start") { _, _ ->
+                        ev.start(this, asset, 3) { m -> runOnUiThread { toast(m.take(240)); show("model") } }
+                        toast("Test started")
+                    }.setNegativeButton("Cancel", null).show()
+            }.setNegativeButton("Cancel", null).show()
+        }
+        inCard(cd, "Stop the test") { if (!ev.running) toast("No test is running") else { ev.stop(); toast("Stopping: the answers so far are kept") } }
+    }
+
     private fun labDownloadAsk(e: com.sphynx.models.ModelCatalog.Entry) {
         val dl = com.sphynx.models.ModelDownloader
         val ms = com.sphynx.models.ModelStorage
@@ -3078,6 +3109,7 @@ class MainActivity : Activity() {
     private fun modelPage() {
         modelLab()      // Phase 9 M3
         labDownloads()  // Phase 9 M9
+        labEvaluation() // Phase 10 E4
         title("FILES")
         text("Put files in Sphynx-Storage/Input (Sphynx-Storage is at the top of the phone's storage, next to Download; the app saves what it makes in Output and Recordings); the app loads them by itself:\n• Gemma 4 E2B (.litertlm) – strategy\n• Gemma 3 270M (.litertlm) – fight advice (optional)\n• mlbb_policies.zip – tactical networks\n• detectors (.tflite + labels) – minimap and screen\n• groq_key.txt – online meta", 13f)
         val mcard = card()

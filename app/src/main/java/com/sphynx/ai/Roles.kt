@@ -321,6 +321,55 @@ object Roles {
         }
     }
 
+    /** Phase 10 E4: one answer with its times (ms from the question): first word, first usable text, whole answer. */
+    class Timed(val text: String, val firstWordMs: Long, val usableMs: Long, val totalMs: Long)
+
+    /**
+     * Phase 10 E4: asks [role] like [ask], text only, and times it. [usable] says when the text so far is a usable answer
+     * (the tactical option named; null = when it is complete). With [stopAtUsable] the answer stops there, as it does
+     * in a match. Not recorded in the speed records: the evaluation keeps its own (research/eval_runs.jsonl).
+     */
+    suspend fun askTimed(role: ModelRole, prompt: String, temperature: Double, maxTokens: Int,
+                         usable: ((String) -> Boolean)?, stopAtUsable: Boolean, purpose: String = "evaluation"): Timed {
+        val id = role.name.lowercase() + "-eval-" + ids.incrementAndGet()
+        val maxOut = router.status(role).config?.maxOutputTokens ?: 256
+        val req = InferenceRequest(id = id, prompt = prompt, image = null, temperature = temperature.toFloat().coerceIn(0f, 2f),
+            maxOutputTokens = minOf(maxTokens, maxOut).coerceAtLeast(1), timeoutMs = 300_000L, purpose = purpose,
+            stopWhen = if (stopAtUsable) usable else null)
+        val t0 = System.nanoTime()
+        var first = -1L; var usableAt = -1L
+        val sb = StringBuilder()
+        running[id] = role
+        try {
+            val text = suspendCancellableCoroutine<String> { cont ->
+                cont.invokeOnCancellation { router.cancel(role, id) }
+                router.ask(role, req) { e ->
+                    val ms = (System.nanoTime() - t0) / 1_000_000
+                    when (e) {
+                        is InferenceEvent.Token -> {
+                            if (first < 0 && e.text.isNotBlank()) first = ms
+                            sb.append(e.text)
+                            if (usableAt < 0 && usable != null && usable(sb.toString())) usableAt = ms
+                        }
+                        is InferenceEvent.Completed -> { if (cont.isActive) cont.resume(e.text) }
+                        is InferenceEvent.Failed -> { if (cont.isActive) cont.resumeWithException(IllegalStateException(e.error.message)) }
+                        is InferenceEvent.Cancelled -> { if (cont.isActive) cont.resumeWithException(IllegalStateException("cancelled")) }
+                        else -> {}
+                    }
+                }
+            }
+            val total = (System.nanoTime() - t0) / 1_000_000
+            if (usableAt < 0 && (usable == null || usable(text))) usableAt = total
+            return Timed(text, if (first < 0) total else first, usableAt, total)
+        } finally { running.remove(id) }
+    }
+
+    /** Phase 10 E4: the processor the role's model runs on now (NPU / GPU / CPU), or null. */
+    fun processor(role: ModelRole): String? = router.status(role).accelerator?.name
+
+    /** Phase 10 E4: the backend of the role's model now (LITERT_LM / LLAMA_CPP), or null. */
+    fun backend(role: ModelRole): String? = router.assignment(role)?.backend?.name
+
     /** Emergency stop: interrupts the role's answer (what GemmaEngine.cancel() did). */
     fun cancel(role: ModelRole) {
         for ((id, r) in running) if (r == role) router.cancel(role, id)

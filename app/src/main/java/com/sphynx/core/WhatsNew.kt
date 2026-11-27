@@ -24,6 +24,14 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-27", Kind.NEW, "Test a model",
+            "The Model page has an EVALUATION card. Run a test asks the model doing a job now one of the three test " +
+                "sets (fight moments, strategy, match reviews), each question 3 times, greedy, after one warm-up answer. " +
+                "Every answer is timed (first word, first usable answer, whole answer) and scored, with the app's memory, " +
+                "the heat and the battery. It checks first that no match is running and the phone is cool and charged " +
+                "enough; a test outside those conditions is kept but marked. It stops by itself if the phone gets too " +
+                "hot, and Stop the test keeps the answers so far.",
+            pr = 138, needsDeviceCheck = true, version = "38.47"),
         Entry("2026-11-27", Kind.NEW, "Scoring the test answers",
             "Behind the scenes: Sphynx can now score a model's answer to a test question by fixed rules, with no second " +
                 "model and no internet: a fight answer is best, acceptable, wrong or unsafe; a plan is read from its JSON; " +
