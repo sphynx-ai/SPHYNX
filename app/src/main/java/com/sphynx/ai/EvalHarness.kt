@@ -57,7 +57,7 @@ object EvalHarness {
         if (!Roles.ready(role)) return null
         val f = com.sphynx.models.ModelManager.fileFor(ctx, role)
         val rec = com.sphynx.models.ModelRegistry.records.firstOrNull { it.fileName == f.name && it.sizeBytes == f.length() }
-        val backend = Roles.backend(role) ?: "LITERT_LM"
+        val backend = Roles.backend(role).name
         val runtime = if (backend == "LLAMA_CPP") "llama.cpp " + com.sphynx.inference.GgufArchitectures.LLAMA_TAG
             else "litertlm " + Roles.LITERT_LM_VERSION
         val now = System.currentTimeMillis()

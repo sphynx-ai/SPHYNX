@@ -367,9 +367,6 @@ object Roles {
     /** Phase 10 E4: the processor the role's model runs on now (NPU / GPU / CPU), or null. */
     fun processor(role: ModelRole): String? = router.status(role).accelerator?.name
 
-    /** Phase 10 E4: the backend of the role's model now (LITERT_LM / LLAMA_CPP), or null. */
-    fun backend(role: ModelRole): String? = router.assignment(role)?.backend?.name
-
     /** Emergency stop: interrupts the role's answer (what GemmaEngine.cancel() did). */
     fun cancel(role: ModelRole) {
         for ((id, r) in running) if (r == role) router.cancel(role, id)
