@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.NEW, "Phase 13: emblems from the Mobile Legends Wiki",
+            "Behind the scenes: the next phase is started. Sphynx now carries the emblem sets from the Mobile Legends Wiki " +
+                "Emblems page (your capture of 10 November): the 7 sets with their attributes, standard and core talents, " +
+                "and their 33 icons from the Wiki, with the source and dates. The Wiki does not recommend a set per hero, " +
+                "so Sphynx will say so instead of guessing. The Library page comes next.",
+            pr = 156, needsDeviceCheck = true, version = "38.65"),
         Entry("2026-11-28", Kind.IMPROVED, "The coach: guide and checks",
             "The guide to the coach (advice lines, shadow mode, supervised mode, the match review) and its phone checklist " +
                 "are in docs/PHASE_12_COORDINATION_PLAN.md, sections 6 and 7. Ten recorded fight moments now test the " +
