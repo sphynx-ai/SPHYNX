@@ -1177,6 +1177,11 @@ class MainActivity : Activity() {
         val gateLine = cardNote(cd)
         upd { gateLine.text = "Coach: " + (try { com.sphynx.ai.CoachRuntime.gate(this).text() } catch (t: Throwable) { "-" }) +
             (if (com.sphynx.ai.CoachRuntime.supervisedActive) " · acting (supervised)" else "") }
+        // Phase 12 C6: the last match's review by the strategic model, with its evidence
+        val reviewLine = cardNote(cd)
+        upd { reviewLine.text = com.sphynx.ai.CoachRuntime.lastReview?.let { r ->
+            "LAST MATCH REVIEW (${r.confidence.label}, from what Sphynx saw):\n${r.text}\nEvidence: " + r.facts.joinToString("; ") }
+            ?: "LAST MATCH REVIEW: after a match the strategy model reviews what Sphynx saw (advice only)." }
         val mode = cardNote(cd)
         upd {
             val b = PlayStatus.runningBadge(AiRuntime.anyOn(), Cfg.dryRun)

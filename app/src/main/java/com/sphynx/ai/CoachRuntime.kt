@@ -4,6 +4,7 @@ import com.sphynx.adapters.mlbb.MlbbEvents
 import com.sphynx.core.Diag
 import com.sphynx.game.GameState
 import com.sphynx.universal.coach.MatchContext
+import kotlinx.coroutines.launch
 
 // THE COACH IN A MATCH (Phase 12). Step C2: keeps the shared match context, fed four times a second from the screen
 // reading through the MLBB adapter's events. It only reads: it never changes what the play loop does.
@@ -30,7 +31,10 @@ object CoachRuntime {
             val r = reading(s, nowMs)
             val p = prev
             if ((p == null || !p.inMatch) && r.inMatch) context.reset()
-            for (e in MlbbEvents.diff(p, r)) context.add(e)
+            val evs = MlbbEvents.diff(p, r)
+            for (e in evs) context.add(e)
+            if (r.inMatch) { s.ownHero?.let { hero = it }; lane = s.lane.label }
+            if (evs.any { it.type == MatchContext.Type.MATCH_END }) review()
             if (r.inMatch) context.observe(nowMs, r.matchSec)
             prev = r
         } catch (t: Throwable) {
@@ -187,5 +191,34 @@ object CoachRuntime {
         if (!supervisedActive) Diag.info("Supervised mode: the coach's fight advice is played (gates passed)")
         supervisedActive = true
         return o
+    }
+
+    // ---- Phase 12 C6: the post-match review (advice only) ----
+
+    @Volatile private var hero: String? = null
+    @Volatile private var lane: String? = null
+
+    class Review(val text: String, val facts: List<String>, val confidence: com.sphynx.universal.coach.MatchReview.Confidence, val at: Long)
+    @Volatile var lastReview: Review? = null; private set
+
+    /** At a match's end: the strategic model reviews that match's own recorded events (in the background). */
+    private fun review() {
+        val events = context.all()
+        if (events.size < 2 || !Roles.ready(Roles.STRATEGIC)) return
+        val rv = com.sphynx.universal.coach.MatchReview
+        val facts = rv.facts(events, hero, lane)
+        val conf = rv.confidence(events)
+        AiRuntime.scope.launch {
+            try {
+                val text = Roles.ask(Roles.STRATEGIC, rv.prompt("Mobile Legends: Bang Bang", facts), null, 0.2, purpose = "match review")
+                    .replace(Regex("(?is)<think>.*?</think>"), "").trim().take(800)
+                val r = Review(text, facts, conf, System.currentTimeMillis()).also { lastReview = it }
+                com.sphynx.core.Probes.appContext()?.let { ctx ->
+                    audit(ctx, org.json.JSONObject().put("review", org.json.JSONObject().put("at", r.at).put("text", r.text)
+                        .put("facts", org.json.JSONArray(r.facts)).put("confidence", r.confidence.name)).toString())
+                }
+                Diag.info("Match review (${conf.label}): ${text.take(160)}")
+            } catch (t: Throwable) { Diag.error("Match review", t) }
+        }
     }
 }

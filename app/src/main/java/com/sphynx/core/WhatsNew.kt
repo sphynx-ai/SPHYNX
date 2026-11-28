@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.NEW, "A review after each match",
+            "When a match ends, the strategy model writes a short review of it from what Sphynx saw (how often you went " +
+                "down and when, enemies and allies down, objectives taken, the parts it could not see) and one thing to do " +
+                "next time. The Play page shows the last review with its evidence and how much evidence there was. It is " +
+                "advice, never fact, and it is in the coach export on the Debug data page.",
+            pr = 154, needsDeviceCheck = true, version = "38.63"),
         Entry("2026-11-28", Kind.NEW, "Supervised coach (off by default)",
             "The Play page has a new switch, Supervised coach (practice only), off by default. When you turn it on, the " +
                 "coach's fight advice is played in a practice match only after its steps are passed: your reviewed fight " +
