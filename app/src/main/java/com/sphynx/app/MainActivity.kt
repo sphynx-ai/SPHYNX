@@ -2512,6 +2512,67 @@ class MainActivity : Activity() {
                 try { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(off.link))) } catch (t: Throwable) { toast("No browser found") }
             }
         }
+        // Phase 13 D4 (roadmap 13.3): recommended five-hero compositions around the current draft
+        run {
+            val mc = com.sphynx.adapters.mlbb.MlbbCompositions
+            fun laneOf(l: com.sphynx.game.Lane?): com.sphynx.adapters.mlbb.MlbbCompositions.Lane? = when (l) {
+                com.sphynx.game.Lane.EXP -> com.sphynx.adapters.mlbb.MlbbCompositions.Lane.EXP; com.sphynx.game.Lane.JUNGLE -> com.sphynx.adapters.mlbb.MlbbCompositions.Lane.JUNGLE; com.sphynx.game.Lane.MID -> com.sphynx.adapters.mlbb.MlbbCompositions.Lane.MID
+                com.sphynx.game.Lane.GOLD -> com.sphynx.adapters.mlbb.MlbbCompositions.Lane.GOLD; com.sphynx.game.Lane.ROAM -> com.sphynx.adapters.mlbb.MlbbCompositions.Lane.ROAM; else -> null }
+            val pool = HeroDb.allNames.map { n ->
+                val m = mg.hero(n)
+                com.sphynx.adapters.mlbb.MlbbCompositions.Hero(n, HeroDb.role(n).name.lowercase(),
+                    listOfNotNull(laneOf(m?.lane), laneOf(m?.lane2)).distinct(), HeroDb.damage(n) == com.sphynx.game.Damage.MAGIC,
+                    m?.counters?.mapNotNull { HeroDb.match(it) }?.distinct() ?: emptyList(), m != null)
+            }
+            val mine = com.sphynx.game.GameStateTracker.myTeam.mapNotNull { HeroDb.match(it) }
+            val enemies = com.sphynx.game.GameStateTracker.enemyTeam.mapNotNull { HeroDb.match(it) }
+            val bans = com.sphynx.ai.StrategicAdvisor.draft?.ban?.mapNotNull { HeroDb.match(it) } ?: emptyList()
+            // my picks go to their first lane that is still open
+            val fixed = HashMap<com.sphynx.adapters.mlbb.MlbbCompositions.Lane, String>()
+            for (h in mine) pool.firstOrNull { it.name == h }?.let { hh ->
+                (hh.lanes.ifEmpty { mc.defaultLanes(hh.role) } + com.sphynx.adapters.mlbb.MlbbCompositions.Lane.values()).firstOrNull { it !in fixed }?.let { fixed[it] = h } }
+            val comps = try { mc.recommend(pool, fixed, enemies, (mine + enemies + bans).toSet()) } catch (t: Throwable) { emptyList() }
+            val cc = card()
+            cardHeader(cc, "RECOMMENDED COMPOSITIONS", if (mine.isEmpty() && enemies.isEmpty()) "no draft yet" else "around your draft", T.ACCENT)
+            if (comps.isEmpty()) cardNote(cc, "No coherent five-hero team fits the heroes left.")
+            for ((k, c) in comps.withIndex()) cardNote(cc, "${k + 1}. " + com.sphynx.adapters.mlbb.MlbbCompositions.Lane.values().joinToString(" · ") { l -> "${l.label}: ${c.picks[l]}" } +
+                "\nStrengths: " + c.strengths.joinToString("; ").ifEmpty { "-" } + "\nWeaknesses: " + c.weaknesses.joinToString("; ").ifEmpty { "-" } +
+                "\nWin condition: " + c.winCondition + (if (c.likelyCounters.isNotEmpty()) "\nWatch out for: " + c.likelyCounters.joinToString() else "") +
+                "\nConfidence: ${c.confidence} · " + c.evidence.joinToString("; "))
+        }
+        // Phase 13 D6 (roadmap 13.5): rotation concepts for now (in a match) or for each phase of a match
+        run {
+            val rot = com.sphynx.adapters.mlbb.MlbbRotations
+            val mine = com.sphynx.game.GameStateTracker.myTeam.mapNotNull { HeroDb.match(it) }
+            val roles = mine.map { HeroDb.role(it) }
+            val jungler = mine.firstOrNull { HeroDb.role(it) == com.sphynx.game.Role.ASSASSIN }
+            val team = com.sphynx.adapters.mlbb.MlbbRotations.Team(roles.count { it == com.sphynx.game.Role.TANK || it == com.sphynx.game.Role.ASSASSIN },
+                roles.contains(com.sphynx.game.Role.MARKSMAN), roles.contains(com.sphynx.game.Role.FIGHTER),
+                jungler?.let { HeroDb.damage(it) == com.sphynx.game.Damage.MAGIC } ?: false)
+            val st = com.sphynx.game.GameStateTracker.state
+            val live = st.phase.inMatch && st.matchSec >= 0
+            val timers = com.sphynx.vision.DeathTimers.fresh()
+            val secs = if (live) listOf(st.matchSec) else listOf(30, rot.TURTLE_FIRST - 10, rot.LORD_FIRST + 10, 16 * 60)
+            val rc = card()
+            cardHeader(rc, "ROTATIONS", if (live) "now" else "by match phase", T.ACCENT)
+            val seen = HashSet<String>()
+            for (sec in secs) for (pl in rot.plans(team, com.sphynx.adapters.mlbb.MlbbRotations.Moment(sec,
+                    if (live && timers) com.sphynx.vision.DeathTimers.alliesDead else 0, if (live && timers) com.sphynx.vision.DeathTimers.enemiesDead else 0))) {
+                if (!seen.add(pl.name)) continue
+                cardNote(rc, "${pl.name} (${pl.window}) — ${pl.label}\n${pl.opening}\n" +
+                    pl.responsibilities.entries.joinToString("; ") { "${it.key}: ${it.value}" } +
+                    "\nTarget: ${pl.target} · objective: ${pl.objective}\nNeeds: ${pl.prerequisites.joinToString("; ")}\nRisks: ${pl.risks.joinToString("; ")}\nIf not: ${pl.fallback}")
+            }
+            asDescription(cardNote(rc, "Timers from the app's jungle data (the Wiki): turtle at 2:00 and back 2 min after its kill, lord from 8:00. Experimental rotations stay apart until matches support them."))
+        }
+        // Phase 13 D7 (roadmap 13.7): the Pro Match Hub; no esports source is connected yet, and it says so
+        run {
+            val hub = com.sphynx.adapters.mlbb.MlbbProHub
+            val hc = card()
+            cardHeader(hc, "PRO MATCH HUB", "no source yet", T.MUTED)
+            cardNote(hc, hub.NotConnected.status() + "\n\nCompetitions: " + hub.COMPETITIONS.joinToString { it.name } +
+                ".\nTimes will show in your time zone (" + java.time.ZoneId.systemDefault().id + "); only official streams are linked.")
+        }
         text("Live patch meta from the web (Groq). Saved on the phone; the Player, Builder and Drafter use it.", 13f, color = T.MUTED)
         switch("Use the online meta", Cfg.useOnlineMeta && Cfg.onlineAuto) {
             Cfg.useOnlineMeta = it; Cfg.onlineAuto = it; Cfg.onlineDraft = it

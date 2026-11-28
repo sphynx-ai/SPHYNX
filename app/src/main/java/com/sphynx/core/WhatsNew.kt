@@ -24,6 +24,40 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.IMPROVED, "Phase 14: what each game adapter can really do",
+            "Behind the scenes: the next phase is started (as you decided, only the kit for adding games, no second " +
+                "game). Each game adapter now has a manifest saying what it can do and the evidence for each claim (unit " +
+                "tests or a check on your phone); a claim without evidence fails the checks. MLBB's manifest lists what " +
+                "is not supported, like official statistics and esports data.",
+            pr = 164, needsDeviceCheck = true, version = "38.73"),
+        Entry("2026-11-28", Kind.IMPROVED, "MLBB intelligence: guide and checks",
+            "The guide to the emblem Library, meta sources, compositions, rotations and the Pro Match Hub, its phone " +
+                "checklist, and which parts wait for a source decision are in docs/PHASE_13_MLBB_PLAN.md, sections 7 and 8.",
+            pr = 163, needsDeviceCheck = true, version = "38.72"),
+        Entry("2026-11-28", Kind.NEW, "Pro Match Hub (waiting for a source)",
+            "The Meta page has a PRO MATCH HUB card: MPL Philippines, Indonesia and Malaysia, the M-Series, the Esports " +
+                "World Cup and the SEA Games, with times in your own time zone and only official streams linked. No " +
+                "esports source is connected yet (the ones checked can't be used from here), so it says so instead of " +
+                "showing invented schedules. When one is connected, its finished drafts feed the experimental strategies.",
+            pr = 162, needsDeviceCheck = true, version = "38.71"),
+        Entry("2026-11-28", Kind.NEW, "Rotation ideas for each phase of a match",
+            "The Meta page shows rotation ideas: the 1-2-2 opening and which buff to start, the turtle set-up, the lord " +
+                "after a won fight, and late-game split pressure or grouping. In a match it shows the ones for now. Each " +
+                "says what each lane does, when, what it needs, the risks and what to do instead, and is labelled as a " +
+                "concept to weigh, not a rule. The times come from the app's jungle data.",
+            pr = 161, needsDeviceCheck = true, version = "38.70"),
+        Entry("2026-11-28", Kind.IMPROVED, "Experimental strategies stay experimental",
+            "Behind the scenes: the rules for unproven team compositions and rotations are written. They stay labelled " +
+                "experimental until enough complete matches on the current patch support them (at least 30, from at least " +
+                "3 teams and 2 tournaments, and clearly above the usual win rate); an old patch makes them outdated. " +
+                "Strategies get consistent tags you can search by.",
+            pr = 160, needsDeviceCheck = true, version = "38.69"),
+        Entry("2026-11-28", Kind.NEW, "Recommended team compositions",
+            "The Meta page shows up to three five-hero teams that fit your draft: one hero for each lane, with a mix of " +
+                "magic and physical damage, a front line and engage, avoiding heroes the online meta says your enemies " +
+                "counter. Each lists its strengths, weaknesses, win condition and what to watch out for, and how sure it " +
+                "is: never high, because no official statistics are behind it.",
+            pr = 159, needsDeviceCheck = true, version = "38.68"),
         Entry("2026-11-28", Kind.NEW, "Where the meta comes from",
             "The Meta page starts with META SOURCES. Official pick, win and ban rates can only come from the official " +
                 "MLBB rank page, which Sphynx cannot read (its numbers come from an undocumented connection), so it says " +
