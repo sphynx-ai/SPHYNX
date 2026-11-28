@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.NEW, "The coach watches and advises",
+            "In a match the coach now adds up to two lines of advice to the companion advice (what to do now, and the " +
+                "strategy), or says 'no recommendation' with the reason. While the Player plays a practice match, the coach " +
+                "only watches: once a second it writes down what it would advise next to what was really played (shadow " +
+                "mode). Those notes are counted per fight model for the supervised-mode steps, and the Debug data page " +
+                "can export them. Play itself is unchanged.",
+            pr = 152, needsDeviceCheck = true, version = "38.61"),
         Entry("2026-11-28", Kind.IMPROVED, "Steps before the coach may act",
             "Behind the scenes: the rules for when the coach's advice may ever be played are written " +
                 "(docs/PHASE_12_AUTONOMY_GATES.md). First it only advises; it must pass your reviewed model tests with " +

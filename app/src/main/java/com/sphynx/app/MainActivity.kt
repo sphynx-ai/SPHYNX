@@ -3780,6 +3780,14 @@ class MainActivity : Activity() {
             }.start()
         }
 
+        // Phase 12 C4: the coach's shadow-mode audit (its advice next to what was played)
+        btn("Export the coach audit now (shadow mode)") {
+            Thread {
+                val msg = try { com.sphynx.ai.CoachRuntime.exportAudit(this) } catch (e: Exception) { "Export failed: ${e.message}" }
+                runOnUiThread { toast(msg.take(200)) }
+            }.start()
+        }
+
         // Phase 11 P4: the pair recommendations with their evidence and inputs, so a recommendation can be checked
         btn("Export the model pair recommendations now") {
             Thread {
