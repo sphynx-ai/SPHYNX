@@ -1957,7 +1957,7 @@ class MainActivity : Activity() {
                 cardText(xc, 12f).text = buildString {
                     append(b.idea)
                     if (b.spell != null) append("\nSpell: ").append(b.spell)
-                    if (b.emblem.isNotBlank()) append(if (b.spell != null) "  ·  " else "\n").append("Emblem: ").append(b.emblem)
+                    append("\nEmblem: ").append(wikiEmblem(null))     // Phase 13 D2: emblems only from the Wiki
                     if (b.whenToUse.isNotBlank()) append("\nWhen: ").append(b.whenToUse)
                     if (b.risk.isNotBlank()) append("\nRisk: ").append(b.risk)
                 }
@@ -2005,9 +2005,9 @@ class MainActivity : Activity() {
                 if (xb != null) {
                     append(xb.name)
                     if (xb.spell != null) append("  ·  Spell: ").append(xb.spell)
-                    if (xb.emblem.isNotBlank()) append("  ·  Emblem: ").append(xb.emblem)
+                    append("\nEmblem: ").append(wikiEmblem(null))     // Phase 13 D2
                 } else if (meta != null) {
-                    if (meta.emblem.isNotBlank()) append("Emblem: ").append(meta.emblem)
+                    append("Emblem: ").append(wikiEmblem(null))       // Phase 13 D2
                     if (meta.spell != null) append(if (isEmpty()) "" else "  ·  ").append("Spell: ").append(meta.spell)
                 }
                 if (isEmpty()) append("Set the same build as your in-game preset (quick buy follows it).")
@@ -2081,6 +2081,56 @@ class MainActivity : Activity() {
     private var libTab = "heroes"
     private var libFilter = ""
 
+    // Phase 13 D2 (roadmap 13.1, 13.11): the emblem sets, only from the Mobile Legends Wiki Emblems page, with its icons
+    // (bundled, so they work offline), attribution and dates. The Wiki gives no per-hero recommendation, and this says so.
+    private fun emblemLibrary(): com.sphynx.adapters.mlbb.MlbbEmblems.Library? = try {
+        com.sphynx.adapters.mlbb.MlbbEmblems.parse(assets.open(com.sphynx.adapters.mlbb.MlbbEmblems.ASSET).bufferedReader().use { it.readText() })
+    } catch (t: Throwable) { Diag.error("Emblem data", t); null }
+
+    private var emblemLibCache: com.sphynx.adapters.mlbb.MlbbEmblems.Library? = null
+
+    /** Phase 13 D2: what the app may say about a hero's emblem (Wiki only): no Wiki-supported recommendation, plus the
+     *  Wiki's set named after the hero's role. Online-meta and AI emblem text is never shown. */
+    private fun wikiEmblem(hero: String?): String {
+        val lib = emblemLibCache ?: emblemLibrary().also { emblemLibCache = it }
+        val role = hero?.let { HeroDb.role(it).name.lowercase() }?.takeIf { it != "unknown" }
+        return com.sphynx.adapters.mlbb.MlbbEmblems.recommendationFor(lib, role) + " See Library → Emblems."
+    }
+
+    private fun emblemIcon(file: String, sizeDp: Int): ImageView = ImageView(this).apply {
+        try { setImageBitmap(assets.open(com.sphynx.adapters.mlbb.MlbbEmblems.ASSET_DIR + "/" + file).use { android.graphics.BitmapFactory.decodeStream(it) }) }
+        catch (t: Throwable) { }
+        layoutParams = LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp)).apply { rightMargin = dp(10) }
+        contentDescription = file.substringBefore('.').replace('_', ' ')
+    }
+
+    private fun libEmblems(list: LinearLayout, ok: (String) -> Boolean) {
+        val lib = emblemLibrary() ?: run { list.addView(TextView(this).apply { text = "Emblem data not available"; setTextColor(c(T.MUTED)) }); return }
+        list.addView(TextView(this).apply {
+            text = "From the Mobile Legends Wiki only: " + lib.attribution() + ". " + com.sphynx.adapters.mlbb.MlbbEmblems.NO_RECOMMENDATION +
+                lib.notes.joinToString("") { " Note: $it" }
+            textSize = 12f; setTextColor(c(T.MUTED)); setPadding(dp(6), dp(8), dp(6), dp(6))
+        })
+        for (set in lib.sets) {
+            val shownTalents = set.talents.filter { ok(it.name) || ok(it.description) }
+            if (!ok(set.name) && shownTalents.isEmpty()) continue
+            val cd = card()
+            val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            head.addView(emblemIcon(set.icon, 48))
+            head.addView(TextView(this).apply { text = set.name + "\n" + set.attributes.joinToString(" · "); textSize = 14f; setTextColor(c(T.TEXT)) })
+            cd.addView(head)
+            for (t in (if (ok(set.name)) set.talents else shownTalents)) {
+                val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(4), dp(8), 0, 0) }
+                row.addView(emblemIcon(t.icon, if (t.core) 40 else 28))
+                row.addView(TextView(this).apply {
+                    text = t.name + "  ·  " + (if (t.core) "core talent" else "standard talent" + (t.tier?.let { " (group $it)" } ?: "")) + "\n" + t.description
+                    textSize = 13f; setTextColor(c(T.TEXT))
+                }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                cd.addView(row)
+            }
+        }
+    }
+
     private fun libraryPage() {
         val ll = com.sphynx.learning.LibraryLearner
         val lc = card()
@@ -2129,7 +2179,7 @@ class MainActivity : Activity() {
 
         // tabs
         val tabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        for ((k, label) in listOf("heroes" to "Heroes", "spells" to "Spells", "items" to "Equipment", "terms" to "Terms")) {
+        for ((k, label) in listOf("heroes" to "Heroes", "spells" to "Spells", "items" to "Equipment", "emblems" to "Emblems", "terms" to "Terms")) {
             tabs.addView(Button(this).apply {
                 text = label; isAllCaps = false; textSize = 13f; maxLines = 1
                 setPadding(dp(4), 0, dp(4), 0); minWidth = 0; minimumWidth = 0
@@ -2270,7 +2320,7 @@ class MainActivity : Activity() {
             val m = com.sphynx.game.MetaStore.hero(h)
             if (m != null) {
                 append("\nGuide (").append(m.patch).append("): build ").append(m.build.joinToString())
-                if (m.emblem.isNotBlank()) append("\nEmblem: ").append(m.emblem)
+                append("\nEmblem: ").append(wikiEmblem(h))           // Phase 13 D2
                 m.spell?.let { append(" · spell ").append(it) }
                 if (m.playstyle.isNotBlank()) append("\nHow to play: ").append(m.playstyle)
                 if (m.counters.isNotEmpty()) append("\nCountered by: ").append(m.counters.joinToString())
@@ -2336,6 +2386,7 @@ class MainActivity : Activity() {
                     }
                 }
             }
+            "emblems" -> libEmblems(list, ::ok)      // Phase 13 D2: only from the Mobile Legends Wiki
             "terms" -> {
                 // the game's own Tutorial > Terms: attributes, states (crowd control by level, buffs), common terms
                 val gt = com.sphynx.game.GameTerms
@@ -2575,7 +2626,7 @@ class MainActivity : Activity() {
                     cardNote(cd, Freshness.line(m.updatedAt, m.sources))
                     if (m.build.isNotEmpty()) { sub(cd, "Build"); IconGrid(cd, false, 42).set(m.build) }
                     sub(cd, "Setup")
-                    pair(cd, "Emblem", m.emblem); pair(cd, "Spell", m.spell); pair(cd, "Lane", m.lane?.label)
+                    pair(cd, "Emblem", wikiEmblem(h)); pair(cd, "Spell", m.spell); pair(cd, "Lane", m.lane?.label)
                     pair(cd, "Combo", m.combo); pair(cd, "Dash", m.dash)
                     if (m.skillOrder.isNotEmpty()) pair(cd, "Skill order", m.skillOrder.joinToString(" › "))
                     if (m.laning.isNotEmpty()) { sub(cd, "Laning"); bullets(cd, m.laning) }

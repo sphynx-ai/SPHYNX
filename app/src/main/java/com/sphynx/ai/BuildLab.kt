@@ -141,7 +141,7 @@ object BuildLab {
             }
             append("Plays as: ${pb.style}; combo ${pb.combo}; strongest ${pb.spike}\n")
             if (meta != null) {
-                append("Its current META (${meta.patch}): build ${meta.build.joinToString()}; emblem ${meta.emblem}; spell ${meta.spell ?: "-"}\n")
+                append("Its current META (${meta.patch}): build ${meta.build.joinToString()}; spell ${meta.spell ?: "-"}\n")   // no emblem: Wiki only (Phase 13 D2)
                 if (meta.playstyle.isNotBlank()) append("How it is played: ${meta.playstyle.take(300)}\n")
                 if (meta.changes.isNotBlank()) append("Recent changes: ${meta.changes.take(250)}\n")
             } else append("Role's usual build: ${BuildBook.primary(role).joinToString()}\n")

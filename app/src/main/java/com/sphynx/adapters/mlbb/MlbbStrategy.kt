@@ -114,7 +114,7 @@ object MlbbStrategy : StrategyGame {
         MetaStore.hero(hero)?.let { m ->
             sb.append("\nONLINE META (").append(m.patch).append(", ").append("%.0f".format(MetaStore.ageDays(m.updatedAt))).append(" days old):\n")
             m.build.forEachIndexed { i, it -> sb.append("${i + 1}. $it\n") }
-            if (m.emblem.isNotBlank()) sb.append("Emblem: ").append(m.emblem).append('\n')
+            // Phase 13 D2: emblems only from the Wiki, so the online meta's emblem is not given to the model
             if (m.spell != null) sb.append("Spell: ").append(m.spell).append('\n')
             if (m.counters.isNotEmpty()) sb.append("Countered by: ").append(m.counters.joinToString()).append('\n')
             if (m.changes.isNotBlank()) sb.append("Recent changes: ").append(m.changes).append('\n')
