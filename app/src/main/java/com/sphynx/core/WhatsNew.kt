@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.IMPROVED, "Phase 14: what each game adapter can really do",
+            "Behind the scenes: the next phase is started (as you decided, only the kit for adding games, no second " +
+                "game). Each game adapter now has a manifest saying what it can do and the evidence for each claim (unit " +
+                "tests or a check on your phone); a claim without evidence fails the checks. MLBB's manifest lists what " +
+                "is not supported, like official statistics and esports data.",
+            pr = 164, needsDeviceCheck = true, version = "38.73"),
         Entry("2026-11-28", Kind.IMPROVED, "MLBB intelligence: guide and checks",
             "The guide to the emblem Library, meta sources, compositions, rotations and the Pro Match Hub, its phone " +
                 "checklist, and which parts wait for a source decision are in docs/PHASE_13_MLBB_PLAN.md, sections 7 and 8.",

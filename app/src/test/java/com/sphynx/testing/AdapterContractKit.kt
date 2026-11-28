@@ -73,4 +73,19 @@ object AdapterContractKit {
     private fun dupes(what: String, l: List<String>, out: MutableList<String>) {
         l.groupingBy { it }.eachCount().filter { it.value > 1 }.keys.forEach { out.add("$what has '$it' more than once") }
     }
+
+    /**
+     * Phase 14 K1: a capability manifest must describe its adapter: the same game, version and capability statuses,
+     * and no capability claimed usable without evidence.
+     */
+    fun manifest(adapter: GameAdapter<*>, m: com.sphynx.universal.sdk.CapabilityManifest): List<String> {
+        val out = ArrayList<String>()
+        if (m.gameId != adapter.gameId) out.add("manifest gameId '${m.gameId}' is not '${adapter.gameId}'")
+        if (m.adapterVersion != adapter.adapterVersion) out.add("manifest adapterVersion ${m.adapterVersion} is not ${adapter.adapterVersion}")
+        if (m.contractVersion != UniversalMatchState.SCHEMA_VERSION) out.add("manifest contractVersion ${m.contractVersion} is not ${UniversalMatchState.SCHEMA_VERSION}")
+        for ((cap, claim) in m.capabilities) if (claim.status != adapter.capabilities.status(cap))
+            out.add("manifest says ${cap.name} is ${claim.status}, the adapter says ${adapter.capabilities.status(cap)}")
+        m.unbackedClaims().forEach { out.add("${it.name} is claimed usable without evidence") }
+        return out
+    }
 }
