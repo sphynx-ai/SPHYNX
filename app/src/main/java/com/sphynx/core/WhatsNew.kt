@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.IMPROVED, "Experimental strategies stay experimental",
+            "Behind the scenes: the rules for unproven team compositions and rotations are written. They stay labelled " +
+                "experimental until enough complete matches on the current patch support them (at least 30, from at least " +
+                "3 teams and 2 tournaments, and clearly above the usual win rate); an old patch makes them outdated. " +
+                "Strategies get consistent tags you can search by.",
+            pr = 160, needsDeviceCheck = true, version = "38.69"),
         Entry("2026-11-28", Kind.NEW, "Recommended team compositions",
             "The Meta page shows up to three five-hero teams that fit your draft: one hero for each lane, with a mix of " +
                 "magic and physical damage, a front line and engage, avoiding heroes the online meta says your enemies " +
