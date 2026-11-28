@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.NEW, "Supervised coach (off by default)",
+            "The Play page has a new switch, Supervised coach (practice only), off by default. When you turn it on, the " +
+                "coach's fight advice is played in a practice match only after its steps are passed: your reviewed fight " +
+                "test with few unsafe answers, and at least 200 watched decisions that agree with play. Below the switch, " +
+                "a line tells you which step it is on and what is still missing. The Kotlin checks and the safety rules " +
+                "still decide first, and turning the switch off or the emergency stop ends it at once.",
+            pr = 153, needsDeviceCheck = true, version = "38.62"),
         Entry("2026-11-28", Kind.NEW, "The coach watches and advises",
             "In a match the coach now adds up to two lines of advice to the companion advice (what to do now, and the " +
                 "strategy), or says 'no recommendation' with the reason. While the Player plays a practice match, the coach " +

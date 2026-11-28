@@ -280,6 +280,9 @@ object Cfg {
     var buildEverySec: Int get() = i("build_sec", 30); set(v) = put("build_sec", v)
     var autonomous: Boolean get() = b("auto", false); set(v) = put("auto", v)
     var dryRun: Boolean get() = b("dry_run", true); set(v) = put("dry_run", v)
+    // Phase 12 C5 (owner, 2026-11-28: "up to supervised mode"): the coach's fight advice may be played only with this ON
+    // and its gates passed; OFF on a new install
+    var supervisedOn: Boolean get() = b("coach_supervised", false); set(v) = put("coach_supervised", v)
 
     // ---- auto quick buy (item swap when about to die) ----
     var qbOn: Boolean get() = b("qb_on", false); set(v) = put("qb_on", v)

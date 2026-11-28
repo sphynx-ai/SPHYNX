@@ -1170,6 +1170,13 @@ class MainActivity : Activity() {
         }
         cardSwitchRow(cd, "Dry run: only show where it would tap", Cfg.dryRun) { Cfg.dryRun = it }.second.text = "A safety guard: on by default"
         cardSwitchRow(cd, "Autonomous Drafter + Builder", Cfg.autonomous) { Cfg.autonomous = it }.second.text = "Picks, bans and buys by itself"
+        // Phase 12 C5: supervised mode, off by default; it only acts once its gates pass
+        cardSwitchRow(cd, "Supervised coach (practice only)", Cfg.supervisedOn) { Cfg.supervisedOn = it }.second.text =
+            "When on, the coach's fight advice is played in a practice match only after its steps are passed " +
+                "(docs/PHASE_12_AUTONOMY_GATES.md); the Kotlin checks and the safety rules still come first. Off by default"
+        val gateLine = cardNote(cd)
+        upd { gateLine.text = "Coach: " + (try { com.sphynx.ai.CoachRuntime.gate(this).text() } catch (t: Throwable) { "-" }) +
+            (if (com.sphynx.ai.CoachRuntime.supervisedActive) " · acting (supervised)" else "") }
         val mode = cardNote(cd)
         upd {
             val b = PlayStatus.runningBadge(AiRuntime.anyOn(), Cfg.dryRun)

@@ -309,6 +309,8 @@ object AiRuntime {
                     DecisionLogging.observe(s, brainOption, option)
                     // Phase 12 C4: shadow mode: the coach's advice next to what is played (never changes it)
                     CoachRuntime.shadow(s, brainOption, option)
+                    // Phase 12 C5: supervised mode (switch OFF by default, gates must pass): the coach's checked advice
+                    if (option != null) CoachRuntime.supervisedChoice(s, brainOption)?.let { r -> if (r != option) { Brain.adopt(s, r); option = r } }
                     // research R4 (verified practice only): records this fight moment for the small-model test
                     if (com.sphynx.learning.LearnGate.on()) com.sphynx.research.ResearchMode.recordMoment(s, profile, option)
                     var d = if (calibrating) TacticalEngine.calibrationStep(s, profile)

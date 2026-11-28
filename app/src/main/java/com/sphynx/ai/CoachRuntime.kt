@@ -131,4 +131,61 @@ object CoachRuntime {
             com.sphynx.core.Cfg.setRaw(key(m), "${n + 1},${a + if (agree) 1 else 0},${u + if (unsafe) 1 else 0}")
         }
     }
+
+    // ---- Phase 12 C5: supervised mode (OFF by default; owner, 2026-11-28: "up to supervised mode") ----
+
+    @Volatile private var gateCache: com.sphynx.universal.autonomy.AutonomyGates.Result? = null
+    @Volatile private var gateAt = 0L
+
+    /** The gate evidence for the tactical job's model now: its Phase 10 fight test, its shadow counts, the owner's switch. */
+    fun evidence(ctx: android.content.Context): com.sphynx.universal.autonomy.AutonomyGates.Evidence {
+        val f = com.sphynx.models.ModelManager.fileFor(ctx, Roles.TACTICAL)
+        val runs = try { EvalHarness.runs(ctx) } catch (t: Throwable) { emptyList() }
+        val reviewed = EvalHarness.loadSet(ctx, EvalHarness.SETS[0]).getOrNull()?.reviewed == true
+        val sum = runs.filter { (r, _) -> r.fileName == f.name && r.role == "tactical" && r.setId == "mlbb-tactical" &&
+            r.kind == com.sphynx.universal.eval.EvalRecord.KIND_SET }
+            .map { (r, ss) -> com.sphynx.universal.eval.EvalReport.summarize(r, ss) }.filter { it.rankable }
+            .maxByOrNull { it.run.startedAt }
+        val (n, a, u) = Shadow.counts(modelKey(ctx))
+        return com.sphynx.universal.autonomy.AutonomyGates.Evidence(sum?.answers ?: 0, sum?.unsafe?.p, sum?.meanScore, reviewed,
+            n, a, u, ownerSupervised = com.sphynx.core.Cfg.supervisedOn)
+    }
+
+    /** The gate for the tactical job, worked out at most every 10 s (it reads the test results). */
+    fun gate(ctx: android.content.Context, nowMs: Long = System.currentTimeMillis()): com.sphynx.universal.autonomy.AutonomyGates.Result {
+        gateCache?.takeIf { nowMs - gateAt < 10_000 }?.let { return it }
+        return com.sphynx.universal.autonomy.AutonomyGates.evaluate(evidence(ctx)).also { gateCache = it; gateAt = nowMs }
+    }
+
+    /** The fight option a decision kind stands for (DecisionBridge.kind the other way); null for kinds with none. */
+    fun option(k: com.sphynx.universal.DecisionKind): com.sphynx.learning.FightOption? = when (k) {
+        com.sphynx.universal.DecisionKind.ENGAGE -> com.sphynx.learning.FightOption.ALL_IN
+        com.sphynx.universal.DecisionKind.POKE -> com.sphynx.learning.FightOption.POKE
+        com.sphynx.universal.DecisionKind.FARM -> com.sphynx.learning.FightOption.FARM
+        com.sphynx.universal.DecisionKind.RETREAT -> com.sphynx.learning.FightOption.RETREAT
+        com.sphynx.universal.DecisionKind.GROUP -> com.sphynx.learning.FightOption.GROUP
+        else -> null
+    }
+
+    /**
+     * Supervised mode, in the play loop: the coach's fight option when the owner's switch is ON **and** the gate reaches
+     * SUPERVISED **and** the Kotlin checks accept it; null otherwise, and then the play loop is exactly as without it. The
+     * play loop itself only runs in a verified practice match (PlayerGate); the emergency stop and the rules' safety
+     * decisions (DecisionGuard) still come after.
+     */
+    fun supervisedChoice(s: GameState, brainChoice: com.sphynx.learning.FightOption?, nowMs: Long = System.currentTimeMillis()): com.sphynx.learning.FightOption? {
+        if (!com.sphynx.core.Cfg.supervisedOn) { supervisedActive = false; return null }
+        val ctx = com.sphynx.core.Probes.appContext() ?: return null
+        val g = try { gate(ctx, nowMs) } catch (t: Throwable) { return null }
+        if (!g.allows(com.sphynx.universal.autonomy.AutonomyGates.Stage.SUPERVISED)) {
+            if (supervisedActive) Diag.info("Supervised mode paused: " + g.text())
+            supervisedActive = false; return null
+        }
+        val rec = (last?.takeIf { nowMs - coachAt < 1_500 } ?: coach(s, brainChoice, nowMs))?.actionable ?: return null
+        val o = option(rec.kind) ?: return null
+        if (TacticalAdvisor.check(o, s) != null) return null
+        if (!supervisedActive) Diag.info("Supervised mode: the coach's fight advice is played (gates passed)")
+        supervisedActive = true
+        return o
+    }
 }
