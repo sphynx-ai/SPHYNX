@@ -1,6 +1,6 @@
 # Phase 11 — Model Pairing and Device-Aware Recommendations: audit and execution plan
 
-**Status:** **APPROVED by the owner 2026-11-28**, together with Phases 12–16 ("Proceed to phase 11, 12, 13, 14, 15, 16 and all of the phase. I will test everything on phone later on."). IN PROGRESS: the steps are built back to back, and the owner phone-tests later.
+**Status:** **APPROVED by the owner 2026-11-28**, together with Phases 12–16 ("Proceed to phase 11, 12, 13, 14, 15, 16 and all of the phase. I will test everything on phone later on."). **All steps P1–P5 built in code (v38.53–v38.57, PRs #144–#148); the owner's phone test is pending (section 6).**
 **Based on:** `sphynx-test-branch` at v38.52, read from the code. No phone was used for this plan.
 
 ## 1. Role for this phase (roadmap 3.1)
@@ -50,3 +50,39 @@
 - **Little evidence at first:** until the owner runs Phase 10 tests, most recommendations are low confidence (declared only), and the card says so.
 - **One phone:** recommendations are for this phone; the phone class only guides models that have not been measured.
 - **Budgets are judgement:** the 1 s and 20 s budgets come from how the app uses the answers (`TacticalAdvisor`, the strategic plan). They are constants in the method document and can be changed.
+
+## 6. User guide and phone checklist
+
+**Using it:** Model page → RECOMMENDED PAIRS.
+
+- The first line names this phone's class and the room left for models next to the game.
+- Each pair card shows:
+  - its trade-off: *best measured quality*, *fastest*, *lightest* or *balanced*;
+  - its confidence: green is high, gold is medium, grey is low (declared only);
+  - for each model, what was measured, or "not measured on this phone yet";
+  - the budgets it misses;
+  - its memory.
+- To raise the confidence, run the EVALUATION tests for both jobs (Phase 10 guide) and review the test sets.
+- *Use this pair…* asks first, then gives both jobs and reloads them.
+
+**Phone checklist (version 38.57):**
+
+1. Before any test: the card lists pairs as **low** confidence, "not measured on this phone yet". The download-list models say "not on the phone yet".
+2. Run the Phase 10 strategy test on Gemma 4 E2B and the fight test on the tactical model. The pairs with those two models move to **medium** confidence (the sets are not yet reviewed) and show their measured times.
+3. A pair whose fight model's usable 90th percentile is over 1 s shows "Misses: … over the 1.0 s budget".
+4. *Use this pair…* on another pair: the question names both models; after *Use*, both jobs load them. Then give the jobs back.
+5. A pair with two GGUF models never appears.
+6. Debug data → *Export the model pair recommendations now* → upload. `diagnostics-pairs-*.json` arrives and is gone from the phone.
+7. DOWNLOAD A MODEL → any model: the question names its declared phone class.
+
+## 7. Closing record
+
+| Step | Version | PR | State |
+|---|---|---|---|
+| P1 plan, method, workloads, phone class | 38.53 | #144 | In code |
+| P2 pair recommender | 38.54 | #145 | In code |
+| P3 recommendations on the Model page | 38.55 | #146 | In code |
+| P4 configuration catalog and export | 38.56 | #147 | In code |
+| P5 guide, checklist, closing record | 38.57 | #148 | In code |
+
+So far the only verification is CI. No phone test has been run and no recommendation has been measured.

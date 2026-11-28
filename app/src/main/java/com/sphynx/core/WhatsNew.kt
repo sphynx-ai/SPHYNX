@@ -24,6 +24,9 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.IMPROVED, "Model pairs: how to use them",
+            "The guide and the phone checklist for model pairs are in docs/PHASE_11_PAIRING_PLAN.md, sections 6 and 7.",
+            pr = 148, needsDeviceCheck = true, version = "38.57"),
         Entry("2026-11-28", Kind.IMPROVED, "Which phones a download is for",
             "The download question now says which phones a model is declared for (entry-level, midrange or flagship, " +
                 "from its size; not measured). The Debug data page can export the pair recommendations with the evidence " +
