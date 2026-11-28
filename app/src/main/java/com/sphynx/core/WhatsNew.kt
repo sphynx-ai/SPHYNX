@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.IMPROVED, "How a pair of models is recommended",
+            "Behind the scenes: Sphynx can now weigh pairs of models (strategy + fights) for this phone. Pairs the job " +
+                "rules refuse or that don't fit next to the game are left out; the rest are kept when no other pair is " +
+                "better on quality, speed and memory at once, and each is labelled (best measured quality, fastest, " +
+                "lightest) with its evidence and how sure it is: high only when measured on this phone with a reviewed " +
+                "test. It never picks for you. Nothing shows in the app yet.",
+            pr = 145, needsDeviceCheck = true, version = "38.54"),
         Entry("2026-11-28", Kind.IMPROVED, "Phase 11: choosing a pair of models",
             "Behind the scenes: the next phase is started (approved with all later phases). Sphynx gets the rules for " +
                 "recommending a pair of models for this phone: the fight model must give 90% of its usable answers within " +
