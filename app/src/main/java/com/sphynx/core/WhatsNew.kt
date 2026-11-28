@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.IMPROVED, "Phase 12: one coach for strategy and fights",
+            "Behind the scenes: the next phase is started. Sphynx gets a coordinator that combines the strategy model, " +
+                "the fight model, the learned networks and the safety rules into one stream of advice, keeping strategy " +
+                "and the moment apart. When the engines disagree, or the advice is weak or old, it says 'no " +
+                "recommendation' instead of guessing. Nothing changes in a match yet.",
+            pr = 149, needsDeviceCheck = true, version = "38.58"),
         Entry("2026-11-28", Kind.IMPROVED, "Model pairs: how to use them",
             "The guide and the phone checklist for model pairs are in docs/PHASE_11_PAIRING_PLAN.md, sections 6 and 7.",
             pr = 148, needsDeviceCheck = true, version = "38.57"),
