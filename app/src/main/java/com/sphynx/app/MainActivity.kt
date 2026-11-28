@@ -2999,7 +2999,7 @@ class MainActivity : Activity() {
         for (p in res.pairs.take(5)) {
             val c = card()
             cardHeader(c, p.labels.joinToString(" · ").uppercase(java.util.Locale.US), p.confidence.label,
-                when (p.confidence) { rp.Confidence.HIGH -> T.GREEN; rp.Confidence.MEDIUM -> T.GOLD; else -> T.MUTED })
+                when (p.confidence) { com.sphynx.universal.pairing.PairRecommender.Confidence.HIGH -> T.GREEN; com.sphynx.universal.pairing.PairRecommender.Confidence.MEDIUM -> T.GOLD; else -> T.MUTED })
             cardNote(c, rp.text(p))
             val sv = res.values["STRATEGIC:" + p.strategic.id]; val tv = res.values["TACTICAL:" + p.tactical.id]
             if (sv != null && tv != null) inCard(c, "Use this pair…") { labUsePair(p.strategic.label, sv, p.tactical.label, tv) }
