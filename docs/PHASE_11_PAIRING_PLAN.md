@@ -42,8 +42,8 @@
 - [ ] Pairing method and workload/phone profiles (P1). **In code (v38.53):** `docs/PHASE_11_PAIRING_METHOD.md`, `universal/pairing/Workloads` (the two workloads with their budgets, phone class from RAM, declared class from size; tested).
 - [ ] A recommendation engine with explicit trade-offs and confidence (P2). **In code (v38.54):** `universal/pairing/PairRecommender` (job rules and memory filter, Pareto front on quality, speed and memory without weights, labels, reasons, budget misses, confidence = the lower of the two models; an unmeasured model is never pushed off by quality alone; tested in `PairRecommenderTest`).
 - [ ] A recommendation view that explains itself and keeps the owner in control (P3). **In code (v38.55):** `ai/PairingAdvisor` (candidates from the Model Lab for each job they can take, and from the download list as declared-only; evidence = the newest rankable Phase 10 run of that file in that job, plus the heat run; room = free memory plus what the jobs hold, minus the game's 2.5 GB; the rule one GGUF at a time), the Model page's RECOMMENDED PAIRS card (5 pairs, confidence colour, *Use this pair…* asks first and reloads both jobs).
-- [ ] Evaluation tests for the engine (P2, P4).
-- [ ] An evidence-backed configuration catalog (P4).
+- [ ] Evaluation tests for the engine (P2, P4). **In code (v38.56):** `WorkloadsTest`, `PairRecommenderTest`, `ConfigCatalogTest` (every download-list model has a declared class and the catalog document agrees).
+- [ ] An evidence-backed configuration catalog (P4). **In code (v38.56):** `docs/PHASE_11_CONFIG_CATALOG.md` (declared class per model, source commit), the download question names the declared class, `PairingAdvisor.export` and the Debug data page's *Export the model pair recommendations now* (`Recordings/diagnostics-pairs-<time>.json`: phone class, room, budgets, every pair with its candidates' evidence or declared facts).
 
 ## 5. Risks
 

@@ -3116,6 +3116,7 @@ class MainActivity : Activity() {
         fun about(f: com.sphynx.models.ModelCatalog.File, what: String) =
             "$what: ${f.saveAs}\n${ms.mb(f.size)} MB · SHA-256 ${f.sha256}" + (if (dl.have(f)) "\n(already in the app)" else "")
         val msg = listOfNotNull(e.note.ifEmpty { null }, "From huggingface.co/${e.repo} (licence: ${e.license ?: "see the model page"})",
+            "Declared for ${com.sphynx.universal.pairing.Workloads.declaredClass(e.totalBytes / 1_048_576).label} phones and up (from its size; not measured)",
             about(e.model, "Model"), e.mmproj?.let { about(it, "Picture part") },
             if (!net) "You are not on Wi-Fi: this uses ${ms.mb(e.totalBytes)} MB of mobile data." else null,
         ).joinToString("\n\n")
@@ -3775,6 +3776,14 @@ class MainActivity : Activity() {
                     f.writeText(Diag.read())
                     com.sphynx.core.SessionRecorder.exportFile(this, f, "text/plain").also { f.delete() }
                 } catch (e: Exception) { "Export failed: ${e.message}" }
+                runOnUiThread { toast(msg.take(200)) }
+            }.start()
+        }
+
+        // Phase 11 P4: the pair recommendations with their evidence and inputs, so a recommendation can be checked
+        btn("Export the model pair recommendations now") {
+            Thread {
+                val msg = try { com.sphynx.ai.PairingAdvisor.export(this) } catch (e: Exception) { "Export failed: ${e.message}" }
                 runOnUiThread { toast(msg.take(200)) }
             }.start()
         }

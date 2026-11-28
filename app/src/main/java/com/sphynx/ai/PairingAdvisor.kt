@@ -89,4 +89,30 @@ object PairingAdvisor {
         return Result(pairs, opts.associate { it.candidate.job.name + ":" + it.candidate.id to it.choiceValue }, room,
             Workloads.phoneClass(total))
     }
+
+    /** Phase 11 P4: the recommendations, their inputs and evidence as JSON (no folder names), into Recordings. */
+    fun json(ctx: Context): org.json.JSONObject {
+        val r = recommend(ctx)
+        fun cand(c: PairRecommender.Candidate) = org.json.JSONObject().put("id", c.id).put("label", c.label).put("job", c.job.name)
+            .put("sizeMb", c.sizeMb).putOpt("pictures", c.pictures).put("gguf", c.gguf).put("onPhone", c.onPhone)
+            .put("declaredClass", Workloads.declaredClass(c.sizeMb).name)
+            .putOpt("measured", c.measured?.let { m -> org.json.JSONObject().put("meanScore", m.meanScore).put("low", m.scoreLow)
+                .put("high", m.scoreHigh).put("answers", m.answers).put("usableP90Ms", m.usableP90Ms).put("wholeMedianMs", m.wholeMedianMs)
+                .put("setReviewed", m.setReviewed).putOpt("heatSlowdown", m.heatSlowdown) })
+        return org.json.JSONObject().put("kind", "sphynx-pair-recommendations").put("appVersion", com.sphynx.core.AppVersion.VERSION)
+            .put("savedAt", System.currentTimeMillis()).put("phone", android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL)
+            .put("phoneClass", r.phoneClass.name).put("roomMb", r.roomMb)
+            .put("budgets", org.json.JSONObject().put("tacticalUsableP90Ms", Workloads.TACTICAL.budgetMs).put("strategicWholeMedianMs", Workloads.STRATEGIC.budgetMs))
+            .put("pairs", org.json.JSONArray(r.pairs.map { p -> org.json.JSONObject().put("strategic", cand(p.strategic)).put("tactical", cand(p.tactical))
+                .put("confidence", p.confidence.name).put("labels", org.json.JSONArray(p.labels)).put("reasons", org.json.JSONArray(p.reasons))
+                .put("misses", org.json.JSONArray(p.misses)).put("memoryMb", p.memoryMb) }))
+    }
+
+    fun export(ctx: Context): String {
+        val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
+        val f = File(ctx.cacheDir, "diagnostics-pairs-$stamp.json")
+        val j = json(ctx)
+        f.writeText(j.toString(1))
+        return try { "${j.getJSONArray("pairs").length()} pairs. " + com.sphynx.core.SessionRecorder.exportFile(ctx, f, "application/json") } finally { f.delete() }
+    }
 }
