@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.IMPROVED, "The coach remembers the match",
+            "Behind the scenes: during a match Sphynx now keeps a short history of what happened (the match starting and " +
+                "ending, you going down and coming back, enemies and allies falling, the turtle or lord appearing and " +
+                "being taken), each with where it was read from. Parts of the match it could not see are marked as " +
+                "gaps, never filled in. It only reads; play is unchanged.",
+            pr = 150, needsDeviceCheck = true, version = "38.59"),
         Entry("2026-11-28", Kind.IMPROVED, "Phase 12: one coach for strategy and fights",
             "Behind the scenes: the next phase is started. Sphynx gets a coordinator that combines the strategy model, " +
                 "the fight model, the learned networks and the safety rules into one stream of advice, keeping strategy " +

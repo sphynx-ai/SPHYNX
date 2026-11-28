@@ -253,6 +253,7 @@ object AiRuntime {
                     DemoRecorder.markDeath(lastDeathMark)
                 }
                 if (!stale) prevPhase = s.phase
+                if (!stale) CoachRuntime.observe(s)          // Phase 12 C2: the shared match context (reads only)
                 // the buttons are found on the screen by themselves the first time (no calibration to do)
                 if (!stale && (s.phase == Phase.IN_GAME && s.self != null || s.phase == Phase.DRAFT || s.phase == Phase.HERO_LOCKED))
                     com.sphynx.game.AutoTune.autoCalibrate(s.phase)
