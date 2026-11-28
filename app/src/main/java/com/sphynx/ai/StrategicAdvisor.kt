@@ -331,7 +331,8 @@ object StrategicAdvisor {
                 val a = o.optJSONArray(k) ?: return "-"
                 return (0 until a.length()).joinToString { a.optString(it) }
             }
-            "AI core: ${arr("core")}\nAI situational: ${arr("situational")}\nEmblem: ${o.optString("emblem", "-")}" +
+            // Phase 13 D2: the model's emblem text is not shown (emblems only from the Wiki: Library → Emblems)
+            "AI core: ${arr("core")}\nAI situational: ${arr("situational")}" +
                 (o.optString("note", "").let { if (it.isBlank()) "" else "\nNote: $it" })
         } catch (e: Exception) {
             reply.take(400)

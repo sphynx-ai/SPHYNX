@@ -24,6 +24,13 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.NEW, "Emblems in the Library, only from the Wiki",
+            "Library → Emblems shows the 7 emblem sets with their Wiki icons, attributes and talents, with the Wiki as " +
+                "the source and the dates; it works offline. Emblem advice anywhere else in the app (hero guides, builds, " +
+                "the strategy model's build) now only says what the Wiki supports: the Wiki gives no set per hero, so " +
+                "Sphynx says so and names the set the Wiki calls after the hero's role. Emblems from web search or the AI " +
+                "are no longer shown.",
+            pr = 157, needsDeviceCheck = true, version = "38.66"),
         Entry("2026-11-28", Kind.NEW, "Phase 13: emblems from the Mobile Legends Wiki",
             "Behind the scenes: the next phase is started. Sphynx now carries the emblem sets from the Mobile Legends Wiki " +
                 "Emblems page (your capture of 10 November): the 7 sets with their attributes, standard and core talents, " +
