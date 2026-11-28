@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.NEW, "Rotation ideas for each phase of a match",
+            "The Meta page shows rotation ideas: the 1-2-2 opening and which buff to start, the turtle set-up, the lord " +
+                "after a won fight, and late-game split pressure or grouping. In a match it shows the ones for now. Each " +
+                "says what each lane does, when, what it needs, the risks and what to do instead, and is labelled as a " +
+                "concept to weigh, not a rule. The times come from the app's jungle data.",
+            pr = 161, needsDeviceCheck = true, version = "38.70"),
         Entry("2026-11-28", Kind.IMPROVED, "Experimental strategies stay experimental",
             "Behind the scenes: the rules for unproven team compositions and rotations are written. They stay labelled " +
                 "experimental until enough complete matches on the current patch support them (at least 30, from at least " +
