@@ -2496,6 +2496,22 @@ class MainActivity : Activity() {
     private fun metaPage() {
         val mg = com.sphynx.game.MetaStore
         val ma = com.sphynx.ai.MetaAdvisor
+        // Phase 13 D3 (roadmap 13.2): where the meta comes from, official numbers kept apart from the app's interpretation
+        run {
+            val src = com.sphynx.adapters.mlbb.MlbbMetaSource
+            val now = System.currentTimeMillis()
+            val metas = HeroDb.allNames.mapNotNull { mg.hero(it) }
+            val newest = metas.maxByOrNull { it.updatedAt }
+            val off = com.sphynx.adapters.mlbb.MlbbMetaSource.OfficialRank.status(now)
+            val app = src.appGenerated(metas.size, newest?.updatedAt, newest?.patch, now)
+            val sc = card()
+            cardHeader(sc, "META SOURCES", off.state.label, T.GOLD)
+            cardNote(sc, src.line(off) + "\n\n" + src.line(app) + "\n\nPick, win and ban rates are only ever shown from the " +
+                "official source; Sphynx does not make them up.")
+            inCard(sc, "Open the official rank page") {
+                try { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(off.link))) } catch (t: Throwable) { toast("No browser found") }
+            }
+        }
         text("Live patch meta from the web (Groq). Saved on the phone; the Player, Builder and Drafter use it.", 13f, color = T.MUTED)
         switch("Use the online meta", Cfg.useOnlineMeta && Cfg.onlineAuto) {
             Cfg.useOnlineMeta = it; Cfg.onlineAuto = it; Cfg.onlineDraft = it

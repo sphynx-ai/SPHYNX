@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.NEW, "Where the meta comes from",
+            "The Meta page starts with META SOURCES. Official pick, win and ban rates can only come from the official " +
+                "MLBB rank page, which Sphynx cannot read (its numbers come from an undocumented connection), so it says " +
+                "so and opens the page for you; it never makes numbers up. The app's own meta from the online update is " +
+                "shown apart as 'app-generated, not official statistics', with how many heroes it covers and how old it is.",
+            pr = 158, needsDeviceCheck = true, version = "38.67"),
         Entry("2026-11-28", Kind.NEW, "Emblems in the Library, only from the Wiki",
             "Library → Emblems shows the 7 emblem sets with their Wiki icons, attributes and talents, with the Wiki as " +
                 "the source and the dates; it works offline. Emblem advice anywhere else in the app (hero guides, builds, " +
