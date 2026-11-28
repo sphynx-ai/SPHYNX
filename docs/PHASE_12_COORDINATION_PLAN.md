@@ -1,6 +1,6 @@
 # Phase 12 — Strategic/Tactical Intelligence and Coordination: audit and execution plan
 
-**Status:** **APPROVED by the owner 2026-11-28**, together with Phases 11–16. **Owner decision on autonomy: "Up to supervised mode."** A supervised mode is added, off by default. In it, an action needs the gates to pass, and the owner can stop it at any time. There is no unsupervised (bounded) autonomy. IN PROGRESS.
+**Status:** **APPROVED by the owner 2026-11-28**, together with Phases 11–16. **Owner decision on autonomy: "Up to supervised mode."** A supervised mode is added, off by default. In it, an action needs the gates to pass, and the owner can stop it at any time. There is no unsupervised (bounded) autonomy. **All steps C1–C7 built in code (v38.58–v38.64, PRs #149–#155); the owner's phone test is pending (section 6).**
 **Based on:** `sphynx-test-branch` at v38.57, read from the code. No phone was used for this plan.
 
 ## 1. Role for this phase (roadmap 3.1)
@@ -46,10 +46,50 @@
 - [ ] Shadow mode and audit/reporting format (C4). **In code (v38.61):** `CoachRuntime.coach` (the coordinator on the engines' advice each moment), `CoachRuntime.shadow` (once a second in the play loop, next to `DecisionLogging`: agreement and unsafe disagreement counted per tactical model in `Shadow`, one JSON line per decision in `files/research/coach_audit.jsonl`, rotated at 4 MB; never changes the played option), the companion advice shows the coach's lines (budget 2), the Debug data page's *Export the coach audit now* (`Recordings/diagnostics-coach-audit-<time>.jsonl`).
 - [ ] Supervised mode behind the gates, off by default, stoppable (C5). **In code (v38.62):** `Cfg.supervisedOn` (default OFF), `CoachRuntime.evidence` / `gate` (the tactical model's newest rankable fight test, its shadow counts, the switch; every 10 s), `CoachRuntime.supervisedChoice` (null unless the switch is on, the gate allows SUPERVISED and `TacticalAdvisor.check` accepts; called in `AiRuntime` after shadow mode, inside the practice-only play loop; `DecisionGuard` and the emergency stop still apply), the Play page's *Supervised coach (practice only)* switch with the gate's stage and what is missing.
 - [ ] Coaching (12.1): in-match advice with a budget, post-match review (C4, C6). **In code (v38.63):** in-match advice with a budget of 2 (C4); `universal/coach/MatchReview` (facts and confidence from the match's own events, gaps named, the Phase 10 review form, "use only these facts"; tested), `CoachRuntime.review` (at the match end event, the strategic model in the background; stored with its facts and confidence; in the audit log), the Play page's LAST MATCH REVIEW line.
-- [ ] Simulation/evaluation suite (C7).
+- [ ] Simulation/evaluation suite (C7). **In code (v38.64):** `test/resources/phase12/coach_scenarios.json` (10 replayable moments: agreement, safety first, low-HP all in, near-tie conflict, a rule deciding, weak, stale, nothing to farm, experimental advice, strategy only) run by `CoachScenariosTest`, which also walks the gates stage by stage and checks that bounded autonomy stays locked and that the switch drops supervised at once.
 
 ## 5. Risks
 
 - **Changing play:** only C5 changes play, only with the owner's switch and passing gates, and only inside the existing practice-only `PlayerGate`. With the switch off, the play loop is unchanged; a unit test checks this.
 - **Gate thresholds are judgement:** for example at least 200 shadow decisions, agreement of 70% or more, unsafe disagreements of 2% or less, and a Phase 10 tactical unsafe share of 5% or less on a reviewed set. They are constants in the gate document and can be changed.
 - **Panel space:** the coach line has a budget of two items and leaves the panel's own lines alone.
+
+## 6. User guide and phone checklist
+
+**In a match (any match):** the companion advice gains up to two coach lines: **NOW** (the fight moment) and **STRATEGY**. Each shows its urgency and confidence; advice from an engine that is not proven for this game is marked *experimental*. When the engines disagree, or the advice is weak or old, the coach says **no recommendation** and why.
+
+**Shadow mode:** in a practice match that the Player plays, the coach writes down, once a second, what it would have advised next to what was played. Nothing changes. The counts are per fight model. *Debug data → Export the coach audit now* saves them.
+
+**Supervised mode** (Play page, *Supervised coach (practice only)*, off by default):
+
+- The line under the switch shows the coach's stage and what it still needs (`docs/PHASE_12_AUTONOMY_GATES.md`).
+- The coach's fight advice is played only once all of this holds:
+  - your reviewed fight test has at least 30 answers, at most 5% unsafe, and a score of 0.50 or more;
+  - shadow mode has at least 200 decisions, with at least 70% agreement and at most 2% unsafe disagreement;
+  - the switch is on.
+- Turning the switch off or the emergency stop ends it at once. Acting fully by itself stays locked.
+
+**After a match:** the Play page shows LAST MATCH REVIEW: the strategy model's short review of what Sphynx saw, with the evidence and how much evidence there was.
+
+**Phone checklist (version 38.64):**
+
+1. In any match with the strategic and tactical models loaded: the companion advice shows coach lines (NOW / STRATEGY) or "COACH · no recommendation (…)".
+2. In a practice match played by the Player: after it, *Export the coach audit now* → upload. `diagnostics-coach-audit-*.jsonl` has one line a second with `played`, `coach`, `agree` and `unsafe`.
+3. The Play page's coach line says "Stage: observe only. Next stage needs: …" until the Phase 10 fight test is reviewed and run.
+4. Turn *Supervised coach* on. Nothing changes until the stage reads "supervised"; the log has no "Supervised mode:" line. Turn it off again.
+5. After a match (strategic model loaded): LAST MATCH REVIEW shows a review with its evidence. The review is also in the audit export.
+6. In Ranked or Classic: the coach only advises; nothing is played (the Player's existing practice-only rule).
+
+## 7. Closing record
+
+| Step | Version | PR | State |
+|---|---|---|---|
+| C1 coordinator and contracts | 38.58 | #149 | In code |
+| C2 match context | 38.59 | #150 | In code |
+| C3 staged-autonomy gates | 38.60 | #151 | In code |
+| C4 shadow mode, audit, coach lines | 38.61 | #152 | In code |
+| C5 supervised mode (off by default) | 38.62 | #153 | In code |
+| C6 post-match review | 38.63 | #154 | In code |
+| C7 scenario suite, guide, closing | 38.64 | #155 | In code |
+
+So far the only verification is CI. Nothing has been tested on a phone, and no gate has been passed on real evidence.

@@ -24,6 +24,11 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.IMPROVED, "The coach: guide and checks",
+            "The guide to the coach (advice lines, shadow mode, supervised mode, the match review) and its phone checklist " +
+                "are in docs/PHASE_12_COORDINATION_PLAN.md, sections 6 and 7. Ten recorded fight moments now test the " +
+                "coach's choices every time the app is built.",
+            pr = 155, needsDeviceCheck = true, version = "38.64"),
         Entry("2026-11-28", Kind.NEW, "A review after each match",
             "When a match ends, the strategy model writes a short review of it from what Sphynx saw (how often you went " +
                 "down and when, enemies and allies down, objectives taken, the parts it could not see) and one thing to do " +
