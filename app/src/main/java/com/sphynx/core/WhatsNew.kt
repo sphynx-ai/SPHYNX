@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.NEW, "Recommended team compositions",
+            "The Meta page shows up to three five-hero teams that fit your draft: one hero for each lane, with a mix of " +
+                "magic and physical damage, a front line and engage, avoiding heroes the online meta says your enemies " +
+                "counter. Each lists its strengths, weaknesses, win condition and what to watch out for, and how sure it " +
+                "is: never high, because no official statistics are behind it.",
+            pr = 159, needsDeviceCheck = true, version = "38.68"),
         Entry("2026-11-28", Kind.NEW, "Where the meta comes from",
             "The Meta page starts with META SOURCES. Official pick, win and ban rates can only come from the official " +
                 "MLBB rank page, which Sphynx cannot read (its numbers come from an undocumented connection), so it says " +

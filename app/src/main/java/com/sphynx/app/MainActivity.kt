@@ -2512,6 +2512,34 @@ class MainActivity : Activity() {
                 try { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(off.link))) } catch (t: Throwable) { toast("No browser found") }
             }
         }
+        // Phase 13 D4 (roadmap 13.3): recommended five-hero compositions around the current draft
+        run {
+            val mc = com.sphynx.adapters.mlbb.MlbbCompositions
+            fun laneOf(l: com.sphynx.game.Lane?): com.sphynx.adapters.mlbb.MlbbCompositions.Lane? = when (l) {
+                com.sphynx.game.Lane.EXP -> com.sphynx.adapters.mlbb.MlbbCompositions.Lane.EXP; com.sphynx.game.Lane.JUNGLE -> com.sphynx.adapters.mlbb.MlbbCompositions.Lane.JUNGLE; com.sphynx.game.Lane.MID -> com.sphynx.adapters.mlbb.MlbbCompositions.Lane.MID
+                com.sphynx.game.Lane.GOLD -> com.sphynx.adapters.mlbb.MlbbCompositions.Lane.GOLD; com.sphynx.game.Lane.ROAM -> com.sphynx.adapters.mlbb.MlbbCompositions.Lane.ROAM; else -> null }
+            val pool = HeroDb.allNames.map { n ->
+                val m = mg.hero(n)
+                com.sphynx.adapters.mlbb.MlbbCompositions.Hero(n, HeroDb.role(n).name.lowercase(),
+                    listOfNotNull(laneOf(m?.lane), laneOf(m?.lane2)).distinct(), HeroDb.damage(n) == com.sphynx.game.Damage.MAGIC,
+                    m?.counters?.mapNotNull { HeroDb.match(it) }?.distinct() ?: emptyList(), m != null)
+            }
+            val mine = com.sphynx.game.GameStateTracker.myTeam.mapNotNull { HeroDb.match(it) }
+            val enemies = com.sphynx.game.GameStateTracker.enemyTeam.mapNotNull { HeroDb.match(it) }
+            val bans = com.sphynx.ai.StrategicAdvisor.draft?.ban?.mapNotNull { HeroDb.match(it) } ?: emptyList()
+            // my picks go to their first lane that is still open
+            val fixed = HashMap<com.sphynx.adapters.mlbb.MlbbCompositions.Lane, String>()
+            for (h in mine) pool.firstOrNull { it.name == h }?.let { hh ->
+                (hh.lanes.ifEmpty { mc.defaultLanes(hh.role) } + com.sphynx.adapters.mlbb.MlbbCompositions.Lane.values()).firstOrNull { it !in fixed }?.let { fixed[it] = h } }
+            val comps = try { mc.recommend(pool, fixed, enemies, (mine + enemies + bans).toSet()) } catch (t: Throwable) { emptyList() }
+            val cc = card()
+            cardHeader(cc, "RECOMMENDED COMPOSITIONS", if (mine.isEmpty() && enemies.isEmpty()) "no draft yet" else "around your draft", T.ACCENT)
+            if (comps.isEmpty()) cardNote(cc, "No coherent five-hero team fits the heroes left.")
+            for ((k, c) in comps.withIndex()) cardNote(cc, "${k + 1}. " + com.sphynx.adapters.mlbb.MlbbCompositions.Lane.values().joinToString(" · ") { l -> "${l.label}: ${c.picks[l]}" } +
+                "\nStrengths: " + c.strengths.joinToString("; ").ifEmpty { "-" } + "\nWeaknesses: " + c.weaknesses.joinToString("; ").ifEmpty { "-" } +
+                "\nWin condition: " + c.winCondition + (if (c.likelyCounters.isNotEmpty()) "\nWatch out for: " + c.likelyCounters.joinToString() else "") +
+                "\nConfidence: ${c.confidence} · " + c.evidence.joinToString("; "))
+        }
         text("Live patch meta from the web (Groq). Saved on the phone; the Player, Builder and Drafter use it.", 13f, color = T.MUTED)
         switch("Use the online meta", Cfg.useOnlineMeta && Cfg.onlineAuto) {
             Cfg.useOnlineMeta = it; Cfg.onlineAuto = it; Cfg.onlineDraft = it
