@@ -24,6 +24,10 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.IMPROVED, "MLBB intelligence: guide and checks",
+            "The guide to the emblem Library, meta sources, compositions, rotations and the Pro Match Hub, its phone " +
+                "checklist, and which parts wait for a source decision are in docs/PHASE_13_MLBB_PLAN.md, sections 7 and 8.",
+            pr = 163, needsDeviceCheck = true, version = "38.72"),
         Entry("2026-11-28", Kind.NEW, "Pro Match Hub (waiting for a source)",
             "The Meta page has a PRO MATCH HUB card: MPL Philippines, Indonesia and Malaysia, the M-Series, the Esports " +
                 "World Cup and the SEA Games, with times in your own time zone and only official streams linked. No " +

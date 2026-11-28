@@ -89,7 +89,7 @@ android {
         // (37.20 -> 37.21 -> ...; after 37.99 comes 38.00). Written only here: the version code follows
         // from it (37.20 -> 3720) and the app reads it through BuildConfig.VERSION_NAME (core.AppVersion).
         // The newest What's new entry carries the same version; a unit test checks they match.
-        val sphynxVersion = "38.71"
+        val sphynxVersion = "38.72"
         versionCode = sphynxVersion.split(".").let { it[0].toInt() * 100 + it[1].toInt() }
         versionName = sphynxVersion
 
