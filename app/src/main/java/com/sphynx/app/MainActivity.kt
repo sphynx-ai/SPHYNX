@@ -2565,6 +2565,14 @@ class MainActivity : Activity() {
             }
             asDescription(cardNote(rc, "Timers from the app's jungle data (the Wiki): turtle at 2:00 and back 2 min after its kill, lord from 8:00. Experimental rotations stay apart until matches support them."))
         }
+        // Phase 13 D7 (roadmap 13.7): the Pro Match Hub; no esports source is connected yet, and it says so
+        run {
+            val hub = com.sphynx.adapters.mlbb.MlbbProHub
+            val hc = card()
+            cardHeader(hc, "PRO MATCH HUB", "no source yet", T.MUTED)
+            cardNote(hc, hub.NotConnected.status() + "\n\nCompetitions: " + hub.COMPETITIONS.joinToString { it.name } +
+                ".\nTimes will show in your time zone (" + java.time.ZoneId.systemDefault().id + "); only official streams are linked.")
+        }
         text("Live patch meta from the web (Groq). Saved on the phone; the Player, Builder and Drafter use it.", 13f, color = T.MUTED)
         switch("Use the online meta", Cfg.useOnlineMeta && Cfg.onlineAuto) {
             Cfg.useOnlineMeta = it; Cfg.onlineAuto = it; Cfg.onlineDraft = it

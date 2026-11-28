@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.NEW, "Pro Match Hub (waiting for a source)",
+            "The Meta page has a PRO MATCH HUB card: MPL Philippines, Indonesia and Malaysia, the M-Series, the Esports " +
+                "World Cup and the SEA Games, with times in your own time zone and only official streams linked. No " +
+                "esports source is connected yet (the ones checked can't be used from here), so it says so instead of " +
+                "showing invented schedules. When one is connected, its finished drafts feed the experimental strategies.",
+            pr = 162, needsDeviceCheck = true, version = "38.71"),
         Entry("2026-11-28", Kind.NEW, "Rotation ideas for each phase of a match",
             "The Meta page shows rotation ideas: the 1-2-2 opening and which buff to start, the turtle set-up, the lord " +
                 "after a won fight, and late-game split pressure or grouping. In a match it shows the ones for now. Each " +
