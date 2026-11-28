@@ -1170,6 +1170,18 @@ class MainActivity : Activity() {
         }
         cardSwitchRow(cd, "Dry run: only show where it would tap", Cfg.dryRun) { Cfg.dryRun = it }.second.text = "A safety guard: on by default"
         cardSwitchRow(cd, "Autonomous Drafter + Builder", Cfg.autonomous) { Cfg.autonomous = it }.second.text = "Picks, bans and buys by itself"
+        // Phase 12 C5: supervised mode, off by default; it only acts once its gates pass
+        cardSwitchRow(cd, "Supervised coach (practice only)", Cfg.supervisedOn) { Cfg.supervisedOn = it }.second.text =
+            "When on, the coach's fight advice is played in a practice match only after its steps are passed " +
+                "(docs/PHASE_12_AUTONOMY_GATES.md); the Kotlin checks and the safety rules still come first. Off by default"
+        val gateLine = cardNote(cd)
+        upd { gateLine.text = "Coach: " + (try { com.sphynx.ai.CoachRuntime.gate(this).text() } catch (t: Throwable) { "-" }) +
+            (if (com.sphynx.ai.CoachRuntime.supervisedActive) " · acting (supervised)" else "") }
+        // Phase 12 C6: the last match's review by the strategic model, with its evidence
+        val reviewLine = cardNote(cd)
+        upd { reviewLine.text = com.sphynx.ai.CoachRuntime.lastReview?.let { r ->
+            "LAST MATCH REVIEW (${r.confidence.label}, from what Sphynx saw):\n${r.text}\nEvidence: " + r.facts.joinToString("; ") }
+            ?: "LAST MATCH REVIEW: after a match the strategy model reviews what Sphynx saw (advice only)." }
         val mode = cardNote(cd)
         upd {
             val b = PlayStatus.runningBadge(AiRuntime.anyOn(), Cfg.dryRun)
@@ -3116,6 +3128,7 @@ class MainActivity : Activity() {
         fun about(f: com.sphynx.models.ModelCatalog.File, what: String) =
             "$what: ${f.saveAs}\n${ms.mb(f.size)} MB · SHA-256 ${f.sha256}" + (if (dl.have(f)) "\n(already in the app)" else "")
         val msg = listOfNotNull(e.note.ifEmpty { null }, "From huggingface.co/${e.repo} (licence: ${e.license ?: "see the model page"})",
+            "Declared for ${com.sphynx.universal.pairing.Workloads.declaredClass(e.totalBytes / 1_048_576).label} phones and up (from its size; not measured)",
             about(e.model, "Model"), e.mmproj?.let { about(it, "Picture part") },
             if (!net) "You are not on Wi-Fi: this uses ${ms.mb(e.totalBytes)} MB of mobile data." else null,
         ).joinToString("\n\n")
@@ -3775,6 +3788,22 @@ class MainActivity : Activity() {
                     f.writeText(Diag.read())
                     com.sphynx.core.SessionRecorder.exportFile(this, f, "text/plain").also { f.delete() }
                 } catch (e: Exception) { "Export failed: ${e.message}" }
+                runOnUiThread { toast(msg.take(200)) }
+            }.start()
+        }
+
+        // Phase 12 C4: the coach's shadow-mode audit (its advice next to what was played)
+        btn("Export the coach audit now (shadow mode)") {
+            Thread {
+                val msg = try { com.sphynx.ai.CoachRuntime.exportAudit(this) } catch (e: Exception) { "Export failed: ${e.message}" }
+                runOnUiThread { toast(msg.take(200)) }
+            }.start()
+        }
+
+        // Phase 11 P4: the pair recommendations with their evidence and inputs, so a recommendation can be checked
+        btn("Export the model pair recommendations now") {
+            Thread {
+                val msg = try { com.sphynx.ai.PairingAdvisor.export(this) } catch (e: Exception) { "Export failed: ${e.message}" }
                 runOnUiThread { toast(msg.take(200)) }
             }.start()
         }

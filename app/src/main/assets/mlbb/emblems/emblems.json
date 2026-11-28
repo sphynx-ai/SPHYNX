@@ -1,0 +1,315 @@
+{
+ "schema": 1,
+ "game": "mlbb",
+ "source": {
+  "page": "https://mobile-legends.fandom.com/wiki/Emblems",
+  "site": "Mobile Legends: Bang Bang Wiki (Fandom)",
+  "license": "CC BY-SA (Fandom community content)",
+  "captured": "2026-11-10",
+  "capture": "Emblems _ Mobile Legends_ Bang Bang Wiki _ Fandom.mht (supplied by the owner)",
+  "iconsFetched": "2026-11-28",
+  "iconServer": "https://static.wikia.nocookie.net/mobile-legends/images/"
+ },
+ "recommendations": {
+  "perHero": null,
+  "perRole": null,
+  "note": "The Wiki Emblems page gives no recommended set or talents per hero or per role. Set names name a role (Custom Tank Emblem ...); that is a Wiki fact, not a recommendation."
+ },
+ "notes": [
+  "The Wiki gives Temporal Reign the same description as War Cry; kept as the Wiki wrote it."
+ ],
+ "sets": [
+  {
+   "name": "Basic Common Emblem",
+   "attributes": [
+    "Hybrid Regen +12",
+    "HP +275",
+    "Adaptive Attack +22"
+   ],
+   "talents": [
+    {
+     "name": "Thrill",
+     "type": "standard",
+     "tier": 1,
+     "description": "Gain 16 Adaptive Attack.",
+     "icon": "thrill.webp",
+     "wikiFile": "Thrill.png"
+    },
+    {
+     "name": "Swift",
+     "type": "standard",
+     "tier": 1,
+     "description": "Gain 10% Extra Attack Speed.",
+     "icon": "swift.webp",
+     "wikiFile": "Swift.png"
+    },
+    {
+     "name": "Wilderness Blessing",
+     "type": "standard",
+     "tier": 2,
+     "description": "Movement Speed in the Jungle and River is increased by 10%. This bonus is halved when in combat with enemy heroes, Lord or Turtle.",
+     "icon": "wilderness_blessing.webp",
+     "wikiFile": "Wilderness_Blessing.png"
+    },
+    {
+     "name": "Seasoned Hunter",
+     "type": "standard",
+     "tier": 2,
+     "description": "Damage against Lord and Turtle is increased by 15%. This bonus is halved against regular Creeps and doesn't affect the damage of Retribution.",
+     "icon": "seasoned_hunter.webp",
+     "wikiFile": "Seasoned_Hunter.png"
+    },
+    {
+     "name": "Impure Rage",
+     "type": "core",
+     "tier": null,
+     "description": "Dealing damage with skills deals 4% of target's Max HP extra Adaptive Damage and restores 2% Mana on hit. (If the hero does not use Mana, restores 1% HP instead. The extra Adaptive Damage dealt to non-hero units is up to 120. Cooldown: 5 seconds.",
+     "icon": "impure_rage.webp",
+     "wikiFile": "Impure_Rage.png"
+    },
+    {
+     "name": "Quantum Charge",
+     "type": "core",
+     "tier": null,
+     "description": "Dealing damage with Basic Attacks increases Movement Speed by 30% for 1.5s and restores 75-180 HP (scales with level). Cooldown: 10 seconds.",
+     "icon": "quantum_charge.webp",
+     "wikiFile": "Quantum_Charge.png"
+    },
+    {
+     "name": "War Cry",
+     "type": "core",
+     "tier": null,
+     "description": "The next Ultimate cast decreases other active skills' remaining cooldowns by 1.5 times within 4 seconds. This effect is extended by 2 seconds after getting hero kills or assists. (This only applies to the hero themselves. Cooldown: 20 seconds.)",
+     "icon": "war_cry.webp",
+     "wikiFile": "War_Cry.png"
+    },
+    {
+     "name": "Temporal Reign",
+     "type": "core",
+     "tier": null,
+     "description": "The next Ultimate cast decreases other active skills' remaining cooldowns by 1.5 times within 4 seconds. This effect is extended by 2 seconds after getting hero kills or assists. (This only applies to the hero themselves. Cooldown: 20 seconds.)",
+     "icon": "temporal_reign.webp",
+     "wikiFile": "Temporal_Reign.png"
+    }
+   ],
+   "icon": "basic_common_emblem.webp",
+   "wikiFile": "Basic_Common_Emblem.png"
+  },
+  {
+   "name": "Custom Tank Emblem",
+   "attributes": [
+    "HP +500",
+    "Hybrid Defense +10",
+    "HP Regen +4"
+   ],
+   "talents": [
+    {
+     "name": "Vitality",
+     "type": "standard",
+     "tier": 1,
+     "description": "Gain 225 extra max HP.",
+     "icon": "vitality.webp",
+     "wikiFile": "Vitality.png"
+    },
+    {
+     "name": "Tenacity",
+     "type": "standard",
+     "tier": 1,
+     "description": "When HP is below 50%, Damage Reduction is increased by 5%.",
+     "icon": "tenacity.webp",
+     "wikiFile": "Tenacity.png"
+    },
+    {
+     "name": "Concussive Blast",
+     "type": "core",
+     "tier": null,
+     "description": "After the next Basic Attack, deal 100(+7% Total HP) Magic Damage to nearby enemies. Cooldown: 15s.",
+     "icon": "concussive_blast.webp",
+     "wikiFile": "Concussive_Blast.png"
+    }
+   ],
+   "icon": "custom_tank_emblem.webp",
+   "wikiFile": "Custom_Tank_Emblem.png"
+  },
+  {
+   "name": "Custom Assassin Emblem",
+   "attributes": [
+    "Adaptive Penetration +14",
+    "Adaptive Attack +10",
+    "Movement Speed +3%"
+   ],
+   "talents": [
+    {
+     "name": "Rupture",
+     "type": "standard",
+     "tier": 1,
+     "description": "Gain 5 Adaptive Penetration. Gain Physical Penetration if extra Physical Attack is higher than extra Magic Power; otherwise, gain Magic Penetration.",
+     "icon": "rupture.webp",
+     "wikiFile": "Rupture.png"
+    },
+    {
+     "name": "Master Assassin",
+     "type": "standard",
+     "tier": 1,
+     "description": "If there is only one enemy hero nearby, damage dealt to them is increased by 7%.",
+     "icon": "master_assassin.webp",
+     "wikiFile": "Master_Assassin.png"
+    },
+    {
+     "name": "Killing Spree",
+     "type": "core",
+     "tier": null,
+     "description": "When damaging heroes below 30% HP, instantly recover 15% of Lost HP and gains 20% Movement Speed. Additional Effect: Reset cooldown upon killing an enemy hero. Duration: 3 seconds. Cooldown: 30 seconds.",
+     "icon": "killing_spree.webp",
+     "wikiFile": "Killing_Spree.png"
+    }
+   ],
+   "icon": "custom_assassin_emblem.webp",
+   "wikiFile": "Custom_Assassin_Emblem.png"
+  },
+  {
+   "name": "Custom Mage Emblem",
+   "attributes": [
+    "Magic Power +30",
+    "Cooldown Reduction +5%",
+    "Magic Penetration +8"
+   ],
+   "talents": [
+    {
+     "name": "Inspire",
+     "type": "standard",
+     "tier": 1,
+     "description": "Cooldown Reduction is increased by 5% and Mana Regen by 2.",
+     "icon": "inspire_talent.webp",
+     "wikiFile": "Inspire_%28Talent%29.png"
+    },
+    {
+     "name": "Bargain Hunter",
+     "type": "standard",
+     "tier": 1,
+     "description": "Equipment can be purchased at 95% of their base price.",
+     "icon": "bargain_hunter.webp",
+     "wikiFile": "Bargain_Hunter.png"
+    },
+    {
+     "name": "Lethal Ignition",
+     "type": "core",
+     "tier": null,
+     "description": "Dealing damage greater than 7% of an enemy hero's Max HP 3 times within 5s will scorch the target for an additional 162-750 Adaptive Damage (scales with level). Cooldown 15 seconds.",
+     "icon": "lethal_ignition.webp",
+     "wikiFile": "Lethal_Ignition.png"
+    }
+   ],
+   "icon": "custom_mage_emblem.webp",
+   "wikiFile": "Custom_Mage_Emblem.png"
+  },
+  {
+   "name": "Custom Fighter Emblem",
+   "attributes": [
+    "Hybrid Lifesteal +10%",
+    "Adaptive Attack +16",
+    "Hybrid Defense +8"
+   ],
+   "talents": [
+    {
+     "name": "Firmness",
+     "type": "standard",
+     "tier": 1,
+     "description": "Gain 8 extra Physical & Magic Defense.",
+     "icon": "firmness.webp",
+     "wikiFile": "Firmness.png"
+    },
+    {
+     "name": "Festival of Blood",
+     "type": "standard",
+     "tier": 1,
+     "description": "Gain 6% Spell Vamp. Each hero kill or assist grants an additional 0.5% Spell Vamp, up to 12 stacks.",
+     "icon": "festival_of_blood.webp",
+     "wikiFile": "Festival_of_Blood.png"
+    },
+    {
+     "name": "Brave Smite",
+     "type": "core",
+     "tier": null,
+     "description": "Brave Smite: Dealing skill damage to an enemy hero recovers 5% Max HP. CD: 6 seconds.",
+     "icon": "brave_smite.webp",
+     "wikiFile": "Brave_Smite.png"
+    }
+   ],
+   "icon": "custom_fighter_emblem.webp",
+   "wikiFile": "Custom_Fighter_Emblem.png"
+  },
+  {
+   "name": "Custom Support Emblem",
+   "attributes": [
+    "Healing Effect +12%",
+    "Cooldown Reduction +10%",
+    "Movement Speed +6%"
+   ],
+   "talents": [
+    {
+     "name": "Agility",
+     "type": "standard",
+     "tier": 1,
+     "description": "Gain 4% extra Movement Speed.",
+     "icon": "agility.webp",
+     "wikiFile": "Agility.png"
+    },
+    {
+     "name": "Pull Yourself Together",
+     "type": "standard",
+     "tier": 1,
+     "description": "Cooldowns of Battle Spells and equipment's active skills are reduced by 12% initially. Each hero kill or assist grants an additional 1% reduction, up to 8 stacks.",
+     "icon": "pull_yourself_together.webp",
+     "wikiFile": "Pull_Yourself_Together.png"
+    },
+    {
+     "name": "Focusing Mark",
+     "type": "core",
+     "tier": null,
+     "description": "After damaging an enemy hero, allied heroes deal 6% more damage to them and gain 10% Movement Speed. Duration: 3 seconds. Cooldown: 4 seconds.",
+     "icon": "focusing_mark.webp",
+     "wikiFile": "Focusing_Mark.png"
+    }
+   ],
+   "icon": "custom_support_emblem.webp",
+   "wikiFile": "Custom_Support_Emblem.png"
+  },
+  {
+   "name": "Custom Marksman Emblem",
+   "attributes": [
+    "Attack Speed +15%",
+    "Adaptive Attack +16",
+    "Adaptive Penetration +10%"
+   ],
+   "talents": [
+    {
+     "name": "Fatal",
+     "type": "standard",
+     "tier": 1,
+     "description": "Gain 5% Crit Chance and 5% extra Crit Damage.",
+     "icon": "fatal.webp",
+     "wikiFile": "Fatal.png"
+    },
+    {
+     "name": "Weapon Master",
+     "type": "standard",
+     "tier": 1,
+     "description": "Physical Attack and Magic Power gained from equipment, emblem, talents, and skills are increased by 8%.",
+     "icon": "weapon_master_talent.webp",
+     "wikiFile": "Weapon_Master_%28Talent%29.png"
+    },
+    {
+     "name": "Weakness Finder",
+     "type": "core",
+     "tier": null,
+     "description": "Basic Attacks slow enemies by 50% and reduce their Attack Speed by 30%. Duration: 1 second. Cooldown: 10 seconds (each Basic Attack reduces it bv 1 seconds, down to 3 seconds).",
+     "icon": "weakness_finder.webp",
+     "wikiFile": "Weakness_Finder.png"
+    }
+   ],
+   "icon": "custom_marksman_emblem.webp",
+   "wikiFile": "Custom_Marksman_Emblem.png"
+  }
+ ]
+}

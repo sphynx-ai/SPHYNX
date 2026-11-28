@@ -1,0 +1,23 @@
+{"schema": 1, "about": "Phase 12 C7: replayable coach scenarios. Each is a moment (own HP, what is in view, the engines' advice) and what the coordinator must do.",
+ "scenarios": [
+  {"id": "agree-fight", "hp": 0.8, "enemies": 1, "allies": 1, "minions": 2,
+   "advice": [["ENGAGE", "TACTICAL", 0.8], ["ENGAGE", "LEARNED", 0.7]], "expect": "ENGAGE", "actionable": true},
+  {"id": "safety-first", "hp": 0.3, "enemies": 2, "allies": 0, "minions": 1,
+   "advice": [["ENGAGE", "LEARNED", 0.95], ["RETREAT", "TACTICAL", 0.5]], "expect": "RETREAT", "actionable": true},
+  {"id": "low-hp-all-in-rejected", "hp": 0.1, "enemies": 1, "allies": 0, "minions": 0,
+   "advice": [["ENGAGE", "TACTICAL", 0.9]], "expect": null, "actionable": false},
+  {"id": "near-tie-conflict", "hp": 0.7, "enemies": 1, "allies": 1, "minions": 3,
+   "advice": [["FARM", "LEARNED", 0.61], ["GROUP", "TACTICAL", 0.6]], "expect": null, "conflict": true, "actionable": false},
+  {"id": "rule-decides", "hp": 0.7, "enemies": 1, "allies": 1, "minions": 3,
+   "advice": [["FARM", "RULES", 0.61], ["GROUP", "TACTICAL", 0.6]], "expect": "FARM", "actionable": true},
+  {"id": "weak", "hp": 0.7, "enemies": 1, "allies": 0, "minions": 3,
+   "advice": [["POKE", "TACTICAL", 0.3]], "expect": null, "actionable": false},
+  {"id": "stale", "hp": 0.7, "enemies": 1, "allies": 0, "minions": 3, "ageMs": 5000,
+   "advice": [["POKE", "TACTICAL", 0.9]], "expect": null, "actionable": false},
+  {"id": "farm-nothing", "hp": 0.9, "enemies": 1, "allies": 0, "minions": 0,
+   "advice": [["FARM", "TACTICAL", 0.9]], "expect": null, "actionable": false},
+  {"id": "experimental-advice", "hp": 0.8, "enemies": 1, "allies": 0, "minions": 2, "tacticalExperimental": true,
+   "advice": [["POKE", "TACTICAL", 0.8]], "expect": "POKE", "actionable": false},
+  {"id": "strategy-only", "hp": 0.8, "enemies": 0, "allies": 2, "minions": 4,
+   "advice": [["GROUP", "STRATEGIC", 0.7]], "expect": null, "strategic": "GROUP", "actionable": false}
+ ]}

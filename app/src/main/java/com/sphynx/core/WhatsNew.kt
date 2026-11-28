@@ -24,6 +24,63 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.NEW, "Phase 13: emblems from the Mobile Legends Wiki",
+            "Behind the scenes: the next phase is started. Sphynx now carries the emblem sets from the Mobile Legends Wiki " +
+                "Emblems page (your capture of 10 November): the 7 sets with their attributes, standard and core talents, " +
+                "and their 33 icons from the Wiki, with the source and dates. The Wiki does not recommend a set per hero, " +
+                "so Sphynx will say so instead of guessing. The Library page comes next.",
+            pr = 156, needsDeviceCheck = true, version = "38.65"),
+        Entry("2026-11-28", Kind.IMPROVED, "The coach: guide and checks",
+            "The guide to the coach (advice lines, shadow mode, supervised mode, the match review) and its phone checklist " +
+                "are in docs/PHASE_12_COORDINATION_PLAN.md, sections 6 and 7. Ten recorded fight moments now test the " +
+                "coach's choices every time the app is built.",
+            pr = 155, needsDeviceCheck = true, version = "38.64"),
+        Entry("2026-11-28", Kind.NEW, "A review after each match",
+            "When a match ends, the strategy model writes a short review of it from what Sphynx saw (how often you went " +
+                "down and when, enemies and allies down, objectives taken, the parts it could not see) and one thing to do " +
+                "next time. The Play page shows the last review with its evidence and how much evidence there was. It is " +
+                "advice, never fact, and it is in the coach export on the Debug data page.",
+            pr = 154, needsDeviceCheck = true, version = "38.63"),
+        Entry("2026-11-28", Kind.NEW, "Supervised coach (off by default)",
+            "The Play page has a new switch, Supervised coach (practice only), off by default. When you turn it on, the " +
+                "coach's fight advice is played in a practice match only after its steps are passed: your reviewed fight " +
+                "test with few unsafe answers, and at least 200 watched decisions that agree with play. Below the switch, " +
+                "a line tells you which step it is on and what is still missing. The Kotlin checks and the safety rules " +
+                "still decide first, and turning the switch off or the emergency stop ends it at once.",
+            pr = 153, needsDeviceCheck = true, version = "38.62"),
+        Entry("2026-11-28", Kind.NEW, "The coach watches and advises",
+            "In a match the coach now adds up to two lines of advice to the companion advice (what to do now, and the " +
+                "strategy), or says 'no recommendation' with the reason. While the Player plays a practice match, the coach " +
+                "only watches: once a second it writes down what it would advise next to what was really played (shadow " +
+                "mode). Those notes are counted per fight model for the supervised-mode steps, and the Debug data page " +
+                "can export them. Play itself is unchanged.",
+            pr = 152, needsDeviceCheck = true, version = "38.61"),
+        Entry("2026-11-28", Kind.IMPROVED, "Steps before the coach may act",
+            "Behind the scenes: the rules for when the coach's advice may ever be played are written " +
+                "(docs/PHASE_12_AUTONOMY_GATES.md). First it only advises; it must pass your reviewed model tests with " +
+                "few unsafe answers, then agree with play in at least 200 watched decisions with almost no unsafe " +
+                "disagreement, and you must switch supervised mode on. Acting fully by itself is locked, as you decided.",
+            pr = 151, needsDeviceCheck = true, version = "38.60"),
+        Entry("2026-11-28", Kind.IMPROVED, "The coach remembers the match",
+            "Behind the scenes: during a match Sphynx now keeps a short history of what happened (the match starting and " +
+                "ending, you going down and coming back, enemies and allies falling, the turtle or lord appearing and " +
+                "being taken), each with where it was read from. Parts of the match it could not see are marked as " +
+                "gaps, never filled in. It only reads; play is unchanged.",
+            pr = 150, needsDeviceCheck = true, version = "38.59"),
+        Entry("2026-11-28", Kind.IMPROVED, "Phase 12: one coach for strategy and fights",
+            "Behind the scenes: the next phase is started. Sphynx gets a coordinator that combines the strategy model, " +
+                "the fight model, the learned networks and the safety rules into one stream of advice, keeping strategy " +
+                "and the moment apart. When the engines disagree, or the advice is weak or old, it says 'no " +
+                "recommendation' instead of guessing. Nothing changes in a match yet.",
+            pr = 149, needsDeviceCheck = true, version = "38.58"),
+        Entry("2026-11-28", Kind.IMPROVED, "Model pairs: how to use them",
+            "The guide and the phone checklist for model pairs are in docs/PHASE_11_PAIRING_PLAN.md, sections 6 and 7.",
+            pr = 148, needsDeviceCheck = true, version = "38.57"),
+        Entry("2026-11-28", Kind.IMPROVED, "Which phones a download is for",
+            "The download question now says which phones a model is declared for (entry-level, midrange or flagship, " +
+                "from its size; not measured). The Debug data page can export the pair recommendations with the evidence " +
+                "and the inputs they used. The list with every model's class is in docs/PHASE_11_CONFIG_CATALOG.md.",
+            pr = 147, needsDeviceCheck = true, version = "38.56"),
         Entry("2026-11-28", Kind.NEW, "Recommended pairs of models",
             "The Model page has RECOMMENDED PAIRS: pairs of a strategy model and a fight model for this phone, from the " +
                 "models you have and the download list. Each shows its trade-off (best measured quality, fastest, lightest), " +

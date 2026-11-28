@@ -253,6 +253,7 @@ object AiRuntime {
                     DemoRecorder.markDeath(lastDeathMark)
                 }
                 if (!stale) prevPhase = s.phase
+                if (!stale) CoachRuntime.observe(s)          // Phase 12 C2: the shared match context (reads only)
                 // the buttons are found on the screen by themselves the first time (no calibration to do)
                 if (!stale && (s.phase == Phase.IN_GAME && s.self != null || s.phase == Phase.DRAFT || s.phase == Phase.HERO_LOCKED))
                     com.sphynx.game.AutoTune.autoCalibrate(s.phase)
@@ -306,6 +307,10 @@ object AiRuntime {
                     }
                     // logging mode only: records every engine's advice next to what is played (never changes it)
                     DecisionLogging.observe(s, brainOption, option)
+                    // Phase 12 C4: shadow mode: the coach's advice next to what is played (never changes it)
+                    CoachRuntime.shadow(s, brainOption, option)
+                    // Phase 12 C5: supervised mode (switch OFF by default, gates must pass): the coach's checked advice
+                    if (option != null) CoachRuntime.supervisedChoice(s, brainOption)?.let { r -> if (r != option) { Brain.adopt(s, r); option = r } }
                     // research R4 (verified practice only): records this fight moment for the small-model test
                     if (com.sphynx.learning.LearnGate.on()) com.sphynx.research.ResearchMode.recordMoment(s, profile, option)
                     var d = if (calibrating) TacticalEngine.calibrationStep(s, profile)
@@ -489,7 +494,10 @@ object AiRuntime {
             val skills = com.sphynx.game.SkillAdvice.line(
                 com.sphynx.game.SkillOrder.of(hero), s.hud.upgradeReady)
             adviceDecision = d; adviceDecisionAt = now
-            advice = d.describe() + (small?.let { " | small model: ${it.label}" } ?: "") + "\n  " + skills
+            // Phase 12 C4: the coach's advice (budget 2) in the companion lines
+            val coach = CoachRuntime.coach(s, null, now)?.lines()?.joinToString("\n  ") ?: ""
+            advice = d.describe() + (small?.let { " | small model: ${it.label}" } ?: "") + "\n  " + skills +
+                (if (coach.isNotEmpty()) "\n  $coach" else "")
         } catch (t: Throwable) {
             advice = "-"
             Diag.error("Advice", t)
