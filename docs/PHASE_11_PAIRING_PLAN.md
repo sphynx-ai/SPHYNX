@@ -40,7 +40,7 @@
 ## 4. Acceptance criteria (roadmap deliverables)
 
 - [ ] Pairing method and workload/phone profiles (P1). **In code (v38.53):** `docs/PHASE_11_PAIRING_METHOD.md`, `universal/pairing/Workloads` (the two workloads with their budgets, phone class from RAM, declared class from size; tested).
-- [ ] A recommendation engine with explicit trade-offs and confidence (P2).
+- [ ] A recommendation engine with explicit trade-offs and confidence (P2). **In code (v38.54):** `universal/pairing/PairRecommender` (job rules and memory filter, Pareto front on quality, speed and memory without weights, labels, reasons, budget misses, confidence = the lower of the two models; an unmeasured model is never pushed off by quality alone; tested in `PairRecommenderTest`).
 - [ ] A recommendation view that explains itself and keeps the owner in control (P3).
 - [ ] Evaluation tests for the engine (P2, P4).
 - [ ] An evidence-backed configuration catalog (P4).
