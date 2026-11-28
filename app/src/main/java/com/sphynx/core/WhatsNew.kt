@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.IMPROVED, "Steps before the coach may act",
+            "Behind the scenes: the rules for when the coach's advice may ever be played are written " +
+                "(docs/PHASE_12_AUTONOMY_GATES.md). First it only advises; it must pass your reviewed model tests with " +
+                "few unsafe answers, then agree with play in at least 200 watched decisions with almost no unsafe " +
+                "disagreement, and you must switch supervised mode on. Acting fully by itself is locked, as you decided.",
+            pr = 151, needsDeviceCheck = true, version = "38.60"),
         Entry("2026-11-28", Kind.IMPROVED, "The coach remembers the match",
             "Behind the scenes: during a match Sphynx now keeps a short history of what happened (the match starting and " +
                 "ending, you going down and coming back, enemies and allies falling, the turtle or lord appearing and " +

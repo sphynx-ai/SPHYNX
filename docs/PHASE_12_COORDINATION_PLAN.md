@@ -42,7 +42,7 @@
 - [ ] Coordination architecture and role/task contracts (C1). **In code (v38.58):** `docs/PHASE_12_COORDINATION.md`, `universal/coach/Recommendation` (schema 1, JSON; tested), `universal/coach/Coordinator` (two horizons kept apart, `DecisionArbiter` first, near-tie conflict reported, ranked within a budget of 2; tested in `CoordinatorTest`).
 - [ ] Context and arbitration design (C1, C2). **In code (v38.59):** `universal/coach/MatchContext` (ordered, de-duplicated, bounded event history with source and confidence; clock jumps over 30 s recorded as gaps; stale after 5 s without observation; summary; tested), `adapters/mlbb/MlbbEvents` (match start / end, you down / back, enemies and allies down from the death timers, objective seen / taken from its bar; only what was read; tested), `ai/CoachRuntime` (fed with each fresh screen reading in `AiRuntime`; reads only).
 - [ ] Confidence policy with a safe "no recommendation" default (C1). **In code (v38.58):** under 40% not shown, a tie within 10 points without a rule is a conflict, advisory-only advice is shown as experimental and never actionable, expired advice is dropped (`CoordinatorTest`).
-- [ ] Safety/action pipeline and staged-autonomy criteria (C3, C5).
+- [ ] Safety/action pipeline and staged-autonomy criteria (C3, C5). **In code (v38.60):** `universal/autonomy/AutonomyGates` (observe → offline evaluation / shadow → supervised; bounded locked by the owner's decision; each failing criterion named; tested), `docs/PHASE_12_AUTONOMY_GATES.md` (thresholds and definitions).
 - [ ] Shadow mode and audit/reporting format (C4).
 - [ ] Supervised mode behind the gates, off by default, stoppable (C5).
 - [ ] Coaching (12.1): in-match advice with a budget, post-match review (C4, C6).
