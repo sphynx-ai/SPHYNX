@@ -2985,6 +2985,47 @@ class MainActivity : Activity() {
             "goes on from where it stopped.")
     }
 
+    // Phase 11 P3: recommended model pairs for this phone, with their evidence and confidence; nothing changes by itself
+    private fun labPairs() {
+        title("RECOMMENDED PAIRS")
+        val res = try { com.sphynx.ai.PairingAdvisor.recommend(this) } catch (t: Throwable) {
+            Diag.error("Pair recommendations", t); text("Recommendations could not be worked out: ${t.message}", 13f, color = T.MUTED, describe = false); return }
+        val head = card()
+        cardNote(head, "This phone: ${res.phoneClass.label}" + (if (res.roomMb >= 0) ", about ${res.roomMb} MB for models next to the game" else "") +
+            ". Pairs are measured with the EVALUATION tests; until then they are 'declared only' (low confidence). " +
+            "No pair is best for everyone: each shows what it trades.")
+        if (res.pairs.isEmpty()) { cardNote(head, "No pair fits this phone's free memory and the job rules right now."); return }
+        val rp = com.sphynx.universal.pairing.PairRecommender
+        for (p in res.pairs.take(5)) {
+            val c = card()
+            cardHeader(c, p.labels.joinToString(" · ").uppercase(java.util.Locale.US), p.confidence.label,
+                when (p.confidence) { rp.Confidence.HIGH -> T.GREEN; rp.Confidence.MEDIUM -> T.GOLD; else -> T.MUTED })
+            cardNote(c, rp.text(p))
+            val sv = res.values["STRATEGIC:" + p.strategic.id]; val tv = res.values["TACTICAL:" + p.tactical.id]
+            if (sv != null && tv != null) inCard(c, "Use this pair…") { labUsePair(p.strategic.label, sv, p.tactical.label, tv) }
+            else asDescription(cardNote(c, "Download the missing model first (DOWNLOAD A MODEL)"))
+        }
+    }
+
+    private fun labUsePair(sName: String, sValue: String, tName: String, tValue: String) {
+        val rc = com.sphynx.inference.roles.RoleChoice
+        rc.problem(com.sphynx.ai.Roles.STRATEGIC, sValue, tValue)?.let { toast(it); return }
+        confirm("Give the strategic job to $sName and the tactical job to $tName? Both are loaded again.", "Use") {
+            val before = com.sphynx.ai.Roles.STRATEGIC to ModelManager.choice(com.sphynx.ai.Roles.STRATEGIC)
+            Diag.info("Pair chosen by the owner: $sName + $tName (was ${before.second})")
+            Cfg.setRaw(rc.settingKey(com.sphynx.ai.Roles.STRATEGIC), sValue)
+            Cfg.setRaw(rc.settingKey(com.sphynx.ai.Roles.TACTICAL), tValue)
+            Thread {
+                com.sphynx.ai.Roles.unload(com.sphynx.ai.Roles.STRATEGIC); com.sphynx.ai.Roles.unload(com.sphynx.ai.Roles.TACTICAL)
+                com.sphynx.ai.Roles.loadByOwner()
+                ModelManager.load(this) { err ->
+                    runOnUiThread { toast(err ?: "Loaded: $sName"); show("model") }
+                    if (Cfg.tacticalLlmOn) ModelManager.loadTactical(this) { e2 -> runOnUiThread { toast(e2 ?: "Loaded: $tName"); show("model") } }
+                }
+            }.start()
+        }
+    }
+
     // Phase 10 E4: the evaluation harness, started only by the owner
     private fun labEvaluation() {
         title("EVALUATION")
@@ -3161,6 +3202,7 @@ class MainActivity : Activity() {
         modelLab()      // Phase 9 M3
         labDownloads()  // Phase 9 M9
         labEvaluation() // Phase 10 E4
+        labPairs()      // Phase 11 P3
         title("FILES")
         text("Put files in Sphynx-Storage/Input (Sphynx-Storage is at the top of the phone's storage, next to Download; the app saves what it makes in Output and Recordings); the app loads them by itself:\n• Gemma 4 E2B (.litertlm) – strategy\n• Gemma 3 270M (.litertlm) – fight advice (optional)\n• mlbb_policies.zip – tactical networks\n• detectors (.tflite + labels) – minimap and screen\n• groq_key.txt – online meta", 13f)
         val mcard = card()
