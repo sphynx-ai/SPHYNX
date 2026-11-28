@@ -24,6 +24,12 @@ object WhatsNew {
     )
 
     val ENTRIES: List<Entry> = listOf(
+        Entry("2026-11-28", Kind.IMPROVED, "Phase 11: choosing a pair of models",
+            "Behind the scenes: the next phase is started (approved with all later phases). Sphynx gets the rules for " +
+                "recommending a pair of models for this phone: the fight model must give 90% of its usable answers within " +
+                "1 second, the strategy model's middle answer within 20 seconds, and the phone is classed as entry-level, " +
+                "midrange or flagship from its memory (docs/PHASE_11_PAIRING_METHOD.md). Nothing changes in the app yet.",
+            pr = 144, needsDeviceCheck = true, version = "38.53"),
         Entry("2026-11-27", Kind.IMPROVED, "How to test a model",
             "A short guide explains how to run a model test so it can be repeated, and how to read the report " +
                 "(docs/PHASE_10_BENCHMARK_GUIDE.md). The phone checklist for the whole of Phase 10 is in " +
